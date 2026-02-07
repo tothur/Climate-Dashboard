@@ -1,6 +1,6 @@
 # Climate Dashboard
 
-React + TypeScript + Vite + ECharts dashboard for global climate indicators and atmospheric forcing.
+Climate Dashboard is a bilingual, responsive web app that tracks daily global surface temperature, sea surface temperature, total sea ice extent, and Mauna Loa CO2 with year-over-year comparison charts and automated data updates.
 
 ## Current Functionality
 
