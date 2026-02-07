@@ -1,0 +1,31 @@
+{
+  "name": "climate-dashboard-nexttopic",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:live": "npm run data:update && npm run dev",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "data:update:raw": "node scripts/update-climate-data.mjs",
+    "data:verify": "node scripts/verify-climate-data.mjs",
+    "data:update": "npm run data:update:raw && npm run data:verify",
+    "data:update:auto": "node scripts/update-climate-data.mjs --watch --interval-minutes=360"
+  },
+  "dependencies": {
+    "echarts": "^5.6.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.9"
+  }
+}

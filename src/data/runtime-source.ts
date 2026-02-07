@@ -1,0 +1,379 @@
+import { createDataSourceFromSeries } from "./adapter";
+import type { ClimateSeriesBundle, DashboardDataSource, DailyPoint } from "../domain/model";
+
+const ERA5_GLOBAL_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_world_t2_day.json";
+const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json";
+const NSIDC_NORTH_DAILY_EXTENT_URL =
+  "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
+const NSIDC_SOUTH_DAILY_EXTENT_URL =
+  "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv";
+const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv";
+const LOCAL_GENERATED_DATA_URL = "./data/climate-realtime.json";
+const DAY_MS = 86_400_000;
+const FUTURE_TOLERANCE_DAYS = 0;
+const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
+  "global_surface_temperature",
+  "global_sea_surface_temperature",
+  "global_sea_ice_extent",
+  "atmospheric_co2",
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const numeric = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function formatIsoDate(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateFromParts(year: number, month: number, day: number): string | null {
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return formatIsoDate(date);
+}
+
+function dateFromYearAndDay(year: number, dayOfYear: number): string | null {
+  if (!Number.isFinite(year) || !Number.isFinite(dayOfYear) || dayOfYear < 1 || dayOfYear > 366) return null;
+  const date = new Date(Date.UTC(year, 0, 1));
+  date.setUTCDate(dayOfYear);
+  if (date.getUTCFullYear() !== year) return null;
+  return formatIsoDate(date);
+}
+
+function normalizePoints(points: DailyPoint[]): DailyPoint[] {
+  const map = new Map<string, number>();
+  for (const point of points) {
+    const date = String(point.date ?? "").trim();
+    const value = Number(point.value);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    if (!Number.isFinite(value)) continue;
+    map.set(date, value);
+  }
+
+  return Array.from(map.entries())
+    .sort((a, b) => Date.parse(`${a[0]}T00:00:00Z`) - Date.parse(`${b[0]}T00:00:00Z`))
+    .map(([date, value]) => ({ date, value }));
+}
+
+function parseIsoDateToUtc(dateIso: string): number | null {
+  const timestamp = Date.parse(`${dateIso}T00:00:00Z`);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function utcMidnightNow(): number {
+  const now = new Date();
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+}
+
+function sanitizeSeries(
+  points: DailyPoint[],
+  limits: {
+    minValue: number;
+    maxValue: number;
+    maxAgeDays: number;
+  }
+): DailyPoint[] {
+  const nowMidnight = utcMidnightNow();
+  const futureLimit = nowMidnight + FUTURE_TOLERANCE_DAYS * DAY_MS;
+  const staleLimit = nowMidnight - limits.maxAgeDays * DAY_MS;
+
+  const filtered = points.filter((point) => {
+    const value = Number(point.value);
+    if (!Number.isFinite(value) || value < limits.minValue || value > limits.maxValue) return false;
+    const pointTime = parseIsoDateToUtc(point.date);
+    if (pointTime == null) return false;
+    return pointTime <= futureLimit;
+  });
+
+  const normalized = normalizePoints(filtered);
+  if (!normalized.length) return [];
+
+  const latest = normalized[normalized.length - 1];
+  const latestTime = parseIsoDateToUtc(latest.date);
+  if (latestTime == null) return [];
+  if (latestTime < staleLimit) return [];
+
+  return normalized;
+}
+
+async function fetchJson(url: string): Promise<unknown | null> {
+  try {
+    const response = await fetch(url, { cache: "no-cache" });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+async function fetchText(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, { cache: "no-cache" });
+    if (!response.ok) return null;
+    return await response.text();
+  } catch {
+    return null;
+  }
+}
+
+function readGeneratedSeries(payload: unknown): Partial<ClimateSeriesBundle> | null {
+  if (!isRecord(payload) || !isRecord(payload.series)) return null;
+
+  const parsed: Partial<ClimateSeriesBundle> = {};
+
+  for (const key of SERIES_KEYS) {
+    const rawSeries = payload.series[key];
+    if (!Array.isArray(rawSeries)) continue;
+
+    const points: DailyPoint[] = [];
+    for (const item of rawSeries) {
+      if (!isRecord(item)) continue;
+      const date = typeof item.date === "string" ? item.date.trim() : "";
+      const value = toFiniteNumber(item.value);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || value == null) continue;
+      points.push({ date, value });
+    }
+
+    if (points.length) {
+      parsed[key] = normalizePoints(points);
+    }
+  }
+
+  return parsed;
+}
+
+async function loadGeneratedLocalDataSource(): Promise<DashboardDataSource | null> {
+  const payload = await fetchJson(LOCAL_GENERATED_DATA_URL);
+  if (!payload) return null;
+
+  const parsedSeries = readGeneratedSeries(payload);
+  if (!parsedSeries) return null;
+
+  const generatedAtIso =
+    isRecord(payload) && typeof payload.generatedAtIso === "string" && Number.isFinite(Date.parse(payload.generatedAtIso))
+      ? payload.generatedAtIso
+      : new Date().toISOString();
+
+  return createDataSourceFromSeries({
+    series: parsedSeries,
+    warnings: [],
+    updatedAtIso: generatedAtIso,
+  });
+}
+
+function parseReanalyzerDailyJson(payload: unknown): DailyPoint[] {
+  if (!Array.isArray(payload)) return [];
+
+  const nowYear = new Date().getUTCFullYear();
+  const points: DailyPoint[] = [];
+
+  for (const row of payload) {
+    if (!isRecord(row)) continue;
+
+    const yearToken = typeof row.name === "number" || typeof row.name === "string" ? String(row.name).trim() : "";
+    if (!/^\d{4}$/.test(yearToken)) continue;
+
+    const year = Number(yearToken);
+    if (!Number.isFinite(year) || year < 1940 || year > nowYear + 1) continue;
+
+    let values: unknown[] = [];
+    if (Array.isArray(row.data)) {
+      values = row.data;
+    } else if (typeof row.data === "string") {
+      values = row.data.split(",");
+    }
+
+    for (let index = 0; index < values.length; index += 1) {
+      const numeric = toFiniteNumber(values[index]);
+      if (numeric == null) continue;
+      const date = dateFromYearAndDay(year, index + 1);
+      if (!date) continue;
+      points.push({ date, value: numeric });
+    }
+  }
+
+  return normalizePoints(points);
+}
+
+function parseNsidcDailyExtentCsv(rawCsv: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  const lines = rawCsv.split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(",").map((col) => col.replace(/"/g, "").trim());
+    if (columns.length < 4) continue;
+
+    const year = Number(columns[0]);
+    const month = Number(columns[1]);
+    const day = Number(columns[2]);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) continue;
+
+    const date = formatDateFromParts(year, month, day);
+    if (!date) continue;
+
+    const candidates = [columns[3], columns[4], columns[5]].map((value) => toFiniteNumber(value));
+    const extent = candidates.find((value) => value != null && value > 0 && value < 100);
+    if (extent == null) continue;
+
+    points.push({ date, value: extent });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseNoaaCo2DailyCsv(rawCsv: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  const lines = rawCsv.split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(",").map((col) => col.trim());
+    if (columns.length < 5) continue;
+
+    const year = Number(columns[0]);
+    const month = Number(columns[1]);
+    const day = Number(columns[2]);
+    const date = formatDateFromParts(year, month, day);
+    if (!date) continue;
+
+    const candidates = [columns[4], columns[5], columns[6]].map((value) => toFiniteNumber(value));
+    const value = candidates.find((candidate) => candidate != null && candidate > 0 && candidate < 1000);
+    if (value == null) continue;
+
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
+function mergeSeaIceSeries(north: DailyPoint[], south: DailyPoint[]): DailyPoint[] {
+  const northMap = new Map<string, number>(north.map((point) => [point.date, point.value]));
+  const southMap = new Map<string, number>(south.map((point) => [point.date, point.value]));
+
+  const dates = Array.from(new Set([...northMap.keys(), ...southMap.keys()]));
+  const merged: DailyPoint[] = [];
+
+  for (const date of dates) {
+    const northValue = northMap.get(date);
+    const southValue = southMap.get(date);
+    if (northValue == null || southValue == null) continue;
+    merged.push({
+      date,
+      value: northValue + southValue,
+    });
+  }
+
+  return normalizePoints(merged);
+}
+
+async function loadSurfaceTempSeries(): Promise<DailyPoint[] | null> {
+  const payload = await fetchJson(ERA5_GLOBAL_SURFACE_TEMP_URL);
+  if (!payload) return null;
+  const points = sanitizeSeries(parseReanalyzerDailyJson(payload), {
+    minValue: 5,
+    maxValue: 40,
+    maxAgeDays: 20,
+  });
+  return points.length ? points : null;
+}
+
+async function loadSeaSurfaceTempSeries(): Promise<DailyPoint[] | null> {
+  const payload = await fetchJson(OISST_GLOBAL_SST_URL);
+  if (!payload) return null;
+  const points = sanitizeSeries(parseReanalyzerDailyJson(payload), {
+    minValue: 10,
+    maxValue: 40,
+    maxAgeDays: 45,
+  });
+  return points.length ? points : null;
+}
+
+async function loadGlobalSeaIceSeries(): Promise<DailyPoint[] | null> {
+  const [northCsv, southCsv] = await Promise.all([fetchText(NSIDC_NORTH_DAILY_EXTENT_URL), fetchText(NSIDC_SOUTH_DAILY_EXTENT_URL)]);
+  if (!northCsv || !southCsv) return null;
+
+  const north = parseNsidcDailyExtentCsv(northCsv);
+  const south = parseNsidcDailyExtentCsv(southCsv);
+  if (!north.length || !south.length) return null;
+
+  const merged = sanitizeSeries(mergeSeaIceSeries(north, south), {
+    minValue: 0,
+    maxValue: 60,
+    maxAgeDays: 20,
+  });
+  return merged.length ? merged : null;
+}
+
+async function loadCo2Series(): Promise<DailyPoint[] | null> {
+  const csv = await fetchText(NOAA_MAUNA_LOA_CO2_DAILY_URL);
+  if (!csv) return null;
+  const points = sanitizeSeries(parseNoaaCo2DailyCsv(csv), {
+    minValue: 200,
+    maxValue: 700,
+    maxAgeDays: 120,
+  });
+  return points.length ? points : null;
+}
+
+export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
+  const localDataSource = await loadGeneratedLocalDataSource();
+  if (localDataSource) return localDataSource;
+
+  const warnings: string[] = [];
+  const liveSeries: Partial<ClimateSeriesBundle> = {};
+
+  const [surfaceResult, sstResult, seaIceResult, co2Result] = await Promise.allSettled([
+    loadSurfaceTempSeries(),
+    loadSeaSurfaceTempSeries(),
+    loadGlobalSeaIceSeries(),
+    loadCo2Series(),
+  ]);
+
+  if (surfaceResult.status === "fulfilled" && surfaceResult.value?.length) {
+    liveSeries.global_surface_temperature = surfaceResult.value;
+  } else {
+    warnings.push("Live Global Surface Temperature feed was unavailable or stale; using bundled fallback.");
+  }
+
+  if (sstResult.status === "fulfilled" && sstResult.value?.length) {
+    liveSeries.global_sea_surface_temperature = sstResult.value;
+  } else {
+    warnings.push("Live Global Sea Surface Temperature feed was unavailable or stale; using bundled fallback.");
+  }
+
+  if (seaIceResult.status === "fulfilled" && seaIceResult.value?.length) {
+    liveSeries.global_sea_ice_extent = seaIceResult.value;
+  } else {
+    warnings.push("Live Global Sea Ice Extent feed was unavailable or stale; using bundled fallback.");
+  }
+
+  if (co2Result.status === "fulfilled" && co2Result.value?.length) {
+    liveSeries.atmospheric_co2 = co2Result.value;
+  } else {
+    warnings.push("Live Mauna Loa CO2 feed was unavailable or stale; using bundled fallback.");
+  }
+
+  return createDataSourceFromSeries({
+    series: liveSeries,
+    warnings: [
+      "Local generated real-data file was missing or invalid; attempted direct remote feeds.",
+      ...warnings,
+    ],
+    updatedAtIso: new Date().toISOString(),
+  });
+}
