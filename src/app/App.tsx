@@ -10,6 +10,7 @@ const STORAGE_LANG_KEY = "climate-dashboard-lang";
 const STORAGE_THEME_KEY = "climate-dashboard-theme";
 const REFERENCE_LEAP_YEAR = 2024;
 const REFERENCE_LEAP_YEAR_START_UTC = Date.UTC(REFERENCE_LEAP_YEAR, 0, 1);
+const EARTH_LOGO_URL = `${import.meta.env.BASE_URL}earth-logo.svg`;
 
 const STRINGS = {
   en: {
@@ -297,7 +298,7 @@ export function App() {
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar-brand">
-          <img className="topbar-logo" src="/earth-logo.svg" alt="" aria-hidden="true" />
+          <img className="topbar-logo" src={EARTH_LOGO_URL} alt="" aria-hidden="true" />
           <div>
             <h1>{t.appTitle}</h1>
             <p className="subtitle">{t.appSubtitle}</p>
