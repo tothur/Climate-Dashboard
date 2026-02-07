@@ -1,6 +1,6 @@
 # Climate Dashboard
 
-Climate Dashboard is a bilingual, responsive web app that tracks daily global surface temperature, sea surface temperature, total sea ice extent, and Mauna Loa CO2 with year-over-year comparison charts and automated data updates.
+Climate Dashboard is a bilingual, responsive web app for tracking daily global surface temperature, sea surface temperature, total sea ice extent, and Mauna Loa CO2 with year-over-year comparison charts and automated daily updates.
 
 ## Current Functionality
 
