@@ -295,7 +295,7 @@ export function buildClimateMonthlyComparisonOption({
               type: "line" as const,
               data: climatologyMean,
               showSymbol: false,
-              symbol: "none",
+              symbol: "circle",
               smooth: 0.22,
               silent: true,
               tooltip: { show: false },
@@ -303,6 +303,9 @@ export function buildClimateMonthlyComparisonOption({
                 color: palette.climatologyMeanLine,
                 width: 1.2,
                 type: "dotted" as const,
+              },
+              itemStyle: {
+                color: palette.climatologyMeanLine,
               },
               emphasis: { disabled: true },
               z: 1,
