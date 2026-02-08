@@ -11,6 +11,7 @@ const STORAGE_THEME_KEY = "climate-dashboard-theme";
 const REFERENCE_LEAP_YEAR = 2024;
 const REFERENCE_LEAP_YEAR_START_UTC = Date.UTC(REFERENCE_LEAP_YEAR, 0, 1);
 const EARTH_LOGO_URL = `${import.meta.env.BASE_URL}earthicon.png`;
+const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 
 const STRINGS = {
   en: {
@@ -27,7 +28,10 @@ const STRINGS = {
     latestSignalsAria: "Latest climate indicators",
     climateIndicatorsTitle: "Climate Indicators",
     climateIndicatorsNote:
-      "Monthly Jan-Dec view with daily points: current year plus the previous three years for global surface temperature, sea surface temperature, and total sea ice extent.",
+      "Monthly Jan-Dec view with daily points: current year plus the previous three years for global surface temperature and sea surface temperature.",
+    seaIceSectionTitle: "Sea Ice",
+    seaIceSectionNote:
+      "Global, Arctic, and Antarctic extent shown with daily points in a Jan-Dec comparison view.",
     forcingTitle: "Forcing",
     forcingNote: "Atmospheric forcing signal from daily Mauna Loa CO2 observations.",
     sourceTitle: "Data source mode",
@@ -59,7 +63,10 @@ const STRINGS = {
     latestSignalsAria: "Legfrissebb klíma indikátorok",
     climateIndicatorsTitle: "Éghajlati Indikátorok",
     climateIndicatorsNote:
-      "Havi Jan-Dec nézet napi pontokkal: az aktuális év és az azt megelőző három év a globális felszíni hőmérséklethez, tengerfelszíni hőmérséklethez és teljes tengeri jégkiterjedéshez.",
+      "Havi Jan-Dec nézet napi pontokkal: az aktuális év és az azt megelőző három év a globális felszíni és tengerfelszíni hőmérséklethez.",
+    seaIceSectionTitle: "Tengeri Jég",
+    seaIceSectionNote:
+      "Globális, arktiszi és antarktiszi jégkiterjedés napi pontokkal Jan-Dec összehasonlító nézetben.",
     forcingTitle: "Forcing",
     forcingNote: "Légköri forcing jel a Mauna Loa napi CO2 méréseiből.",
     sourceTitle: "Adatforrás mód",
@@ -208,6 +215,23 @@ function buildMonthlyYearLines(points: DailyPoint[], years: readonly number[]): 
   });
 }
 
+function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: number; max?: number } {
+  switch (metricKey) {
+    case "global_surface_temperature":
+      return { min: 10, max: 18 };
+    case "global_sea_surface_temperature":
+      return { min: 19.5, max: 21.5 };
+    case "global_sea_ice_extent":
+      return { min: 10, max: 30 };
+    case "arctic_sea_ice_extent":
+      return { min: 0, max: 20 };
+    case "antarctic_sea_ice_extent":
+      return { min: 0, max: 25 };
+    default:
+      return {};
+  }
+}
+
 export function App() {
   const [language, setLanguage] = useState<Language>(() => safeLanguage(localStorage.getItem(STORAGE_LANG_KEY)));
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => safeTheme(localStorage.getItem(STORAGE_THEME_KEY)));
@@ -286,6 +310,44 @@ export function App() {
       }),
     [snapshot.indicators]
   );
+  const mainIndicatorLines = useMemo(
+    () => indicatorLines.filter(({ metric }) => !SEA_ICE_KEYS.has(metric.key)),
+    [indicatorLines]
+  );
+  const seaIceIndicatorLines = useMemo(
+    () => indicatorLines.filter(({ metric }) => SEA_ICE_KEYS.has(metric.key)),
+    [indicatorLines]
+  );
+
+  const renderIndicatorPanel = (
+    metric: ClimateMetricSeries,
+    lines: Array<{ year: number; points: Array<[number, number]> }>,
+    currentYear: number
+  ) => {
+    const bounds = indicatorYAxisBounds(metric.key);
+
+    return (
+      <EChartsPanel
+        key={metric.key}
+        title={metricTitle(metric, language)}
+        subtitle={metric.source.shortName}
+        option={buildClimateMonthlyComparisonOption({
+          monthLabels: monthlyLabels,
+          lines,
+          unit: metric.unit,
+          decimals: metric.decimals,
+          yAxisMin: bounds.min,
+          yAxisMax: bounds.max,
+          compact,
+          dark: resolvedTheme === "dark",
+          yearColors: buildIndicatorYearColors(currentYear, resolvedTheme === "dark"),
+          labels: {
+            noData: t.noData,
+          },
+        })}
+      />
+    );
+  };
 
   const sourceModeLabel =
     snapshot.sourceMode === "live"
@@ -364,41 +426,17 @@ export function App() {
         {climateSectionOpen ? (
           <div className="section-content">
             <div className="charts-grid climate-grid">
-              {indicatorLines.map(({ metric, lines, currentYear }) => (
-                <EChartsPanel
-                  key={metric.key}
-                  title={metricTitle(metric, language)}
-                  subtitle={metric.source.shortName}
-                  option={buildClimateMonthlyComparisonOption({
-                    monthLabels: monthlyLabels,
-                    lines,
-                    unit: metric.unit,
-                    decimals: metric.decimals,
-                    yAxisMin:
-                      metric.key === "global_surface_temperature"
-                        ? 10
-                        : metric.key === "global_sea_surface_temperature"
-                          ? 19.5
-                          : metric.key === "global_sea_ice_extent"
-                            ? 10
-                            : undefined,
-                    yAxisMax:
-                      metric.key === "global_surface_temperature"
-                        ? 18
-                        : metric.key === "global_sea_surface_temperature"
-                          ? 21.5
-                          : metric.key === "global_sea_ice_extent"
-                            ? 30
-                            : undefined,
-                    compact,
-                    dark: resolvedTheme === "dark",
-                    yearColors: buildIndicatorYearColors(currentYear, resolvedTheme === "dark"),
-                    labels: {
-                      noData: t.noData,
-                    },
-                  })}
-                />
-              ))}
+              {mainIndicatorLines.map(({ metric, lines, currentYear }) => renderIndicatorPanel(metric, lines, currentYear))}
+            </div>
+
+            <div className="climate-subsection">
+              <div className="climate-subsection-header">
+                <h3>{t.seaIceSectionTitle}</h3>
+                <p>{t.seaIceSectionNote}</p>
+              </div>
+              <div className="charts-grid climate-grid sea-ice-grid">
+                {seaIceIndicatorLines.map(({ metric, lines, currentYear }) => renderIndicatorPanel(metric, lines, currentYear))}
+              </div>
             </div>
           </div>
         ) : null}

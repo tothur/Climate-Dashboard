@@ -28,6 +28,20 @@ const SERIES_RULES = {
     minPoints: 8_000,
     minPointsLastYear: 300,
   },
+  arctic_sea_ice_extent: {
+    minValue: 0,
+    maxValue: 30,
+    maxAgeDays: 20,
+    minPoints: 8_000,
+    minPointsLastYear: 300,
+  },
+  antarctic_sea_ice_extent: {
+    minValue: 0,
+    maxValue: 35,
+    maxAgeDays: 20,
+    minPoints: 8_000,
+    minPointsLastYear: 300,
+  },
   atmospheric_co2: {
     minValue: 200,
     maxValue: 700,
@@ -154,6 +168,51 @@ function verifySeries(key, points, payload, nowMidnight, errors, warnings) {
   }
 }
 
+function verifySeaIceConsistency(series, errors, warnings) {
+  const globalSeries = Array.isArray(series.global_sea_ice_extent) ? series.global_sea_ice_extent : [];
+  const arcticSeries = Array.isArray(series.arctic_sea_ice_extent) ? series.arctic_sea_ice_extent : [];
+  const antarcticSeries = Array.isArray(series.antarctic_sea_ice_extent) ? series.antarctic_sea_ice_extent : [];
+
+  if (!globalSeries.length || !arcticSeries.length || !antarcticSeries.length) return;
+
+  const arcticByDate = new Map(arcticSeries.map((point) => [point.date, Number(point.value)]));
+  const antarcticByDate = new Map(antarcticSeries.map((point) => [point.date, Number(point.value)]));
+
+  let checked = 0;
+  let mismatchCount = 0;
+  const tolerance = 0.02;
+
+  for (const point of globalSeries) {
+    const globalValue = Number(point?.value);
+    if (!Number.isFinite(globalValue)) continue;
+    const arcticValue = arcticByDate.get(point.date);
+    const antarcticValue = antarcticByDate.get(point.date);
+    if (!Number.isFinite(arcticValue) || !Number.isFinite(antarcticValue)) continue;
+
+    checked += 1;
+    const delta = Math.abs(globalValue - (arcticValue + antarcticValue));
+    if (delta <= tolerance) continue;
+
+    mismatchCount += 1;
+    if (mismatchCount <= 5) {
+      errors.push(
+        `global_sea_ice_extent mismatch at ${point.date}: global=${globalValue}, arctic+antarctic=${(
+          arcticValue + antarcticValue
+        ).toFixed(3)}`
+      );
+    }
+  }
+
+  if (!checked) {
+    warnings.push("Sea-ice consistency check skipped: no overlapping dates across global/arctic/antarctic series.");
+    return;
+  }
+
+  if (mismatchCount > 5) {
+    errors.push(`global_sea_ice_extent mismatch on ${mismatchCount} overlapping dates (showing first 5).`);
+  }
+}
+
 async function main() {
   const raw = await readFile(INPUT_PATH, "utf8");
   const payload = JSON.parse(raw);
@@ -178,6 +237,8 @@ async function main() {
   for (const key of Object.keys(SERIES_RULES)) {
     verifySeries(key, series[key], payload, nowMidnight, errors, warnings);
   }
+
+  verifySeaIceConsistency(series, errors, warnings);
 
   if (warnings.length) {
     console.warn("Data verification warnings:");

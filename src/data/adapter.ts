@@ -17,6 +17,8 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
   "global_sea_ice_extent",
+  "arctic_sea_ice_extent",
+  "antarctic_sea_ice_extent",
 ];
 
 const FORCING_KEYS: ClimateMetricKey[] = ["atmospheric_co2"];
@@ -64,6 +66,30 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionEn: "Daily Arctic + Antarctic extent derived from NSIDC Sea Ice Index v4.",
       descriptionHu: "Napi északi + déli jégkiterjedés az NSIDC Sea Ice Index v4 alapján.",
       url: "https://nsidc.org/data/seaice_index/archives",
+    },
+  },
+  arctic_sea_ice_extent: {
+    titleEn: "Arctic Sea Ice Extent",
+    titleHu: "Arktiszi tengeri jégkiterjedés",
+    unit: "million sq km",
+    decimals: 2,
+    source: {
+      shortName: "NSIDC Sea Ice Index v4 (North)",
+      descriptionEn: "Daily Arctic sea-ice extent from NSIDC Sea Ice Index v4 north file.",
+      descriptionHu: "Napi arktiszi tengeri jégkiterjedés az NSIDC Sea Ice Index v4 északi állományából.",
+      url: "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/",
+    },
+  },
+  antarctic_sea_ice_extent: {
+    titleEn: "Antarctic Sea Ice Extent",
+    titleHu: "Antarktiszi tengeri jégkiterjedés",
+    unit: "million sq km",
+    decimals: 2,
+    source: {
+      shortName: "NSIDC Sea Ice Index v4 (South)",
+      descriptionEn: "Daily Antarctic sea-ice extent from NSIDC Sea Ice Index v4 south file.",
+      descriptionHu: "Napi antarktiszi tengeri jégkiterjedés az NSIDC Sea Ice Index v4 déli állományából.",
+      url: "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/",
     },
   },
   atmospheric_co2: {

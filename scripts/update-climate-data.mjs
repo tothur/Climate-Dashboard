@@ -324,8 +324,18 @@ async function updateOnce() {
     maxValue: 40,
     maxAgeDays: 45,
   });
+  const arcticSeaIceExtent = sanitizeSeries(parseNsidcDailyExtentCsv(northCsv), {
+    minValue: 0,
+    maxValue: 30,
+    maxAgeDays: 20,
+  });
+  const antarcticSeaIceExtent = sanitizeSeries(parseNsidcDailyExtentCsv(southCsv), {
+    minValue: 0,
+    maxValue: 35,
+    maxAgeDays: 20,
+  });
   const globalSeaIceExtent = sanitizeSeries(
-    mergeSeaIceSeries(parseNsidcDailyExtentCsv(northCsv), parseNsidcDailyExtentCsv(southCsv)),
+    mergeSeaIceSeries(arcticSeaIceExtent, antarcticSeaIceExtent),
     {
       minValue: 0,
       maxValue: 60,
@@ -345,20 +355,25 @@ async function updateOnce() {
     sources: {
       global_surface_temperature: ERA5_GLOBAL_SURFACE_TEMP_URL,
       global_sea_surface_temperature: OISST_GLOBAL_SST_URL,
-      global_sea_ice_extent_north: NSIDC_NORTH_DAILY_EXTENT_URL,
-      global_sea_ice_extent_south: NSIDC_SOUTH_DAILY_EXTENT_URL,
+      global_sea_ice_extent: "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files.",
+      arctic_sea_ice_extent: NSIDC_NORTH_DAILY_EXTENT_URL,
+      antarctic_sea_ice_extent: NSIDC_SOUTH_DAILY_EXTENT_URL,
       atmospheric_co2: NOAA_MAUNA_LOA_CO2_DAILY_URL,
     },
     series: {
       global_surface_temperature: globalSurfaceTemperature,
       global_sea_surface_temperature: globalSeaSurfaceTemperature,
       global_sea_ice_extent: globalSeaIceExtent,
+      arctic_sea_ice_extent: arcticSeaIceExtent,
+      antarctic_sea_ice_extent: antarcticSeaIceExtent,
       atmospheric_co2: atmosphericCo2,
     },
     summary: {
       global_surface_temperature: summarize(globalSurfaceTemperature),
       global_sea_surface_temperature: summarize(globalSeaSurfaceTemperature),
       global_sea_ice_extent: summarize(globalSeaIceExtent),
+      arctic_sea_ice_extent: summarize(arcticSeaIceExtent),
+      antarctic_sea_ice_extent: summarize(antarcticSeaIceExtent),
       atmospheric_co2: summarize(atmosphericCo2),
     },
   };
@@ -367,6 +382,8 @@ async function updateOnce() {
     !output.series.global_surface_temperature.length ||
     !output.series.global_sea_surface_temperature.length ||
     !output.series.global_sea_ice_extent.length ||
+    !output.series.arctic_sea_ice_extent.length ||
+    !output.series.antarctic_sea_ice_extent.length ||
     !output.series.atmospheric_co2.length
   ) {
     throw new Error("One or more series are empty after validation; refusing to write incomplete realtime dataset.");

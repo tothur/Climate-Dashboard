@@ -1100,6 +1100,29 @@ h3 {
   gap: 16px;
 }
 
+.climate-subsection {
+  display: grid;
+  gap: 12px;
+}
+
+.climate-subsection-header {
+  padding: 2px 4px 0;
+}
+
+.climate-subsection-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 720;
+  letter-spacing: -0.01em;
+}
+
+.climate-subsection-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 .section-toggle {
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--border));

@@ -15,6 +15,8 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
   "global_sea_ice_extent",
+  "arctic_sea_ice_extent",
+  "antarctic_sea_ice_extent",
   "atmospheric_co2",
 ];
 
@@ -303,20 +305,44 @@ async function loadSeaSurfaceTempSeries(): Promise<DailyPoint[] | null> {
   return points.length ? points : null;
 }
 
-async function loadGlobalSeaIceSeries(): Promise<DailyPoint[] | null> {
+interface SeaIceSeriesBundle {
+  global: DailyPoint[] | null;
+  arctic: DailyPoint[] | null;
+  antarctic: DailyPoint[] | null;
+}
+
+async function loadSeaIceSeriesBundle(): Promise<SeaIceSeriesBundle> {
   const [northCsv, southCsv] = await Promise.all([fetchText(NSIDC_NORTH_DAILY_EXTENT_URL), fetchText(NSIDC_SOUTH_DAILY_EXTENT_URL)]);
-  if (!northCsv || !southCsv) return null;
 
-  const north = parseNsidcDailyExtentCsv(northCsv);
-  const south = parseNsidcDailyExtentCsv(southCsv);
-  if (!north.length || !south.length) return null;
+  const arctic = northCsv
+    ? sanitizeSeries(parseNsidcDailyExtentCsv(northCsv), {
+        minValue: 0,
+        maxValue: 30,
+        maxAgeDays: 20,
+      })
+    : [];
 
-  const merged = sanitizeSeries(mergeSeaIceSeries(north, south), {
-    minValue: 0,
-    maxValue: 60,
-    maxAgeDays: 20,
-  });
-  return merged.length ? merged : null;
+  const antarctic = southCsv
+    ? sanitizeSeries(parseNsidcDailyExtentCsv(southCsv), {
+        minValue: 0,
+        maxValue: 35,
+        maxAgeDays: 20,
+      })
+    : [];
+
+  const global = arctic.length && antarctic.length
+    ? sanitizeSeries(mergeSeaIceSeries(arctic, antarctic), {
+        minValue: 0,
+        maxValue: 60,
+        maxAgeDays: 20,
+      })
+    : [];
+
+  return {
+    global: global.length ? global : null,
+    arctic: arctic.length ? arctic : null,
+    antarctic: antarctic.length ? antarctic : null,
+  };
 }
 
 async function loadCo2Series(): Promise<DailyPoint[] | null> {
@@ -340,7 +366,7 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
   const [surfaceResult, sstResult, seaIceResult, co2Result] = await Promise.allSettled([
     loadSurfaceTempSeries(),
     loadSeaSurfaceTempSeries(),
-    loadGlobalSeaIceSeries(),
+    loadSeaIceSeriesBundle(),
     loadCo2Series(),
   ]);
 
@@ -356,10 +382,28 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     warnings.push("Live Global Sea Surface Temperature feed was unavailable or stale; using bundled fallback.");
   }
 
-  if (seaIceResult.status === "fulfilled" && seaIceResult.value?.length) {
-    liveSeries.global_sea_ice_extent = seaIceResult.value;
+  if (seaIceResult.status === "fulfilled") {
+    if (seaIceResult.value.global?.length) {
+      liveSeries.global_sea_ice_extent = seaIceResult.value.global;
+    } else {
+      warnings.push("Live Global Sea Ice Extent feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (seaIceResult.value.arctic?.length) {
+      liveSeries.arctic_sea_ice_extent = seaIceResult.value.arctic;
+    } else {
+      warnings.push("Live Arctic Sea Ice Extent feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (seaIceResult.value.antarctic?.length) {
+      liveSeries.antarctic_sea_ice_extent = seaIceResult.value.antarctic;
+    } else {
+      warnings.push("Live Antarctic Sea Ice Extent feed was unavailable or stale; using bundled fallback.");
+    }
   } else {
     warnings.push("Live Global Sea Ice Extent feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Arctic Sea Ice Extent feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Antarctic Sea Ice Extent feed was unavailable or stale; using bundled fallback.");
   }
 
   if (co2Result.status === "fulfilled" && co2Result.value?.length) {

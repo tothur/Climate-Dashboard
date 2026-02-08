@@ -6,6 +6,8 @@ export type ClimateMetricKey =
   | "global_surface_temperature"
   | "global_sea_surface_temperature"
   | "global_sea_ice_extent"
+  | "arctic_sea_ice_extent"
+  | "antarctic_sea_ice_extent"
   | "atmospheric_co2";
 
 export interface DailyPoint {
