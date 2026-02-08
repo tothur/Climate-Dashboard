@@ -31,6 +31,18 @@ const REGIONAL_TEMPERATURE_ORDER: ClimateMetricSeries["key"][] = [
   "north_atlantic_sea_surface_temperature",
 ];
 const REGIONAL_TEMPERATURE_RANK = new Map(REGIONAL_TEMPERATURE_ORDER.map((key, index) => [key, index]));
+const TOP_SUMMARY_ORDER: ClimateMetricSeries["key"][] = [
+  "global_surface_temperature",
+  "global_surface_temperature_anomaly",
+  "global_sea_surface_temperature",
+  "global_sea_surface_temperature_anomaly",
+  "global_sea_ice_extent",
+  "atmospheric_co2",
+  "atmospheric_ch4",
+];
+const TOP_SUMMARY_RANK = new Map(TOP_SUMMARY_ORDER.map((key, index) => [key, index]));
+const SEA_ICE_SUMMARY_ORDER: ClimateMetricSeries["key"][] = ["arctic_sea_ice_extent", "antarctic_sea_ice_extent"];
+const SEA_ICE_SUMMARY_RANK = new Map(SEA_ICE_SUMMARY_ORDER.map((key, index) => [key, index]));
 
 const STRINGS = {
   en: {
@@ -452,7 +464,14 @@ export function App() {
 
   const snapshot = useMemo(() => buildDashboardSnapshot(dataSource), [dataSource]);
   const headlineMetrics = useMemo(
-    () => [...snapshot.indicators.filter((metric) => !TEMPERATURE_ANOMALY_KEYS.has(metric.key)), ...snapshot.forcing],
+    () =>
+      [...snapshot.indicators, ...snapshot.forcing]
+        .filter((metric) => TOP_SUMMARY_RANK.has(metric.key))
+        .sort((left, right) => {
+          const leftRank = TOP_SUMMARY_RANK.get(left.key) ?? Number.MAX_SAFE_INTEGER;
+          const rightRank = TOP_SUMMARY_RANK.get(right.key) ?? Number.MAX_SAFE_INTEGER;
+          return leftRank - rightRank;
+        }),
     [snapshot.indicators, snapshot.forcing]
   );
   const footerMetrics = useMemo(() => [...snapshot.indicators, ...snapshot.forcing], [snapshot.indicators, snapshot.forcing]);
@@ -494,9 +513,31 @@ export function App() {
         }),
     [indicatorLines]
   );
+  const regionalSummaryMetrics = useMemo(
+    () =>
+      snapshot.indicators
+        .filter((metric) => REGIONAL_TEMPERATURE_KEYS.has(metric.key))
+        .sort((left, right) => {
+          const leftRank = REGIONAL_TEMPERATURE_RANK.get(left.key) ?? Number.MAX_SAFE_INTEGER;
+          const rightRank = REGIONAL_TEMPERATURE_RANK.get(right.key) ?? Number.MAX_SAFE_INTEGER;
+          return leftRank - rightRank;
+        }),
+    [snapshot.indicators]
+  );
   const seaIceIndicatorLines = useMemo(
     () => indicatorLines.filter(({ metric }) => SEA_ICE_KEYS.has(metric.key)),
     [indicatorLines]
+  );
+  const seaIceSummaryMetrics = useMemo(
+    () =>
+      snapshot.indicators
+        .filter((metric) => SEA_ICE_SUMMARY_RANK.has(metric.key))
+        .sort((left, right) => {
+          const leftRank = SEA_ICE_SUMMARY_RANK.get(left.key) ?? Number.MAX_SAFE_INTEGER;
+          const rightRank = SEA_ICE_SUMMARY_RANK.get(right.key) ?? Number.MAX_SAFE_INTEGER;
+          return leftRank - rightRank;
+        }),
+    [snapshot.indicators]
   );
 
   const renderIndicatorPanel = (
@@ -648,6 +689,23 @@ export function App() {
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
                 )}
               </div>
+              <div className="regional-summary-grid">
+                {regionalSummaryMetrics.map((metric) => (
+                  <article className="alert-card summary" key={`${metric.key}-regional-summary`}>
+                    <span className="alert-kicker">{t.latestLabel}</span>
+                    <h2>{metricTitle(metric, language)}</h2>
+                    <p className="alert-emphasis">
+                      {formatMetricValue(metric, language, t.valueUnavailable)} {metric.unit}
+                    </p>
+                    <p>
+                      {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                    </p>
+                    <div className="alert-meta">
+                      <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
             </div>
 
             <div className="climate-subsection">
@@ -659,6 +717,23 @@ export function App() {
                 {seaIceIndicatorLines.map(({ metric, lines, currentYear, climatology }) =>
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
                 )}
+              </div>
+              <div className="regional-summary-grid">
+                {seaIceSummaryMetrics.map((metric) => (
+                  <article className="alert-card summary" key={`${metric.key}-sea-ice-summary`}>
+                    <span className="alert-kicker">{t.latestLabel}</span>
+                    <h2>{metricTitle(metric, language)}</h2>
+                    <p className="alert-emphasis">
+                      {formatMetricValue(metric, language, t.valueUnavailable)} {metric.unit}
+                    </p>
+                    <p>
+                      {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                    </p>
+                    <div className="alert-meta">
+                      <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                    </div>
+                  </article>
+                ))}
               </div>
             </div>
           </div>

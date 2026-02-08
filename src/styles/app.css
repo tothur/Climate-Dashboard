@@ -1105,6 +1105,12 @@ h3 {
   gap: 12px;
 }
 
+.regional-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
 .climate-subsection-header {
   padding: 2px 4px 0;
 }
