@@ -37,7 +37,6 @@ const STRINGS = {
     temperatureAnomalySectionTitle: "Temperature Anomalies",
     temperatureAnomalySectionNote:
       "Anomalies relative to the 1991-2020 daily climatology, shown for the current year and previous year.",
-    climatologyRangeLabel: "1991-2020 range",
     climatologyMeanLabel: "1991-2020 mean",
     seaIceSectionTitle: "Sea Ice",
     seaIceSectionNote:
@@ -79,7 +78,6 @@ const STRINGS = {
     temperatureAnomalySectionTitle: "Hőmérsékleti Anomáliák",
     temperatureAnomalySectionNote:
       "Anomáliák az 1991-2020 napi klimatológiához képest, az aktuális és az előző év megjelenítésével.",
-    climatologyRangeLabel: "1991-2020 tartomány",
     climatologyMeanLabel: "1991-2020 átlag",
     seaIceSectionTitle: "Tengeri Jég",
     seaIceSectionNote:
@@ -250,8 +248,6 @@ function buildMonthlyYearLines(points: DailyPoint[], years: readonly number[]): 
 }
 
 interface DailyClimatologyEnvelope {
-  min: Array<[number, number]>;
-  max: Array<[number, number]>;
   mean: Array<[number, number]>;
 }
 
@@ -260,7 +256,7 @@ function buildClimatologyEnvelope(
   baselineStartYear: number,
   baselineEndYear: number
 ): DailyClimatologyEnvelope | null {
-  const buckets = new Map<number, { min: number; max: number; sum: number; count: number }>();
+  const buckets = new Map<number, { sum: number; count: number }>();
 
   for (const point of points) {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(point.date);
@@ -276,9 +272,7 @@ function buildClimatologyEnvelope(
     const value = Number(point.value);
     if (!Number.isFinite(value)) continue;
 
-    const bucket = buckets.get(axisDay) ?? { min: value, max: value, sum: 0, count: 0 };
-    bucket.min = Math.min(bucket.min, value);
-    bucket.max = Math.max(bucket.max, value);
+    const bucket = buckets.get(axisDay) ?? { sum: 0, count: 0 };
     bucket.sum += value;
     bucket.count += 1;
     buckets.set(axisDay, bucket);
@@ -286,21 +280,17 @@ function buildClimatologyEnvelope(
 
   if (!buckets.size) return null;
 
-  const min: Array<[number, number]> = [];
-  const max: Array<[number, number]> = [];
   const mean: Array<[number, number]> = [];
 
   for (const axisDay of Array.from(buckets.keys()).sort((a, b) => a - b)) {
     const bucket = buckets.get(axisDay);
     if (!bucket || bucket.count < 5) continue;
     const meanValue = bucket.sum / bucket.count;
-    min.push([axisDay, bucket.min]);
-    max.push([axisDay, bucket.max]);
     mean.push([axisDay, meanValue]);
   }
 
   if (!mean.length) return null;
-  return { min, max, mean };
+  return { mean };
 }
 
 function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: number; max?: number } {
@@ -490,7 +480,6 @@ export function App() {
           climatology: climatology
             ? {
                 ...climatology,
-                rangeLabel: t.climatologyRangeLabel,
                 meanLabel: t.climatologyMeanLabel,
               }
             : undefined,
