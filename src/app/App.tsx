@@ -29,6 +29,8 @@ const STRINGS = {
     climateIndicatorsTitle: "Climate Indicators",
     climateIndicatorsNote:
       "Monthly Jan-Dec view with daily points: current year plus the previous three years for global surface temperature and sea surface temperature.",
+    globalTemperaturesSectionTitle: "Global Temperatures",
+    globalTemperaturesSectionNote: "Global surface and sea surface temperatures in a Jan-Dec daily comparison view.",
     seaIceSectionTitle: "Sea Ice",
     seaIceSectionNote:
       "Global, Arctic, and Antarctic extent shown with daily points in a Jan-Dec comparison view.",
@@ -64,6 +66,8 @@ const STRINGS = {
     climateIndicatorsTitle: "Éghajlati Indikátorok",
     climateIndicatorsNote:
       "Havi Jan-Dec nézet napi pontokkal: az aktuális év és az azt megelőző három év a globális felszíni és tengerfelszíni hőmérséklethez.",
+    globalTemperaturesSectionTitle: "Globális Hőmérsékletek",
+    globalTemperaturesSectionNote: "Globális felszíni és tengerfelszíni hőmérsékletek Jan-Dec napi összehasonlító nézetben.",
     seaIceSectionTitle: "Tengeri Jég",
     seaIceSectionNote:
       "Globális, arktiszi és antarktiszi jégkiterjedés napi pontokkal Jan-Dec összehasonlító nézetben.",
@@ -232,6 +236,25 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
   }
 }
 
+function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language: Language): string | undefined {
+  switch (metricKey) {
+    case "global_surface_temperature":
+    case "global_sea_surface_temperature":
+      return language === "hu" ? "Celsius-fok" : "degrees °C";
+    case "global_sea_ice_extent":
+    case "arctic_sea_ice_extent":
+    case "antarctic_sea_ice_extent":
+      return language === "hu" ? "millió km²" : "million km²";
+    default:
+      return undefined;
+  }
+}
+
+function forcingYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language: Language): string | undefined {
+  if (metricKey !== "atmospheric_co2") return undefined;
+  return language === "hu" ? "CO2 ppm" : "CO2 parts per million (ppm)";
+}
+
 export function App() {
   const [language, setLanguage] = useState<Language>(() => safeLanguage(localStorage.getItem(STORAGE_LANG_KEY)));
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => safeTheme(localStorage.getItem(STORAGE_THEME_KEY)));
@@ -325,7 +348,7 @@ export function App() {
     currentYear: number
   ) => {
     const bounds = indicatorYAxisBounds(metric.key);
-    const isSeaIceMetric = SEA_ICE_KEYS.has(metric.key);
+    const yAxisLabel = indicatorYAxisUnitLabel(metric.key, language);
 
     return (
       <EChartsPanel
@@ -339,7 +362,7 @@ export function App() {
           decimals: metric.decimals,
           yAxisMin: bounds.min,
           yAxisMax: bounds.max,
-          yAxisUnitLabel: isSeaIceMetric ? "million km²" : undefined,
+          yAxisUnitLabel: yAxisLabel,
           compact,
           dark: resolvedTheme === "dark",
           yearColors: buildIndicatorYearColors(currentYear, resolvedTheme === "dark"),
@@ -427,8 +450,14 @@ export function App() {
 
         {climateSectionOpen ? (
           <div className="section-content">
-            <div className="charts-grid climate-grid">
-              {mainIndicatorLines.map(({ metric, lines, currentYear }) => renderIndicatorPanel(metric, lines, currentYear))}
+            <div className="climate-subsection">
+              <div className="climate-subsection-header">
+                <h3>{t.globalTemperaturesSectionTitle}</h3>
+                <p>{t.globalTemperaturesSectionNote}</p>
+              </div>
+              <div className="charts-grid climate-grid">
+                {mainIndicatorLines.map(({ metric, lines, currentYear }) => renderIndicatorPanel(metric, lines, currentYear))}
+              </div>
             </div>
 
             <div className="climate-subsection">
@@ -473,6 +502,7 @@ export function App() {
                     points: metric.points,
                     title: metricTitle(metric, language),
                     unit: metric.unit,
+                    yAxisUnitLabel: forcingYAxisUnitLabel(metric.key, language),
                     decimals: metric.decimals,
                     compact,
                     dark: resolvedTheme === "dark",

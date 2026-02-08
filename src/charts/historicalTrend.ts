@@ -5,6 +5,7 @@ interface BuildForcingTrendOptionArgs {
   points: DailyPoint[];
   title: string;
   unit: string;
+  yAxisUnitLabel?: string;
   compact: boolean;
   dark?: boolean;
   decimals?: number;
@@ -73,6 +74,7 @@ export function buildForcingTrendOption({
   points,
   title,
   unit,
+  yAxisUnitLabel,
   compact,
   dark = false,
   decimals = 2,
@@ -106,6 +108,7 @@ export function buildForcingTrendOption({
   const monthly = buildMonthlyAverages(points);
   const hasData = monthly.length > 0;
   const noDataText = labels?.noData ?? "No data";
+  const yAxisName = yAxisUnitLabel?.trim() || undefined;
 
   const minYear = hasData ? monthly[0].year : new Date().getUTCFullYear() - 10;
   const maxYear = hasData ? monthly[monthly.length - 1].year : new Date().getUTCFullYear();
@@ -121,7 +124,7 @@ export function buildForcingTrendOption({
       top: compact ? 30 : 40,
       right: 18,
       bottom: 34,
-      left: 58,
+      left: yAxisName ? (compact ? 78 : 84) : 58,
     },
     tooltip: {
       trigger: "axis",
@@ -163,6 +166,15 @@ export function buildForcingTrendOption({
       type: "value",
       min: 280,
       max: 500,
+      name: yAxisName,
+      nameLocation: "middle",
+      nameRotate: 90,
+      nameGap: compact ? 52 : 58,
+      nameTextStyle: {
+        color: palette.axisLabel,
+        fontWeight: 650,
+        fontSize: compact ? 11 : 12,
+      },
       axisLabel: {
         color: palette.axisLabel,
         formatter: (value: number) => formatter.format(value),
