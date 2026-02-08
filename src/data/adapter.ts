@@ -23,7 +23,7 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "antarctic_sea_ice_extent",
 ];
 
-const FORCING_KEYS: ClimateMetricKey[] = ["atmospheric_co2"];
+const FORCING_KEYS: ClimateMetricKey[] = ["atmospheric_co2", "atmospheric_ch4"];
 
 interface ClimateMetricMetadata {
   titleEn: string;
@@ -132,6 +132,18 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionEn: "Daily in-situ CO2 concentration at Mauna Loa, NOAA Global Monitoring Laboratory.",
       descriptionHu: "Napi in-situ CO2 koncentráció a Mauna Loa állomáson, NOAA GML.",
       url: "https://gml.noaa.gov/ccgg/trends/",
+    },
+  },
+  atmospheric_ch4: {
+    titleEn: "Atmospheric CH4 (Global)",
+    titleHu: "Légköri CH4 (Globális)",
+    unit: "ppb",
+    decimals: 2,
+    source: {
+      shortName: "NOAA GML",
+      descriptionEn: "Monthly global CH4 mole fraction from NOAA Global Monitoring Laboratory trend products.",
+      descriptionHu: "Havi globális CH4 móltört a NOAA Global Monitoring Laboratory trend adataiból.",
+      url: "https://gml.noaa.gov/ccgg/trends_ch4/",
     },
   },
 };

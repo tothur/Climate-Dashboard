@@ -135,6 +135,7 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
     arctic_sea_ice_extent: arcticSeaIce,
     antarctic_sea_ice_extent: antarcticSeaIce,
     atmospheric_co2: generateSeries("1958-03-29", endDateIso, 315.7, 0.0078, 6.1, 365.25, 0.32),
+    atmospheric_ch4: generateSeries("1983-07-01", endDateIso, 1630, 0.0017, 14.5, 365.25, 0.55),
   };
 }
 
@@ -151,4 +152,5 @@ export const CLIMATE_METRIC_KEYS: ClimateMetricKey[] = [
   "arctic_sea_ice_extent",
   "antarctic_sea_ice_extent",
   "atmospheric_co2",
+  "atmospheric_ch4",
 ];

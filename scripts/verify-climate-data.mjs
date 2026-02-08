@@ -63,6 +63,13 @@ const SERIES_RULES = {
     minPoints: 8_000,
     minPointsLastYear: 120,
   },
+  atmospheric_ch4: {
+    minValue: 1000,
+    maxValue: 3000,
+    maxAgeDays: 220,
+    minPoints: 400,
+    minPointsLastYear: 6,
+  },
 };
 
 function utcMidnightNow() {

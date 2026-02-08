@@ -6,6 +6,9 @@ interface BuildForcingTrendOptionArgs {
   title: string;
   unit: string;
   yAxisUnitLabel?: string;
+  yAxisMin?: number;
+  yAxisMax?: number;
+  xAxisStartYear?: number;
   compact: boolean;
   dark?: boolean;
   decimals?: number;
@@ -15,7 +18,7 @@ interface BuildForcingTrendOptionArgs {
   };
 }
 
-const FORCING_AXIS_MIN_YEAR = 1974;
+const DEFAULT_FORCING_AXIS_MIN_YEAR = 1974;
 
 export function formatSignedPercent(value: number | null): string {
   if (value == null || !Number.isFinite(value)) return "-";
@@ -75,6 +78,9 @@ export function buildForcingTrendOption({
   title,
   unit,
   yAxisUnitLabel,
+  yAxisMin,
+  yAxisMax,
+  xAxisStartYear,
   compact,
   dark = false,
   decimals = 2,
@@ -112,7 +118,7 @@ export function buildForcingTrendOption({
 
   const minYear = hasData ? monthly[0].year : new Date().getUTCFullYear() - 10;
   const maxYear = hasData ? monthly[monthly.length - 1].year : new Date().getUTCFullYear();
-  const axisMin = Math.max(FORCING_AXIS_MIN_YEAR, Math.floor(minYear / 10) * 10);
+  const axisMin = Math.max(xAxisStartYear ?? DEFAULT_FORCING_AXIS_MIN_YEAR, Math.floor(minYear / 10) * 10);
   const axisMax = Math.ceil(maxYear / 10) * 10;
   const labelStep = compact ? 20 : 10;
   const latestX = hasData ? monthly[monthly.length - 1].x : null;
@@ -164,8 +170,8 @@ export function buildForcingTrendOption({
     },
     yAxis: {
       type: "value",
-      min: 280,
-      max: 500,
+      min: typeof yAxisMin === "number" ? yAxisMin : 280,
+      max: typeof yAxisMax === "number" ? yAxisMax : 500,
       name: yAxisName,
       nameLocation: "middle",
       nameRotate: 90,

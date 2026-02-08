@@ -10,6 +10,8 @@ const STORAGE_LANG_KEY = "climate-dashboard-lang";
 const STORAGE_THEME_KEY = "climate-dashboard-theme";
 const REFERENCE_LEAP_YEAR = 2024;
 const REFERENCE_LEAP_YEAR_START_UTC = Date.UTC(REFERENCE_LEAP_YEAR, 0, 1);
+const CLIMATOLOGY_BASELINE_START_YEAR = 1991;
+const CLIMATOLOGY_BASELINE_END_YEAR = 2020;
 const EARTH_LOGO_URL = `${import.meta.env.BASE_URL}earthicon.png`;
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const TEMPERATURE_ANOMALY_KEYS = new Set(["global_surface_temperature_anomaly", "global_sea_surface_temperature_anomaly"]);
@@ -35,11 +37,13 @@ const STRINGS = {
     temperatureAnomalySectionTitle: "Temperature Anomalies",
     temperatureAnomalySectionNote:
       "Anomalies relative to the 1991-2020 daily climatology, shown for the current year and previous year.",
+    climatologyRangeLabel: "1991-2020 range",
+    climatologyMeanLabel: "1991-2020 mean",
     seaIceSectionTitle: "Sea Ice",
     seaIceSectionNote:
       "Global, Arctic, and Antarctic extent shown with daily points in a Jan-Dec comparison view.",
     forcingTitle: "Forcing",
-    forcingNote: "Atmospheric forcing signal from daily Mauna Loa CO2 observations.",
+    forcingNote: "Atmospheric forcing signals from Mauna Loa CO2 and global CH4 observations.",
     sourceTitle: "Data source mode",
     sourceLive: "Live feeds",
     sourceMixed: "Mixed live + fallback",
@@ -75,11 +79,13 @@ const STRINGS = {
     temperatureAnomalySectionTitle: "Hőmérsékleti Anomáliák",
     temperatureAnomalySectionNote:
       "Anomáliák az 1991-2020 napi klimatológiához képest, az aktuális és az előző év megjelenítésével.",
+    climatologyRangeLabel: "1991-2020 tartomány",
+    climatologyMeanLabel: "1991-2020 átlag",
     seaIceSectionTitle: "Tengeri Jég",
     seaIceSectionNote:
       "Globális, arktiszi és antarktiszi jégkiterjedés napi pontokkal Jan-Dec összehasonlító nézetben.",
     forcingTitle: "Forcing",
-    forcingNote: "Légköri forcing jel a Mauna Loa napi CO2 méréseiből.",
+    forcingNote: "Légköri forcing jelek a Mauna Loa CO2 és globális CH4 megfigyelésekből.",
     sourceTitle: "Adatforrás mód",
     sourceLive: "Élő feed",
     sourceMixed: "Vegyes élő + tartalék",
@@ -243,6 +249,60 @@ function buildMonthlyYearLines(points: DailyPoint[], years: readonly number[]): 
   });
 }
 
+interface DailyClimatologyEnvelope {
+  min: Array<[number, number]>;
+  max: Array<[number, number]>;
+  mean: Array<[number, number]>;
+}
+
+function buildClimatologyEnvelope(
+  points: DailyPoint[],
+  baselineStartYear: number,
+  baselineEndYear: number
+): DailyClimatologyEnvelope | null {
+  const buckets = new Map<number, { min: number; max: number; sum: number; count: number }>();
+
+  for (const point of points) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(point.date);
+    if (!match) continue;
+    const year = Number(match[1]);
+    if (!Number.isFinite(year) || year < baselineStartYear || year > baselineEndYear) continue;
+
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const axisDay = axisDayFromMonthDay(month, day);
+    if (axisDay == null) continue;
+
+    const value = Number(point.value);
+    if (!Number.isFinite(value)) continue;
+
+    const bucket = buckets.get(axisDay) ?? { min: value, max: value, sum: 0, count: 0 };
+    bucket.min = Math.min(bucket.min, value);
+    bucket.max = Math.max(bucket.max, value);
+    bucket.sum += value;
+    bucket.count += 1;
+    buckets.set(axisDay, bucket);
+  }
+
+  if (!buckets.size) return null;
+
+  const min: Array<[number, number]> = [];
+  const max: Array<[number, number]> = [];
+  const mean: Array<[number, number]> = [];
+
+  for (const axisDay of Array.from(buckets.keys()).sort((a, b) => a - b)) {
+    const bucket = buckets.get(axisDay);
+    if (!bucket || bucket.count < 5) continue;
+    const meanValue = bucket.sum / bucket.count;
+    min.push([axisDay, bucket.min]);
+    max.push([axisDay, bucket.max]);
+    mean.push([axisDay, meanValue]);
+  }
+
+  if (!mean.length) return null;
+  return { min, max, mean };
+}
+
 function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: number; max?: number } {
   switch (metricKey) {
     case "global_surface_temperature":
@@ -280,8 +340,25 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
 }
 
 function forcingYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language: Language): string | undefined {
-  if (metricKey !== "atmospheric_co2") return undefined;
-  return language === "hu" ? "CO2 ppm" : "CO2 parts per million (ppm)";
+  switch (metricKey) {
+    case "atmospheric_co2":
+      return language === "hu" ? "CO2 ppm" : "CO2 parts per million (ppm)";
+    case "atmospheric_ch4":
+      return language === "hu" ? "CH4 ppb" : "CH4 parts per billion (ppb)";
+    default:
+      return undefined;
+  }
+}
+
+function forcingAxisBounds(metricKey: ClimateMetricSeries["key"]): { yMin?: number; yMax?: number; minYear?: number } {
+  switch (metricKey) {
+    case "atmospheric_co2":
+      return { yMin: 280, yMax: 500, minYear: 1974 };
+    case "atmospheric_ch4":
+      return { yMin: 1500, yMax: 2050, minYear: 1983 };
+    default:
+      return {};
+  }
 }
 
 export function App() {
@@ -358,10 +435,15 @@ export function App() {
       snapshot.indicators.map((metric) => {
         const years = pickYearsForMetric(metric.key, metric.points);
         const currentYear = years[years.length - 1];
+        const climatology =
+          TEMPERATURE_ANOMALY_KEYS.has(metric.key)
+            ? null
+            : buildClimatologyEnvelope(metric.points, CLIMATOLOGY_BASELINE_START_YEAR, CLIMATOLOGY_BASELINE_END_YEAR);
         return {
           metric,
           currentYear,
           lines: buildMonthlyYearLines(metric.points, years),
+          climatology,
         };
       }),
     [snapshot.indicators]
@@ -386,7 +468,8 @@ export function App() {
   const renderIndicatorPanel = (
     metric: ClimateMetricSeries,
     lines: Array<{ year: number; points: Array<[number, number]> }>,
-    currentYear: number
+    currentYear: number,
+    climatology: DailyClimatologyEnvelope | null
   ) => {
     const bounds = indicatorYAxisBounds(metric.key);
     const yAxisLabel = indicatorYAxisUnitLabel(metric.key, language);
@@ -404,6 +487,13 @@ export function App() {
           yAxisMin: bounds.min,
           yAxisMax: bounds.max,
           yAxisUnitLabel: yAxisLabel,
+          climatology: climatology
+            ? {
+                ...climatology,
+                rangeLabel: t.climatologyRangeLabel,
+                meanLabel: t.climatologyMeanLabel,
+              }
+            : undefined,
           compact,
           dark: resolvedTheme === "dark",
           yearColors: buildIndicatorYearColors(currentYear, resolvedTheme === "dark"),
@@ -497,7 +587,9 @@ export function App() {
                 <p>{t.globalTemperaturesSectionNote}</p>
               </div>
               <div className="charts-grid climate-grid">
-                {absoluteTemperatureLines.map(({ metric, lines, currentYear }) => renderIndicatorPanel(metric, lines, currentYear))}
+                {absoluteTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
+                  renderIndicatorPanel(metric, lines, currentYear, climatology)
+                )}
               </div>
               <div className="climate-subsection">
                 <div className="climate-subsection-header">
@@ -505,7 +597,9 @@ export function App() {
                   <p>{t.temperatureAnomalySectionNote}</p>
                 </div>
                 <div className="charts-grid climate-grid">
-                  {anomalyTemperatureLines.map(({ metric, lines, currentYear }) => renderIndicatorPanel(metric, lines, currentYear))}
+                  {anomalyTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
+                    renderIndicatorPanel(metric, lines, currentYear, climatology)
+                  )}
                 </div>
               </div>
             </div>
@@ -516,7 +610,9 @@ export function App() {
                 <p>{t.seaIceSectionNote}</p>
               </div>
               <div className="charts-grid climate-grid sea-ice-grid">
-                {seaIceIndicatorLines.map(({ metric, lines, currentYear }) => renderIndicatorPanel(metric, lines, currentYear))}
+                {seaIceIndicatorLines.map(({ metric, lines, currentYear, climatology }) =>
+                  renderIndicatorPanel(metric, lines, currentYear, climatology)
+                )}
               </div>
             </div>
           </div>
@@ -542,27 +638,33 @@ export function App() {
 
         {forcingSectionOpen ? (
           <div className="section-content">
-            <div className="charts-grid forcing-grid">
-              {snapshot.forcing.map((metric) => (
-                <EChartsPanel
-                  key={metric.key}
-                  title={metricTitle(metric, language)}
-                  subtitle={metric.source.shortName}
-                  option={buildForcingTrendOption({
-                    points: metric.points,
-                    title: metricTitle(metric, language),
-                    unit: metric.unit,
-                    yAxisUnitLabel: forcingYAxisUnitLabel(metric.key, language),
-                    decimals: metric.decimals,
-                    compact,
-                    dark: resolvedTheme === "dark",
-                    labels: {
-                      noData: t.noData,
-                      latest: t.chartLatest,
-                    },
-                  })}
-                />
-              ))}
+            <div className={`charts-grid forcing-grid ${snapshot.forcing.length === 1 ? "forcing-grid-single" : ""}`}>
+              {snapshot.forcing.map((metric) => {
+                const axisBounds = forcingAxisBounds(metric.key);
+                return (
+                  <EChartsPanel
+                    key={metric.key}
+                    title={metricTitle(metric, language)}
+                    subtitle={metric.source.shortName}
+                    option={buildForcingTrendOption({
+                      points: metric.points,
+                      title: metricTitle(metric, language),
+                      unit: metric.unit,
+                      yAxisUnitLabel: forcingYAxisUnitLabel(metric.key, language),
+                      yAxisMin: axisBounds.yMin,
+                      yAxisMax: axisBounds.yMax,
+                      xAxisStartYear: axisBounds.minYear,
+                      decimals: metric.decimals,
+                      compact,
+                      dark: resolvedTheme === "dark",
+                      labels: {
+                        noData: t.noData,
+                        latest: t.chartLatest,
+                      },
+                    })}
+                  />
+                );
+              })}
             </div>
           </div>
         ) : null}

@@ -94,6 +94,14 @@ export interface DailyYearLine {
   points: Array<[number, number]>;
 }
 
+export interface DailyClimatologyBand {
+  min: Array<[number, number]>;
+  max: Array<[number, number]>;
+  mean: Array<[number, number]>;
+  rangeLabel: string;
+  meanLabel: string;
+}
+
 interface BuildClimateMonthlyComparisonOptionArgs {
   monthLabels: string[];
   lines: DailyYearLine[];
@@ -104,6 +112,7 @@ interface BuildClimateMonthlyComparisonOptionArgs {
   yAxisMin?: number;
   yAxisMax?: number;
   yAxisUnitLabel?: string;
+  climatology?: DailyClimatologyBand;
   labels?: {
     noData: string;
   };
@@ -143,6 +152,7 @@ export function buildClimateMonthlyComparisonOption({
   yAxisMin,
   yAxisMax,
   yAxisUnitLabel,
+  climatology,
   labels,
   yearColors,
 }: BuildClimateMonthlyComparisonOptionArgs): EChartsOption {
@@ -155,6 +165,8 @@ export function buildClimateMonthlyComparisonOption({
         legendBg: "rgba(15, 23, 42, 0.82)",
         legendBorder: "rgba(148, 163, 184, 0.32)",
         currentYearLine: "rgba(125, 211, 252, 0.55)",
+        climatologyRangeFill: "rgba(148, 163, 184, 0.18)",
+        climatologyMeanLine: "rgba(248, 250, 252, 0.70)",
         tooltipBg: "rgba(15, 23, 42, 0.96)",
         tooltipBorder: "rgba(148, 163, 184, 0.48)",
         tooltipText: "#e2e8f0",
@@ -167,6 +179,8 @@ export function buildClimateMonthlyComparisonOption({
         legendBg: "rgba(248, 250, 252, 0.92)",
         legendBorder: "rgba(148, 163, 184, 0.38)",
         currentYearLine: "rgba(37, 99, 235, 0.45)",
+        climatologyRangeFill: "rgba(148, 163, 184, 0.20)",
+        climatologyMeanLine: "rgba(51, 65, 85, 0.76)",
         tooltipBg: "rgba(15, 23, 42, 0.94)",
         tooltipBorder: "rgba(30, 41, 59, 0.24)",
         tooltipText: "#f8fafc",
@@ -182,6 +196,37 @@ export function buildClimateMonthlyComparisonOption({
   const hasAnyValue = lines.some((line) => line.points.length > 0);
   const monthTickInterval = compact ? 92 : 61;
   const yAxisName = yAxisUnitLabel?.trim() || undefined;
+  const climatologyByDay = climatology
+    ? new Map<number, { min: number; max: number; mean: number }>(
+        climatology.mean.map(([axisDay, mean]) => {
+          const minValue = climatology.min.find(([day]) => day === axisDay)?.[1];
+          const maxValue = climatology.max.find(([day]) => day === axisDay)?.[1];
+          return [axisDay, { min: minValue ?? mean, max: maxValue ?? mean, mean }];
+        })
+      )
+    : null;
+  const climatologyRangeBase =
+    climatologyByDay == null
+      ? []
+      : Array.from(climatologyByDay.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map(([axisDay, values]) => [axisDay, values.min] as [number, number]);
+  const climatologyRangeSpread =
+    climatologyByDay == null
+      ? []
+      : Array.from(climatologyByDay.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map(([axisDay, values]) => [axisDay, Math.max(0, values.max - values.min)] as [number, number]);
+  const climatologyMean =
+    climatologyByDay == null
+      ? []
+      : Array.from(climatologyByDay.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map(([axisDay, values]) => [axisDay, values.mean] as [number, number]);
+  const legendData = [
+    ...(climatology && climatologyRangeSpread.length ? [climatology.rangeLabel, climatology.meanLabel] : []),
+    ...lines.map((line) => String(line.year)),
+  ];
 
   return {
     animation: false,
@@ -223,6 +268,7 @@ export function buildClimateMonthlyComparisonOption({
       top: 4,
       left: 8,
       right: 8,
+      data: legendData,
       itemWidth: 12,
       itemHeight: 8,
       itemGap: 10,
@@ -269,37 +315,90 @@ export function buildClimateMonthlyComparisonOption({
         lineStyle: { color: palette.grid, type: [4, 5] },
       },
     },
-    series: lines.map((line) => ({
-      name: String(line.year),
-      type: "line",
-      data: hasAnyValue ? line.points : [],
-      smooth: 0.22,
-      connectNulls: false,
-      showSymbol: true,
-      symbol: "circle",
-      symbolSize: compact ? 3.5 : 4.2,
-      lineStyle: {
-        color: monthlyLineColor(line.year, latestYear, dark, yearColors),
-        width: line.year === latestYear ? 2.2 : 1.7,
-        type: line.year === latestYear ? "solid" : "dashed",
-      },
-      itemStyle: {
-        color: monthlyLineColor(line.year, latestYear, dark, yearColors),
-      },
-      emphasis: {
-        focus: "series",
-      },
-      markLine:
-        hasAnyValue && line.year === latestYear
-          ? {
-              symbol: ["none", "none"],
+    series: [
+      ...(climatology && climatologyRangeBase.length && climatologyRangeSpread.length
+        ? [
+            {
+              name: "__climatology-base",
+              type: "line" as const,
+              data: climatologyRangeBase,
+              stack: "climatology-range",
+              showSymbol: false,
+              symbol: "none",
+              smooth: 0.22,
               silent: true,
-              lineStyle: { color: palette.currentYearLine, width: 1.1, type: "dashed" },
-              label: { show: false },
-              data: [{ xAxis: new Date().getUTCDate() + [0,31,60,91,121,152,182,213,244,274,305,335][new Date().getUTCMonth()] }],
-            }
-          : undefined,
-    })),
+              tooltip: { show: false },
+              lineStyle: { opacity: 0, width: 0 },
+              areaStyle: { opacity: 0 },
+              emphasis: { disabled: true },
+              z: 0,
+            },
+            {
+              name: climatology.rangeLabel,
+              type: "line" as const,
+              data: climatologyRangeSpread,
+              stack: "climatology-range",
+              showSymbol: false,
+              symbol: "none",
+              smooth: 0.22,
+              silent: true,
+              tooltip: { show: false },
+              lineStyle: { opacity: 0, width: 0 },
+              areaStyle: { color: palette.climatologyRangeFill },
+              emphasis: { disabled: true },
+              z: 0,
+            },
+            {
+              name: climatology.meanLabel,
+              type: "line" as const,
+              data: climatologyMean,
+              showSymbol: false,
+              symbol: "none",
+              smooth: 0.22,
+              silent: true,
+              tooltip: { show: false },
+              lineStyle: {
+                color: palette.climatologyMeanLine,
+                width: 1.2,
+                type: "dotted" as const,
+              },
+              emphasis: { disabled: true },
+              z: 1,
+            },
+          ]
+        : []),
+      ...lines.map((line) => ({
+        name: String(line.year),
+        type: "line" as const,
+        data: hasAnyValue ? line.points : [],
+        smooth: 0.22,
+        connectNulls: false,
+        showSymbol: true,
+        symbol: "circle",
+        symbolSize: compact ? 3.5 : 4.2,
+        lineStyle: {
+          color: monthlyLineColor(line.year, latestYear, dark, yearColors),
+          width: line.year === latestYear ? 2.2 : 1.7,
+          type: (line.year === latestYear ? "solid" : "dashed") as "solid" | "dashed",
+        },
+        itemStyle: {
+          color: monthlyLineColor(line.year, latestYear, dark, yearColors),
+        },
+        emphasis: {
+          focus: "series" as const,
+        },
+        markLine:
+          hasAnyValue && line.year === latestYear
+            ? {
+                symbol: ["none", "none"],
+                silent: true,
+                lineStyle: { color: palette.currentYearLine, width: 1.1, type: "dashed" as const },
+                label: { show: false },
+                data: [{ xAxis: new Date().getUTCDate() + [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335][new Date().getUTCMonth()] }],
+              }
+            : undefined,
+      })),
+    ],
   };
 }
 

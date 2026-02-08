@@ -12,6 +12,7 @@ const NSIDC_NORTH_DAILY_EXTENT_URL =
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv";
 const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv";
+const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
 
 const DAY_MS = 86_400_000;
 const FUTURE_TOLERANCE_DAYS = 0;
@@ -275,6 +276,33 @@ function parseNoaaCo2DailyCsv(rawCsv) {
   return normalizePoints(points);
 }
 
+function parseNoaaCh4MonthlyCsv(rawCsv) {
+  const points = [];
+  const lines = rawCsv.split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(",").map((col) => col.trim());
+    if (columns.length < 6) continue;
+
+    const year = Number(columns[0]);
+    const month = Number(columns[1]);
+    const date = formatDateFromParts(year, month, 1);
+    if (!date) continue;
+
+    const average = toFiniteNumber(columns[3]);
+    const trend = toFiniteNumber(columns[5]);
+    const value = [average, trend].find((candidate) => candidate != null && candidate > 500 && candidate < 5000);
+    if (value == null) continue;
+
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
 function mergeSeaIceSeries(north, south) {
   const northMap = new Map(north.map((point) => [point.date, point.value]));
   const southMap = new Map(south.map((point) => [point.date, point.value]));
@@ -354,12 +382,13 @@ function printHelp() {
 }
 
 async function updateOnce() {
-  const [surfacePayload, sstPayload, northCsv, southCsv, co2Csv] = await Promise.all([
+  const [surfacePayload, sstPayload, northCsv, southCsv, co2Csv, ch4Csv] = await Promise.all([
     fetchJson(ERA5_GLOBAL_SURFACE_TEMP_URL),
     fetchJson(OISST_GLOBAL_SST_URL),
     fetchText(NSIDC_NORTH_DAILY_EXTENT_URL),
     fetchText(NSIDC_SOUTH_DAILY_EXTENT_URL),
     fetchText(NOAA_MAUNA_LOA_CO2_DAILY_URL),
+    fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
   ]);
 
   const globalSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(surfacePayload), {
@@ -405,6 +434,11 @@ async function updateOnce() {
     maxValue: 700,
     maxAgeDays: 120,
   });
+  const atmosphericCh4 = sanitizeSeries(parseNoaaCh4MonthlyCsv(ch4Csv), {
+    minValue: 1000,
+    maxValue: 3000,
+    maxAgeDays: 220,
+  });
 
   const generatedAtIso = new Date().toISOString();
 
@@ -421,6 +455,7 @@ async function updateOnce() {
       arctic_sea_ice_extent: NSIDC_NORTH_DAILY_EXTENT_URL,
       antarctic_sea_ice_extent: NSIDC_SOUTH_DAILY_EXTENT_URL,
       atmospheric_co2: NOAA_MAUNA_LOA_CO2_DAILY_URL,
+      atmospheric_ch4: NOAA_GLOBAL_CH4_MONTHLY_URL,
     },
     series: {
       global_surface_temperature: globalSurfaceTemperature,
@@ -431,6 +466,7 @@ async function updateOnce() {
       arctic_sea_ice_extent: arcticSeaIceExtent,
       antarctic_sea_ice_extent: antarcticSeaIceExtent,
       atmospheric_co2: atmosphericCo2,
+      atmospheric_ch4: atmosphericCh4,
     },
     summary: {
       global_surface_temperature: summarize(globalSurfaceTemperature),
@@ -441,6 +477,7 @@ async function updateOnce() {
       arctic_sea_ice_extent: summarize(arcticSeaIceExtent),
       antarctic_sea_ice_extent: summarize(antarcticSeaIceExtent),
       atmospheric_co2: summarize(atmosphericCo2),
+      atmospheric_ch4: summarize(atmosphericCh4),
     },
   };
 
@@ -452,7 +489,8 @@ async function updateOnce() {
     !output.series.global_sea_ice_extent.length ||
     !output.series.arctic_sea_ice_extent.length ||
     !output.series.antarctic_sea_ice_extent.length ||
-    !output.series.atmospheric_co2.length
+    !output.series.atmospheric_co2.length ||
+    !output.series.atmospheric_ch4.length
   ) {
     throw new Error("One or more series are empty after validation; refusing to write incomplete realtime dataset.");
   }

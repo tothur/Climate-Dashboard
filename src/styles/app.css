@@ -1411,7 +1411,7 @@ h3 {
   align-items: start;
 }
 
-.forcing-grid .panel {
+.forcing-grid-single .panel {
   grid-column: 1;
 }
 

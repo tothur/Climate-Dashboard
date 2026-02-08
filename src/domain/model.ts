@@ -10,7 +10,8 @@ export type ClimateMetricKey =
   | "global_sea_ice_extent"
   | "arctic_sea_ice_extent"
   | "antarctic_sea_ice_extent"
-  | "atmospheric_co2";
+  | "atmospheric_co2"
+  | "atmospheric_ch4";
 
 export interface DailyPoint {
   date: string;
