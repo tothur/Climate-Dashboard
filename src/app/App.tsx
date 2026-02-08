@@ -224,9 +224,9 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
     case "global_sea_ice_extent":
       return { min: 10, max: 30 };
     case "arctic_sea_ice_extent":
-      return { min: 0, max: 20 };
+      return { min: 2, max: 18 };
     case "antarctic_sea_ice_extent":
-      return { min: 0, max: 25 };
+      return { min: 0, max: 22 };
     default:
       return {};
   }
@@ -325,6 +325,7 @@ export function App() {
     currentYear: number
   ) => {
     const bounds = indicatorYAxisBounds(metric.key);
+    const isSeaIceMetric = SEA_ICE_KEYS.has(metric.key);
 
     return (
       <EChartsPanel
@@ -338,6 +339,7 @@ export function App() {
           decimals: metric.decimals,
           yAxisMin: bounds.min,
           yAxisMax: bounds.max,
+          yAxisUnitLabel: isSeaIceMetric ? "million km²" : undefined,
           compact,
           dark: resolvedTheme === "dark",
           yearColors: buildIndicatorYearColors(currentYear, resolvedTheme === "dark"),

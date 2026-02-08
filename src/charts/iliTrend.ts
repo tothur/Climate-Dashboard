@@ -103,6 +103,7 @@ interface BuildClimateMonthlyComparisonOptionArgs {
   dark?: boolean;
   yAxisMin?: number;
   yAxisMax?: number;
+  yAxisUnitLabel?: string;
   labels?: {
     noData: string;
   };
@@ -141,6 +142,7 @@ export function buildClimateMonthlyComparisonOption({
   dark = false,
   yAxisMin,
   yAxisMax,
+  yAxisUnitLabel,
   labels,
   yearColors,
 }: BuildClimateMonthlyComparisonOptionArgs): EChartsOption {
@@ -179,6 +181,7 @@ export function buildClimateMonthlyComparisonOption({
   const noDataText = labels?.noData ?? "No data";
   const hasAnyValue = lines.some((line) => line.points.length > 0);
   const monthTickInterval = compact ? 92 : 61;
+  const yAxisName = yAxisUnitLabel?.trim() || undefined;
 
   return {
     animation: false,
@@ -187,7 +190,7 @@ export function buildClimateMonthlyComparisonOption({
       top: compact ? 40 : 82,
       right: 18,
       bottom: 38,
-      left: 58,
+      left: yAxisName ? (compact ? 78 : 84) : 58,
     },
     tooltip: {
       trigger: "axis",
@@ -249,6 +252,15 @@ export function buildClimateMonthlyComparisonOption({
       type: "value",
       min: typeof yAxisMin === "number" ? yAxisMin : undefined,
       max: typeof yAxisMax === "number" ? yAxisMax : undefined,
+      name: yAxisName,
+      nameLocation: "middle",
+      nameRotate: 90,
+      nameGap: compact ? 52 : 58,
+      nameTextStyle: {
+        color: palette.axisLabel,
+        fontWeight: 650,
+        fontSize: compact ? 11 : 12,
+      },
       axisLabel: {
         color: palette.axisLabel,
         formatter: (value: number) => formatter.format(value),
