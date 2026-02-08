@@ -15,6 +15,14 @@ const CLIMATOLOGY_BASELINE_END_YEAR = 2020;
 const EARTH_LOGO_URL = `${import.meta.env.BASE_URL}earthicon.png`;
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const TEMPERATURE_ANOMALY_KEYS = new Set(["global_surface_temperature_anomaly", "global_sea_surface_temperature_anomaly"]);
+const GLOBAL_TEMPERATURE_KEYS = new Set(["global_surface_temperature", "global_sea_surface_temperature"]);
+const REGIONAL_TEMPERATURE_KEYS = new Set([
+  "northern_hemisphere_surface_temperature",
+  "arctic_surface_temperature",
+  "north_atlantic_sea_surface_temperature",
+  "southern_hemisphere_surface_temperature",
+  "antarctic_surface_temperature",
+]);
 
 const STRINGS = {
   en: {
@@ -31,12 +39,15 @@ const STRINGS = {
     latestSignalsAria: "Latest climate indicators",
     climateIndicatorsTitle: "Climate Indicators",
     climateIndicatorsNote:
-      "Monthly Jan-Dec view with daily points: current year plus the previous three years for global surface temperature and sea surface temperature.",
+      "Monthly Jan-Dec view with daily points: current year plus the previous three years for global, regional, and sea-ice indicators.",
     globalTemperaturesSectionTitle: "Global Temperatures",
     globalTemperaturesSectionNote: "Global surface and sea surface temperatures in a Jan-Dec daily comparison view.",
     temperatureAnomalySectionTitle: "Temperature Anomalies",
     temperatureAnomalySectionNote:
       "Anomalies relative to the 1991-2020 daily climatology, shown for the current year and previous year.",
+    regionalTemperaturesSectionTitle: "Regional Temperatures",
+    regionalTemperaturesSectionNote:
+      "Daily Jan-Dec comparison for Northern Hemisphere, Arctic, North Atlantic SST, Southern Hemisphere, and Antarctic temperatures.",
     climatologyMeanLabel: "1991-2020 mean",
     seaIceSectionTitle: "Sea Ice",
     seaIceSectionNote:
@@ -72,12 +83,15 @@ const STRINGS = {
     latestSignalsAria: "Legfrissebb klíma indikátorok",
     climateIndicatorsTitle: "Éghajlati Indikátorok",
     climateIndicatorsNote:
-      "Havi Jan-Dec nézet napi pontokkal: az aktuális év és az azt megelőző három év a globális felszíni és tengerfelszíni hőmérséklethez.",
+      "Havi Jan-Dec nézet napi pontokkal: az aktuális év és az azt megelőző három év a globális, regionális és tengeri-jég indikátorokhoz.",
     globalTemperaturesSectionTitle: "Globális Hőmérsékletek",
     globalTemperaturesSectionNote: "Globális felszíni és tengerfelszíni hőmérsékletek Jan-Dec napi összehasonlító nézetben.",
     temperatureAnomalySectionTitle: "Hőmérsékleti Anomáliák",
     temperatureAnomalySectionNote:
       "Anomáliák az 1991-2020 napi klimatológiához képest, az aktuális és az előző év megjelenítésével.",
+    regionalTemperaturesSectionTitle: "Regionális Hőmérsékletek",
+    regionalTemperaturesSectionNote:
+      "Napi Jan-Dec összehasonlítás az északi félteke, Arktisz, észak-atlanti SST, déli félteke és Antarktisz hőmérsékleteivel.",
     climatologyMeanLabel: "1991-2020 átlag",
     seaIceSectionTitle: "Tengeri Jég",
     seaIceSectionNote:
@@ -299,6 +313,16 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
       return { min: 10, max: 18 };
     case "global_sea_surface_temperature":
       return { min: 19.5, max: 21.5 };
+    case "northern_hemisphere_surface_temperature":
+      return { min: 6, max: 23 };
+    case "southern_hemisphere_surface_temperature":
+      return { min: 9, max: 18 };
+    case "arctic_surface_temperature":
+      return { min: -40, max: 10 };
+    case "antarctic_surface_temperature":
+      return { min: -42, max: 2 };
+    case "north_atlantic_sea_surface_temperature":
+      return { min: 18, max: 28 };
     case "global_surface_temperature_anomaly":
     case "global_sea_surface_temperature_anomaly":
       return { min: -2, max: 2 };
@@ -317,6 +341,11 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
   switch (metricKey) {
     case "global_surface_temperature":
     case "global_sea_surface_temperature":
+    case "northern_hemisphere_surface_temperature":
+    case "southern_hemisphere_surface_temperature":
+    case "arctic_surface_temperature":
+    case "antarctic_surface_temperature":
+    case "north_atlantic_sea_surface_temperature":
     case "global_surface_temperature_anomaly":
     case "global_sea_surface_temperature_anomaly":
       return language === "hu" ? "Celsius-fok" : "degrees °C";
@@ -438,17 +467,17 @@ export function App() {
       }),
     [snapshot.indicators]
   );
-  const mainIndicatorLines = useMemo(
-    () => indicatorLines.filter(({ metric }) => !SEA_ICE_KEYS.has(metric.key)),
+  const globalTemperatureLines = useMemo(
+    () => indicatorLines.filter(({ metric }) => GLOBAL_TEMPERATURE_KEYS.has(metric.key)),
     [indicatorLines]
   );
-  const absoluteTemperatureLines = useMemo(
-    () => mainIndicatorLines.filter(({ metric }) => !TEMPERATURE_ANOMALY_KEYS.has(metric.key)),
-    [mainIndicatorLines]
-  );
   const anomalyTemperatureLines = useMemo(
-    () => mainIndicatorLines.filter(({ metric }) => TEMPERATURE_ANOMALY_KEYS.has(metric.key)),
-    [mainIndicatorLines]
+    () => indicatorLines.filter(({ metric }) => TEMPERATURE_ANOMALY_KEYS.has(metric.key)),
+    [indicatorLines]
+  );
+  const regionalTemperatureLines = useMemo(
+    () => indicatorLines.filter(({ metric }) => REGIONAL_TEMPERATURE_KEYS.has(metric.key)),
+    [indicatorLines]
   );
   const seaIceIndicatorLines = useMemo(
     () => indicatorLines.filter(({ metric }) => SEA_ICE_KEYS.has(metric.key)),
@@ -576,20 +605,33 @@ export function App() {
                 <p>{t.globalTemperaturesSectionNote}</p>
               </div>
               <div className="charts-grid climate-grid">
-                {absoluteTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
+                {globalTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
                 )}
               </div>
-              <div className="climate-subsection">
-                <div className="climate-subsection-header">
-                  <h3>{t.temperatureAnomalySectionTitle}</h3>
-                  <p>{t.temperatureAnomalySectionNote}</p>
-                </div>
-                <div className="charts-grid climate-grid">
-                  {anomalyTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
-                    renderIndicatorPanel(metric, lines, currentYear, climatology)
-                  )}
-                </div>
+            </div>
+
+            <div className="climate-subsection">
+              <div className="climate-subsection-header">
+                <h3>{t.temperatureAnomalySectionTitle}</h3>
+                <p>{t.temperatureAnomalySectionNote}</p>
+              </div>
+              <div className="charts-grid climate-grid">
+                {anomalyTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
+                  renderIndicatorPanel(metric, lines, currentYear, climatology)
+                )}
+              </div>
+            </div>
+
+            <div className="climate-subsection">
+              <div className="climate-subsection-header">
+                <h3>{t.regionalTemperaturesSectionTitle}</h3>
+                <p>{t.regionalTemperaturesSectionNote}</p>
+              </div>
+              <div className="charts-grid climate-grid">
+                {regionalTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
+                  renderIndicatorPanel(metric, lines, currentYear, climatology)
+                )}
               </div>
             </div>
 

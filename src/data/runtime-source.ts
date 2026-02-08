@@ -2,7 +2,12 @@ import { createDataSourceFromSeries } from "./adapter";
 import type { ClimateSeriesBundle, DashboardDataSource, DailyPoint } from "../domain/model";
 
 const ERA5_GLOBAL_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_world_t2_day.json";
+const ERA5_NH_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_nh_t2_day.json";
+const ERA5_SH_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_sh_t2_day.json";
+const ERA5_ARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_arctic_t2_day.json";
+const ERA5_ANTARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_antarctic_t2_day.json";
 const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json";
+const OISST_NORTH_ATLANTIC_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json";
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
@@ -15,6 +20,11 @@ const FUTURE_TOLERANCE_DAYS = 0;
 const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
+  "northern_hemisphere_surface_temperature",
+  "southern_hemisphere_surface_temperature",
+  "arctic_surface_temperature",
+  "antarctic_surface_temperature",
+  "north_atlantic_sea_surface_temperature",
   "global_surface_temperature_anomaly",
   "global_sea_surface_temperature_anomaly",
   "global_sea_ice_extent",
@@ -199,7 +209,17 @@ function parseReanalyzerDailyJson(payload: unknown): DailyPoint[] {
       values = row.data.split(",");
     }
 
-    for (let index = 0; index < values.length; index += 1) {
+    let effectiveLength = values.length;
+    while (effectiveLength > 0) {
+      const trailingValue = toFiniteNumber(values[effectiveLength - 1]);
+      if (trailingValue == null || trailingValue === 0) {
+        effectiveLength -= 1;
+        continue;
+      }
+      break;
+    }
+
+    for (let index = 0; index < effectiveLength; index += 1) {
       const numeric = toFiniteNumber(values[index]);
       if (numeric == null) continue;
       const date = dateFromYearAndDay(year, index + 1);
@@ -403,6 +423,72 @@ async function loadSeaSurfaceTempSeriesBundle(): Promise<TemperatureSeriesBundle
   };
 }
 
+interface RegionalTemperatureSeriesBundle {
+  northernHemisphere: DailyPoint[] | null;
+  southernHemisphere: DailyPoint[] | null;
+  arctic: DailyPoint[] | null;
+  antarctic: DailyPoint[] | null;
+  northAtlanticSst: DailyPoint[] | null;
+}
+
+async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatureSeriesBundle> {
+  const [nhPayload, shPayload, arcticPayload, antarcticPayload, northAtlanticSstPayload] = await Promise.all([
+    fetchJson(ERA5_NH_SURFACE_TEMP_URL),
+    fetchJson(ERA5_SH_SURFACE_TEMP_URL),
+    fetchJson(ERA5_ARCTIC_SURFACE_TEMP_URL),
+    fetchJson(ERA5_ANTARCTIC_SURFACE_TEMP_URL),
+    fetchJson(OISST_NORTH_ATLANTIC_SST_URL),
+  ]);
+
+  const northernHemisphere = nhPayload
+    ? sanitizeSeries(parseReanalyzerDailyJson(nhPayload), {
+        minValue: -20,
+        maxValue: 40,
+        maxAgeDays: 20,
+      })
+    : [];
+
+  const southernHemisphere = shPayload
+    ? sanitizeSeries(parseReanalyzerDailyJson(shPayload), {
+        minValue: -20,
+        maxValue: 35,
+        maxAgeDays: 20,
+      })
+    : [];
+
+  const arctic = arcticPayload
+    ? sanitizeSeries(parseReanalyzerDailyJson(arcticPayload), {
+        minValue: -70,
+        maxValue: 25,
+        maxAgeDays: 20,
+      })
+    : [];
+
+  const antarctic = antarcticPayload
+    ? sanitizeSeries(parseReanalyzerDailyJson(antarcticPayload), {
+        minValue: -80,
+        maxValue: 25,
+        maxAgeDays: 20,
+      })
+    : [];
+
+  const northAtlanticSst = northAtlanticSstPayload
+    ? sanitizeSeries(parseReanalyzerDailyJson(northAtlanticSstPayload), {
+        minValue: -5,
+        maxValue: 40,
+        maxAgeDays: 45,
+      })
+    : [];
+
+  return {
+    northernHemisphere: northernHemisphere.length ? northernHemisphere : null,
+    southernHemisphere: southernHemisphere.length ? southernHemisphere : null,
+    arctic: arctic.length ? arctic : null,
+    antarctic: antarctic.length ? antarctic : null,
+    northAtlanticSst: northAtlanticSst.length ? northAtlanticSst : null,
+  };
+}
+
 interface SeaIceSeriesBundle {
   global: DailyPoint[] | null;
   arctic: DailyPoint[] | null;
@@ -472,9 +558,10 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
   const warnings: string[] = [];
   const liveSeries: Partial<ClimateSeriesBundle> = {};
 
-  const [surfaceResult, sstResult, seaIceResult, co2Result, ch4Result] = await Promise.allSettled([
+  const [surfaceResult, sstResult, regionalResult, seaIceResult, co2Result, ch4Result] = await Promise.allSettled([
     loadSurfaceTempSeriesBundle(),
     loadSeaSurfaceTempSeriesBundle(),
+    loadRegionalTemperatureSeriesBundle(),
     loadSeaIceSeriesBundle(),
     loadCo2Series(),
     loadCh4Series(),
@@ -502,6 +589,44 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     liveSeries.global_sea_surface_temperature_anomaly = sstResult.value.anomaly;
   } else {
     warnings.push("Live Global Sea Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+  }
+
+  if (regionalResult.status === "fulfilled") {
+    if (regionalResult.value.northernHemisphere?.length) {
+      liveSeries.northern_hemisphere_surface_temperature = regionalResult.value.northernHemisphere;
+    } else {
+      warnings.push("Live Northern Hemisphere Surface Temperature feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (regionalResult.value.southernHemisphere?.length) {
+      liveSeries.southern_hemisphere_surface_temperature = regionalResult.value.southernHemisphere;
+    } else {
+      warnings.push("Live Southern Hemisphere Surface Temperature feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (regionalResult.value.arctic?.length) {
+      liveSeries.arctic_surface_temperature = regionalResult.value.arctic;
+    } else {
+      warnings.push("Live Arctic Surface Temperature feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (regionalResult.value.antarctic?.length) {
+      liveSeries.antarctic_surface_temperature = regionalResult.value.antarctic;
+    } else {
+      warnings.push("Live Antarctic Surface Temperature feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (regionalResult.value.northAtlanticSst?.length) {
+      liveSeries.north_atlantic_sea_surface_temperature = regionalResult.value.northAtlanticSst;
+    } else {
+      warnings.push("Live North Atlantic Sea Surface Temperature feed was unavailable or stale; using bundled fallback.");
+    }
+  } else {
+    warnings.push("Live Northern Hemisphere Surface Temperature feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Southern Hemisphere Surface Temperature feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Arctic Surface Temperature feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Antarctic Surface Temperature feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live North Atlantic Sea Surface Temperature feed was unavailable or stale; using bundled fallback.");
   }
 
   if (seaIceResult.status === "fulfilled") {

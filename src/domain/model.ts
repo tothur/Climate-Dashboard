@@ -5,6 +5,11 @@ export type ResolvedTheme = "dark" | "light";
 export type ClimateMetricKey =
   | "global_surface_temperature"
   | "global_sea_surface_temperature"
+  | "northern_hemisphere_surface_temperature"
+  | "southern_hemisphere_surface_temperature"
+  | "arctic_surface_temperature"
+  | "antarctic_surface_temperature"
+  | "north_atlantic_sea_surface_temperature"
   | "global_surface_temperature_anomaly"
   | "global_sea_surface_temperature_anomaly"
   | "global_sea_ice_extent"

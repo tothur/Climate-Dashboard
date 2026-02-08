@@ -6,7 +6,12 @@ const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT_PATH = resolve(ROOT_DIR, "public/data/climate-realtime.json");
 
 const ERA5_GLOBAL_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_world_t2_day.json";
+const ERA5_NH_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_nh_t2_day.json";
+const ERA5_SH_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_sh_t2_day.json";
+const ERA5_ARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_arctic_t2_day.json";
+const ERA5_ANTARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_antarctic_t2_day.json";
 const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json";
+const OISST_NORTH_ATLANTIC_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json";
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
@@ -160,7 +165,17 @@ function parseReanalyzerDailyJson(payload) {
         ? row.data.split(",")
         : [];
 
-    for (let index = 0; index < values.length; index += 1) {
+    let effectiveLength = values.length;
+    while (effectiveLength > 0) {
+      const trailingValue = toFiniteNumber(values[effectiveLength - 1]);
+      if (trailingValue == null || trailingValue === 0) {
+        effectiveLength -= 1;
+        continue;
+      }
+      break;
+    }
+
+    for (let index = 0; index < effectiveLength; index += 1) {
       const numeric = toFiniteNumber(values[index]);
       if (numeric == null) continue;
       const date = dateFromYearAndDay(year, index + 1);
@@ -382,9 +397,14 @@ function printHelp() {
 }
 
 async function updateOnce() {
-  const [surfacePayload, sstPayload, northCsv, southCsv, co2Csv, ch4Csv] = await Promise.all([
+  const [surfacePayload, sstPayload, nhPayload, shPayload, arcticPayload, antarcticPayload, northAtlanticSstPayload, northCsv, southCsv, co2Csv, ch4Csv] = await Promise.all([
     fetchJson(ERA5_GLOBAL_SURFACE_TEMP_URL),
     fetchJson(OISST_GLOBAL_SST_URL),
+    fetchJson(ERA5_NH_SURFACE_TEMP_URL),
+    fetchJson(ERA5_SH_SURFACE_TEMP_URL),
+    fetchJson(ERA5_ARCTIC_SURFACE_TEMP_URL),
+    fetchJson(ERA5_ANTARCTIC_SURFACE_TEMP_URL),
+    fetchJson(OISST_NORTH_ATLANTIC_SST_URL),
     fetchText(NSIDC_NORTH_DAILY_EXTENT_URL),
     fetchText(NSIDC_SOUTH_DAILY_EXTENT_URL),
     fetchText(NOAA_MAUNA_LOA_CO2_DAILY_URL),
@@ -409,6 +429,31 @@ async function updateOnce() {
   const globalSeaSurfaceTemperatureAnomaly = sanitizeSeries(parseReanalyzerDailyAnomalyJson(sstPayload, "1991-2020"), {
     minValue: -10,
     maxValue: 10,
+    maxAgeDays: 45,
+  });
+  const northernHemisphereSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(nhPayload), {
+    minValue: -20,
+    maxValue: 40,
+    maxAgeDays: 20,
+  });
+  const southernHemisphereSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(shPayload), {
+    minValue: -20,
+    maxValue: 35,
+    maxAgeDays: 20,
+  });
+  const arcticSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(arcticPayload), {
+    minValue: -70,
+    maxValue: 25,
+    maxAgeDays: 20,
+  });
+  const antarcticSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(antarcticPayload), {
+    minValue: -80,
+    maxValue: 25,
+    maxAgeDays: 20,
+  });
+  const northAtlanticSeaSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(northAtlanticSstPayload), {
+    minValue: -5,
+    maxValue: 40,
     maxAgeDays: 45,
   });
   const arcticSeaIceExtent = sanitizeSeries(parseNsidcDailyExtentCsv(northCsv), {
@@ -447,6 +492,11 @@ async function updateOnce() {
     sources: {
       global_surface_temperature: ERA5_GLOBAL_SURFACE_TEMP_URL,
       global_sea_surface_temperature: OISST_GLOBAL_SST_URL,
+      northern_hemisphere_surface_temperature: ERA5_NH_SURFACE_TEMP_URL,
+      southern_hemisphere_surface_temperature: ERA5_SH_SURFACE_TEMP_URL,
+      arctic_surface_temperature: ERA5_ARCTIC_SURFACE_TEMP_URL,
+      antarctic_surface_temperature: ERA5_ANTARCTIC_SURFACE_TEMP_URL,
+      north_atlantic_sea_surface_temperature: OISST_NORTH_ATLANTIC_SST_URL,
       global_surface_temperature_anomaly:
         "Derived from ERA5 daily global surface temperature minus 1991-2020 daily climatology from the same feed.",
       global_sea_surface_temperature_anomaly:
@@ -460,6 +510,11 @@ async function updateOnce() {
     series: {
       global_surface_temperature: globalSurfaceTemperature,
       global_sea_surface_temperature: globalSeaSurfaceTemperature,
+      northern_hemisphere_surface_temperature: northernHemisphereSurfaceTemperature,
+      southern_hemisphere_surface_temperature: southernHemisphereSurfaceTemperature,
+      arctic_surface_temperature: arcticSurfaceTemperature,
+      antarctic_surface_temperature: antarcticSurfaceTemperature,
+      north_atlantic_sea_surface_temperature: northAtlanticSeaSurfaceTemperature,
       global_surface_temperature_anomaly: globalSurfaceTemperatureAnomaly,
       global_sea_surface_temperature_anomaly: globalSeaSurfaceTemperatureAnomaly,
       global_sea_ice_extent: globalSeaIceExtent,
@@ -471,6 +526,11 @@ async function updateOnce() {
     summary: {
       global_surface_temperature: summarize(globalSurfaceTemperature),
       global_sea_surface_temperature: summarize(globalSeaSurfaceTemperature),
+      northern_hemisphere_surface_temperature: summarize(northernHemisphereSurfaceTemperature),
+      southern_hemisphere_surface_temperature: summarize(southernHemisphereSurfaceTemperature),
+      arctic_surface_temperature: summarize(arcticSurfaceTemperature),
+      antarctic_surface_temperature: summarize(antarcticSurfaceTemperature),
+      north_atlantic_sea_surface_temperature: summarize(northAtlanticSeaSurfaceTemperature),
       global_surface_temperature_anomaly: summarize(globalSurfaceTemperatureAnomaly),
       global_sea_surface_temperature_anomaly: summarize(globalSeaSurfaceTemperatureAnomaly),
       global_sea_ice_extent: summarize(globalSeaIceExtent),
@@ -484,6 +544,11 @@ async function updateOnce() {
   if (
     !output.series.global_surface_temperature.length ||
     !output.series.global_sea_surface_temperature.length ||
+    !output.series.northern_hemisphere_surface_temperature.length ||
+    !output.series.southern_hemisphere_surface_temperature.length ||
+    !output.series.arctic_surface_temperature.length ||
+    !output.series.antarctic_surface_temperature.length ||
+    !output.series.north_atlantic_sea_surface_temperature.length ||
     !output.series.global_surface_temperature_anomaly.length ||
     !output.series.global_sea_surface_temperature_anomaly.length ||
     !output.series.global_sea_ice_extent.length ||
