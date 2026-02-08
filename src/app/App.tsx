@@ -12,6 +12,7 @@ const REFERENCE_LEAP_YEAR = 2024;
 const REFERENCE_LEAP_YEAR_START_UTC = Date.UTC(REFERENCE_LEAP_YEAR, 0, 1);
 const EARTH_LOGO_URL = `${import.meta.env.BASE_URL}earthicon.png`;
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
+const TEMPERATURE_ANOMALY_KEYS = new Set(["global_surface_temperature_anomaly", "global_sea_surface_temperature_anomaly"]);
 
 const STRINGS = {
   en: {
@@ -31,6 +32,9 @@ const STRINGS = {
       "Monthly Jan-Dec view with daily points: current year plus the previous three years for global surface temperature and sea surface temperature.",
     globalTemperaturesSectionTitle: "Global Temperatures",
     globalTemperaturesSectionNote: "Global surface and sea surface temperatures in a Jan-Dec daily comparison view.",
+    temperatureAnomalySectionTitle: "Temperature Anomalies",
+    temperatureAnomalySectionNote:
+      "Anomalies relative to the 1991-2020 daily climatology, shown for the current year and previous year.",
     seaIceSectionTitle: "Sea Ice",
     seaIceSectionNote:
       "Global, Arctic, and Antarctic extent shown with daily points in a Jan-Dec comparison view.",
@@ -68,6 +72,9 @@ const STRINGS = {
       "Havi Jan-Dec nézet napi pontokkal: az aktuális év és az azt megelőző három év a globális felszíni és tengerfelszíni hőmérséklethez.",
     globalTemperaturesSectionTitle: "Globális Hőmérsékletek",
     globalTemperaturesSectionNote: "Globális felszíni és tengerfelszíni hőmérsékletek Jan-Dec napi összehasonlító nézetben.",
+    temperatureAnomalySectionTitle: "Hőmérsékleti Anomáliák",
+    temperatureAnomalySectionNote:
+      "Anomáliák az 1991-2020 napi klimatológiához képest, az aktuális és az előző év megjelenítésével.",
     seaIceSectionTitle: "Tengeri Jég",
     seaIceSectionNote:
       "Globális, arktiszi és antarktiszi jégkiterjedés napi pontokkal Jan-Dec összehasonlító nézetben.",
@@ -163,6 +170,23 @@ function pickComparisonYears(points: DailyPoint[]): number[] {
   return [currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
 }
 
+function pickCurrentAndPreviousYear(points: DailyPoint[]): number[] {
+  const years = new Set<number>();
+  for (const point of points) {
+    const match = /^(\d{4})-\d{2}-\d{2}$/.exec(point.date);
+    if (!match) continue;
+    const year = Number(match[1]);
+    if (Number.isFinite(year)) years.add(year);
+  }
+  const currentYear = years.size ? Math.max(...Array.from(years)) : new Date().getUTCFullYear();
+  return [currentYear - 1, currentYear];
+}
+
+function pickYearsForMetric(metricKey: ClimateMetricSeries["key"], points: DailyPoint[]): number[] {
+  if (TEMPERATURE_ANOMALY_KEYS.has(metricKey)) return pickCurrentAndPreviousYear(points);
+  return pickComparisonYears(points);
+}
+
 function buildIndicatorYearColors(currentYear: number, dark: boolean): Record<number, string> {
   const previousYearGradient = dark ? ["#60a5fa", "#7e9cbc", "#94a3b8"] : ["#2563eb", "#4f76a4", "#94a3b8"];
   return {
@@ -225,6 +249,9 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
       return { min: 10, max: 18 };
     case "global_sea_surface_temperature":
       return { min: 19.5, max: 21.5 };
+    case "global_surface_temperature_anomaly":
+    case "global_sea_surface_temperature_anomaly":
+      return { min: -2, max: 2 };
     case "global_sea_ice_extent":
       return { min: 10, max: 30 };
     case "arctic_sea_ice_extent":
@@ -240,6 +267,8 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
   switch (metricKey) {
     case "global_surface_temperature":
     case "global_sea_surface_temperature":
+    case "global_surface_temperature_anomaly":
+    case "global_sea_surface_temperature_anomaly":
       return language === "hu" ? "Celsius-fok" : "degrees °C";
     case "global_sea_ice_extent":
     case "arctic_sea_ice_extent":
@@ -318,12 +347,16 @@ export function App() {
   }, []);
 
   const snapshot = useMemo(() => buildDashboardSnapshot(dataSource), [dataSource]);
-  const keyMetrics = useMemo(() => [...snapshot.indicators, ...snapshot.forcing], [snapshot.indicators, snapshot.forcing]);
+  const headlineMetrics = useMemo(
+    () => [...snapshot.indicators.filter((metric) => !TEMPERATURE_ANOMALY_KEYS.has(metric.key)), ...snapshot.forcing],
+    [snapshot.indicators, snapshot.forcing]
+  );
+  const footerMetrics = useMemo(() => [...snapshot.indicators, ...snapshot.forcing], [snapshot.indicators, snapshot.forcing]);
   const monthlyLabels = useMemo(() => buildMonthLabels(language), [language]);
   const indicatorLines = useMemo(
     () =>
       snapshot.indicators.map((metric) => {
-        const years = pickComparisonYears(metric.points);
+        const years = pickYearsForMetric(metric.key, metric.points);
         const currentYear = years[years.length - 1];
         return {
           metric,
@@ -336,6 +369,14 @@ export function App() {
   const mainIndicatorLines = useMemo(
     () => indicatorLines.filter(({ metric }) => !SEA_ICE_KEYS.has(metric.key)),
     [indicatorLines]
+  );
+  const absoluteTemperatureLines = useMemo(
+    () => mainIndicatorLines.filter(({ metric }) => !TEMPERATURE_ANOMALY_KEYS.has(metric.key)),
+    [mainIndicatorLines]
+  );
+  const anomalyTemperatureLines = useMemo(
+    () => mainIndicatorLines.filter(({ metric }) => TEMPERATURE_ANOMALY_KEYS.has(metric.key)),
+    [mainIndicatorLines]
   );
   const seaIceIndicatorLines = useMemo(
     () => indicatorLines.filter(({ metric }) => SEA_ICE_KEYS.has(metric.key)),
@@ -414,7 +455,7 @@ export function App() {
       </header>
 
       <section className="alerts-grid" aria-label={t.latestSignalsAria}>
-        {keyMetrics.map((metric) => (
+        {headlineMetrics.map((metric) => (
           <article className="alert-card summary" key={metric.key}>
             <span className="alert-kicker">{t.latestLabel}</span>
             <h2>{metricTitle(metric, language)}</h2>
@@ -456,7 +497,16 @@ export function App() {
                 <p>{t.globalTemperaturesSectionNote}</p>
               </div>
               <div className="charts-grid climate-grid">
-                {mainIndicatorLines.map(({ metric, lines, currentYear }) => renderIndicatorPanel(metric, lines, currentYear))}
+                {absoluteTemperatureLines.map(({ metric, lines, currentYear }) => renderIndicatorPanel(metric, lines, currentYear))}
+              </div>
+              <div className="climate-subsection">
+                <div className="climate-subsection-header">
+                  <h3>{t.temperatureAnomalySectionTitle}</h3>
+                  <p>{t.temperatureAnomalySectionNote}</p>
+                </div>
+                <div className="charts-grid climate-grid">
+                  {anomalyTemperatureLines.map(({ metric, lines, currentYear }) => renderIndicatorPanel(metric, lines, currentYear))}
+                </div>
               </div>
             </div>
 
@@ -530,7 +580,7 @@ export function App() {
         <div className="footer-sources">
           <strong className="footer-sources-title">{t.sourceCardsTitle}</strong>
           <div className="footer-sources-links">
-            {keyMetrics.map((metric) => (
+            {footerMetrics.map((metric) => (
               <a key={`${metric.key}-footer-source`} href={metric.source.url} target="_blank" rel="noreferrer">
                 {metricTitle(metric, language)} · {metric.source.shortName}
               </a>

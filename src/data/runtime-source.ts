@@ -14,6 +14,8 @@ const FUTURE_TOLERANCE_DAYS = 0;
 const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
+  "global_surface_temperature_anomaly",
+  "global_sea_surface_temperature_anomaly",
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
   "antarctic_sea_ice_extent",
@@ -207,6 +209,52 @@ function parseReanalyzerDailyJson(payload: unknown): DailyPoint[] {
   return normalizePoints(points);
 }
 
+function reanalyzerRowValues(row: Record<string, unknown>): unknown[] {
+  if (Array.isArray(row.data)) return row.data;
+  if (typeof row.data === "string") return row.data.split(",");
+  return [];
+}
+
+function parseReanalyzerDailyAnomalyJson(payload: unknown, climatologyLabel = "1991-2020"): DailyPoint[] {
+  if (!Array.isArray(payload)) return [];
+
+  const baselineRow = payload.find(
+    (row) => isRecord(row) && (typeof row.name === "string" || typeof row.name === "number") && String(row.name).trim() === climatologyLabel
+  );
+  if (!baselineRow || !isRecord(baselineRow)) return [];
+
+  const baselineValues = reanalyzerRowValues(baselineRow).map((value) => toFiniteNumber(value));
+  if (!baselineValues.length) return [];
+
+  const nowYear = new Date().getUTCFullYear();
+  const points: DailyPoint[] = [];
+
+  for (const row of payload) {
+    if (!isRecord(row)) continue;
+
+    const yearToken = typeof row.name === "number" || typeof row.name === "string" ? String(row.name).trim() : "";
+    if (!/^\d{4}$/.test(yearToken)) continue;
+
+    const year = Number(yearToken);
+    if (!Number.isFinite(year) || year < 1940 || year > nowYear + 1) continue;
+
+    const values = reanalyzerRowValues(row);
+    for (let index = 0; index < values.length; index += 1) {
+      const numeric = toFiniteNumber(values[index]);
+      const baseline = baselineValues[index];
+      if (numeric == null || baseline == null || !Number.isFinite(baseline)) continue;
+      const date = dateFromYearAndDay(year, index + 1);
+      if (!date) continue;
+      points.push({
+        date,
+        value: Math.round((numeric - baseline) * 1000) / 1000,
+      });
+    }
+  }
+
+  return normalizePoints(points);
+}
+
 function parseNsidcDailyExtentCsv(rawCsv: string): DailyPoint[] {
   const points: DailyPoint[] = [];
   const lines = rawCsv.split(/\r?\n/);
@@ -283,26 +331,47 @@ function mergeSeaIceSeries(north: DailyPoint[], south: DailyPoint[]): DailyPoint
   return normalizePoints(merged);
 }
 
-async function loadSurfaceTempSeries(): Promise<DailyPoint[] | null> {
+interface TemperatureSeriesBundle {
+  absolute: DailyPoint[] | null;
+  anomaly: DailyPoint[] | null;
+}
+
+async function loadSurfaceTempSeriesBundle(): Promise<TemperatureSeriesBundle> {
   const payload = await fetchJson(ERA5_GLOBAL_SURFACE_TEMP_URL);
-  if (!payload) return null;
-  const points = sanitizeSeries(parseReanalyzerDailyJson(payload), {
+  if (!payload) return { absolute: null, anomaly: null };
+  const absolute = sanitizeSeries(parseReanalyzerDailyJson(payload), {
     minValue: 5,
     maxValue: 40,
     maxAgeDays: 20,
   });
-  return points.length ? points : null;
+  const anomaly = sanitizeSeries(parseReanalyzerDailyAnomalyJson(payload, "1991-2020"), {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 20,
+  });
+  return {
+    absolute: absolute.length ? absolute : null,
+    anomaly: anomaly.length ? anomaly : null,
+  };
 }
 
-async function loadSeaSurfaceTempSeries(): Promise<DailyPoint[] | null> {
+async function loadSeaSurfaceTempSeriesBundle(): Promise<TemperatureSeriesBundle> {
   const payload = await fetchJson(OISST_GLOBAL_SST_URL);
-  if (!payload) return null;
-  const points = sanitizeSeries(parseReanalyzerDailyJson(payload), {
+  if (!payload) return { absolute: null, anomaly: null };
+  const absolute = sanitizeSeries(parseReanalyzerDailyJson(payload), {
     minValue: 10,
     maxValue: 40,
     maxAgeDays: 45,
   });
-  return points.length ? points : null;
+  const anomaly = sanitizeSeries(parseReanalyzerDailyAnomalyJson(payload, "1991-2020"), {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 45,
+  });
+  return {
+    absolute: absolute.length ? absolute : null,
+    anomaly: anomaly.length ? anomaly : null,
+  };
 }
 
 interface SeaIceSeriesBundle {
@@ -364,22 +433,34 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
   const liveSeries: Partial<ClimateSeriesBundle> = {};
 
   const [surfaceResult, sstResult, seaIceResult, co2Result] = await Promise.allSettled([
-    loadSurfaceTempSeries(),
-    loadSeaSurfaceTempSeries(),
+    loadSurfaceTempSeriesBundle(),
+    loadSeaSurfaceTempSeriesBundle(),
     loadSeaIceSeriesBundle(),
     loadCo2Series(),
   ]);
 
-  if (surfaceResult.status === "fulfilled" && surfaceResult.value?.length) {
-    liveSeries.global_surface_temperature = surfaceResult.value;
+  if (surfaceResult.status === "fulfilled" && surfaceResult.value.absolute?.length) {
+    liveSeries.global_surface_temperature = surfaceResult.value.absolute;
   } else {
     warnings.push("Live Global Surface Temperature feed was unavailable or stale; using bundled fallback.");
   }
 
-  if (sstResult.status === "fulfilled" && sstResult.value?.length) {
-    liveSeries.global_sea_surface_temperature = sstResult.value;
+  if (surfaceResult.status === "fulfilled" && surfaceResult.value.anomaly?.length) {
+    liveSeries.global_surface_temperature_anomaly = surfaceResult.value.anomaly;
+  } else {
+    warnings.push("Live Global Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+  }
+
+  if (sstResult.status === "fulfilled" && sstResult.value.absolute?.length) {
+    liveSeries.global_sea_surface_temperature = sstResult.value.absolute;
   } else {
     warnings.push("Live Global Sea Surface Temperature feed was unavailable or stale; using bundled fallback.");
+  }
+
+  if (sstResult.status === "fulfilled" && sstResult.value.anomaly?.length) {
+    liveSeries.global_sea_surface_temperature_anomaly = sstResult.value.anomaly;
+  } else {
+    warnings.push("Live Global Sea Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
   }
 
   if (seaIceResult.status === "fulfilled") {

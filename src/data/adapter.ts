@@ -16,6 +16,8 @@ export const INFLUENZA_ALL_KEY = "__unused_legacy_key__";
 const INDICATOR_KEYS: ClimateMetricKey[] = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
+  "global_surface_temperature_anomaly",
+  "global_sea_surface_temperature_anomaly",
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
   "antarctic_sea_ice_extent",
@@ -53,6 +55,34 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       shortName: "Climate Reanalyzer (NOAA OISST v2.1)",
       descriptionEn: "NOAA OISST v2.1 daily global SST, published by Climate Reanalyzer.",
       descriptionHu: "NOAA OISST v2.1 napi globális SST, a Climate Reanalyzer közlésében.",
+      url: "https://climatereanalyzer.org/clim/sst_daily/",
+    },
+  },
+  global_surface_temperature_anomaly: {
+    titleEn: "Global Surface Temperature Anomaly",
+    titleHu: "Globális felszíni hőmérsékleti anomália",
+    unit: "deg C",
+    decimals: 2,
+    source: {
+      shortName: "Climate Reanalyzer (ERA5, 1991-2020 baseline)",
+      descriptionEn:
+        "Daily global surface-air temperature anomaly derived from ERA5 daily values relative to the 1991-2020 climatology in the same feed.",
+      descriptionHu:
+        "Napi globális felszíni levegőhőmérséklet-anomália, az ERA5 napi értékek és az ugyanabban a feedben szereplő 1991-2020-as klimatológia különbségeként.",
+      url: "https://climatereanalyzer.org/clim/t2_daily/",
+    },
+  },
+  global_sea_surface_temperature_anomaly: {
+    titleEn: "Global Sea Surface Temperature Anomaly",
+    titleHu: "Globális tengerfelszíni hőmérsékleti anomália",
+    unit: "deg C",
+    decimals: 2,
+    source: {
+      shortName: "Climate Reanalyzer (OISST v2.1, 1991-2020 baseline)",
+      descriptionEn:
+        "Daily global SST anomaly derived from NOAA OISST v2.1 daily values relative to the 1991-2020 climatology in the same feed.",
+      descriptionHu:
+        "Napi globális tengerfelszíni hőmérséklet-anomália, a NOAA OISST v2.1 napi értékek és az ugyanabban a feedben szereplő 1991-2020-as klimatológia különbségeként.",
       url: "https://climatereanalyzer.org/clim/sst_daily/",
     },
   },

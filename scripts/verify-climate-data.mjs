@@ -21,6 +21,20 @@ const SERIES_RULES = {
     minPoints: 8_000,
     minPointsLastYear: 250,
   },
+  global_surface_temperature_anomaly: {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 20,
+    minPoints: 20_000,
+    minPointsLastYear: 300,
+  },
+  global_sea_surface_temperature_anomaly: {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 45,
+    minPoints: 8_000,
+    minPointsLastYear: 250,
+  },
   global_sea_ice_extent: {
     minValue: 0,
     maxValue: 60,
@@ -213,6 +227,39 @@ function verifySeaIceConsistency(series, errors, warnings) {
   }
 }
 
+function verifyTemperatureAnomalyAlignment(series, errors, warnings) {
+  const pairs = [
+    ["global_surface_temperature", "global_surface_temperature_anomaly"],
+    ["global_sea_surface_temperature", "global_sea_surface_temperature_anomaly"],
+  ];
+
+  for (const [absoluteKey, anomalyKey] of pairs) {
+    const absoluteSeries = Array.isArray(series[absoluteKey]) ? series[absoluteKey] : [];
+    const anomalySeries = Array.isArray(series[anomalyKey]) ? series[anomalyKey] : [];
+    if (!absoluteSeries.length || !anomalySeries.length) continue;
+
+    const absoluteDates = new Set(absoluteSeries.map((point) => point.date));
+    const anomalyDates = new Set(anomalySeries.map((point) => point.date));
+    const missing = [];
+
+    for (const date of anomalyDates) {
+      if (absoluteDates.has(date)) continue;
+      missing.push(date);
+      if (missing.length >= 5) break;
+    }
+
+    if (missing.length) {
+      errors.push(`${anomalyKey}: found anomaly dates missing in ${absoluteKey}: ${missing.join(", ")}`);
+    }
+
+    const latestAbsolute = absoluteSeries[absoluteSeries.length - 1]?.date ?? null;
+    const latestAnomaly = anomalySeries[anomalySeries.length - 1]?.date ?? null;
+    if (latestAbsolute && latestAnomaly && latestAbsolute !== latestAnomaly) {
+      warnings.push(`${anomalyKey}: latest date (${latestAnomaly}) differs from ${absoluteKey} (${latestAbsolute})`);
+    }
+  }
+}
+
 async function main() {
   const raw = await readFile(INPUT_PATH, "utf8");
   const payload = JSON.parse(raw);
@@ -238,6 +285,7 @@ async function main() {
     verifySeries(key, series[key], payload, nowMidnight, errors, warnings);
   }
 
+  verifyTemperatureAnomalyAlignment(series, errors, warnings);
   verifySeaIceConsistency(series, errors, warnings);
 
   if (warnings.length) {

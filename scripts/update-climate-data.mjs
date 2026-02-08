@@ -171,6 +171,54 @@ function parseReanalyzerDailyJson(payload) {
   return normalizePoints(points);
 }
 
+function reanalyzerRowValues(row) {
+  if (Array.isArray(row.data)) return row.data;
+  if (typeof row.data === "string") return row.data.split(",");
+  return [];
+}
+
+function parseReanalyzerDailyAnomalyJson(payload, climatologyLabel = "1991-2020") {
+  if (!Array.isArray(payload)) return [];
+
+  const baselineRow = payload.find((row) => {
+    if (typeof row !== "object" || row == null || Array.isArray(row)) return false;
+    if (typeof row.name !== "string" && typeof row.name !== "number") return false;
+    return String(row.name).trim() === climatologyLabel;
+  });
+  if (!baselineRow || typeof baselineRow !== "object" || Array.isArray(baselineRow)) return [];
+
+  const baselineValues = reanalyzerRowValues(baselineRow).map((value) => toFiniteNumber(value));
+  if (!baselineValues.length) return [];
+
+  const nowYear = new Date().getUTCFullYear();
+  const points = [];
+
+  for (const row of payload) {
+    if (typeof row !== "object" || row == null || Array.isArray(row)) continue;
+
+    const yearToken = typeof row.name === "number" || typeof row.name === "string" ? String(row.name).trim() : "";
+    if (!/^\d{4}$/.test(yearToken)) continue;
+
+    const year = Number(yearToken);
+    if (!Number.isFinite(year) || year < 1940 || year > nowYear + 1) continue;
+
+    const values = reanalyzerRowValues(row);
+    for (let index = 0; index < values.length; index += 1) {
+      const numeric = toFiniteNumber(values[index]);
+      const baseline = baselineValues[index];
+      if (numeric == null || baseline == null || !Number.isFinite(baseline)) continue;
+      const date = dateFromYearAndDay(year, index + 1);
+      if (!date) continue;
+      points.push({
+        date,
+        value: Math.round((numeric - baseline) * 1000) / 1000,
+      });
+    }
+  }
+
+  return normalizePoints(points);
+}
+
 function parseNsidcDailyExtentCsv(rawCsv) {
   const points = [];
   const lines = rawCsv.split(/\r?\n/);
@@ -319,9 +367,19 @@ async function updateOnce() {
     maxValue: 40,
     maxAgeDays: 20,
   });
+  const globalSurfaceTemperatureAnomaly = sanitizeSeries(parseReanalyzerDailyAnomalyJson(surfacePayload, "1991-2020"), {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 20,
+  });
   const globalSeaSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(sstPayload), {
     minValue: 10,
     maxValue: 40,
+    maxAgeDays: 45,
+  });
+  const globalSeaSurfaceTemperatureAnomaly = sanitizeSeries(parseReanalyzerDailyAnomalyJson(sstPayload, "1991-2020"), {
+    minValue: -10,
+    maxValue: 10,
     maxAgeDays: 45,
   });
   const arcticSeaIceExtent = sanitizeSeries(parseNsidcDailyExtentCsv(northCsv), {
@@ -355,6 +413,10 @@ async function updateOnce() {
     sources: {
       global_surface_temperature: ERA5_GLOBAL_SURFACE_TEMP_URL,
       global_sea_surface_temperature: OISST_GLOBAL_SST_URL,
+      global_surface_temperature_anomaly:
+        "Derived from ERA5 daily global surface temperature minus 1991-2020 daily climatology from the same feed.",
+      global_sea_surface_temperature_anomaly:
+        "Derived from OISST v2.1 daily global SST minus 1991-2020 daily climatology from the same feed.",
       global_sea_ice_extent: "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files.",
       arctic_sea_ice_extent: NSIDC_NORTH_DAILY_EXTENT_URL,
       antarctic_sea_ice_extent: NSIDC_SOUTH_DAILY_EXTENT_URL,
@@ -363,6 +425,8 @@ async function updateOnce() {
     series: {
       global_surface_temperature: globalSurfaceTemperature,
       global_sea_surface_temperature: globalSeaSurfaceTemperature,
+      global_surface_temperature_anomaly: globalSurfaceTemperatureAnomaly,
+      global_sea_surface_temperature_anomaly: globalSeaSurfaceTemperatureAnomaly,
       global_sea_ice_extent: globalSeaIceExtent,
       arctic_sea_ice_extent: arcticSeaIceExtent,
       antarctic_sea_ice_extent: antarcticSeaIceExtent,
@@ -371,6 +435,8 @@ async function updateOnce() {
     summary: {
       global_surface_temperature: summarize(globalSurfaceTemperature),
       global_sea_surface_temperature: summarize(globalSeaSurfaceTemperature),
+      global_surface_temperature_anomaly: summarize(globalSurfaceTemperatureAnomaly),
+      global_sea_surface_temperature_anomaly: summarize(globalSeaSurfaceTemperatureAnomaly),
       global_sea_ice_extent: summarize(globalSeaIceExtent),
       arctic_sea_ice_extent: summarize(arcticSeaIceExtent),
       antarctic_sea_ice_extent: summarize(antarcticSeaIceExtent),
@@ -381,6 +447,8 @@ async function updateOnce() {
   if (
     !output.series.global_surface_temperature.length ||
     !output.series.global_sea_surface_temperature.length ||
+    !output.series.global_surface_temperature_anomaly.length ||
+    !output.series.global_sea_surface_temperature_anomaly.length ||
     !output.series.global_sea_ice_extent.length ||
     !output.series.arctic_sea_ice_extent.length ||
     !output.series.antarctic_sea_ice_extent.length ||
