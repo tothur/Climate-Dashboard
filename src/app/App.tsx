@@ -18,11 +18,19 @@ const TEMPERATURE_ANOMALY_KEYS = new Set(["global_surface_temperature_anomaly", 
 const GLOBAL_TEMPERATURE_KEYS = new Set(["global_surface_temperature", "global_sea_surface_temperature"]);
 const REGIONAL_TEMPERATURE_KEYS = new Set([
   "northern_hemisphere_surface_temperature",
-  "arctic_surface_temperature",
-  "north_atlantic_sea_surface_temperature",
   "southern_hemisphere_surface_temperature",
+  "arctic_surface_temperature",
   "antarctic_surface_temperature",
+  "north_atlantic_sea_surface_temperature",
 ]);
+const REGIONAL_TEMPERATURE_ORDER: ClimateMetricSeries["key"][] = [
+  "northern_hemisphere_surface_temperature",
+  "southern_hemisphere_surface_temperature",
+  "arctic_surface_temperature",
+  "antarctic_surface_temperature",
+  "north_atlantic_sea_surface_temperature",
+];
+const REGIONAL_TEMPERATURE_RANK = new Map(REGIONAL_TEMPERATURE_ORDER.map((key, index) => [key, index]));
 
 const STRINGS = {
   en: {
@@ -314,15 +322,15 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
     case "global_sea_surface_temperature":
       return { min: 19.5, max: 21.5 };
     case "northern_hemisphere_surface_temperature":
-      return { min: 6, max: 23 };
+      return { min: 6, max: 24 };
     case "southern_hemisphere_surface_temperature":
       return { min: 9, max: 18 };
     case "arctic_surface_temperature":
-      return { min: -40, max: 10 };
+      return { min: -35, max: 10 };
     case "antarctic_surface_temperature":
-      return { min: -42, max: 2 };
+      return { min: -40, max: -8 };
     case "north_atlantic_sea_surface_temperature":
-      return { min: 18, max: 28 };
+      return { min: 18, max: 26 };
     case "global_surface_temperature_anomaly":
     case "global_sea_surface_temperature_anomaly":
       return { min: -2, max: 2 };
@@ -476,7 +484,14 @@ export function App() {
     [indicatorLines]
   );
   const regionalTemperatureLines = useMemo(
-    () => indicatorLines.filter(({ metric }) => REGIONAL_TEMPERATURE_KEYS.has(metric.key)),
+    () =>
+      indicatorLines
+        .filter(({ metric }) => REGIONAL_TEMPERATURE_KEYS.has(metric.key))
+        .sort((left, right) => {
+          const leftRank = REGIONAL_TEMPERATURE_RANK.get(left.metric.key) ?? Number.MAX_SAFE_INTEGER;
+          const rightRank = REGIONAL_TEMPERATURE_RANK.get(right.metric.key) ?? Number.MAX_SAFE_INTEGER;
+          return leftRank - rightRank;
+        }),
     [indicatorLines]
   );
   const seaIceIndicatorLines = useMemo(
