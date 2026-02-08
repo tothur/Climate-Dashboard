@@ -10,7 +10,7 @@ const STORAGE_LANG_KEY = "climate-dashboard-lang";
 const STORAGE_THEME_KEY = "climate-dashboard-theme";
 const REFERENCE_LEAP_YEAR = 2024;
 const REFERENCE_LEAP_YEAR_START_UTC = Date.UTC(REFERENCE_LEAP_YEAR, 0, 1);
-const EARTH_LOGO_URL = `${import.meta.env.BASE_URL}earth-logo.svg`;
+const EARTH_LOGO_URL = `${import.meta.env.BASE_URL}earthicon.png`;
 
 const STRINGS = {
   en: {
