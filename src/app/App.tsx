@@ -447,6 +447,20 @@ function forcingAxisBounds(metricKey: ClimateMetricSeries["key"]): { yMin?: numb
   }
 }
 
+function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, language: Language): string {
+  if (language !== "hu") return unit;
+  if (SEA_ICE_KEYS.has(metricKey)) return "millió km2";
+  if (
+    GLOBAL_TEMPERATURE_KEYS.has(metricKey) ||
+    REGIONAL_TEMPERATURE_KEYS.has(metricKey) ||
+    TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
+    metricKey === DAILY_GLOBAL_MEAN_ANOMALY_KEY
+  ) {
+    return "Celsius-fok";
+  }
+  return unit;
+}
+
 export function App() {
   const [language, setLanguage] = useState<Language>(() => safeLanguage(localStorage.getItem(STORAGE_LANG_KEY)));
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => safeTheme(localStorage.getItem(STORAGE_THEME_KEY)));
@@ -694,7 +708,11 @@ export function App() {
                 minimumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
                 maximumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
               }).format(latestAnnualGlobalMeanAnomaly.value)}{" "}
-              {dailyGlobalMeanAnomalyMetric?.unit ?? "deg C"}
+              {cardUnitLabel(
+                DAILY_GLOBAL_MEAN_ANOMALY_KEY,
+                dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+                language
+              )}
             </p>
             <p>
               {t.yearLabel}: {latestAnnualGlobalMeanAnomaly.year}
@@ -712,7 +730,7 @@ export function App() {
             <span className="alert-kicker">{t.latestLabel}</span>
             <h2>{metricTitle(metric, language)}</h2>
             <p className="alert-emphasis">
-              {formatMetricValue(metric, language, t.valueUnavailable)} {metric.unit}
+              {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
             </p>
             <p>
               {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
@@ -838,7 +856,7 @@ export function App() {
                     <span className="alert-kicker">{t.latestLabel}</span>
                     <h2>{metricTitle(metric, language)}</h2>
                     <p className="alert-emphasis">
-                      {formatMetricValue(metric, language, t.valueUnavailable)} {metric.unit}
+                      {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
                     </p>
                     <p>
                       {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
@@ -867,7 +885,7 @@ export function App() {
                     <span className="alert-kicker">{t.latestLabel}</span>
                     <h2>{metricTitle(metric, language)}</h2>
                     <p className="alert-emphasis">
-                      {formatMetricValue(metric, language, t.valueUnavailable)} {metric.unit}
+                      {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
                     </p>
                     <p>
                       {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
@@ -913,7 +931,7 @@ export function App() {
                   <span className="alert-kicker">{t.latestLabel}</span>
                   <h2>{metricTitle(metric, language)}</h2>
                   <p className="alert-emphasis">
-                    {formatMetricValue(metric, language, t.valueUnavailable)} {metric.unit}
+                    {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
                   </p>
                   <p>
                     {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
