@@ -65,7 +65,7 @@ const STRINGS = {
     globalTemperaturesSectionNote: "Global surface and sea surface temperatures in a Jan-Dec daily comparison view.",
     temperatureAnomalySectionTitle: "Temperature Anomalies",
     temperatureAnomalySectionNote:
-      "Anomalies relative to the 1991-2020 daily climatology, shown for the current year and previous year.",
+      "Anomalies relative to the 1991-2020 daily climatology, shown for the current and previous year plus a long-run daily global series.",
     regionalTemperaturesSectionTitle: "Regional Temperatures",
     regionalTemperaturesSectionNote:
       "Daily Jan-Dec comparison for Northern Hemisphere, Arctic, North Atlantic SST, Southern Hemisphere, and Antarctic temperatures.",
@@ -109,7 +109,7 @@ const STRINGS = {
     globalTemperaturesSectionNote: "Globális felszíni és tengerfelszíni hőmérsékletek Jan-Dec napi összehasonlító nézetben.",
     temperatureAnomalySectionTitle: "Hőmérsékleti Anomáliák",
     temperatureAnomalySectionNote:
-      "Anomáliák az 1991-2020 napi klimatológiához képest, az aktuális és az előző év megjelenítésével.",
+      "Anomáliák az 1991-2020 napi klimatológiához képest, az aktuális és előző év mellett egy hosszú, napi globális idősorral.",
     regionalTemperaturesSectionTitle: "Regionális Hőmérsékletek",
     regionalTemperaturesSectionNote:
       "Napi Jan-Dec összehasonlítás az északi félteke, Arktisz, észak-atlanti SST, déli félteke és Antarktisz hőmérsékleteivel.",
@@ -685,31 +685,31 @@ export function App() {
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
                 )}
                 {dailyGlobalMeanAnomalyMetric ? (
-                  <div className="climate-chart-wide">
-                    <EChartsPanel
-                      title={metricTitle(dailyGlobalMeanAnomalyMetric, language)}
-                      subtitle={dailyGlobalMeanAnomalyMetric.source.shortName}
-                      option={buildClimateTrendOption({
-                        points: dailyGlobalMeanAnomalyMetric.points,
-                        seriesName: metricTitle(dailyGlobalMeanAnomalyMetric, language),
-                        unit: dailyGlobalMeanAnomalyMetric.unit,
-                        decimals: dailyGlobalMeanAnomalyMetric.decimals,
-                        yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
-                        yAxisMax: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).max,
-                        yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
-                        compact,
-                        dark: resolvedTheme === "dark",
-                        referenceLines: [
-                          { value: 1.5, label: "1.5°C", color: resolvedTheme === "dark" ? "#fbbf24" : "#f59e0b" },
-                          { value: 2, label: "2.0°C", color: resolvedTheme === "dark" ? "#f87171" : "#dc2626" },
-                        ],
-                        labels: {
-                          noData: t.noData,
-                          latest: t.chartLatest,
-                        },
-                      })}
-                    />
-                  </div>
+                  <EChartsPanel
+                    title={metricTitle(dailyGlobalMeanAnomalyMetric, language)}
+                    subtitle={dailyGlobalMeanAnomalyMetric.source.shortName}
+                    option={buildClimateTrendOption({
+                      points: dailyGlobalMeanAnomalyMetric.points,
+                      seriesName: metricTitle(dailyGlobalMeanAnomalyMetric, language),
+                      unit: dailyGlobalMeanAnomalyMetric.unit,
+                      decimals: dailyGlobalMeanAnomalyMetric.decimals,
+                      yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
+                      yAxisMax: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).max,
+                      yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
+                      xAxisYearLabelStep: 10,
+                      disableDataZoom: true,
+                      compact,
+                      dark: resolvedTheme === "dark",
+                      referenceLines: [
+                        { value: 1.5, label: "1.5°C", color: resolvedTheme === "dark" ? "#fbbf24" : "#f59e0b" },
+                        { value: 2, label: "2.0°C", color: resolvedTheme === "dark" ? "#f87171" : "#dc2626" },
+                      ],
+                      labels: {
+                        noData: t.noData,
+                        latest: t.chartLatest,
+                      },
+                    })}
+                  />
                 ) : null}
               </div>
             </div>

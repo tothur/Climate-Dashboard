@@ -10,6 +10,8 @@ interface BuildClimateTrendOptionArgs {
   yAxisMin?: number;
   yAxisMax?: number;
   yAxisUnitLabel?: string;
+  xAxisYearLabelStep?: number;
+  disableDataZoom?: boolean;
   compact: boolean;
   dark?: boolean;
   color?: string;
@@ -76,21 +78,28 @@ function yearFromDateToken(value: string): string {
   return match?.[1] ?? "";
 }
 
-function buildYearAxisLabelMap(labels: string[]): Map<string, string> {
+function buildYearAxisLabelMap(labels: string[], yearStep = 1): Map<string, string> {
+  const safeStep = Math.max(1, Math.floor(yearStep));
   const map = new Map<string, string>();
-  let previousYear = "";
   for (const label of labels) {
-    const year = yearFromDateToken(label);
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(label);
+    const year = match?.[1] ?? yearFromDateToken(label);
     if (!year) {
       map.set(label, label);
       continue;
     }
-    if (year !== previousYear) {
+
+    if (!match) {
       map.set(label, year);
-      previousYear = year;
       continue;
     }
-    map.set(label, "");
+
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const numericYear = Number(year);
+    const isYearAnchor = month === 1 && day === 1;
+    const shouldShow = isYearAnchor && Number.isFinite(numericYear) && numericYear % safeStep === 0;
+    map.set(label, shouldShow ? year : "");
   }
   return map;
 }
@@ -361,6 +370,8 @@ export function buildClimateTrendOption({
   yAxisMin,
   yAxisMax,
   yAxisUnitLabel,
+  xAxisYearLabelStep = 1,
+  disableDataZoom = false,
   compact,
   dark = false,
   color,
@@ -410,9 +421,9 @@ export function buildClimateTrendOption({
   const hasData = xLabels.length > 0;
   const currentDateLabel = hasData ? xLabels[xLabels.length - 1] : null;
 
-  const dataZoom = buildCompactDataZoom(xLabels, compact, palette);
+  const dataZoom = disableDataZoom ? undefined : buildCompactDataZoom(xLabels, compact, palette);
   const formatter = formatterFor(decimals);
-  const xAxisYearLabels = buildYearAxisLabelMap(xLabels);
+  const xAxisYearLabels = buildYearAxisLabelMap(xLabels, xAxisYearLabelStep);
   const yAxisName = yAxisUnitLabel?.trim() || undefined;
   const markLineData: Array<Record<string, unknown>> = [];
 

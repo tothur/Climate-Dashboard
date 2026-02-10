@@ -153,8 +153,8 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     },
   },
   daily_global_mean_temperature_anomaly: {
-    titleEn: "Daily Global Mean Temperature Anomaly",
-    titleHu: "Napi globális átlaghőmérséklet-anomália",
+    titleEn: "Daily Global Mean Temperature Anomaly (vs 1991-2020)",
+    titleHu: "Napi globális átlaghőmérséklet-anomália (1991-2020-hoz képest)",
     unit: "deg C",
     decimals: 2,
     source: {
