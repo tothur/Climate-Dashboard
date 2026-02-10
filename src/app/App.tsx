@@ -66,8 +66,10 @@ const STRINGS = {
     temperatureAnomalySectionTitle: "Temperature Anomalies",
     temperatureAnomalySectionNote:
       "Anomalies relative to the 1991-2020 daily climatology, shown for the current and previous year plus a long-run daily global series.",
-    annualGlobalTemperatureAnomalyTitle: "Annual Global Temperature Anomaly (vs 1991-2020)",
-    annualGlobalTemperatureAnomalySubtitle: "Derived annual mean from ECMWF ERA5 Climate Pulse daily anomalies.",
+    dailyGlobalTemperatureAnomalyTitle: "Daily Global Mean Temperature Anomaly",
+    dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, 1991-2020)",
+    annualGlobalTemperatureAnomalyTitle: "Annual Global Temperature Anomaly",
+    annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, 1991-2020)",
     regionalTemperaturesSectionTitle: "Regional Temperatures",
     regionalTemperaturesSectionNote:
       "Daily Jan-Dec comparison for Northern Hemisphere, Arctic, North Atlantic SST, Southern Hemisphere, and Antarctic temperatures.",
@@ -112,8 +114,10 @@ const STRINGS = {
     temperatureAnomalySectionTitle: "Hőmérsékleti Anomáliák",
     temperatureAnomalySectionNote:
       "Anomáliák az 1991-2020 napi klimatológiához képest, az aktuális és előző év mellett egy hosszú, napi globális idősorral.",
-    annualGlobalTemperatureAnomalyTitle: "Éves globális hőmérsékleti anomália (1991-2020-hoz képest)",
-    annualGlobalTemperatureAnomalySubtitle: "Az ECMWF ERA5 Climate Pulse napi anomália adataiból számított éves átlag.",
+    dailyGlobalTemperatureAnomalyTitle: "Napi globális átlaghőmérséklet-anomália",
+    dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, 1991-2020)",
+    annualGlobalTemperatureAnomalyTitle: "Éves globális hőmérsékleti anomália",
+    annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, 1991-2020)",
     regionalTemperaturesSectionTitle: "Regionális Hőmérsékletek",
     regionalTemperaturesSectionNote:
       "Napi Jan-Dec összehasonlítás az északi félteke, Arktisz, észak-atlanti SST, déli félteke és Antarktisz hőmérsékleteivel.",
@@ -377,7 +381,7 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
     case "global_sea_surface_temperature_anomaly":
       return { min: -2, max: 2 };
     case "daily_global_mean_temperature_anomaly":
-      return { min: -2.5, max: 2.5 };
+      return { min: -2, max: 2 };
     case "global_sea_ice_extent":
       return { min: 10, max: 30 };
     case "arctic_sea_ice_extent":
@@ -719,11 +723,11 @@ export function App() {
                 )}
                 {dailyGlobalMeanAnomalyMetric ? (
                   <EChartsPanel
-                    title={metricTitle(dailyGlobalMeanAnomalyMetric, language)}
-                    subtitle={dailyGlobalMeanAnomalyMetric.source.shortName}
+                    title={t.dailyGlobalTemperatureAnomalyTitle}
+                    subtitle={t.dailyGlobalTemperatureAnomalySubtitle}
                     option={buildClimateTrendOption({
                       points: dailyGlobalMeanAnomalyMetric.points,
-                      seriesName: metricTitle(dailyGlobalMeanAnomalyMetric, language),
+                      seriesName: t.dailyGlobalTemperatureAnomalyTitle,
                       unit: dailyGlobalMeanAnomalyMetric.unit,
                       decimals: dailyGlobalMeanAnomalyMetric.decimals,
                       yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
@@ -731,6 +735,8 @@ export function App() {
                       yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
                       xAxisYearLabelStep: 10,
                       disableDataZoom: true,
+                      forceMappedYearLabels: true,
+                      showLegend: false,
                       compact,
                       dark: resolvedTheme === "dark",
                       referenceLines: [
@@ -758,9 +764,15 @@ export function App() {
                       yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
                       xAxisYearLabelStep: 10,
                       disableDataZoom: true,
+                      forceMappedYearLabels: true,
+                      showLegend: false,
                       compact,
                       dark: resolvedTheme === "dark",
                       color: resolvedTheme === "dark" ? "#38bdf8" : "#0284c7",
+                      referenceLines: [
+                        { value: 1.5, label: "1.5°C", color: resolvedTheme === "dark" ? "#fbbf24" : "#f59e0b" },
+                        { value: 2, label: "2.0°C", color: resolvedTheme === "dark" ? "#f87171" : "#dc2626" },
+                      ],
                       labels: {
                         noData: t.noData,
                         latest: t.chartLatest,

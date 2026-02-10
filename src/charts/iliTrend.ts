@@ -12,6 +12,8 @@ interface BuildClimateTrendOptionArgs {
   yAxisUnitLabel?: string;
   xAxisYearLabelStep?: number;
   disableDataZoom?: boolean;
+  forceMappedYearLabels?: boolean;
+  showLegend?: boolean;
   compact: boolean;
   dark?: boolean;
   color?: string;
@@ -372,6 +374,8 @@ export function buildClimateTrendOption({
   yAxisUnitLabel,
   xAxisYearLabelStep = 1,
   disableDataZoom = false,
+  forceMappedYearLabels = false,
+  showLegend,
   compact,
   dark = false,
   color,
@@ -451,7 +455,7 @@ export function buildClimateTrendOption({
       label: {
         show: true,
         formatter: line.label,
-        position: "end",
+        position: "start",
         color: line.color,
         fontWeight: 700,
       },
@@ -497,7 +501,7 @@ export function buildClimateTrendOption({
       },
     },
     legend: {
-      show: !compact,
+      show: showLegend ?? !compact,
       top: 4,
       left: 8,
       right: 8,
@@ -517,8 +521,13 @@ export function buildClimateTrendOption({
       axisLine: { lineStyle: { color: palette.axisLine } },
       axisLabel: {
         color: palette.axisLabel,
-        interval: compact ? "auto" : "auto",
-        hideOverlap: true,
+        interval: forceMappedYearLabels
+          ? (index: number, value: string) => {
+              const label = xAxisYearLabels.get(String(value)) ?? "";
+              return label.length > 0;
+            }
+          : "auto",
+        hideOverlap: !forceMappedYearLabels,
         formatter: (value: string) => xAxisYearLabels.get(String(value)) ?? "",
       },
     },
