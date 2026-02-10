@@ -12,6 +12,7 @@ const ERA5_ARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/jso
 const ERA5_ANTARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_antarctic_t2_day.json";
 const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json";
 const OISST_NORTH_ATLANTIC_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json";
+const ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL = "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv";
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
@@ -318,6 +319,41 @@ function parseNoaaCh4MonthlyCsv(rawCsv) {
   return normalizePoints(points);
 }
 
+function parseEcmwfClimatePulseGlobal2tDailyCsv(rawCsv) {
+  const points = [];
+  const lines = rawCsv.split(/\r?\n/);
+  let dateColumn = -1;
+  let anomalyColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(",").map((col) => col.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((col) => col.toLowerCase());
+      dateColumn = header.indexOf("date");
+      anomalyColumn = header.indexOf("ano_91-20");
+      hasHeader = true;
+      continue;
+    }
+
+    if (dateColumn < 0 || anomalyColumn < 0) continue;
+    if (columns.length <= dateColumn || columns.length <= anomalyColumn) continue;
+
+    const date = columns[dateColumn];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+
+    const value = toFiniteNumber(columns[anomalyColumn]);
+    if (value == null) continue;
+
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
 function mergeSeaIceSeries(north, south) {
   const northMap = new Map(north.map((point) => [point.date, point.value]));
   const southMap = new Map(south.map((point) => [point.date, point.value]));
@@ -397,7 +433,20 @@ function printHelp() {
 }
 
 async function updateOnce() {
-  const [surfacePayload, sstPayload, nhPayload, shPayload, arcticPayload, antarcticPayload, northAtlanticSstPayload, northCsv, southCsv, co2Csv, ch4Csv] = await Promise.all([
+  const [
+    surfacePayload,
+    sstPayload,
+    nhPayload,
+    shPayload,
+    arcticPayload,
+    antarcticPayload,
+    northAtlanticSstPayload,
+    northCsv,
+    southCsv,
+    co2Csv,
+    ch4Csv,
+    dailyGlobalMeanAnomalyCsv,
+  ] = await Promise.all([
     fetchJson(ERA5_GLOBAL_SURFACE_TEMP_URL),
     fetchJson(OISST_GLOBAL_SST_URL),
     fetchJson(ERA5_NH_SURFACE_TEMP_URL),
@@ -409,6 +458,7 @@ async function updateOnce() {
     fetchText(NSIDC_SOUTH_DAILY_EXTENT_URL),
     fetchText(NOAA_MAUNA_LOA_CO2_DAILY_URL),
     fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
+    fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
   ]);
 
   const globalSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(surfacePayload), {
@@ -484,6 +534,11 @@ async function updateOnce() {
     maxValue: 3000,
     maxAgeDays: 220,
   });
+  const dailyGlobalMeanTemperatureAnomaly = sanitizeSeries(parseEcmwfClimatePulseGlobal2tDailyCsv(dailyGlobalMeanAnomalyCsv), {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 20,
+  });
 
   const generatedAtIso = new Date().toISOString();
 
@@ -501,6 +556,7 @@ async function updateOnce() {
         "Derived from ERA5 daily global surface temperature minus 1991-2020 daily climatology from the same feed.",
       global_sea_surface_temperature_anomaly:
         "Derived from OISST v2.1 daily global SST minus 1991-2020 daily climatology from the same feed.",
+      daily_global_mean_temperature_anomaly: ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL,
       global_sea_ice_extent: "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files.",
       arctic_sea_ice_extent: NSIDC_NORTH_DAILY_EXTENT_URL,
       antarctic_sea_ice_extent: NSIDC_SOUTH_DAILY_EXTENT_URL,
@@ -517,6 +573,7 @@ async function updateOnce() {
       north_atlantic_sea_surface_temperature: northAtlanticSeaSurfaceTemperature,
       global_surface_temperature_anomaly: globalSurfaceTemperatureAnomaly,
       global_sea_surface_temperature_anomaly: globalSeaSurfaceTemperatureAnomaly,
+      daily_global_mean_temperature_anomaly: dailyGlobalMeanTemperatureAnomaly,
       global_sea_ice_extent: globalSeaIceExtent,
       arctic_sea_ice_extent: arcticSeaIceExtent,
       antarctic_sea_ice_extent: antarcticSeaIceExtent,
@@ -533,6 +590,7 @@ async function updateOnce() {
       north_atlantic_sea_surface_temperature: summarize(northAtlanticSeaSurfaceTemperature),
       global_surface_temperature_anomaly: summarize(globalSurfaceTemperatureAnomaly),
       global_sea_surface_temperature_anomaly: summarize(globalSeaSurfaceTemperatureAnomaly),
+      daily_global_mean_temperature_anomaly: summarize(dailyGlobalMeanTemperatureAnomaly),
       global_sea_ice_extent: summarize(globalSeaIceExtent),
       arctic_sea_ice_extent: summarize(arcticSeaIceExtent),
       antarctic_sea_ice_extent: summarize(antarcticSeaIceExtent),
@@ -551,6 +609,7 @@ async function updateOnce() {
     !output.series.north_atlantic_sea_surface_temperature.length ||
     !output.series.global_surface_temperature_anomaly.length ||
     !output.series.global_sea_surface_temperature_anomaly.length ||
+    !output.series.daily_global_mean_temperature_anomaly.length ||
     !output.series.global_sea_ice_extent.length ||
     !output.series.arctic_sea_ice_extent.length ||
     !output.series.antarctic_sea_ice_extent.length ||

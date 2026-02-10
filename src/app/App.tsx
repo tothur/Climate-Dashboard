@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { buildDashboardSnapshot, createBundledDataSource } from "../data/adapter";
 import type { DashboardDataSource, Language, ResolvedTheme, ThemeMode, ClimateMetricSeries, DailyPoint } from "../domain/model";
 import { loadRuntimeDataSource } from "../data/runtime-source";
-import { buildClimateMonthlyComparisonOption } from "../charts/iliTrend";
+import { buildClimateMonthlyComparisonOption, buildClimateTrendOption } from "../charts/iliTrend";
 import { buildForcingTrendOption } from "../charts/historicalTrend";
 import { EChartsPanel } from "../components/EChartsPanel";
 
@@ -15,6 +15,7 @@ const CLIMATOLOGY_BASELINE_END_YEAR = 2020;
 const EARTH_LOGO_URL = `${import.meta.env.BASE_URL}earthicon.png`;
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const TEMPERATURE_ANOMALY_KEYS = new Set(["global_surface_temperature_anomaly", "global_sea_surface_temperature_anomaly"]);
+const DAILY_GLOBAL_MEAN_ANOMALY_KEY: ClimateMetricSeries["key"] = "daily_global_mean_temperature_anomaly";
 const GLOBAL_TEMPERATURE_KEYS = new Set(["global_surface_temperature", "global_sea_surface_temperature"]);
 const REGIONAL_TEMPERATURE_KEYS = new Set([
   "northern_hemisphere_surface_temperature",
@@ -346,6 +347,8 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
     case "global_surface_temperature_anomaly":
     case "global_sea_surface_temperature_anomaly":
       return { min: -2, max: 2 };
+    case "daily_global_mean_temperature_anomaly":
+      return { min: -2.5, max: 2.5 };
     case "global_sea_ice_extent":
       return { min: 10, max: 30 };
     case "arctic_sea_ice_extent":
@@ -368,6 +371,7 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
     case "north_atlantic_sea_surface_temperature":
     case "global_surface_temperature_anomaly":
     case "global_sea_surface_temperature_anomaly":
+    case "daily_global_mean_temperature_anomaly":
       return language === "hu" ? "Celsius-fok" : "degrees °C";
     case "global_sea_ice_extent":
     case "arctic_sea_ice_extent":
@@ -501,6 +505,10 @@ export function App() {
   const anomalyTemperatureLines = useMemo(
     () => indicatorLines.filter(({ metric }) => TEMPERATURE_ANOMALY_KEYS.has(metric.key)),
     [indicatorLines]
+  );
+  const dailyGlobalMeanAnomalyMetric = useMemo(
+    () => snapshot.indicators.find((metric) => metric.key === DAILY_GLOBAL_MEAN_ANOMALY_KEY) ?? null,
+    [snapshot.indicators]
   );
   const regionalTemperatureLines = useMemo(
     () =>
@@ -676,6 +684,33 @@ export function App() {
                 {anomalyTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
                 )}
+                {dailyGlobalMeanAnomalyMetric ? (
+                  <div className="climate-chart-wide">
+                    <EChartsPanel
+                      title={metricTitle(dailyGlobalMeanAnomalyMetric, language)}
+                      subtitle={dailyGlobalMeanAnomalyMetric.source.shortName}
+                      option={buildClimateTrendOption({
+                        points: dailyGlobalMeanAnomalyMetric.points,
+                        seriesName: metricTitle(dailyGlobalMeanAnomalyMetric, language),
+                        unit: dailyGlobalMeanAnomalyMetric.unit,
+                        decimals: dailyGlobalMeanAnomalyMetric.decimals,
+                        yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
+                        yAxisMax: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).max,
+                        yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
+                        compact,
+                        dark: resolvedTheme === "dark",
+                        referenceLines: [
+                          { value: 1.5, label: "1.5°C", color: resolvedTheme === "dark" ? "#fbbf24" : "#f59e0b" },
+                          { value: 2, label: "2.0°C", color: resolvedTheme === "dark" ? "#f87171" : "#dc2626" },
+                        ],
+                        labels: {
+                          noData: t.noData,
+                          latest: t.chartLatest,
+                        },
+                      })}
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
 

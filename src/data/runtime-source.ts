@@ -8,6 +8,7 @@ const ERA5_ARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/jso
 const ERA5_ANTARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_antarctic_t2_day.json";
 const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json";
 const OISST_NORTH_ATLANTIC_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json";
+const ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL = "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv";
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
@@ -27,6 +28,7 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "north_atlantic_sea_surface_temperature",
   "global_surface_temperature_anomaly",
   "global_sea_surface_temperature_anomaly",
+  "daily_global_mean_temperature_anomaly",
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
   "antarctic_sea_ice_extent",
@@ -360,6 +362,41 @@ function parseNoaaCh4MonthlyCsv(rawCsv: string): DailyPoint[] {
   return normalizePoints(points);
 }
 
+function parseEcmwfClimatePulseGlobal2tDailyCsv(rawCsv: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  const lines = rawCsv.split(/\r?\n/);
+  let dateColumn = -1;
+  let anomalyColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(",").map((col) => col.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((col) => col.toLowerCase());
+      dateColumn = header.indexOf("date");
+      anomalyColumn = header.indexOf("ano_91-20");
+      hasHeader = true;
+      continue;
+    }
+
+    if (dateColumn < 0 || anomalyColumn < 0) continue;
+    if (columns.length <= dateColumn || columns.length <= anomalyColumn) continue;
+
+    const date = columns[dateColumn];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+
+    const value = toFiniteNumber(columns[anomalyColumn]);
+    if (value == null) continue;
+
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
 function mergeSeaIceSeries(north: DailyPoint[], south: DailyPoint[]): DailyPoint[] {
   const northMap = new Map<string, number>(north.map((point) => [point.date, point.value]));
   const southMap = new Map<string, number>(south.map((point) => [point.date, point.value]));
@@ -551,6 +588,17 @@ async function loadCh4Series(): Promise<DailyPoint[] | null> {
   return points.length ? points : null;
 }
 
+async function loadDailyGlobalMeanTemperatureAnomalySeries(): Promise<DailyPoint[] | null> {
+  const csv = await fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL);
+  if (!csv) return null;
+  const points = sanitizeSeries(parseEcmwfClimatePulseGlobal2tDailyCsv(csv), {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 20,
+  });
+  return points.length ? points : null;
+}
+
 export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
   const localDataSource = await loadGeneratedLocalDataSource();
   if (localDataSource) return localDataSource;
@@ -558,13 +606,15 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
   const warnings: string[] = [];
   const liveSeries: Partial<ClimateSeriesBundle> = {};
 
-  const [surfaceResult, sstResult, regionalResult, seaIceResult, co2Result, ch4Result] = await Promise.allSettled([
+  const [surfaceResult, sstResult, regionalResult, seaIceResult, co2Result, ch4Result, dailyGlobalMeanAnomalyResult] =
+    await Promise.allSettled([
     loadSurfaceTempSeriesBundle(),
     loadSeaSurfaceTempSeriesBundle(),
     loadRegionalTemperatureSeriesBundle(),
     loadSeaIceSeriesBundle(),
     loadCo2Series(),
     loadCh4Series(),
+    loadDailyGlobalMeanTemperatureAnomalySeries(),
   ]);
 
   if (surfaceResult.status === "fulfilled" && surfaceResult.value.absolute?.length) {
@@ -663,6 +713,12 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     liveSeries.atmospheric_ch4 = ch4Result.value;
   } else {
     warnings.push("Live global CH4 feed was unavailable or stale; using bundled fallback.");
+  }
+
+  if (dailyGlobalMeanAnomalyResult.status === "fulfilled" && dailyGlobalMeanAnomalyResult.value?.length) {
+    liveSeries.daily_global_mean_temperature_anomaly = dailyGlobalMeanAnomalyResult.value;
+  } else {
+    warnings.push("Live Daily Global Mean Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
   }
 
   return createDataSourceFromSeries({

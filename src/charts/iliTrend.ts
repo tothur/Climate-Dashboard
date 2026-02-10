@@ -9,9 +9,15 @@ interface BuildClimateTrendOptionArgs {
   decimals?: number;
   yAxisMin?: number;
   yAxisMax?: number;
+  yAxisUnitLabel?: string;
   compact: boolean;
   dark?: boolean;
   color?: string;
+  referenceLines?: Array<{
+    value: number;
+    label: string;
+    color: string;
+  }>;
   labels?: {
     noData: string;
     latest: string;
@@ -354,9 +360,11 @@ export function buildClimateTrendOption({
   decimals = 2,
   yAxisMin,
   yAxisMax,
+  yAxisUnitLabel,
   compact,
   dark = false,
   color,
+  referenceLines,
   labels,
 }: BuildClimateTrendOptionArgs): EChartsOption {
   const palette = dark
@@ -405,6 +413,39 @@ export function buildClimateTrendOption({
   const dataZoom = buildCompactDataZoom(xLabels, compact, palette);
   const formatter = formatterFor(decimals);
   const xAxisYearLabels = buildYearAxisLabelMap(xLabels);
+  const yAxisName = yAxisUnitLabel?.trim() || undefined;
+  const markLineData: Array<Record<string, unknown>> = [];
+
+  if (currentDateLabel) {
+    markLineData.push({
+      xAxis: currentDateLabel,
+      lineStyle: { color: palette.currentWeekLine, width: 1.3, type: "dashed" },
+      label: {
+        show: !compact,
+        formatter: latestText,
+        color: palette.axisLabel,
+      },
+    });
+  }
+
+  for (const line of referenceLines ?? []) {
+    if (!Number.isFinite(line.value)) continue;
+    markLineData.push({
+      yAxis: line.value,
+      lineStyle: {
+        color: line.color,
+        width: 1.2,
+        type: "dashed",
+      },
+      label: {
+        show: true,
+        formatter: line.label,
+        position: "end",
+        color: line.color,
+        fontWeight: 700,
+      },
+    });
+  }
 
   return {
     animation: false,
@@ -413,7 +454,7 @@ export function buildClimateTrendOption({
       top: compact ? 40 : 86,
       right: 18,
       bottom: compact && dataZoom ? 58 : 38,
-      left: 58,
+      left: yAxisName ? (compact ? 78 : 84) : 58,
     },
     tooltip: {
       trigger: "axis",
@@ -474,6 +515,15 @@ export function buildClimateTrendOption({
       type: "value",
       min: typeof yAxisMin === "number" ? yAxisMin : undefined,
       max: typeof yAxisMax === "number" ? yAxisMax : undefined,
+      name: yAxisName,
+      nameLocation: "middle",
+      nameRotate: 90,
+      nameGap: compact ? 52 : 58,
+      nameTextStyle: {
+        color: palette.axisLabel,
+        fontWeight: 650,
+        fontSize: compact ? 11 : 12,
+      },
       axisLabel: {
         color: palette.axisLabel,
         formatter: (value: number) => formatter.format(value),
@@ -502,17 +552,12 @@ export function buildClimateTrendOption({
             { offset: 1, color: areaBottomColor },
           ]),
         },
-        markLine: currentDateLabel
+        markLine: markLineData.length
           ? {
               symbol: ["none", "none"],
               silent: true,
-              lineStyle: { color: palette.currentWeekLine, width: 1.3, type: "dashed" },
-              label: {
-                show: !compact,
-                formatter: latestText,
-                color: palette.axisLabel,
-              },
-              data: [{ xAxis: currentDateLabel }],
+              label: { show: false },
+              data: markLineData,
             }
           : undefined,
       },

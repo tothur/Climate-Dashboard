@@ -23,6 +23,7 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "antarctic_surface_temperature",
   "global_surface_temperature_anomaly",
   "global_sea_surface_temperature_anomaly",
+  "daily_global_mean_temperature_anomaly",
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
   "antarctic_sea_ice_extent",
@@ -149,6 +150,20 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionHu:
         "Napi globális tengerfelszíni hőmérséklet-anomália, a NOAA OISST v2.1 napi értékek és az ugyanabban a feedben szereplő 1991-2020-as klimatológia különbségeként.",
       url: "https://climatereanalyzer.org/clim/sst_daily/",
+    },
+  },
+  daily_global_mean_temperature_anomaly: {
+    titleEn: "Daily Global Mean Temperature Anomaly",
+    titleHu: "Napi globális átlaghőmérséklet-anomália",
+    unit: "deg C",
+    decimals: 2,
+    source: {
+      shortName: "ECMWF ERA5 Climate Pulse",
+      descriptionEn:
+        "Daily global mean 2m air-temperature anomaly from ERA5 Climate Pulse (ano_91-20), relative to the 1991-2020 daily climatology.",
+      descriptionHu:
+        "Napi globális átlagos 2m levegőhőmérséklet-anomália az ERA5 Climate Pulse adatsorból (ano_91-20), az 1991-2020 napi klimatológiához képest.",
+      url: "https://pulse.climate.copernicus.eu/",
     },
   },
   global_sea_ice_extent: {

@@ -70,6 +70,13 @@ const SERIES_RULES = {
     minPoints: 8_000,
     minPointsLastYear: 250,
   },
+  daily_global_mean_temperature_anomaly: {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 20,
+    minPoints: 30_000,
+    minPointsLastYear: 300,
+  },
   global_sea_ice_extent: {
     minValue: 0,
     maxValue: 60,
