@@ -61,6 +61,7 @@ const STRINGS = {
     sectionExpand: "Expand",
     sectionCollapse: "Collapse",
     latestLabel: "Latest",
+    latestAnnualLabel: "Latest annual value",
     latestSignalsAria: "Latest climate indicators",
     climateIndicatorsTitle: "Climate Indicators",
     climateIndicatorsNote:
@@ -74,6 +75,8 @@ const STRINGS = {
     dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, estimated 1850-1900 baseline)",
     annualGlobalTemperatureAnomalyTitle: "Annual Global Temperature Anomaly",
     annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, estimated 1850-1900 baseline)",
+    annualGlobalTemperatureAnomalyMethod: "Mean of available daily anomalies (year-to-date for the current year).",
+    yearLabel: "Year",
     regionalTemperaturesSectionTitle: "Regional Temperatures",
     regionalTemperaturesSectionNote:
       "Daily Jan-Dec comparison for Northern Hemisphere, Arctic, North Atlantic SST, Southern Hemisphere, and Antarctic temperatures.",
@@ -109,6 +112,7 @@ const STRINGS = {
     sectionExpand: "Kinyitás",
     sectionCollapse: "Összecsukás",
     latestLabel: "Legfrissebb",
+    latestAnnualLabel: "Legfrissebb éves érték",
     latestSignalsAria: "Legfrissebb klíma indikátorok",
     climateIndicatorsTitle: "Éghajlati Indikátorok",
     climateIndicatorsNote:
@@ -122,6 +126,8 @@ const STRINGS = {
     dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850-1900 bázis)",
     annualGlobalTemperatureAnomalyTitle: "Éves globális hőmérsékleti anomália",
     annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850-1900 bázis)",
+    annualGlobalTemperatureAnomalyMethod: "Az elérhető napi anomáliák átlaga (az aktuális évben évközi átlag).",
+    yearLabel: "Év",
     regionalTemperaturesSectionTitle: "Regionális Hőmérsékletek",
     regionalTemperaturesSectionNote:
       "Napi Jan-Dec összehasonlítás az északi félteke, Arktisz, észak-atlanti SST, déli félteke és Antarktisz hőmérsékleteivel.",
@@ -551,6 +557,17 @@ export function App() {
     () => (dailyGlobalMeanAnomalyMetric ? buildAnnualMeanSeries(dailyGlobalMeanAnomalyMetric.points) : []),
     [dailyGlobalMeanAnomalyMetric]
   );
+  const latestAnnualGlobalMeanAnomaly = useMemo(() => {
+    if (!annualGlobalMeanAnomalyPoints.length) return null;
+    const latest = annualGlobalMeanAnomalyPoints[annualGlobalMeanAnomalyPoints.length - 1];
+    const match = /^(\d{4})-\d{2}-\d{2}$/.exec(latest.date);
+    const year = match ? Number(match[1]) : Number.NaN;
+    if (!Number.isFinite(year) || !Number.isFinite(latest.value)) return null;
+    return {
+      year,
+      value: latest.value,
+    };
+  }, [annualGlobalMeanAnomalyPoints]);
   const regionalTemperatureLines = useMemo(
     () =>
       indicatorLines
@@ -668,6 +685,28 @@ export function App() {
       </header>
 
       <section className="alerts-grid" aria-label={t.latestSignalsAria}>
+        {latestAnnualGlobalMeanAnomaly ? (
+          <article className="alert-card summary" key="annual-global-temperature-anomaly-summary">
+            <span className="alert-kicker">{t.latestAnnualLabel}</span>
+            <h2>{t.annualGlobalTemperatureAnomalyTitle}</h2>
+            <p className="alert-emphasis">
+              {new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
+                minimumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
+                maximumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
+              }).format(latestAnnualGlobalMeanAnomaly.value)}{" "}
+              {dailyGlobalMeanAnomalyMetric?.unit ?? "deg C"}
+            </p>
+            <p>
+              {t.yearLabel}: {latestAnnualGlobalMeanAnomaly.year}
+            </p>
+            <p>{t.annualGlobalTemperatureAnomalyMethod}</p>
+            <div className="alert-meta">
+              <span className="alert-meta-chip confidence-medium">
+                {dailyGlobalMeanAnomalyMetric?.source.shortName ?? "ECMWF ERA5 Climate Pulse"}
+              </span>
+            </div>
+          </article>
+        ) : null}
         {headlineMetrics.map((metric) => (
           <article className="alert-card summary" key={metric.key}>
             <span className="alert-kicker">{t.latestLabel}</span>
