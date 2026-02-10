@@ -9,6 +9,7 @@ const ERA5_ANTARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/
 const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json";
 const OISST_NORTH_ATLANTIC_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json";
 const ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL = "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv";
+const ECMWF_PREINDUSTRIAL_OFFSET_C = 0.88;
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
@@ -388,8 +389,9 @@ function parseEcmwfClimatePulseGlobal2tDailyCsv(rawCsv: string): DailyPoint[] {
     const date = columns[dateColumn];
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
 
-    const value = toFiniteNumber(columns[anomalyColumn]);
-    if (value == null) continue;
+    const anomaly19912020 = toFiniteNumber(columns[anomalyColumn]);
+    if (anomaly19912020 == null) continue;
+    const value = anomaly19912020 + ECMWF_PREINDUSTRIAL_OFFSET_C;
 
     points.push({ date, value });
   }

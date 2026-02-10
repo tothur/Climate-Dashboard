@@ -153,16 +153,16 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     },
   },
   daily_global_mean_temperature_anomaly: {
-    titleEn: "Daily Global Mean Temperature Anomaly (vs 1991-2020)",
-    titleHu: "Napi globális átlaghőmérséklet-anomália (1991-2020-hoz képest)",
+    titleEn: "Daily Global Mean Temperature Anomaly",
+    titleHu: "Napi globális átlaghőmérséklet-anomália",
     unit: "deg C",
     decimals: 2,
     source: {
-      shortName: "ECMWF ERA5 Climate Pulse",
+      shortName: "ECMWF ERA5 Climate Pulse (preindustrial estimate)",
       descriptionEn:
-        "Daily global mean 2m air-temperature anomaly from ERA5 Climate Pulse (ano_91-20), relative to the 1991-2020 daily climatology.",
+        "Daily global mean 2m air-temperature anomaly derived from ERA5 Climate Pulse (ano_91-20) and shifted by +0.88C to approximate an 1850-1900 preindustrial baseline.",
       descriptionHu:
-        "Napi globális átlagos 2m levegőhőmérséklet-anomália az ERA5 Climate Pulse adatsorból (ano_91-20), az 1991-2020 napi klimatológiához képest.",
+        "Napi globális átlagos 2m levegőhőmérséklet-anomália az ERA5 Climate Pulse (ano_91-20) adatsorból, +0,88C eltolással becsült 1850-1900-as preindusztriális bázishoz.",
       url: "https://pulse.climate.copernicus.eu/",
     },
   },

@@ -1,6 +1,7 @@
 import type { ClimateSeriesBundle, DailyPoint, ClimateMetricKey } from "../domain/model";
 
 const DAY_MS = 86_400_000;
+const ECMWF_PREINDUSTRIAL_OFFSET_C = 0.88;
 
 function formatIsoDate(date: Date): string {
   const year = date.getUTCFullYear();
@@ -126,7 +127,12 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
   const globalSeaSurfaceTempClimatology = climatologyByDayOfYear(globalSeaSurfaceTemperature, 1991, 2020);
   const globalSurfaceTemperatureAnomaly = deriveAnomalySeries(globalSurfaceTemperature, globalSurfaceTempClimatology);
   const globalSeaSurfaceTemperatureAnomaly = deriveAnomalySeries(globalSeaSurfaceTemperature, globalSeaSurfaceTempClimatology);
-  const dailyGlobalMeanTemperatureAnomaly = generateSeries("1940-01-01", endDateIso, -0.65, 0.00005, 0.42, 365.25, 0.05);
+  const dailyGlobalMeanTemperatureAnomaly = generateSeries("1940-01-01", endDateIso, -0.65, 0.00005, 0.42, 365.25, 0.05).map(
+    (point) => ({
+      date: point.date,
+      value: Math.round((point.value + ECMWF_PREINDUSTRIAL_OFFSET_C) * 1000) / 1000,
+    })
+  );
   const arcticSeaIce = generateSeries("1979-01-01", endDateIso, 12.8, -0.0004, 3.9, 365.25, 0.12, 0);
   const antarcticSeaIce = generateSeries("1979-01-01", endDateIso, 10.4, -0.0003, 4.3, 365.25, 0.14, 182.625);
   const globalSeaIce = mergeSeriesByDate(arcticSeaIce, antarcticSeaIce);

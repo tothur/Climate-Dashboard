@@ -13,6 +13,7 @@ const ERA5_ANTARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/
 const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json";
 const OISST_NORTH_ATLANTIC_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json";
 const ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL = "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv";
+const ECMWF_PREINDUSTRIAL_OFFSET_C = 0.88;
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
@@ -345,8 +346,9 @@ function parseEcmwfClimatePulseGlobal2tDailyCsv(rawCsv) {
     const date = columns[dateColumn];
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
 
-    const value = toFiniteNumber(columns[anomalyColumn]);
-    if (value == null) continue;
+    const anomaly19912020 = toFiniteNumber(columns[anomalyColumn]);
+    if (anomaly19912020 == null) continue;
+    const value = anomaly19912020 + ECMWF_PREINDUSTRIAL_OFFSET_C;
 
     points.push({ date, value });
   }
@@ -556,7 +558,7 @@ async function updateOnce() {
         "Derived from ERA5 daily global surface temperature minus 1991-2020 daily climatology from the same feed.",
       global_sea_surface_temperature_anomaly:
         "Derived from OISST v2.1 daily global SST minus 1991-2020 daily climatology from the same feed.",
-      daily_global_mean_temperature_anomaly: ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL,
+      daily_global_mean_temperature_anomaly: `${ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL} (ano_91-20 adjusted by +${ECMWF_PREINDUSTRIAL_OFFSET_C}C to approximate 1850-1900 preindustrial baseline)`,
       global_sea_ice_extent: "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files.",
       arctic_sea_ice_extent: NSIDC_NORTH_DAILY_EXTENT_URL,
       antarctic_sea_ice_extent: NSIDC_SOUTH_DAILY_EXTENT_URL,

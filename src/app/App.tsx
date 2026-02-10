@@ -69,11 +69,11 @@ const STRINGS = {
     globalTemperaturesSectionNote: "Global surface and sea surface temperatures in a Jan-Dec daily comparison view.",
     temperatureAnomalySectionTitle: "Temperature Anomalies",
     temperatureAnomalySectionNote:
-      "Anomalies relative to the 1991-2020 daily climatology, shown for the current and previous year plus a long-run daily global series.",
+      "Global and sea-surface anomaly cards use a 1991-2020 climatology; daily and annual global-mean anomaly charts use an ERA5 preindustrial (1850-1900) estimate.",
     dailyGlobalTemperatureAnomalyTitle: "Daily Global Mean Temperature Anomaly",
-    dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, 1991-2020)",
+    dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, estimated 1850-1900 baseline)",
     annualGlobalTemperatureAnomalyTitle: "Annual Global Temperature Anomaly",
-    annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, 1991-2020)",
+    annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, estimated 1850-1900 baseline)",
     regionalTemperaturesSectionTitle: "Regional Temperatures",
     regionalTemperaturesSectionNote:
       "Daily Jan-Dec comparison for Northern Hemisphere, Arctic, North Atlantic SST, Southern Hemisphere, and Antarctic temperatures.",
@@ -117,11 +117,11 @@ const STRINGS = {
     globalTemperaturesSectionNote: "Globális felszíni és tengerfelszíni hőmérsékletek Jan-Dec napi összehasonlító nézetben.",
     temperatureAnomalySectionTitle: "Hőmérsékleti Anomáliák",
     temperatureAnomalySectionNote:
-      "Anomáliák az 1991-2020 napi klimatológiához képest, az aktuális és előző év mellett egy hosszú, napi globális idősorral.",
+      "A globális és tengerfelszíni anomáliakártyák 1991-2020-as klimatológiát használnak; a napi és éves globális átlag anomália grafikonok ERA5-alapú, becsült 1850-1900-as bázist.",
     dailyGlobalTemperatureAnomalyTitle: "Napi globális átlaghőmérséklet-anomália",
-    dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, 1991-2020)",
+    dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850-1900 bázis)",
     annualGlobalTemperatureAnomalyTitle: "Éves globális hőmérsékleti anomália",
-    annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, 1991-2020)",
+    annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850-1900 bázis)",
     regionalTemperaturesSectionTitle: "Regionális Hőmérsékletek",
     regionalTemperaturesSectionNote:
       "Napi Jan-Dec összehasonlítás az északi félteke, Arktisz, észak-atlanti SST, déli félteke és Antarktisz hőmérsékleteivel.",
