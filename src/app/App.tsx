@@ -42,7 +42,11 @@ const TOP_SUMMARY_ORDER: ClimateMetricSeries["key"][] = [
   "atmospheric_ch4",
 ];
 const TOP_SUMMARY_RANK = new Map(TOP_SUMMARY_ORDER.map((key, index) => [key, index]));
-const SEA_ICE_SUMMARY_ORDER: ClimateMetricSeries["key"][] = ["arctic_sea_ice_extent", "antarctic_sea_ice_extent"];
+const SEA_ICE_SUMMARY_ORDER: ClimateMetricSeries["key"][] = [
+  "global_sea_ice_extent",
+  "arctic_sea_ice_extent",
+  "antarctic_sea_ice_extent",
+];
 const SEA_ICE_SUMMARY_RANK = new Map(SEA_ICE_SUMMARY_ORDER.map((key, index) => [key, index]));
 
 const STRINGS = {
@@ -817,11 +821,6 @@ export function App() {
                 <h3>{t.seaIceSectionTitle}</h3>
                 <p>{t.seaIceSectionNote}</p>
               </div>
-              <div className="charts-grid climate-grid sea-ice-grid">
-                {seaIceIndicatorLines.map(({ metric, lines, currentYear, climatology }) =>
-                  renderIndicatorPanel(metric, lines, currentYear, climatology)
-                )}
-              </div>
               <div className="regional-summary-grid">
                 {seaIceSummaryMetrics.map((metric) => (
                   <article className="alert-card summary" key={`${metric.key}-sea-ice-summary`}>
@@ -838,6 +837,11 @@ export function App() {
                     </div>
                   </article>
                 ))}
+              </div>
+              <div className="charts-grid climate-grid sea-ice-grid">
+                {seaIceIndicatorLines.map(({ metric, lines, currentYear, climatology }) =>
+                  renderIndicatorPanel(metric, lines, currentYear, climatology)
+                )}
               </div>
             </div>
           </div>
