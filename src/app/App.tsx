@@ -734,6 +734,7 @@ export function App() {
                       seriesName: t.dailyGlobalTemperatureAnomalyTitle,
                       unit: dailyGlobalMeanAnomalyMetric.unit,
                       decimals: dailyGlobalMeanAnomalyMetric.decimals,
+                      lineWidth: 2,
                       yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
                       yAxisMax: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).max,
                       yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
@@ -792,11 +793,6 @@ export function App() {
                 <h3>{t.regionalTemperaturesSectionTitle}</h3>
                 <p>{t.regionalTemperaturesSectionNote}</p>
               </div>
-              <div className="charts-grid climate-grid">
-                {regionalTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
-                  renderIndicatorPanel(metric, lines, currentYear, climatology)
-                )}
-              </div>
               <div className="regional-summary-grid">
                 {regionalSummaryMetrics.map((metric) => (
                   <article className="alert-card summary" key={`${metric.key}-regional-summary`}>
@@ -813,6 +809,11 @@ export function App() {
                     </div>
                   </article>
                 ))}
+              </div>
+              <div className="charts-grid climate-grid">
+                {regionalTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
+                  renderIndicatorPanel(metric, lines, currentYear, climatology)
+                )}
               </div>
             </div>
 
@@ -867,6 +868,23 @@ export function App() {
 
         {forcingSectionOpen ? (
           <div className="section-content">
+            <div className="regional-summary-grid">
+              {snapshot.forcing.map((metric) => (
+                <article className="alert-card summary" key={`${metric.key}-forcing-summary`}>
+                  <span className="alert-kicker">{t.latestLabel}</span>
+                  <h2>{metricTitle(metric, language)}</h2>
+                  <p className="alert-emphasis">
+                    {formatMetricValue(metric, language, t.valueUnavailable)} {metric.unit}
+                  </p>
+                  <p>
+                    {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                  </p>
+                  <div className="alert-meta">
+                    <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
             <div className={`charts-grid forcing-grid ${snapshot.forcing.length === 1 ? "forcing-grid-single" : ""}`}>
               {snapshot.forcing.map((metric) => {
                 const axisBounds = forcingAxisBounds(metric.key);

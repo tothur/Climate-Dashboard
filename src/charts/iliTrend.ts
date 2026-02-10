@@ -7,6 +7,7 @@ interface BuildClimateTrendOptionArgs {
   seriesName: string;
   unit: string;
   decimals?: number;
+  lineWidth?: number;
   yAxisMin?: number;
   yAxisMax?: number;
   yAxisUnitLabel?: string;
@@ -369,6 +370,7 @@ export function buildClimateTrendOption({
   seriesName,
   unit,
   decimals = 2,
+  lineWidth = 2.8,
   yAxisMin,
   yAxisMax,
   yAxisUnitLabel,
@@ -456,6 +458,7 @@ export function buildClimateTrendOption({
         show: true,
         formatter: line.label,
         position: "start",
+        offset: [36, 0],
         color: line.color,
         fontWeight: 700,
       },
@@ -563,7 +566,7 @@ export function buildClimateTrendOption({
         connectNulls: false,
         lineStyle: {
           color: lineColor,
-          width: 2.8,
+          width: lineWidth,
           cap: "round",
         },
         areaStyle: {
