@@ -66,6 +66,8 @@ const STRINGS = {
     temperatureAnomalySectionTitle: "Temperature Anomalies",
     temperatureAnomalySectionNote:
       "Anomalies relative to the 1991-2020 daily climatology, shown for the current and previous year plus a long-run daily global series.",
+    annualGlobalTemperatureAnomalyTitle: "Annual Global Temperature Anomaly (vs 1991-2020)",
+    annualGlobalTemperatureAnomalySubtitle: "Derived annual mean from ECMWF ERA5 Climate Pulse daily anomalies.",
     regionalTemperaturesSectionTitle: "Regional Temperatures",
     regionalTemperaturesSectionNote:
       "Daily Jan-Dec comparison for Northern Hemisphere, Arctic, North Atlantic SST, Southern Hemisphere, and Antarctic temperatures.",
@@ -110,6 +112,8 @@ const STRINGS = {
     temperatureAnomalySectionTitle: "Hőmérsékleti Anomáliák",
     temperatureAnomalySectionNote:
       "Anomáliák az 1991-2020 napi klimatológiához képest, az aktuális és előző év mellett egy hosszú, napi globális idősorral.",
+    annualGlobalTemperatureAnomalyTitle: "Éves globális hőmérsékleti anomália (1991-2020-hoz képest)",
+    annualGlobalTemperatureAnomalySubtitle: "Az ECMWF ERA5 Climate Pulse napi anomália adataiból számított éves átlag.",
     regionalTemperaturesSectionTitle: "Regionális Hőmérsékletek",
     regionalTemperaturesSectionNote:
       "Napi Jan-Dec összehasonlítás az északi félteke, Arktisz, észak-atlanti SST, déli félteke és Antarktisz hőmérsékleteivel.",
@@ -328,6 +332,31 @@ function buildClimatologyEnvelope(
   return { mean };
 }
 
+function buildAnnualMeanSeries(points: DailyPoint[]): DailyPoint[] {
+  const buckets = new Map<number, { sum: number; count: number }>();
+
+  for (const point of points) {
+    const match = /^(\d{4})-\d{2}-\d{2}$/.exec(point.date);
+    if (!match) continue;
+    const year = Number(match[1]);
+    const value = Number(point.value);
+    if (!Number.isFinite(year) || !Number.isFinite(value)) continue;
+
+    const bucket = buckets.get(year) ?? { sum: 0, count: 0 };
+    bucket.sum += value;
+    bucket.count += 1;
+    buckets.set(year, bucket);
+  }
+
+  return Array.from(buckets.entries())
+    .sort((left, right) => left[0] - right[0])
+    .map(([year, bucket]) => ({
+      date: `${year}-01-01`,
+      value: bucket.count > 0 ? Math.round((bucket.sum / bucket.count) * 1000) / 1000 : Number.NaN,
+    }))
+    .filter((point) => Number.isFinite(point.value));
+}
+
 function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: number; max?: number } {
   switch (metricKey) {
     case "global_surface_temperature":
@@ -509,6 +538,10 @@ export function App() {
   const dailyGlobalMeanAnomalyMetric = useMemo(
     () => snapshot.indicators.find((metric) => metric.key === DAILY_GLOBAL_MEAN_ANOMALY_KEY) ?? null,
     [snapshot.indicators]
+  );
+  const annualGlobalMeanAnomalyPoints = useMemo(
+    () => (dailyGlobalMeanAnomalyMetric ? buildAnnualMeanSeries(dailyGlobalMeanAnomalyMetric.points) : []),
+    [dailyGlobalMeanAnomalyMetric]
   );
   const regionalTemperatureLines = useMemo(
     () =>
@@ -704,6 +737,30 @@ export function App() {
                         { value: 1.5, label: "1.5°C", color: resolvedTheme === "dark" ? "#fbbf24" : "#f59e0b" },
                         { value: 2, label: "2.0°C", color: resolvedTheme === "dark" ? "#f87171" : "#dc2626" },
                       ],
+                      labels: {
+                        noData: t.noData,
+                        latest: t.chartLatest,
+                      },
+                    })}
+                  />
+                ) : null}
+                {dailyGlobalMeanAnomalyMetric && annualGlobalMeanAnomalyPoints.length ? (
+                  <EChartsPanel
+                    title={t.annualGlobalTemperatureAnomalyTitle}
+                    subtitle={t.annualGlobalTemperatureAnomalySubtitle}
+                    option={buildClimateTrendOption({
+                      points: annualGlobalMeanAnomalyPoints,
+                      seriesName: t.annualGlobalTemperatureAnomalyTitle,
+                      unit: dailyGlobalMeanAnomalyMetric.unit,
+                      decimals: dailyGlobalMeanAnomalyMetric.decimals,
+                      yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
+                      yAxisMax: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).max,
+                      yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
+                      xAxisYearLabelStep: 10,
+                      disableDataZoom: true,
+                      compact,
+                      dark: resolvedTheme === "dark",
+                      color: resolvedTheme === "dark" ? "#38bdf8" : "#0284c7",
                       labels: {
                         noData: t.noData,
                         latest: t.chartLatest,
