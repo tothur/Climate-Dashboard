@@ -16,6 +16,8 @@ export const INFLUENZA_ALL_KEY = "__unused_legacy_key__";
 const INDICATOR_KEYS: ClimateMetricKey[] = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
+  "global_mean_sea_level",
+  "ocean_heat_content",
   "northern_hemisphere_surface_temperature",
   "arctic_surface_temperature",
   "north_atlantic_sea_surface_temperature",
@@ -29,7 +31,7 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "antarctic_sea_ice_extent",
 ];
 
-const FORCING_KEYS: ClimateMetricKey[] = ["atmospheric_co2", "atmospheric_ch4"];
+const FORCING_KEYS: ClimateMetricKey[] = ["atmospheric_co2", "atmospheric_ch4", "atmospheric_aggi"];
 
 interface ClimateMetricMetadata {
   titleEn: string;
@@ -62,6 +64,30 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionEn: "NOAA OISST v2.1 daily global SST, published by Climate Reanalyzer.",
       descriptionHu: "NOAA OISST v2.1 napi globális SST, a Climate Reanalyzer közlésében.",
       url: "https://climatereanalyzer.org/clim/sst_daily/",
+    },
+  },
+  global_mean_sea_level: {
+    titleEn: "Global Mean Sea Level",
+    titleHu: "Globális átlagos tengerszint",
+    unit: "mm",
+    decimals: 1,
+    source: {
+      shortName: "CU Sea Level Research Group",
+      descriptionEn: "Global mean sea-level anomaly time series from the University of Colorado Sea Level Research Group.",
+      descriptionHu: "Globális átlagos tengerszint-anomália idősor a Coloradói Egyetem Sea Level Research Group adataiból.",
+      url: "https://sealevel.colorado.edu/files/2025_rel1/gmsl_2025rel1_seasons_rmvd.txt",
+    },
+  },
+  ocean_heat_content: {
+    titleEn: "Ocean Heat Content (0-2000m)",
+    titleHu: "Óceáni hőtartalom (0-2000m)",
+    unit: "10^22 J",
+    decimals: 2,
+    source: {
+      shortName: "NOAA NCEI",
+      descriptionEn: "Global 0-2000m ocean heat content (10^22 joules) from NOAA NCEI.",
+      descriptionHu: "Globális 0-2000m óceáni hőtartalom (10^22 joule) a NOAA NCEI adataiból.",
+      url: "https://www.ncei.noaa.gov/data/oceans/woa/DATA_ANALYSIS/3M_HEAT_CONTENT/DATA/basin/3month/ohc2000m_levitus_climdash_seasonal.csv",
     },
   },
   northern_hemisphere_surface_temperature: {
@@ -224,6 +250,18 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionEn: "Monthly global CH4 mole fraction from NOAA Global Monitoring Laboratory trend products.",
       descriptionHu: "Havi globális CH4 móltört a NOAA Global Monitoring Laboratory trend adataiból.",
       url: "https://gml.noaa.gov/ccgg/trends_ch4/",
+    },
+  },
+  atmospheric_aggi: {
+    titleEn: "NOAA AGGI",
+    titleHu: "NOAA AGGI",
+    unit: "index",
+    decimals: 3,
+    source: {
+      shortName: "NOAA GML AGGI",
+      descriptionEn: "Annual NOAA Atmospheric Greenhouse Gas Index (1990 = 1) from NOAA GML.",
+      descriptionHu: "Éves NOAA Atmospheric Greenhouse Gas Index (1990 = 1) a NOAA GML adataiból.",
+      url: "https://gml.noaa.gov/aggi/AGGI_Table.csv",
     },
   },
 };

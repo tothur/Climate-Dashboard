@@ -21,6 +21,20 @@ const SERIES_RULES = {
     minPoints: 8_000,
     minPointsLastYear: 250,
   },
+  global_mean_sea_level: {
+    minValue: -200,
+    maxValue: 300,
+    maxAgeDays: 450,
+    minPoints: 300,
+    minPointsLastYear: 0,
+  },
+  ocean_heat_content: {
+    minValue: -50,
+    maxValue: 120,
+    maxAgeDays: 900,
+    minPoints: 70,
+    minPointsLastYear: 0,
+  },
   northern_hemisphere_surface_temperature: {
     minValue: -20,
     maxValue: 40,
@@ -111,6 +125,13 @@ const SERIES_RULES = {
     maxAgeDays: 220,
     minPoints: 400,
     minPointsLastYear: 6,
+  },
+  atmospheric_aggi: {
+    minValue: 0.5,
+    maxValue: 3.5,
+    maxAgeDays: 1000,
+    minPoints: 30,
+    minPointsLastYear: 0,
   },
 };
 

@@ -41,6 +41,69 @@ function generateSeries(
   return points;
 }
 
+function generateMonthlySeries(
+  startYear: number,
+  startMonth: number,
+  endDateIso: string,
+  base: number,
+  trendPerMonth: number,
+  seasonalAmplitude: number,
+  deterministicNoiseAmplitude: number,
+  phaseShiftMonths = 0
+): DailyPoint[] {
+  const endDate = new Date(`${endDateIso}T00:00:00Z`);
+  if (!Number.isFinite(endDate.getTime())) return [];
+
+  const points: DailyPoint[] = [];
+  const startIndex = startYear * 12 + (startMonth - 1);
+  const endIndex = endDate.getUTCFullYear() * 12 + endDate.getUTCMonth();
+  if (endIndex < startIndex) return [];
+
+  for (let index = 0; startIndex + index <= endIndex; index += 1) {
+    const absoluteMonth = startIndex + index;
+    const year = Math.floor(absoluteMonth / 12);
+    const month = (absoluteMonth % 12) + 1;
+    const date = new Date(Date.UTC(year, month - 1, 1));
+
+    const seasonal = seasonalAmplitude * Math.sin((2 * Math.PI * (index + phaseShiftMonths)) / 12);
+    const noise = deterministicNoiseAmplitude * Math.sin(index * 0.173) * Math.cos(index * 0.081);
+    const value = base + trendPerMonth * index + seasonal + noise;
+
+    points.push({
+      date: formatIsoDate(date),
+      value: Math.round(value * 1000) / 1000,
+    });
+  }
+
+  return points;
+}
+
+function generateAnnualSeries(
+  startYear: number,
+  endDateIso: string,
+  base: number,
+  trendPerYear: number,
+  deterministicNoiseAmplitude: number
+): DailyPoint[] {
+  const endDate = new Date(`${endDateIso}T00:00:00Z`);
+  if (!Number.isFinite(endDate.getTime())) return [];
+
+  const endYear = endDate.getUTCFullYear();
+  if (endYear < startYear) return [];
+
+  const points: DailyPoint[] = [];
+  for (let year = startYear; year <= endYear; year += 1) {
+    const index = year - startYear;
+    const noise = deterministicNoiseAmplitude * Math.sin(index * 0.21) * Math.cos(index * 0.07);
+    const value = base + trendPerYear * index + noise;
+    points.push({
+      date: `${year}-01-01`,
+      value: Math.round(value * 1000) / 1000,
+    });
+  }
+  return points;
+}
+
 function dayOfYearFromIso(dateIso: string): number | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateIso);
   if (!match) return null;
@@ -118,6 +181,8 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
   const endDateIso = formatIsoDate(safeDate);
   const globalSurfaceTemperature = generateSeries("1979-01-01", endDateIso, 14.35, 0.0013, 2.95, 365.25, 0.12);
   const globalSeaSurfaceTemperature = generateSeries("1982-01-01", endDateIso, 20.72, 0.00045, 0.41, 365.25, 0.04);
+  const globalMeanSeaLevel = generateMonthlySeries(1993, 1, endDateIso, -18, 0.283, 2.4, 0.25);
+  const oceanHeatContent = generateMonthlySeries(1955, 1, endDateIso, -8.5, 0.058, 0.55, 0.08);
   const northernHemisphereSurfaceTemperature = generateSeries("1979-01-01", endDateIso, 14.2, 0.0015, 6.2, 365.25, 0.14);
   const southernHemisphereSurfaceTemperature = generateSeries("1979-01-01", endDateIso, 13.5, 0.0011, 2.2, 365.25, 0.1, 182.625);
   const arcticSurfaceTemperature = generateSeries("1979-01-01", endDateIso, -10.5, 0.0025, 13.6, 365.25, 0.22);
@@ -136,11 +201,14 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
   const arcticSeaIce = generateSeries("1979-01-01", endDateIso, 12.8, -0.0004, 3.9, 365.25, 0.12, 0);
   const antarcticSeaIce = generateSeries("1979-01-01", endDateIso, 10.4, -0.0003, 4.3, 365.25, 0.14, 182.625);
   const globalSeaIce = mergeSeriesByDate(arcticSeaIce, antarcticSeaIce);
+  const atmosphericAggi = generateAnnualSeries(1979, endDateIso, 0.78, 0.017, 0.018);
 
   return {
     // Multi-decade fallback windows so year selection remains useful when live feeds fail.
     global_surface_temperature: globalSurfaceTemperature,
     global_sea_surface_temperature: globalSeaSurfaceTemperature,
+    global_mean_sea_level: globalMeanSeaLevel,
+    ocean_heat_content: oceanHeatContent,
     northern_hemisphere_surface_temperature: northernHemisphereSurfaceTemperature,
     southern_hemisphere_surface_temperature: southernHemisphereSurfaceTemperature,
     arctic_surface_temperature: arcticSurfaceTemperature,
@@ -154,6 +222,7 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
     antarctic_sea_ice_extent: antarcticSeaIce,
     atmospheric_co2: generateSeries("1958-03-29", endDateIso, 315.7, 0.0078, 6.1, 365.25, 0.32),
     atmospheric_ch4: generateSeries("1983-07-01", endDateIso, 1630, 0.0017, 14.5, 365.25, 0.55),
+    atmospheric_aggi: atmosphericAggi,
   };
 }
 
@@ -164,6 +233,8 @@ export function createBundledClimateSeries(today?: Date): ClimateSeriesBundle {
 export const CLIMATE_METRIC_KEYS: ClimateMetricKey[] = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
+  "global_mean_sea_level",
+  "ocean_heat_content",
   "northern_hemisphere_surface_temperature",
   "arctic_surface_temperature",
   "north_atlantic_sea_surface_temperature",
@@ -177,4 +248,5 @@ export const CLIMATE_METRIC_KEYS: ClimateMetricKey[] = [
   "antarctic_sea_ice_extent",
   "atmospheric_co2",
   "atmospheric_ch4",
+  "atmospheric_aggi",
 ];

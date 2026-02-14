@@ -10,18 +10,24 @@ const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim
 const OISST_NORTH_ATLANTIC_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json";
 const ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL = "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv";
 const ECMWF_PREINDUSTRIAL_OFFSET_C = 0.88;
+const CU_GLOBAL_MEAN_SEA_LEVEL_URL = "https://sealevel.colorado.edu/files/2025_rel1/gmsl_2025rel1_seasons_rmvd.txt";
+const NOAA_OCEAN_HEAT_CONTENT_2000M_URL =
+  "https://www.ncei.noaa.gov/data/oceans/woa/DATA_ANALYSIS/3M_HEAT_CONTENT/DATA/basin/3month/ohc2000m_levitus_climdash_seasonal.csv";
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv";
 const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv";
 const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
+const NOAA_AGGI_CSV_URL = "https://gml.noaa.gov/aggi/AGGI_Table.csv";
 const LOCAL_GENERATED_DATA_URL = "./data/climate-realtime.json";
 const DAY_MS = 86_400_000;
 const FUTURE_TOLERANCE_DAYS = 0;
 const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
+  "global_mean_sea_level",
+  "ocean_heat_content",
   "northern_hemisphere_surface_temperature",
   "southern_hemisphere_surface_temperature",
   "arctic_surface_temperature",
@@ -35,6 +41,7 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "antarctic_sea_ice_extent",
   "atmospheric_co2",
   "atmospheric_ch4",
+  "atmospheric_aggi",
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -67,6 +74,15 @@ function dateFromYearAndDay(year: number, dayOfYear: number): string | null {
   date.setUTCDate(dayOfYear);
   if (date.getUTCFullYear() !== year) return null;
   return formatIsoDate(date);
+}
+
+function dateFromDecimalYear(decimalYear: number): string | null {
+  if (!Number.isFinite(decimalYear)) return null;
+  const year = Math.trunc(decimalYear);
+  if (!Number.isFinite(year) || year < 1800 || year > 2200) return null;
+  const fraction = Math.max(0, Math.min(0.999999, decimalYear - year));
+  const month = Math.max(1, Math.min(12, Math.floor(fraction * 12) + 1));
+  return formatDateFromParts(year, month, 1);
 }
 
 function normalizePoints(points: DailyPoint[]): DailyPoint[] {
@@ -363,6 +379,137 @@ function parseNoaaCh4MonthlyCsv(rawCsv: string): DailyPoint[] {
   return normalizePoints(points);
 }
 
+function parseNoaaAggiCsv(rawCsv: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  const lines = rawCsv.split(/\r?\n/);
+  let yearColumn = -1;
+  let aggiColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(",").map((col) => col.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((col) => col.toLowerCase());
+      yearColumn = header.indexOf("year");
+      aggiColumn = header.findIndex((col) => col === "aggi" || col.includes("1990"));
+      if (aggiColumn < 0) {
+        aggiColumn = header.findIndex((col) => col.includes("= 1"));
+      }
+      hasHeader = true;
+      continue;
+    }
+
+    if (yearColumn < 0 || aggiColumn < 0) continue;
+    if (columns.length <= yearColumn || columns.length <= aggiColumn) continue;
+
+    const year = Number(columns[yearColumn]);
+    const value = toFiniteNumber(columns[aggiColumn]);
+    if (!Number.isFinite(year) || year < 1970 || year > 2200 || value == null) continue;
+
+    const date = formatDateFromParts(year, 1, 1);
+    if (!date) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseLooseDateToken(token: string): string | null {
+  const value = token.trim();
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+  const yearMonth = /^(\d{4})-(\d{1,2})$/.exec(value);
+  if (yearMonth) {
+    const year = Number(yearMonth[1]);
+    const month = Number(yearMonth[2]);
+    return formatDateFromParts(year, month, 1);
+  }
+
+  const slashDate = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
+  if (slashDate) {
+    const month = Number(slashDate[1]);
+    const day = Number(slashDate[2]);
+    const year = Number(slashDate[3]);
+    return formatDateFromParts(year, month, day);
+  }
+
+  const decimalYear = toFiniteNumber(value);
+  if (decimalYear != null) return dateFromDecimalYear(decimalYear);
+  return null;
+}
+
+function parseNceiOceanHeatContentCsv(rawCsv: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  const lines = rawCsv.split(/\r?\n/);
+  let dateColumn = -1;
+  let valueColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(",").map((col) => col.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const directDate = columns.length > 0 ? parseLooseDateToken(columns[0]) : null;
+      const directValue = columns.length > 1 ? toFiniteNumber(columns[1]) : null;
+      if (directDate && directValue != null) {
+        points.push({ date: directDate, value: directValue });
+        dateColumn = 0;
+        valueColumn = 1;
+        hasHeader = true;
+        continue;
+      }
+
+      const header = columns.map((col) => col.toLowerCase());
+      dateColumn = header.indexOf("date");
+      valueColumn = header.findIndex((col) => col === "value" || col.includes("heat") || col.includes("global"));
+      hasHeader = true;
+      continue;
+    }
+
+    if (dateColumn < 0 || valueColumn < 0) {
+      valueColumn = columns.length > 1 ? 1 : -1;
+    }
+    if (dateColumn < 0 || valueColumn < 0) continue;
+    if (columns.length <= dateColumn || columns.length <= valueColumn) continue;
+
+    const date = parseLooseDateToken(columns[dateColumn]);
+    const value = toFiniteNumber(columns[valueColumn]);
+    if (!date || value == null) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseGlobalMeanSeaLevelText(rawText: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  const lines = rawText.split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(/\s+/).map((col) => col.trim());
+    if (columns.length < 2) continue;
+
+    const decimalYear = toFiniteNumber(columns[0]);
+    const value = toFiniteNumber(columns[1]);
+    if (decimalYear == null || value == null) continue;
+
+    const date = dateFromDecimalYear(decimalYear);
+    if (!date) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
 function parseEcmwfClimatePulseGlobal2tDailyCsv(rawCsv: string): DailyPoint[] {
   const points: DailyPoint[] = [];
   const lines = rawCsv.split(/\r?\n/);
@@ -590,6 +737,47 @@ async function loadCh4Series(): Promise<DailyPoint[] | null> {
   return points.length ? points : null;
 }
 
+async function loadAggiSeries(): Promise<DailyPoint[] | null> {
+  const csv = await fetchText(NOAA_AGGI_CSV_URL);
+  if (!csv) return null;
+  const points = sanitizeSeries(parseNoaaAggiCsv(csv), {
+    minValue: 0.5,
+    maxValue: 3.5,
+    maxAgeDays: 1000,
+  });
+  return points.length ? points : null;
+}
+
+interface OceanSeriesBundle {
+  globalMeanSeaLevel: DailyPoint[] | null;
+  oceanHeatContent: DailyPoint[] | null;
+}
+
+async function loadOceanSeriesBundle(): Promise<OceanSeriesBundle> {
+  const [gmslText, ohcCsv] = await Promise.all([fetchText(CU_GLOBAL_MEAN_SEA_LEVEL_URL), fetchText(NOAA_OCEAN_HEAT_CONTENT_2000M_URL)]);
+
+  const globalMeanSeaLevel = gmslText
+    ? sanitizeSeries(parseGlobalMeanSeaLevelText(gmslText), {
+        minValue: -200,
+        maxValue: 300,
+        maxAgeDays: 450,
+      })
+    : [];
+
+  const oceanHeatContent = ohcCsv
+    ? sanitizeSeries(parseNceiOceanHeatContentCsv(ohcCsv), {
+        minValue: -50,
+        maxValue: 120,
+        maxAgeDays: 900,
+      })
+    : [];
+
+  return {
+    globalMeanSeaLevel: globalMeanSeaLevel.length ? globalMeanSeaLevel : null,
+    oceanHeatContent: oceanHeatContent.length ? oceanHeatContent : null,
+  };
+}
+
 async function loadDailyGlobalMeanTemperatureAnomalySeries(): Promise<DailyPoint[] | null> {
   const csv = await fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL);
   if (!csv) return null;
@@ -608,14 +796,16 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
   const warnings: string[] = [];
   const liveSeries: Partial<ClimateSeriesBundle> = {};
 
-  const [surfaceResult, sstResult, regionalResult, seaIceResult, co2Result, ch4Result, dailyGlobalMeanAnomalyResult] =
+  const [surfaceResult, sstResult, oceanResult, regionalResult, seaIceResult, co2Result, ch4Result, aggiResult, dailyGlobalMeanAnomalyResult] =
     await Promise.allSettled([
     loadSurfaceTempSeriesBundle(),
     loadSeaSurfaceTempSeriesBundle(),
+    loadOceanSeriesBundle(),
     loadRegionalTemperatureSeriesBundle(),
     loadSeaIceSeriesBundle(),
     loadCo2Series(),
     loadCh4Series(),
+    loadAggiSeries(),
     loadDailyGlobalMeanTemperatureAnomalySeries(),
   ]);
 
@@ -641,6 +831,23 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     liveSeries.global_sea_surface_temperature_anomaly = sstResult.value.anomaly;
   } else {
     warnings.push("Live Global Sea Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+  }
+
+  if (oceanResult.status === "fulfilled") {
+    if (oceanResult.value.globalMeanSeaLevel?.length) {
+      liveSeries.global_mean_sea_level = oceanResult.value.globalMeanSeaLevel;
+    } else {
+      warnings.push("Live Global Mean Sea Level feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (oceanResult.value.oceanHeatContent?.length) {
+      liveSeries.ocean_heat_content = oceanResult.value.oceanHeatContent;
+    } else {
+      warnings.push("Live Ocean Heat Content feed was unavailable or stale; using bundled fallback.");
+    }
+  } else {
+    warnings.push("Live Global Mean Sea Level feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Ocean Heat Content feed was unavailable or stale; using bundled fallback.");
   }
 
   if (regionalResult.status === "fulfilled") {
@@ -715,6 +922,12 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     liveSeries.atmospheric_ch4 = ch4Result.value;
   } else {
     warnings.push("Live global CH4 feed was unavailable or stale; using bundled fallback.");
+  }
+
+  if (aggiResult.status === "fulfilled" && aggiResult.value?.length) {
+    liveSeries.atmospheric_aggi = aggiResult.value;
+  } else {
+    warnings.push("Live NOAA AGGI feed was unavailable or stale; using bundled fallback.");
   }
 
   if (dailyGlobalMeanAnomalyResult.status === "fulfilled" && dailyGlobalMeanAnomalyResult.value?.length) {

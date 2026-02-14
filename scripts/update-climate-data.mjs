@@ -14,12 +14,16 @@ const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim
 const OISST_NORTH_ATLANTIC_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json";
 const ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL = "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv";
 const ECMWF_PREINDUSTRIAL_OFFSET_C = 0.88;
+const CU_GLOBAL_MEAN_SEA_LEVEL_URL = "https://sealevel.colorado.edu/files/2025_rel1/gmsl_2025rel1_seasons_rmvd.txt";
+const NOAA_OCEAN_HEAT_CONTENT_2000M_URL =
+  "https://www.ncei.noaa.gov/data/oceans/woa/DATA_ANALYSIS/3M_HEAT_CONTENT/DATA/basin/3month/ohc2000m_levitus_climdash_seasonal.csv";
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv";
 const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv";
 const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
+const NOAA_AGGI_CSV_URL = "https://gml.noaa.gov/aggi/AGGI_Table.csv";
 
 const DAY_MS = 86_400_000;
 const FUTURE_TOLERANCE_DAYS = 0;
@@ -58,6 +62,15 @@ function dateFromYearAndDay(year, dayOfYear) {
   date.setUTCDate(dayOfYear);
   if (date.getUTCFullYear() !== year) return null;
   return formatIsoDate(date);
+}
+
+function dateFromDecimalYear(decimalYear) {
+  if (!Number.isFinite(decimalYear)) return null;
+  const year = Math.trunc(decimalYear);
+  if (!Number.isFinite(year) || year < 1800 || year > 2200) return null;
+  const fraction = Math.max(0, Math.min(0.999999, decimalYear - year));
+  const month = Math.max(1, Math.min(12, Math.floor(fraction * 12) + 1));
+  return formatDateFromParts(year, month, 1);
 }
 
 function parseIsoDateToUtc(dateIso) {
@@ -320,6 +333,137 @@ function parseNoaaCh4MonthlyCsv(rawCsv) {
   return normalizePoints(points);
 }
 
+function parseNoaaAggiCsv(rawCsv) {
+  const points = [];
+  const lines = rawCsv.split(/\r?\n/);
+  let yearColumn = -1;
+  let aggiColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(",").map((col) => col.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((col) => col.toLowerCase());
+      yearColumn = header.indexOf("year");
+      aggiColumn = header.findIndex((col) => col === "aggi" || col.includes("1990"));
+      if (aggiColumn < 0) {
+        aggiColumn = header.findIndex((col) => col.includes("= 1"));
+      }
+      hasHeader = true;
+      continue;
+    }
+
+    if (yearColumn < 0 || aggiColumn < 0) continue;
+    if (columns.length <= yearColumn || columns.length <= aggiColumn) continue;
+
+    const year = Number(columns[yearColumn]);
+    const value = toFiniteNumber(columns[aggiColumn]);
+    if (!Number.isFinite(year) || year < 1970 || year > 2200 || value == null) continue;
+
+    const date = formatDateFromParts(year, 1, 1);
+    if (!date) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseLooseDateToken(token) {
+  const value = String(token ?? "").trim();
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+  const yearMonth = /^(\d{4})-(\d{1,2})$/.exec(value);
+  if (yearMonth) {
+    const year = Number(yearMonth[1]);
+    const month = Number(yearMonth[2]);
+    return formatDateFromParts(year, month, 1);
+  }
+
+  const slashDate = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
+  if (slashDate) {
+    const month = Number(slashDate[1]);
+    const day = Number(slashDate[2]);
+    const year = Number(slashDate[3]);
+    return formatDateFromParts(year, month, day);
+  }
+
+  const decimalYear = toFiniteNumber(value);
+  if (decimalYear != null) return dateFromDecimalYear(decimalYear);
+  return null;
+}
+
+function parseNceiOceanHeatContentCsv(rawCsv) {
+  const points = [];
+  const lines = rawCsv.split(/\r?\n/);
+  let dateColumn = -1;
+  let valueColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(",").map((col) => col.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const directDate = columns.length > 0 ? parseLooseDateToken(columns[0]) : null;
+      const directValue = columns.length > 1 ? toFiniteNumber(columns[1]) : null;
+      if (directDate && directValue != null) {
+        points.push({ date: directDate, value: directValue });
+        dateColumn = 0;
+        valueColumn = 1;
+        hasHeader = true;
+        continue;
+      }
+
+      const header = columns.map((col) => col.toLowerCase());
+      dateColumn = header.indexOf("date");
+      valueColumn = header.findIndex((col) => col === "value" || col.includes("heat") || col.includes("global"));
+      hasHeader = true;
+      continue;
+    }
+
+    if (dateColumn < 0 || valueColumn < 0) {
+      valueColumn = columns.length > 1 ? 1 : -1;
+    }
+    if (dateColumn < 0 || valueColumn < 0) continue;
+    if (columns.length <= dateColumn || columns.length <= valueColumn) continue;
+
+    const date = parseLooseDateToken(columns[dateColumn]);
+    const value = toFiniteNumber(columns[valueColumn]);
+    if (!date || value == null) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseGlobalMeanSeaLevelText(rawText) {
+  const points = [];
+  const lines = rawText.split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(/\s+/).map((col) => col.trim());
+    if (columns.length < 2) continue;
+
+    const decimalYear = toFiniteNumber(columns[0]);
+    const value = toFiniteNumber(columns[1]);
+    if (decimalYear == null || value == null) continue;
+
+    const date = dateFromDecimalYear(decimalYear);
+    if (!date) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
 function parseEcmwfClimatePulseGlobal2tDailyCsv(rawCsv) {
   const points = [];
   const lines = rawCsv.split(/\r?\n/);
@@ -438,6 +582,8 @@ async function updateOnce() {
   const [
     surfacePayload,
     sstPayload,
+    gmslText,
+    ohcCsv,
     nhPayload,
     shPayload,
     arcticPayload,
@@ -447,10 +593,13 @@ async function updateOnce() {
     southCsv,
     co2Csv,
     ch4Csv,
+    aggiCsv,
     dailyGlobalMeanAnomalyCsv,
   ] = await Promise.all([
     fetchJson(ERA5_GLOBAL_SURFACE_TEMP_URL),
     fetchJson(OISST_GLOBAL_SST_URL),
+    fetchText(CU_GLOBAL_MEAN_SEA_LEVEL_URL),
+    fetchText(NOAA_OCEAN_HEAT_CONTENT_2000M_URL),
     fetchJson(ERA5_NH_SURFACE_TEMP_URL),
     fetchJson(ERA5_SH_SURFACE_TEMP_URL),
     fetchJson(ERA5_ARCTIC_SURFACE_TEMP_URL),
@@ -460,6 +609,7 @@ async function updateOnce() {
     fetchText(NSIDC_SOUTH_DAILY_EXTENT_URL),
     fetchText(NOAA_MAUNA_LOA_CO2_DAILY_URL),
     fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
+    fetchText(NOAA_AGGI_CSV_URL),
     fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
   ]);
 
@@ -482,6 +632,16 @@ async function updateOnce() {
     minValue: -10,
     maxValue: 10,
     maxAgeDays: 45,
+  });
+  const globalMeanSeaLevel = sanitizeSeries(parseGlobalMeanSeaLevelText(gmslText), {
+    minValue: -200,
+    maxValue: 300,
+    maxAgeDays: 450,
+  });
+  const oceanHeatContent = sanitizeSeries(parseNceiOceanHeatContentCsv(ohcCsv), {
+    minValue: -50,
+    maxValue: 120,
+    maxAgeDays: 900,
   });
   const northernHemisphereSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(nhPayload), {
     minValue: -20,
@@ -536,6 +696,11 @@ async function updateOnce() {
     maxValue: 3000,
     maxAgeDays: 220,
   });
+  const atmosphericAggi = sanitizeSeries(parseNoaaAggiCsv(aggiCsv), {
+    minValue: 0.5,
+    maxValue: 3.5,
+    maxAgeDays: 1000,
+  });
   const dailyGlobalMeanTemperatureAnomaly = sanitizeSeries(parseEcmwfClimatePulseGlobal2tDailyCsv(dailyGlobalMeanAnomalyCsv), {
     minValue: -10,
     maxValue: 10,
@@ -549,6 +714,8 @@ async function updateOnce() {
     sources: {
       global_surface_temperature: ERA5_GLOBAL_SURFACE_TEMP_URL,
       global_sea_surface_temperature: OISST_GLOBAL_SST_URL,
+      global_mean_sea_level: CU_GLOBAL_MEAN_SEA_LEVEL_URL,
+      ocean_heat_content: NOAA_OCEAN_HEAT_CONTENT_2000M_URL,
       northern_hemisphere_surface_temperature: ERA5_NH_SURFACE_TEMP_URL,
       southern_hemisphere_surface_temperature: ERA5_SH_SURFACE_TEMP_URL,
       arctic_surface_temperature: ERA5_ARCTIC_SURFACE_TEMP_URL,
@@ -564,10 +731,13 @@ async function updateOnce() {
       antarctic_sea_ice_extent: NSIDC_SOUTH_DAILY_EXTENT_URL,
       atmospheric_co2: NOAA_MAUNA_LOA_CO2_DAILY_URL,
       atmospheric_ch4: NOAA_GLOBAL_CH4_MONTHLY_URL,
+      atmospheric_aggi: NOAA_AGGI_CSV_URL,
     },
     series: {
       global_surface_temperature: globalSurfaceTemperature,
       global_sea_surface_temperature: globalSeaSurfaceTemperature,
+      global_mean_sea_level: globalMeanSeaLevel,
+      ocean_heat_content: oceanHeatContent,
       northern_hemisphere_surface_temperature: northernHemisphereSurfaceTemperature,
       southern_hemisphere_surface_temperature: southernHemisphereSurfaceTemperature,
       arctic_surface_temperature: arcticSurfaceTemperature,
@@ -581,10 +751,13 @@ async function updateOnce() {
       antarctic_sea_ice_extent: antarcticSeaIceExtent,
       atmospheric_co2: atmosphericCo2,
       atmospheric_ch4: atmosphericCh4,
+      atmospheric_aggi: atmosphericAggi,
     },
     summary: {
       global_surface_temperature: summarize(globalSurfaceTemperature),
       global_sea_surface_temperature: summarize(globalSeaSurfaceTemperature),
+      global_mean_sea_level: summarize(globalMeanSeaLevel),
+      ocean_heat_content: summarize(oceanHeatContent),
       northern_hemisphere_surface_temperature: summarize(northernHemisphereSurfaceTemperature),
       southern_hemisphere_surface_temperature: summarize(southernHemisphereSurfaceTemperature),
       arctic_surface_temperature: summarize(arcticSurfaceTemperature),
@@ -598,27 +771,18 @@ async function updateOnce() {
       antarctic_sea_ice_extent: summarize(antarcticSeaIceExtent),
       atmospheric_co2: summarize(atmosphericCo2),
       atmospheric_ch4: summarize(atmosphericCh4),
+      atmospheric_aggi: summarize(atmosphericAggi),
     },
   };
 
-  if (
-    !output.series.global_surface_temperature.length ||
-    !output.series.global_sea_surface_temperature.length ||
-    !output.series.northern_hemisphere_surface_temperature.length ||
-    !output.series.southern_hemisphere_surface_temperature.length ||
-    !output.series.arctic_surface_temperature.length ||
-    !output.series.antarctic_surface_temperature.length ||
-    !output.series.north_atlantic_sea_surface_temperature.length ||
-    !output.series.global_surface_temperature_anomaly.length ||
-    !output.series.global_sea_surface_temperature_anomaly.length ||
-    !output.series.daily_global_mean_temperature_anomaly.length ||
-    !output.series.global_sea_ice_extent.length ||
-    !output.series.arctic_sea_ice_extent.length ||
-    !output.series.antarctic_sea_ice_extent.length ||
-    !output.series.atmospheric_co2.length ||
-    !output.series.atmospheric_ch4.length
-  ) {
-    throw new Error("One or more series are empty after validation; refusing to write incomplete realtime dataset.");
+  const emptySeries = Object.entries(output.series)
+    .filter(([, series]) => !Array.isArray(series) || series.length === 0)
+    .map(([key]) => key);
+
+  if (emptySeries.length) {
+    throw new Error(
+      `One or more series are empty after validation (${emptySeries.join(", ")}); refusing to write incomplete realtime dataset.`
+    );
   }
 
   await mkdir(resolve(ROOT_DIR, "public/data"), { recursive: true });

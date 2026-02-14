@@ -5,6 +5,8 @@ export type ResolvedTheme = "dark" | "light";
 export type ClimateMetricKey =
   | "global_surface_temperature"
   | "global_sea_surface_temperature"
+  | "global_mean_sea_level"
+  | "ocean_heat_content"
   | "northern_hemisphere_surface_temperature"
   | "southern_hemisphere_surface_temperature"
   | "arctic_surface_temperature"
@@ -17,7 +19,8 @@ export type ClimateMetricKey =
   | "arctic_sea_ice_extent"
   | "antarctic_sea_ice_extent"
   | "atmospheric_co2"
-  | "atmospheric_ch4";
+  | "atmospheric_ch4"
+  | "atmospheric_aggi";
 
 export interface DailyPoint {
   date: string;
