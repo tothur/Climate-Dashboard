@@ -133,7 +133,21 @@ export function EChartsPanel({ title, subtitle, option, expandLabel, collapseLab
           aria-label={expanded ? collapseText : expandText}
           title={expanded ? collapseText : expandText}
         >
-          {expanded ? collapseText : expandText}
+          {expanded ? (
+            <svg className="panel-expand-icon" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M8 8H3V3h5" />
+              <path d="M12 8h5V3h-5" />
+              <path d="M8 12H3v5h5" />
+              <path d="M12 12h5v5h-5" />
+            </svg>
+          ) : (
+            <svg className="panel-expand-icon" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M8 3H3v5" />
+              <path d="M12 3h5v5" />
+              <path d="M8 17H3v-5" />
+              <path d="M12 17h5v-5" />
+            </svg>
+          )}
         </button>
       </header>
       <div className="panel-chart" ref={containerRef} />

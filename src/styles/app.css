@@ -1843,17 +1843,28 @@ h3 {
 
 .panel-expand-btn {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
   border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border));
-  border-radius: 999px;
+  border-radius: 10px;
   background: color-mix(in srgb, var(--accent) 10%, var(--panel));
   color: color-mix(in srgb, var(--accent) 70%, var(--text));
-  padding: 6px 10px;
-  font-size: 0.74rem;
-  font-weight: 700;
-  line-height: 1.2;
-  white-space: nowrap;
+  padding: 0;
   cursor: pointer;
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.panel-expand-icon {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .panel-expand-btn:hover {
