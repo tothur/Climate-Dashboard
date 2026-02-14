@@ -137,7 +137,6 @@ export function EChartsPanel({
           {subtitle ? <p>{subtitle}</p> : null}
         </div>
         <div className="panel-header-actions">
-          {freshnessLabel ? <span className={`panel-freshness-chip ${freshnessTone}`}>{freshnessLabel}</span> : null}
           <button
             type="button"
             className="panel-action-btn panel-expand-btn"
@@ -159,7 +158,10 @@ export function EChartsPanel({
           </button>
         </div>
       </header>
-      <div className="panel-chart" ref={containerRef} />
+      <div className="panel-chart-wrap">
+        <div className="panel-chart" ref={containerRef} />
+        {freshnessLabel ? <span className={`panel-freshness-chip panel-chart-freshness ${freshnessTone}`}>{freshnessLabel}</span> : null}
+      </div>
     </article>
   );
 }
