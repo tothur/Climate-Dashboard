@@ -100,6 +100,8 @@ const STRINGS = {
     sourceBundledNote: "All live feeds failed; bundled fallback drives every chart.",
     sourceCardsTitle: "Primary sources",
     sourceLabel: "Source",
+    chartFullscreenEnter: "Full screen",
+    chartFullscreenExit: "Exit full screen",
     chartLatest: "Latest",
     noData: "No data",
     valueUnavailable: "No value",
@@ -153,6 +155,8 @@ const STRINGS = {
     sourceBundledNote: "Minden élő adatforrás nem elérhető; minden grafikon tartalék adatokat használ.",
     sourceCardsTitle: "Elsődleges források",
     sourceLabel: "Forrás",
+    chartFullscreenEnter: "Teljes képernyő",
+    chartFullscreenExit: "Kilépés",
     chartLatest: "Legfrissebb",
     noData: "Nincs adat",
     valueUnavailable: "Nincs érték",
@@ -694,6 +698,8 @@ export function App() {
         key={metric.key}
         title={metricTitle(metric, language)}
         subtitle={metric.source.shortName}
+        expandLabel={t.chartFullscreenEnter}
+        collapseLabel={t.chartFullscreenExit}
         option={buildClimateMonthlyComparisonOption({
           monthLabels: monthlyLabels,
           lines,
@@ -728,6 +734,8 @@ export function App() {
         key={metric.key}
         title={metricTitle(metric, language)}
         subtitle={metric.source.shortName}
+        expandLabel={t.chartFullscreenEnter}
+        collapseLabel={t.chartFullscreenExit}
         option={buildClimateTrendOption({
           points: metric.points,
           seriesName: metricTitle(metric, language),
@@ -869,6 +877,8 @@ export function App() {
                   <EChartsPanel
                     title={t.dailyGlobalTemperatureAnomalyTitle}
                     subtitle={t.dailyGlobalTemperatureAnomalySubtitle}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
                     option={buildClimateTrendOption({
                       points: dailyGlobalMeanAnomalyMetric.points,
                       seriesName: t.dailyGlobalTemperatureAnomalyTitle,
@@ -899,6 +909,8 @@ export function App() {
                   <EChartsPanel
                     title={t.annualGlobalTemperatureAnomalyTitle}
                     subtitle={t.annualGlobalTemperatureAnomalySubtitle}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
                     option={buildClimateTrendOption({
                       points: annualGlobalMeanAnomalyPoints,
                       seriesName: t.annualGlobalTemperatureAnomalyTitle,
@@ -1099,6 +1111,8 @@ export function App() {
                     key={metric.key}
                     title={title}
                     subtitle={metric.source.shortName}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
                     option={option}
                   />
                 );
