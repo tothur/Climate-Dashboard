@@ -1072,7 +1072,7 @@ export function App() {
                         showLegend: false,
                         compact,
                         dark: resolvedTheme === "dark",
-                        color: resolvedTheme === "dark" ? "#38bdf8" : "#0284c7",
+                        color: resolvedTheme === "dark" ? "#fb923c" : "#f97316",
                         labels: {
                           noData: t.noData,
                           latest: t.chartLatest,
