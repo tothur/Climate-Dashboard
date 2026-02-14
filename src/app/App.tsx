@@ -483,6 +483,26 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
   return unit;
 }
 
+function topSummaryCategoryClass(metricKey: ClimateMetricSeries["key"]): string {
+  if (metricKey === "global_surface_temperature" || metricKey === "global_sea_surface_temperature") {
+    return "topcat-temperature";
+  }
+  if (
+    metricKey === "global_surface_temperature_anomaly" ||
+    metricKey === "global_sea_surface_temperature_anomaly" ||
+    metricKey === "daily_global_mean_temperature_anomaly"
+  ) {
+    return "topcat-anomaly";
+  }
+  if (metricKey === "global_sea_ice_extent" || metricKey === "arctic_sea_ice_extent" || metricKey === "antarctic_sea_ice_extent") {
+    return "topcat-sea-ice";
+  }
+  if (metricKey === "atmospheric_co2" || metricKey === "atmospheric_ch4" || metricKey === "atmospheric_aggi") {
+    return "topcat-forcing";
+  }
+  return "topcat-neutral";
+}
+
 export function App() {
   const [language, setLanguage] = useState<Language>(() => safeLanguage(localStorage.getItem(STORAGE_LANG_KEY)));
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => safeTheme(localStorage.getItem(STORAGE_THEME_KEY)));
@@ -769,7 +789,7 @@ export function App() {
 
       <section className="alerts-grid" aria-label={t.latestSignalsAria}>
         {latestAnnualGlobalMeanAnomaly ? (
-          <article className="alert-card summary summary-top" key="annual-global-temperature-anomaly-summary">
+          <article className="alert-card summary summary-top topcat-anomaly" key="annual-global-temperature-anomaly-summary">
             <h2>{t.annualGlobalTemperatureAnomalyTitle}</h2>
             <p className="alert-emphasis">
               {new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
@@ -788,7 +808,7 @@ export function App() {
           </article>
         ) : null}
         {headlineMetrics.map((metric) => (
-          <article className="alert-card summary summary-top" key={metric.key}>
+          <article className={`alert-card summary summary-top ${topSummaryCategoryClass(metric.key)}`} key={metric.key}>
             <h2>{metricTitle(metric, language)}</h2>
             <p className="alert-emphasis">
               {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}

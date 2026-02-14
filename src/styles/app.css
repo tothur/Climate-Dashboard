@@ -494,24 +494,29 @@ h3 {
   );
 }
 
-.alerts-grid .alert-card.summary-top:nth-child(4n + 1) {
+.alert-card.summary.summary-top.topcat-temperature {
+  --top-card-accent: #ea580c;
+  --top-card-soft: rgba(234, 88, 12, 0.14);
+}
+
+.alert-card.summary.summary-top.topcat-anomaly {
+  --top-card-accent: #dc2626;
+  --top-card-soft: rgba(220, 38, 38, 0.14);
+}
+
+.alert-card.summary.summary-top.topcat-sea-ice {
+  --top-card-accent: #0369a1;
+  --top-card-soft: rgba(3, 105, 161, 0.14);
+}
+
+.alert-card.summary.summary-top.topcat-forcing {
+  --top-card-accent: #7c3aed;
+  --top-card-soft: rgba(124, 58, 237, 0.14);
+}
+
+.alert-card.summary.summary-top.topcat-neutral {
   --top-card-accent: #2563eb;
   --top-card-soft: rgba(37, 99, 235, 0.14);
-}
-
-.alerts-grid .alert-card.summary-top:nth-child(4n + 2) {
-  --top-card-accent: #0d9488;
-  --top-card-soft: rgba(13, 148, 136, 0.14);
-}
-
-.alerts-grid .alert-card.summary-top:nth-child(4n + 3) {
-  --top-card-accent: #0891b2;
-  --top-card-soft: rgba(8, 145, 178, 0.13);
-}
-
-.alerts-grid .alert-card.summary-top:nth-child(4n + 4) {
-  --top-card-accent: #ea580c;
-  --top-card-soft: rgba(234, 88, 12, 0.12);
 }
 
 .alert-card.summary.summary-top h2 {
