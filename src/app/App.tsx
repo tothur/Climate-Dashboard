@@ -142,8 +142,8 @@ const STRINGS = {
     seaIceSectionTitle: "Tengeri Jég",
     seaIceSectionNote:
       "Globális, arktiszi és antarktiszi jégkiterjedés napi pontokkal Jan-Dec összehasonlító nézetben.",
-    forcingTitle: "Forcing",
-    forcingNote: "Légköri forcing jelek a Mauna Loa CO2, a globális CH4 megfigyelések és a NOAA éves üvegházhatásúgáz-index alapján.",
+    forcingTitle: "Éghajlati Kényszerek",
+    forcingNote: "Légköri kényszerek a Mauna Loa CO2, a globális CH4 megfigyelések és a NOAA éves üvegházhatásúgáz-index alapján.",
     sourceTitle: "Adatforrás mód",
     sourceLive: "Élő feed",
     sourceMixed: "Vegyes élő + tartalék",

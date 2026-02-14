@@ -420,36 +420,16 @@ export function buildClimateTrendOption({
   const areaTopColor = dark ? "rgba(96, 165, 250, 0.34)" : "rgba(59, 130, 246, 0.26)";
   const areaBottomColor = dark ? "rgba(96, 165, 250, 0.06)" : "rgba(59, 130, 246, 0.04)";
   const noDataText = labels?.noData ?? "No data";
-  const latestText = labels?.latest ?? "Latest";
 
   const xLabels = points.map((point) => point.date);
   const values = points.map((point) => point.value);
   const hasData = xLabels.length > 0;
-  const currentDateLabel = hasData ? xLabels[xLabels.length - 1] : null;
 
   const dataZoom = disableDataZoom ? undefined : buildCompactDataZoom(xLabels, compact, palette);
   const formatter = formatterFor(decimals);
   const xAxisYearLabels = buildYearAxisLabelMap(xLabels, xAxisYearLabelStep);
   const yAxisName = yAxisUnitLabel?.trim() || undefined;
   const markLineData: Array<Record<string, unknown>> = [];
-
-  if (currentDateLabel) {
-    markLineData.push({
-      xAxis: currentDateLabel,
-      lineStyle: { color: palette.currentWeekLine, width: 1.3, type: "dashed" },
-      label: {
-        show: !compact,
-        position: "start",
-        align: "right",
-        offset: [-10, 0],
-        formatter: latestText,
-        color: palette.axisLabel,
-        padding: [2, 6],
-        borderRadius: 6,
-        backgroundColor: dark ? "rgba(15, 23, 42, 0.7)" : "rgba(248, 250, 252, 0.82)",
-      },
-    });
-  }
 
   for (const line of referenceLines ?? []) {
     if (!Number.isFinite(line.value)) continue;
