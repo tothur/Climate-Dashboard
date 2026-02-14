@@ -73,6 +73,33 @@ function formatMonthYearFromX(xValue: number): string {
   return `${labels[monthIndex]} ${year}`;
 }
 
+interface TooltipSize {
+  contentSize: [number, number];
+  viewSize: [number, number];
+}
+
+function tooltipEdgePosition(
+  point: number[] | number,
+  _params: unknown,
+  _dom: unknown,
+  _rect: unknown,
+  size: TooltipSize
+): [number, number] {
+  const xPoint = Array.isArray(point) ? Number(point[0]) : Number(point);
+  const yPoint = Array.isArray(point) ? Number(point[1]) : 0;
+  const [contentWidth, contentHeight] = size.contentSize;
+  const [viewWidth, viewHeight] = size.viewSize;
+  const gap = 12;
+
+  let x = xPoint + gap;
+  if (x + contentWidth > viewWidth - 8) x = xPoint - contentWidth - gap;
+  x = Math.max(8, Math.min(x, viewWidth - contentWidth - 8));
+
+  let y = yPoint - contentHeight / 2;
+  y = Math.max(8, Math.min(y, viewHeight - contentHeight - 8));
+  return [x, y];
+}
+
 export function buildForcingTrendOption({
   points,
   title,
@@ -136,11 +163,12 @@ export function buildForcingTrendOption({
       trigger: "axis",
       confine: true,
       appendToBody: false,
+      position: tooltipEdgePosition,
       backgroundColor: palette.tooltipBg,
       borderColor: palette.tooltipBorder,
       borderWidth: 1,
       textStyle: { color: palette.tooltipText, fontWeight: 600 },
-      extraCssText: "box-shadow: 0 14px 30px rgba(2, 6, 23, 0.28);",
+      extraCssText: "box-shadow: 0 14px 30px rgba(2, 6, 23, 0.28); max-width: min(340px, 78vw); white-space: normal;",
       formatter: (params: unknown) => {
         const rows = Array.isArray(params) ? params : [];
         if (!rows.length) return "";

@@ -102,6 +102,16 @@ const STRINGS = {
     sourceLabel: "Source",
     chartFullscreenEnter: "Full screen",
     chartFullscreenExit: "Exit full screen",
+    chartExportPng: "Export PNG",
+    chartExportCsv: "Export CSV",
+    freshnessAsOf: "As of",
+    freshnessDaily: "daily",
+    freshnessMonthly: "monthly",
+    freshnessQuarterly: "quarterly",
+    freshnessAnnual: "annual",
+    freshnessLagging: "Lagging",
+    freshnessStale: "Stale",
+    ytdLabel: "YTD",
     chartLatest: "Latest",
     noData: "No data",
     valueUnavailable: "No value",
@@ -157,6 +167,16 @@ const STRINGS = {
     sourceLabel: "Forrás",
     chartFullscreenEnter: "Teljes képernyő",
     chartFullscreenExit: "Kilépés",
+    chartExportPng: "PNG export",
+    chartExportCsv: "CSV export",
+    freshnessAsOf: "Dátum",
+    freshnessDaily: "napi",
+    freshnessMonthly: "havi",
+    freshnessQuarterly: "negyedéves",
+    freshnessAnnual: "éves",
+    freshnessLagging: "Késik",
+    freshnessStale: "Elavult",
+    ytdLabel: "évközi",
     chartLatest: "Legfrissebb",
     noData: "Nincs adat",
     valueUnavailable: "Nincs érték",
@@ -209,9 +229,10 @@ function formatDateTimeLabel(dateIso: string, language: Language): string {
   }).format(date);
 }
 
-function formatAnnualAnomalyTopMeta(year: number, language: Language): string {
-  if (language === "hu") return `Év: ${year} vs 1850-1900`;
-  return `Year: ${year} vs 1850-1900`;
+function formatAnnualAnomalyTopMeta(year: number, language: Language, isYtd: boolean, ytdLabel: string): string {
+  const ytdSuffix = isYtd ? ` (${ytdLabel})` : "";
+  if (language === "hu") return `Év: ${year}${ytdSuffix} vs 1850-1900`;
+  return `Year: ${year}${ytdSuffix} vs 1850-1900`;
 }
 
 function formatMetricValue(metric: ClimateMetricSeries, language: Language, unavailableText: string): string {
@@ -512,6 +533,72 @@ function topSummaryCategoryClass(metricKey: ClimateMetricSeries["key"]): string 
   return "topcat-neutral";
 }
 
+type FreshnessTone = "fresh" | "warning" | "stale";
+type FreshnessCadence = "daily" | "monthly" | "quarterly" | "annual";
+
+interface FreshnessPolicy {
+  cadence: FreshnessCadence;
+  warningDays: number;
+  staleDays: number;
+}
+
+function freshnessPolicyForMetric(metricKey: ClimateMetricSeries["key"]): FreshnessPolicy {
+  switch (metricKey) {
+    case "global_sea_surface_temperature":
+    case "global_sea_surface_temperature_anomaly":
+    case "north_atlantic_sea_surface_temperature":
+      return { cadence: "daily", warningDays: 21, staleDays: 45 };
+    case "atmospheric_co2":
+      return { cadence: "daily", warningDays: 14, staleDays: 35 };
+    case "atmospheric_ch4":
+      return { cadence: "monthly", warningDays: 90, staleDays: 180 };
+    case "global_mean_sea_level":
+      return { cadence: "monthly", warningDays: 120, staleDays: 240 };
+    case "ocean_heat_content":
+      return { cadence: "quarterly", warningDays: 180, staleDays: 360 };
+    case "atmospheric_aggi":
+      return { cadence: "annual", warningDays: 550, staleDays: 900 };
+    default:
+      return { cadence: "daily", warningDays: 10, staleDays: 20 };
+  }
+}
+
+function utcDayAge(dateIso: string | null): number | null {
+  if (!dateIso) return null;
+  const parsed = Date.parse(`${dateIso}T00:00:00Z`);
+  if (!Number.isFinite(parsed)) return null;
+  const now = new Date();
+  const nowUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.max(0, Math.floor((nowUtc - parsed) / 86_400_000));
+}
+
+function cadenceLabel(cadence: FreshnessCadence, t: (typeof STRINGS)[Language]): string {
+  switch (cadence) {
+    case "monthly":
+      return t.freshnessMonthly;
+    case "quarterly":
+      return t.freshnessQuarterly;
+    case "annual":
+      return t.freshnessAnnual;
+    default:
+      return t.freshnessDaily;
+  }
+}
+
+function metricFreshnessBadge(
+  metric: ClimateMetricSeries,
+  language: Language,
+  t: (typeof STRINGS)[Language]
+): { tone: FreshnessTone; label: string } {
+  const policy = freshnessPolicyForMetric(metric.key);
+  const ageDays = utcDayAge(metric.latestDate);
+  const tone: FreshnessTone =
+    ageDays == null ? "stale" : ageDays > policy.staleDays ? "stale" : ageDays > policy.warningDays ? "warning" : "fresh";
+  const statusSuffix = tone === "stale" ? ` · ${t.freshnessStale}` : tone === "warning" ? ` · ${t.freshnessLagging}` : "";
+  const label = `${t.freshnessAsOf}: ${formatDateLabel(metric.latestDate, language)} · ${cadenceLabel(policy.cadence, t)}${statusSuffix}`;
+  return { tone, label };
+}
+
 export function App() {
   const [language, setLanguage] = useState<Language>(() => safeLanguage(localStorage.getItem(STORAGE_LANG_KEY)));
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => safeTheme(localStorage.getItem(STORAGE_THEME_KEY)));
@@ -646,6 +733,18 @@ export function App() {
       value: latest.value,
     };
   }, [annualGlobalMeanAnomalyPoints]);
+  const annualGlobalMeanAnomalyIsYtd = useMemo(() => {
+    if (!dailyGlobalMeanAnomalyMetric || !latestAnnualGlobalMeanAnomaly) return false;
+    const nowYear = new Date().getUTCFullYear();
+    if (latestAnnualGlobalMeanAnomaly.year !== nowYear) return false;
+
+    for (let index = dailyGlobalMeanAnomalyMetric.points.length - 1; index >= 0; index -= 1) {
+      const point = dailyGlobalMeanAnomalyMetric.points[index];
+      if (!point.date.startsWith(`${nowYear}-`)) continue;
+      return !point.date.endsWith("-12-31");
+    }
+    return false;
+  }, [dailyGlobalMeanAnomalyMetric, latestAnnualGlobalMeanAnomaly]);
   const regionalTemperatureLines = useMemo(
     () =>
       indicatorLines
@@ -692,6 +791,7 @@ export function App() {
   ) => {
     const bounds = indicatorYAxisBounds(metric.key);
     const yAxisLabel = indicatorYAxisUnitLabel(metric.key, language);
+    const freshness = metricFreshnessBadge(metric, language, t);
 
     return (
       <EChartsPanel
@@ -700,6 +800,10 @@ export function App() {
         subtitle={metric.source.shortName}
         expandLabel={t.chartFullscreenEnter}
         collapseLabel={t.chartFullscreenExit}
+        exportPngLabel={t.chartExportPng}
+        exportCsvLabel={t.chartExportCsv}
+        freshnessLabel={freshness.label}
+        freshnessTone={freshness.tone}
         option={buildClimateMonthlyComparisonOption({
           monthLabels: monthlyLabels,
           lines,
@@ -728,6 +832,7 @@ export function App() {
   const renderOceanPanel = (metric: ClimateMetricSeries) => {
     const bounds = indicatorYAxisBounds(metric.key);
     const yAxisLabel = indicatorYAxisUnitLabel(metric.key, language);
+    const freshness = metricFreshnessBadge(metric, language, t);
 
     return (
       <EChartsPanel
@@ -736,6 +841,10 @@ export function App() {
         subtitle={metric.source.shortName}
         expandLabel={t.chartFullscreenEnter}
         collapseLabel={t.chartFullscreenExit}
+        exportPngLabel={t.chartExportPng}
+        exportCsvLabel={t.chartExportCsv}
+        freshnessLabel={freshness.label}
+        freshnessTone={freshness.tone}
         option={buildClimateTrendOption({
           points: metric.points,
           seriesName: metricTitle(metric, language),
@@ -767,6 +876,9 @@ export function App() {
       : snapshot.sourceMode === "mixed"
         ? t.sourceMixed
         : t.sourceBundled;
+  const dailyGlobalMeanAnomalyFreshness = dailyGlobalMeanAnomalyMetric
+    ? metricFreshnessBadge(dailyGlobalMeanAnomalyMetric, language, t)
+    : null;
 
   return (
     <div className="app-shell">
@@ -816,21 +928,28 @@ export function App() {
               )}
             </p>
             <p className="summary-meta">
-              {formatAnnualAnomalyTopMeta(latestAnnualGlobalMeanAnomaly.year, language)}
+              {formatAnnualAnomalyTopMeta(latestAnnualGlobalMeanAnomaly.year, language, annualGlobalMeanAnomalyIsYtd, t.ytdLabel)}
             </p>
+            {dailyGlobalMeanAnomalyFreshness ? (
+              <span className={`freshness-chip ${dailyGlobalMeanAnomalyFreshness.tone}`}>{dailyGlobalMeanAnomalyFreshness.label}</span>
+            ) : null}
           </article>
         ) : null}
-        {headlineMetrics.map((metric) => (
-          <article className={`alert-card summary summary-top ${topSummaryCategoryClass(metric.key)}`} key={metric.key}>
-            <h2>{metricTitle(metric, language)}</h2>
-            <p className="alert-emphasis">
-              {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-            </p>
-            <p className="summary-meta">
-              {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-            </p>
-          </article>
-        ))}
+        {headlineMetrics.map((metric) => {
+          const freshness = metricFreshnessBadge(metric, language, t);
+          return (
+            <article className={`alert-card summary summary-top ${topSummaryCategoryClass(metric.key)}`} key={metric.key}>
+              <h2>{metricTitle(metric, language)}</h2>
+              <p className="alert-emphasis">
+                {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
+              </p>
+              <p className="summary-meta">
+                {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+              </p>
+              <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+            </article>
+          );
+        })}
       </section>
 
       <section className="collapsible-section">
@@ -879,6 +998,10 @@ export function App() {
                     subtitle={t.dailyGlobalTemperatureAnomalySubtitle}
                     expandLabel={t.chartFullscreenEnter}
                     collapseLabel={t.chartFullscreenExit}
+                    exportPngLabel={t.chartExportPng}
+                    exportCsvLabel={t.chartExportCsv}
+                    freshnessLabel={dailyGlobalMeanAnomalyFreshness?.label}
+                    freshnessTone={dailyGlobalMeanAnomalyFreshness?.tone}
                     option={buildClimateTrendOption({
                       points: dailyGlobalMeanAnomalyMetric.points,
                       seriesName: t.dailyGlobalTemperatureAnomalyTitle,
@@ -908,9 +1031,13 @@ export function App() {
                 {dailyGlobalMeanAnomalyMetric && annualGlobalMeanAnomalyPoints.length ? (
                   <EChartsPanel
                     title={t.annualGlobalTemperatureAnomalyTitle}
-                    subtitle={t.annualGlobalTemperatureAnomalySubtitle}
+                    subtitle={`${t.annualGlobalTemperatureAnomalySubtitle}${annualGlobalMeanAnomalyIsYtd ? ` · ${t.ytdLabel}` : ""}`}
                     expandLabel={t.chartFullscreenEnter}
                     collapseLabel={t.chartFullscreenExit}
+                    exportPngLabel={t.chartExportPng}
+                    exportCsvLabel={t.chartExportCsv}
+                    freshnessLabel={dailyGlobalMeanAnomalyFreshness?.label}
+                    freshnessTone={dailyGlobalMeanAnomalyFreshness?.tone}
                     option={buildClimateTrendOption({
                       points: annualGlobalMeanAnomalyPoints,
                       seriesName: t.annualGlobalTemperatureAnomalyTitle,
@@ -946,21 +1073,25 @@ export function App() {
                 <p>{t.regionalTemperaturesSectionNote}</p>
               </div>
               <div className="regional-summary-grid">
-                {regionalSummaryMetrics.map((metric) => (
-                  <article className="alert-card summary" key={`${metric.key}-regional-summary`}>
-                    <span className="alert-kicker">{t.latestLabel}</span>
-                    <h2>{metricTitle(metric, language)}</h2>
-                    <p className="alert-emphasis">
-                      {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                    </p>
-                    <p>
-                      {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                    </p>
-                    <div className="alert-meta">
-                      <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
-                    </div>
-                  </article>
-                ))}
+                {regionalSummaryMetrics.map((metric) => {
+                  const freshness = metricFreshnessBadge(metric, language, t);
+                  return (
+                    <article className="alert-card summary" key={`${metric.key}-regional-summary`}>
+                      <span className="alert-kicker">{t.latestLabel}</span>
+                      <h2>{metricTitle(metric, language)}</h2>
+                      <p className="alert-emphasis">
+                        {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
+                      </p>
+                      <p>
+                        {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                      </p>
+                      <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                      <div className="alert-meta">
+                        <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
               <div className="charts-grid climate-grid">
                 {regionalTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
@@ -975,20 +1106,24 @@ export function App() {
                 <p>{t.oceansSectionNote}</p>
               </div>
               <div className="regional-summary-grid">
-                {oceanMetrics.map((metric) => (
-                  <article className="alert-card summary" key={`${metric.key}-ocean-summary`}>
-                    <h2>{metricTitle(metric, language)}</h2>
-                    <p className="alert-emphasis">
-                      {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                    </p>
-                    <p>
-                      {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                    </p>
-                    <div className="alert-meta">
-                      <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
-                    </div>
-                  </article>
-                ))}
+                {oceanMetrics.map((metric) => {
+                  const freshness = metricFreshnessBadge(metric, language, t);
+                  return (
+                    <article className="alert-card summary" key={`${metric.key}-ocean-summary`}>
+                      <h2>{metricTitle(metric, language)}</h2>
+                      <p className="alert-emphasis">
+                        {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
+                      </p>
+                      <p>
+                        {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                      </p>
+                      <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                      <div className="alert-meta">
+                        <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
               <div className="charts-grid climate-grid">
                 {oceanMetrics.map((metric) => renderOceanPanel(metric))}
@@ -1001,21 +1136,25 @@ export function App() {
                 <p>{t.seaIceSectionNote}</p>
               </div>
               <div className="regional-summary-grid">
-                {seaIceSummaryMetrics.map((metric) => (
-                  <article className="alert-card summary" key={`${metric.key}-sea-ice-summary`}>
-                    <span className="alert-kicker">{t.latestLabel}</span>
-                    <h2>{metricTitle(metric, language)}</h2>
-                    <p className="alert-emphasis">
-                      {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                    </p>
-                    <p>
-                      {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                    </p>
-                    <div className="alert-meta">
-                      <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
-                    </div>
-                  </article>
-                ))}
+                {seaIceSummaryMetrics.map((metric) => {
+                  const freshness = metricFreshnessBadge(metric, language, t);
+                  return (
+                    <article className="alert-card summary" key={`${metric.key}-sea-ice-summary`}>
+                      <span className="alert-kicker">{t.latestLabel}</span>
+                      <h2>{metricTitle(metric, language)}</h2>
+                      <p className="alert-emphasis">
+                        {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
+                      </p>
+                      <p>
+                        {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                      </p>
+                      <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                      <div className="alert-meta">
+                        <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
               <div className="charts-grid climate-grid sea-ice-grid">
                 {seaIceIndicatorLines.map(({ metric, lines, currentYear, climatology }) =>
@@ -1047,26 +1186,31 @@ export function App() {
         {forcingSectionOpen ? (
           <div className="section-content">
             <div className="regional-summary-grid">
-              {snapshot.forcing.map((metric) => (
-                <article className="alert-card summary" key={`${metric.key}-forcing-summary`}>
-                  <span className="alert-kicker">{t.latestLabel}</span>
-                  <h2>{metricTitle(metric, language)}</h2>
-                  <p className="alert-emphasis">
-                    {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                  </p>
-                  <p>
-                    {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                  </p>
-                  <div className="alert-meta">
-                    <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
-                  </div>
-                </article>
-              ))}
+              {snapshot.forcing.map((metric) => {
+                const freshness = metricFreshnessBadge(metric, language, t);
+                return (
+                  <article className="alert-card summary" key={`${metric.key}-forcing-summary`}>
+                    <span className="alert-kicker">{t.latestLabel}</span>
+                    <h2>{metricTitle(metric, language)}</h2>
+                    <p className="alert-emphasis">
+                      {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
+                    </p>
+                    <p>
+                      {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                    </p>
+                    <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                    <div className="alert-meta">
+                      <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
             <div className={`charts-grid forcing-grid ${snapshot.forcing.length === 1 ? "forcing-grid-single" : ""}`}>
               {snapshot.forcing.map((metric) => {
                 const axisBounds = forcingAxisBounds(metric.key);
                 const title = metricTitle(metric, language);
+                const freshness = metricFreshnessBadge(metric, language, t);
                 const option =
                   metric.key === "atmospheric_aggi"
                     ? buildClimateTrendOption({
@@ -1113,6 +1257,10 @@ export function App() {
                     subtitle={metric.source.shortName}
                     expandLabel={t.chartFullscreenEnter}
                     collapseLabel={t.chartFullscreenExit}
+                    exportPngLabel={t.chartExportPng}
+                    exportCsvLabel={t.chartExportCsv}
+                    freshnessLabel={freshness.label}
+                    freshnessTone={freshness.tone}
                     option={option}
                   />
                 );

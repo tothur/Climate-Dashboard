@@ -542,6 +542,42 @@ h3 {
   color: color-mix(in srgb, var(--muted) 86%, var(--text) 14%);
 }
 
+.freshness-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  background: rgba(148, 163, 184, 0.12);
+  color: color-mix(in srgb, var(--text) 74%, var(--muted));
+  padding: 4px 9px;
+  font-size: 0.7rem;
+  font-weight: 640;
+  line-height: 1.2;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.freshness-chip.fresh {
+  border-color: rgba(5, 150, 105, 0.34);
+  background: rgba(16, 185, 129, 0.14);
+  color: #065f46;
+}
+
+.freshness-chip.warning {
+  border-color: rgba(217, 119, 6, 0.34);
+  background: rgba(245, 158, 11, 0.16);
+  color: #92400e;
+}
+
+.freshness-chip.stale {
+  border-color: rgba(185, 28, 28, 0.34);
+  background: rgba(239, 68, 68, 0.14);
+  color: #991b1b;
+}
+
 .alert-card.epidemic {
   padding-top: 18px;
 }
@@ -1841,7 +1877,51 @@ h3 {
   font-size: var(--type-section-subtitle-size);
 }
 
-.panel-expand-btn {
+.panel-header-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.panel-freshness-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  background: rgba(148, 163, 184, 0.12);
+  color: color-mix(in srgb, var(--text) 74%, var(--muted));
+  padding: 4px 9px;
+  font-size: 0.7rem;
+  font-weight: 640;
+  line-height: 1.2;
+  white-space: nowrap;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panel-freshness-chip.fresh {
+  border-color: rgba(5, 150, 105, 0.34);
+  background: rgba(16, 185, 129, 0.14);
+  color: #065f46;
+}
+
+.panel-freshness-chip.warning {
+  border-color: rgba(217, 119, 6, 0.34);
+  background: rgba(245, 158, 11, 0.16);
+  color: #92400e;
+}
+
+.panel-freshness-chip.stale {
+  border-color: rgba(185, 28, 28, 0.34);
+  background: rgba(239, 68, 68, 0.14);
+  color: #991b1b;
+}
+
+.panel-action-btn {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -1857,7 +1937,7 @@ h3 {
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
-.panel-expand-icon {
+.panel-action-icon {
   width: 18px;
   height: 18px;
   fill: none;
@@ -1867,13 +1947,13 @@ h3 {
   stroke-linejoin: round;
 }
 
-.panel-expand-btn:hover {
+.panel-action-btn:hover {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
   background: color-mix(in srgb, var(--accent) 16%, var(--panel));
 }
 
-.panel-expand-btn:focus-visible {
+.panel-action-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
 }
@@ -2181,19 +2261,47 @@ body.panel-expanded-lock {
   background: color-mix(in srgb, var(--accent) 26%, var(--panel));
 }
 
-[data-theme="dark"] .panel-expand-btn {
+[data-theme="dark"] .panel-action-btn {
   border-color: rgba(96, 165, 250, 0.4);
   background: rgba(37, 99, 235, 0.24);
   color: #dbeafe;
 }
 
-[data-theme="dark"] .panel-expand-btn:hover {
+[data-theme="dark"] .panel-action-btn:hover {
   border-color: rgba(147, 197, 253, 0.52);
   background: rgba(37, 99, 235, 0.32);
 }
 
-[data-theme="dark"] .panel-expand-btn:focus-visible {
+[data-theme="dark"] .panel-action-btn:focus-visible {
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
+}
+
+[data-theme="dark"] .freshness-chip,
+[data-theme="dark"] .panel-freshness-chip {
+  border-color: rgba(148, 163, 184, 0.34);
+  background: rgba(51, 65, 85, 0.52);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .freshness-chip.fresh,
+[data-theme="dark"] .panel-freshness-chip.fresh {
+  border-color: rgba(52, 211, 153, 0.46);
+  background: rgba(6, 95, 70, 0.5);
+  color: #a7f3d0;
+}
+
+[data-theme="dark"] .freshness-chip.warning,
+[data-theme="dark"] .panel-freshness-chip.warning {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(146, 64, 14, 0.52);
+  color: #fde68a;
+}
+
+[data-theme="dark"] .freshness-chip.stale,
+[data-theme="dark"] .panel-freshness-chip.stale {
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(153, 27, 27, 0.5);
+  color: #fecaca;
 }
 
 [data-theme="dark"] .collapsible-section {
@@ -2566,8 +2674,12 @@ body.panel-expanded-lock {
     gap: 8px;
   }
 
-  .panel-expand-btn {
+  .panel-header-actions {
     align-self: flex-end;
+  }
+
+  .panel-freshness-chip {
+    max-width: 170px;
   }
 
   .panel-chart {
