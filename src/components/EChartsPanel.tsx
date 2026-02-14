@@ -135,17 +135,11 @@ export function EChartsPanel({ title, subtitle, option, expandLabel, collapseLab
         >
           {expanded ? (
             <svg className="panel-expand-icon" viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M8 8H3V3h5" />
-              <path d="M12 8h5V3h-5" />
-              <path d="M8 12H3v5h5" />
-              <path d="M12 12h5v5h-5" />
+              <path d="M4 13h3v3h2v-5H4v2zm3-4H4V4h5v2H7v3zm4 7h2v-3h3v-2h-5v5zm2-10V4h-2v3h-3v2h5V6z" />
             </svg>
           ) : (
             <svg className="panel-expand-icon" viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M8 3H3v5" />
-              <path d="M12 3h5v5" />
-              <path d="M8 17H3v-5" />
-              <path d="M12 17h5v-5" />
+              <path d="M6 11H4v5h5v-2H6v-3zm-2-2h2V6h3V4H4v5zm9 5h-3v2h5v-5h-2v3zm0-8v3h2V4h-5v2h3z" />
             </svg>
           )}
         </button>

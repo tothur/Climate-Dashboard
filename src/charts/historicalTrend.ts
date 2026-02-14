@@ -134,8 +134,8 @@ export function buildForcingTrendOption({
     },
     tooltip: {
       trigger: "axis",
-      confine: false,
-      appendToBody: true,
+      confine: true,
+      appendToBody: false,
       backgroundColor: palette.tooltipBg,
       borderColor: palette.tooltipBorder,
       borderWidth: 1,

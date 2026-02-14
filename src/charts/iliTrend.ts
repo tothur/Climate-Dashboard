@@ -229,8 +229,8 @@ export function buildClimateMonthlyComparisonOption({
     },
     tooltip: {
       trigger: "axis",
-      confine: false,
-      appendToBody: true,
+      confine: true,
+      appendToBody: false,
       backgroundColor: palette.tooltipBg,
       borderColor: palette.tooltipBorder,
       borderWidth: 1,
@@ -462,8 +462,8 @@ export function buildClimateTrendOption({
     },
     tooltip: {
       trigger: "axis",
-      confine: false,
-      appendToBody: true,
+      confine: true,
+      appendToBody: false,
       axisPointer: {
         type: "line",
         lineStyle: {
