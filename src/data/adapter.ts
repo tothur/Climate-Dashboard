@@ -50,7 +50,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     source: {
       shortName: "Climate Reanalyzer (ERA5)",
       descriptionEn: "ERA5 daily global 2m air temperature, published by Climate Reanalyzer.",
-      descriptionHu: "ERA5 napi globális 2m levegőhőmérséklet, a Climate Reanalyzer közlésében.",
+      descriptionHu: "ERA5 napi globális 2 m levegőhőmérséklet, a Climate Reanalyzer közlésében.",
       url: "https://climatereanalyzer.org/clim/t2_daily/",
     },
   },
@@ -62,7 +62,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     source: {
       shortName: "Climate Reanalyzer (NOAA OISST v2.1)",
       descriptionEn: "NOAA OISST v2.1 daily global SST, published by Climate Reanalyzer.",
-      descriptionHu: "NOAA OISST v2.1 napi globális SST, a Climate Reanalyzer közlésében.",
+      descriptionHu: "NOAA OISST v2.1 napi globális tengerfelszíni hőmérséklet, a Climate Reanalyzer közlésében.",
       url: "https://climatereanalyzer.org/clim/sst_daily/",
     },
   },
@@ -80,13 +80,13 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   ocean_heat_content: {
     titleEn: "Ocean Heat Content (0-2000m)",
-    titleHu: "Óceáni hőtartalom (0-2000m)",
+    titleHu: "Óceáni hőtartalom (0-2000 m)",
     unit: "10^22 J",
     decimals: 2,
     source: {
       shortName: "NOAA NCEI",
       descriptionEn: "Global 0-2000m ocean heat content (10^22 joules) from NOAA NCEI.",
-      descriptionHu: "Globális 0-2000m óceáni hőtartalom (10^22 joule) a NOAA NCEI adataiból.",
+      descriptionHu: "Globális 0-2000 m óceáni hőtartalom (10^22 joule) a NOAA NCEI adatai alapján.",
       url: "https://www.ncei.noaa.gov/data/oceans/woa/DATA_ANALYSIS/3M_HEAT_CONTENT/DATA/basin/3month/ohc2000m_levitus_climdash_seasonal.csv",
     },
   },
@@ -98,7 +98,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     source: {
       shortName: "Climate Reanalyzer (ERA5)",
       descriptionEn: "ERA5 daily Northern Hemisphere 2m air temperature, published by Climate Reanalyzer.",
-      descriptionHu: "ERA5 napi északi féltekei 2m levegőhőmérséklet, a Climate Reanalyzer közlésében.",
+      descriptionHu: "ERA5 napi északi félteki 2 m levegőhőmérséklet, a Climate Reanalyzer közlésében.",
       url: "https://climatereanalyzer.org/clim/t2_daily/",
     },
   },
@@ -110,7 +110,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     source: {
       shortName: "Climate Reanalyzer (ERA5)",
       descriptionEn: "ERA5 daily Southern Hemisphere 2m air temperature, published by Climate Reanalyzer.",
-      descriptionHu: "ERA5 napi déli féltekei 2m levegőhőmérséklet, a Climate Reanalyzer közlésében.",
+      descriptionHu: "ERA5 napi déli félteki 2 m levegőhőmérséklet, a Climate Reanalyzer közlésében.",
       url: "https://climatereanalyzer.org/clim/t2_daily/",
     },
   },
@@ -122,7 +122,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     source: {
       shortName: "Climate Reanalyzer (ERA5)",
       descriptionEn: "ERA5 daily Arctic 2m air temperature, published by Climate Reanalyzer.",
-      descriptionHu: "ERA5 napi arktiszi 2m levegőhőmérséklet, a Climate Reanalyzer közlésében.",
+      descriptionHu: "ERA5 napi arktiszi 2 m levegőhőmérséklet, a Climate Reanalyzer közlésében.",
       url: "https://climatereanalyzer.org/clim/t2_daily/",
     },
   },
@@ -134,7 +134,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     source: {
       shortName: "Climate Reanalyzer (ERA5)",
       descriptionEn: "ERA5 daily Antarctic 2m air temperature, published by Climate Reanalyzer.",
-      descriptionHu: "ERA5 napi antarktiszi 2m levegőhőmérséklet, a Climate Reanalyzer közlésében.",
+      descriptionHu: "ERA5 napi antarktiszi 2 m levegőhőmérséklet, a Climate Reanalyzer közlésében.",
       url: "https://climatereanalyzer.org/clim/t2_daily/",
     },
   },
@@ -146,7 +146,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     source: {
       shortName: "Climate Reanalyzer (NOAA OISST v2.1)",
       descriptionEn: "NOAA OISST v2.1 daily North Atlantic SST, published by Climate Reanalyzer.",
-      descriptionHu: "NOAA OISST v2.1 napi észak-atlanti SST, a Climate Reanalyzer közlésében.",
+      descriptionHu: "NOAA OISST v2.1 napi észak-atlanti tengerfelszíni hőmérséklet, a Climate Reanalyzer közlésében.",
       url: "https://climatereanalyzer.org/clim/sst_daily/",
     },
   },
@@ -160,7 +160,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionEn:
         "Daily global surface-air temperature anomaly derived from ERA5 daily values relative to the 1991-2020 climatology in the same feed.",
       descriptionHu:
-        "Napi globális felszíni levegőhőmérséklet-anomália, az ERA5 napi értékek és az ugyanabban a feedben szereplő 1991-2020-as klimatológia különbségeként.",
+        "Napi globális felszíni levegőhőmérséklet-anomália az ERA5 napi értékei és az ugyanebben az adatforrásban szereplő 1991-2020-as klimatológia különbségeként.",
       url: "https://climatereanalyzer.org/clim/t2_daily/",
     },
   },
@@ -174,7 +174,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionEn:
         "Daily global SST anomaly derived from NOAA OISST v2.1 daily values relative to the 1991-2020 climatology in the same feed.",
       descriptionHu:
-        "Napi globális tengerfelszíni hőmérséklet-anomália, a NOAA OISST v2.1 napi értékek és az ugyanabban a feedben szereplő 1991-2020-as klimatológia különbségeként.",
+        "Napi globális tengerfelszíni hőmérséklet-anomália a NOAA OISST v2.1 napi értékei és az ugyanebben az adatforrásban szereplő 1991-2020-as klimatológia különbségeként.",
       url: "https://climatereanalyzer.org/clim/sst_daily/",
     },
   },
@@ -188,7 +188,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionEn:
         "Daily global mean 2m air-temperature anomaly derived from ERA5 Climate Pulse (ano_91-20) and shifted by +0.88C to approximate an 1850-1900 preindustrial baseline.",
       descriptionHu:
-        "Napi globális átlagos 2m levegőhőmérséklet-anomália az ERA5 Climate Pulse (ano_91-20) adatsorból, +0,88C eltolással becsült 1850-1900-as preindusztriális bázishoz.",
+        "Napi globális átlagos 2 m levegőhőmérséklet-anomália az ERA5 Climate Pulse (ano_91-20) adatsorából, +0,88 C eltolással, az 1850-1900-as iparosodás előtti bázis közelítésére.",
       url: "https://pulse.climate.copernicus.eu/",
     },
   },
@@ -200,7 +200,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     source: {
       shortName: "NSIDC Sea Ice Index v4",
       descriptionEn: "Daily Arctic + Antarctic extent derived from NSIDC Sea Ice Index v4.",
-      descriptionHu: "Napi északi + déli jégkiterjedés az NSIDC Sea Ice Index v4 alapján.",
+      descriptionHu: "Napi globális tengeri jégkiterjedés az arktiszi és antarktiszi adatok összegéből (NSIDC Sea Ice Index v4).",
       url: "https://nsidc.org/data/seaice_index/archives",
     },
   },
@@ -236,19 +236,19 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     source: {
       shortName: "NOAA GML",
       descriptionEn: "Daily in-situ CO2 concentration at Mauna Loa, NOAA Global Monitoring Laboratory.",
-      descriptionHu: "Napi in-situ CO2 koncentráció a Mauna Loa állomáson, NOAA GML.",
+      descriptionHu: "Napi helyszíni CO2-koncentráció a Mauna Loa állomáson (NOAA GML).",
       url: "https://gml.noaa.gov/ccgg/trends/",
     },
   },
   atmospheric_ch4: {
     titleEn: "Atmospheric CH4 (Global)",
-    titleHu: "Légköri CH4 (Globális)",
+    titleHu: "Légköri CH4 (globális)",
     unit: "ppb",
     decimals: 2,
     source: {
       shortName: "NOAA GML",
       descriptionEn: "Monthly global CH4 mole fraction from NOAA Global Monitoring Laboratory trend products.",
-      descriptionHu: "Havi globális CH4 móltört a NOAA Global Monitoring Laboratory trend adataiból.",
+      descriptionHu: "Havi globális CH4-móltört a NOAA Global Monitoring Laboratory trendtermékei alapján.",
       url: "https://gml.noaa.gov/ccgg/trends_ch4/",
     },
   },
@@ -260,7 +260,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     source: {
       shortName: "NOAA GML AGGI",
       descriptionEn: "Annual NOAA Atmospheric Greenhouse Gas Index (1990 = 1) from NOAA GML.",
-      descriptionHu: "Éves NOAA Atmospheric Greenhouse Gas Index (1990 = 1) a NOAA GML adataiból.",
+      descriptionHu: "Éves NOAA légköri üvegházhatásúgáz-index (AGGI, 1990 = 1) a NOAA GML adatai alapján.",
       url: "https://gml.noaa.gov/aggi/AGGI_Table.csv",
     },
   },
