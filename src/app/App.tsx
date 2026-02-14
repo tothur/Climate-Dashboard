@@ -102,8 +102,6 @@ const STRINGS = {
     sourceLabel: "Source",
     chartFullscreenEnter: "Full screen",
     chartFullscreenExit: "Exit full screen",
-    chartExportPng: "Export PNG",
-    chartExportCsv: "Export CSV",
     freshnessAsOf: "As of",
     freshnessDaily: "daily",
     freshnessMonthly: "monthly",
@@ -167,8 +165,6 @@ const STRINGS = {
     sourceLabel: "Forrás",
     chartFullscreenEnter: "Teljes képernyő",
     chartFullscreenExit: "Kilépés",
-    chartExportPng: "PNG export",
-    chartExportCsv: "CSV export",
     freshnessAsOf: "Dátum",
     freshnessDaily: "napi",
     freshnessMonthly: "havi",
@@ -800,8 +796,6 @@ export function App() {
         subtitle={metric.source.shortName}
         expandLabel={t.chartFullscreenEnter}
         collapseLabel={t.chartFullscreenExit}
-        exportPngLabel={t.chartExportPng}
-        exportCsvLabel={t.chartExportCsv}
         freshnessLabel={freshness.label}
         freshnessTone={freshness.tone}
         option={buildClimateMonthlyComparisonOption({
@@ -841,8 +835,6 @@ export function App() {
         subtitle={metric.source.shortName}
         expandLabel={t.chartFullscreenEnter}
         collapseLabel={t.chartFullscreenExit}
-        exportPngLabel={t.chartExportPng}
-        exportCsvLabel={t.chartExportCsv}
         freshnessLabel={freshness.label}
         freshnessTone={freshness.tone}
         option={buildClimateTrendOption({
@@ -998,8 +990,6 @@ export function App() {
                     subtitle={t.dailyGlobalTemperatureAnomalySubtitle}
                     expandLabel={t.chartFullscreenEnter}
                     collapseLabel={t.chartFullscreenExit}
-                    exportPngLabel={t.chartExportPng}
-                    exportCsvLabel={t.chartExportCsv}
                     freshnessLabel={dailyGlobalMeanAnomalyFreshness?.label}
                     freshnessTone={dailyGlobalMeanAnomalyFreshness?.tone}
                     option={buildClimateTrendOption({
@@ -1034,8 +1024,6 @@ export function App() {
                     subtitle={`${t.annualGlobalTemperatureAnomalySubtitle}${annualGlobalMeanAnomalyIsYtd ? ` · ${t.ytdLabel}` : ""}`}
                     expandLabel={t.chartFullscreenEnter}
                     collapseLabel={t.chartFullscreenExit}
-                    exportPngLabel={t.chartExportPng}
-                    exportCsvLabel={t.chartExportCsv}
                     freshnessLabel={dailyGlobalMeanAnomalyFreshness?.label}
                     freshnessTone={dailyGlobalMeanAnomalyFreshness?.tone}
                     option={buildClimateTrendOption({
@@ -1257,8 +1245,6 @@ export function App() {
                     subtitle={metric.source.shortName}
                     expandLabel={t.chartFullscreenEnter}
                     collapseLabel={t.chartFullscreenExit}
-                    exportPngLabel={t.chartExportPng}
-                    exportCsvLabel={t.chartExportCsv}
                     freshnessLabel={freshness.label}
                     freshnessTone={freshness.tone}
                     option={option}
