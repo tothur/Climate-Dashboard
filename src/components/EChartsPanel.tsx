@@ -134,12 +134,12 @@ export function EChartsPanel({ title, subtitle, option, expandLabel, collapseLab
           title={expanded ? collapseText : expandText}
         >
           {expanded ? (
-            <svg className="panel-expand-icon" viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M4 13h3v3h2v-5H4v2zm3-4H4V4h5v2H7v3zm4 7h2v-3h3v-2h-5v5zm2-10V4h-2v3h-3v2h5V6z" />
+            <svg className="panel-expand-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 9 3 3m0 0h4.5M3 3v4.5M9 15l-6 6m0 0h4.5M3 21v-4.5m12-7.5 6-6m0 0h-4.5M21 3v4.5m-6 7.5 6 6m0 0h-4.5M21 21v-4.5" />
             </svg>
           ) : (
-            <svg className="panel-expand-icon" viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M6 11H4v5h5v-2H6v-3zm-2-2h2V6h3V4H4v5zm9 5h-3v2h5v-5h-2v3zm0-8v3h2V4h-5v2h3z" />
+            <svg className="panel-expand-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3.75 4.5h4.5m0 0v4.5m0-4.5L3 9m17.25-4.5h-4.5m0 0v4.5m0-4.5L21 9m-17.25 6h4.5m0 0v4.5m0-4.5L3 21m17.25-6h-4.5m0 0v4.5m0-4.5L21 21" />
             </svg>
           )}
         </button>

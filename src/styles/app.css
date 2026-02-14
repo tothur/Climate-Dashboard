@@ -1846,8 +1846,8 @@ h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border));
   border-radius: 10px;
   background: color-mix(in srgb, var(--accent) 10%, var(--panel));
@@ -1858,10 +1858,13 @@ h3 {
 }
 
 .panel-expand-icon {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
-  stroke: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .panel-expand-btn:hover {
