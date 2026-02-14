@@ -90,7 +90,7 @@ const STRINGS = {
     seaIceSectionNote:
       "Global, Arctic, and Antarctic extent shown with daily points in a Jan-Dec comparison view.",
     forcingTitle: "Forcing",
-    forcingNote: "Atmospheric forcing signals from Mauna Loa CO2, global CH4 observations, and NOAA AGGI.",
+    forcingNote: "Atmospheric forcing signals from Mauna Loa CO2, global CH4 observations, and the NOAA Annual Greenhouse Gas Index.",
     sourceTitle: "Data source mode",
     sourceLive: "Live feeds",
     sourceMixed: "Mixed live + fallback",
@@ -143,7 +143,7 @@ const STRINGS = {
     seaIceSectionNote:
       "Globális, arktiszi és antarktiszi jégkiterjedés napi pontokkal Jan-Dec összehasonlító nézetben.",
     forcingTitle: "Forcing",
-    forcingNote: "Légköri forcing jelek a Mauna Loa CO2, a globális CH4 megfigyelések és a NOAA AGGI alapján.",
+    forcingNote: "Légköri forcing jelek a Mauna Loa CO2, a globális CH4 megfigyelések és a NOAA éves üvegházhatásúgáz-index alapján.",
     sourceTitle: "Adatforrás mód",
     sourceLive: "Élő feed",
     sourceMixed: "Vegyes élő + tartalék",

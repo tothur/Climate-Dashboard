@@ -253,8 +253,8 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     },
   },
   atmospheric_aggi: {
-    titleEn: "NOAA AGGI",
-    titleHu: "NOAA AGGI",
+    titleEn: "NOAA Annual Greenhouse Gas Index",
+    titleHu: "NOAA éves üvegházhatásúgáz-index",
     unit: "index",
     decimals: 3,
     source: {

@@ -234,8 +234,8 @@ h3 {
 .alerts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
-  padding: 12px;
+  gap: 18px;
+  padding: 14px;
   border-radius: calc(var(--radius) + 2px);
   border: 1px solid rgba(37, 99, 235, 0.18);
   background: linear-gradient(180deg, rgba(37, 99, 235, 0.06), rgba(37, 99, 235, 0.01));
@@ -467,13 +467,59 @@ h3 {
 }
 
 .alert-card.summary.summary-top {
-  min-height: 96px;
-  padding: 14px 16px 15px;
+  --top-card-accent: #2563eb;
+  --top-card-soft: rgba(37, 99, 235, 0.13);
+  min-height: 110px;
+  padding: 16px 18px 17px;
+  border-color: color-mix(in srgb, var(--top-card-accent) 32%, var(--border));
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--top-card-soft) 85%, transparent), rgba(255, 255, 255, 0.9)),
+    var(--panel);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--top-card-accent) 12%, transparent),
+    var(--shadow-1);
+}
+
+.alert-card.summary.summary-top::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--top-card-accent) 88%, #ffffff),
+    color-mix(in srgb, var(--top-card-accent) 46%, #ffffff)
+  );
+}
+
+.alerts-grid .alert-card.summary-top:nth-child(4n + 1) {
+  --top-card-accent: #2563eb;
+  --top-card-soft: rgba(37, 99, 235, 0.14);
+}
+
+.alerts-grid .alert-card.summary-top:nth-child(4n + 2) {
+  --top-card-accent: #0d9488;
+  --top-card-soft: rgba(13, 148, 136, 0.14);
+}
+
+.alerts-grid .alert-card.summary-top:nth-child(4n + 3) {
+  --top-card-accent: #0891b2;
+  --top-card-soft: rgba(8, 145, 178, 0.13);
+}
+
+.alerts-grid .alert-card.summary-top:nth-child(4n + 4) {
+  --top-card-accent: #ea580c;
+  --top-card-soft: rgba(234, 88, 12, 0.12);
 }
 
 .alert-card.summary.summary-top h2 {
-  font-size: 0.82rem;
-  margin-bottom: 6px;
+  font-size: clamp(0.97rem, 1.25vw, 1.12rem);
+  line-height: 1.2;
+  margin-bottom: 7px;
+  font-weight: 730;
+  color: color-mix(in srgb, var(--top-card-accent) 48%, var(--text));
 }
 
 .alert-card.summary.summary-top .alert-emphasis {
@@ -1934,6 +1980,20 @@ h3 {
 [data-theme="dark"] .alerts-grid {
   border-color: rgba(96, 165, 250, 0.28);
   background: linear-gradient(180deg, rgba(37, 99, 235, 0.18), rgba(30, 41, 59, 0.36));
+}
+
+[data-theme="dark"] .alert-card.summary.summary-top {
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--top-card-soft) 68%, rgba(15, 23, 42, 0.82)), rgba(15, 23, 42, 0.9)),
+    var(--panel);
+  border-color: color-mix(in srgb, var(--top-card-accent) 40%, rgba(148, 163, 184, 0.36));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--top-card-accent) 22%, transparent),
+    var(--shadow-1);
+}
+
+[data-theme="dark"] .alert-card.summary.summary-top h2 {
+  color: color-mix(in srgb, var(--top-card-accent) 56%, #dbeafe);
 }
 
 [data-theme="dark"] .briefing-grid {
