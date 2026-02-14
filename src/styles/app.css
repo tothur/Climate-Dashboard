@@ -466,6 +466,31 @@ h3 {
   color: var(--muted);
 }
 
+.alert-card.summary.summary-top {
+  min-height: 96px;
+  padding: 14px 16px 15px;
+}
+
+.alert-card.summary.summary-top h2 {
+  font-size: 0.82rem;
+  margin-bottom: 6px;
+}
+
+.alert-card.summary.summary-top .alert-emphasis {
+  font-size: clamp(1.35rem, 2vw, 1.95rem);
+  line-height: 1.08;
+  font-weight: 760;
+  color: var(--text);
+}
+
+.alert-card.summary.summary-top .summary-meta {
+  margin-top: 7px;
+  font-size: 0.76rem;
+  line-height: 1.3;
+  font-weight: 560;
+  color: color-mix(in srgb, var(--muted) 86%, var(--text) 14%);
+}
+
 .alert-card.epidemic {
   padding-top: 18px;
 }

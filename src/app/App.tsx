@@ -700,8 +700,7 @@ export function App() {
 
       <section className="alerts-grid" aria-label={t.latestSignalsAria}>
         {latestAnnualGlobalMeanAnomaly ? (
-          <article className="alert-card summary" key="annual-global-temperature-anomaly-summary">
-            <span className="alert-kicker">{t.latestAnnualLabel}</span>
+          <article className="alert-card summary summary-top" key="annual-global-temperature-anomaly-summary">
             <h2>{t.annualGlobalTemperatureAnomalyTitle}</h2>
             <p className="alert-emphasis">
               {new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
@@ -714,30 +713,20 @@ export function App() {
                 language
               )}
             </p>
-            <p>
+            <p className="summary-meta">
               {t.yearLabel}: {latestAnnualGlobalMeanAnomaly.year}
             </p>
-            <p>{t.annualGlobalTemperatureAnomalyMethod}</p>
-            <div className="alert-meta">
-              <span className="alert-meta-chip confidence-medium">
-                {dailyGlobalMeanAnomalyMetric?.source.shortName ?? "ECMWF ERA5 Climate Pulse"}
-              </span>
-            </div>
           </article>
         ) : null}
         {headlineMetrics.map((metric) => (
-          <article className="alert-card summary" key={metric.key}>
-            <span className="alert-kicker">{t.latestLabel}</span>
+          <article className="alert-card summary summary-top" key={metric.key}>
             <h2>{metricTitle(metric, language)}</h2>
             <p className="alert-emphasis">
               {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
             </p>
-            <p>
+            <p className="summary-meta">
               {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
             </p>
-            <div className="alert-meta">
-              <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
-            </div>
           </article>
         ))}
       </section>
