@@ -1969,15 +1969,12 @@ h3 {
   height: 360px;
 }
 
-.panel-chart-freshness {
-  position: absolute;
-  left: 10px;
-  bottom: 10px;
-  z-index: 6;
-  max-width: min(62%, 300px);
-  pointer-events: none;
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.14);
-  backdrop-filter: blur(1px);
+.panel-chart-footer {
+  margin-top: 8px;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .panel.panel-expanded {
@@ -2076,10 +2073,6 @@ body.panel-expanded-lock {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 16px;
-}
-
-.historical-grid .panel-chart {
-  height: 100%;
 }
 
 .historical-grid .panel-chart-wrap {
@@ -2335,10 +2328,6 @@ body.panel-expanded-lock {
   border-color: rgba(248, 113, 113, 0.5);
   background: rgba(153, 27, 27, 0.5);
   color: #fecaca;
-}
-
-[data-theme="dark"] .panel-chart-freshness {
-  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.52);
 }
 
 [data-theme="dark"] .collapsible-section {
@@ -2731,10 +2720,9 @@ body.panel-expanded-lock {
     height: 300px;
   }
 
-  .panel-chart-freshness {
-    left: 8px;
-    bottom: 8px;
-    max-width: min(70%, 260px);
+  .panel-chart-footer {
+    margin-top: 6px;
+    min-height: 22px;
   }
 
   .surge-item {

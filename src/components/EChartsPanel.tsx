@@ -160,8 +160,12 @@ export function EChartsPanel({
       </header>
       <div className="panel-chart-wrap">
         <div className="panel-chart" ref={containerRef} />
-        {freshnessLabel ? <span className={`panel-freshness-chip panel-chart-freshness ${freshnessTone}`}>{freshnessLabel}</span> : null}
       </div>
+      {freshnessLabel ? (
+        <div className="panel-chart-footer">
+          <span className={`panel-freshness-chip ${freshnessTone}`}>{freshnessLabel}</span>
+        </div>
+      ) : null}
     </article>
   );
 }
