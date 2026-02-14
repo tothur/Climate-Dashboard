@@ -439,8 +439,14 @@ export function buildClimateTrendOption({
       lineStyle: { color: palette.currentWeekLine, width: 1.3, type: "dashed" },
       label: {
         show: !compact,
+        position: "start",
+        align: "right",
+        offset: [-10, 0],
         formatter: latestText,
         color: palette.axisLabel,
+        padding: [2, 6],
+        borderRadius: 6,
+        backgroundColor: dark ? "rgba(15, 23, 42, 0.7)" : "rgba(248, 250, 252, 0.82)",
       },
     });
   }

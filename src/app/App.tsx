@@ -205,6 +205,11 @@ function formatDateTimeLabel(dateIso: string, language: Language): string {
   }).format(date);
 }
 
+function formatAnnualAnomalyTopMeta(year: number, language: Language): string {
+  if (language === "hu") return `Év: ${year} vs 1850-1900`;
+  return `Year: ${year} vs 1850-1900`;
+}
+
 function formatMetricValue(metric: ClimateMetricSeries, language: Language, unavailableText: string): string {
   if (metric.latestValue == null || !Number.isFinite(metric.latestValue)) return unavailableText;
   return new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
@@ -803,7 +808,7 @@ export function App() {
               )}
             </p>
             <p className="summary-meta">
-              {t.yearLabel}: {latestAnnualGlobalMeanAnomaly.year}
+              {formatAnnualAnomalyTopMeta(latestAnnualGlobalMeanAnomaly.year, language)}
             </p>
           </article>
         ) : null}
