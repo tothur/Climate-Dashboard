@@ -95,8 +95,8 @@ const STRINGS = {
     mapsSectionTitle: "Maps",
     mapsSectionNote:
       "Global Climate Reanalyzer map snapshots for 2m temperature, 2m anomaly, sea-surface temperature, and sea-surface temperature anomaly.",
-    map2mTemperatureTitle: "2m Temperature",
-    map2mTemperatureAnomalyTitle: "2m Temperature Anomaly",
+    map2mTemperatureTitle: "Surface Temperature (2m)",
+    map2mTemperatureAnomalyTitle: "Surface Temperature Anomaly (2m)",
     mapSstTitle: "Sea Surface Temperature",
     mapSstAnomalyTitle: "Sea Surface Temperature Anomaly",
     mapGlobalSubtitle: "Global map · Climate Reanalyzer",
@@ -167,8 +167,8 @@ const STRINGS = {
     mapsSectionTitle: "Térképek",
     mapsSectionNote:
       "Globális Climate Reanalyzer térképkivonatok a 2 m hőmérsékletről, 2 m anomáliáról, tengerfelszíni hőmérsékletről és SST-anomáliáról.",
-    map2mTemperatureTitle: "2 m hőmérséklet",
-    map2mTemperatureAnomalyTitle: "2 m hőmérsékleti anomália",
+    map2mTemperatureTitle: "Felszíni hőmérséklet (2m)",
+    map2mTemperatureAnomalyTitle: "Felszíni hőmérsékleti anomália (2m)",
     mapSstTitle: "Tengerfelszíni hőmérséklet",
     mapSstAnomalyTitle: "Tengerfelszíni hőmérsékleti anomália",
     mapGlobalSubtitle: "Globális térkép · Climate Reanalyzer",
