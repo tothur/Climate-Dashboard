@@ -15,6 +15,7 @@ const CLIMATOLOGY_BASELINE_START_YEAR = 1991;
 const CLIMATOLOGY_BASELINE_END_YEAR = 2020;
 const MAP_CLIMATOLOGY_PERIOD = "1991-2020";
 const EARTH_LOGO_URL = `${import.meta.env.BASE_URL}earthicon.png`;
+const LOCAL_MAP_ASSET_BASE_URL = `${import.meta.env.BASE_URL}data/maps`;
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
 const TEMPERATURE_ANOMALY_KEYS = new Set(["global_surface_temperature_anomaly", "global_sea_surface_temperature_anomaly"]);
@@ -876,14 +877,15 @@ export function App() {
     const surfaceAnomalyFreshness = surfaceAnomalyMetric ? metricFreshnessBadge(surfaceAnomalyMetric, language, t) : surfaceFreshness;
     const sstFreshness = sstMetric ? metricFreshnessBadge(sstMetric, language, t) : null;
     const sstAnomalyFreshness = sstAnomalyMetric ? metricFreshnessBadge(sstAnomalyMetric, language, t) : sstFreshness;
+    const mapVersion = encodeURIComponent(snapshot.updatedAtIso);
 
     return [
       {
         key: "map-2m-temperature",
         title: t.map2mTemperatureTitle,
         subtitle: surfaceSubtitle,
-        imageUrl: t2MapUrls[0]?.t2 ?? "",
-        fallbackImageUrls: t2MapUrls.slice(1).map((entry) => entry.t2),
+        imageUrl: `${LOCAL_MAP_ASSET_BASE_URL}/global-2m-temperature.png?v=${mapVersion}`,
+        fallbackImageUrls: t2MapUrls.map((entry) => entry.t2),
         imageAlt: `${t.map2mTemperatureTitle} (${formatDateLabel(surfaceMetric?.latestDate ?? null, language)})`,
         freshness: surfaceFreshness,
       },
@@ -891,8 +893,8 @@ export function App() {
         key: "map-2m-temperature-anomaly",
         title: t.map2mTemperatureAnomalyTitle,
         subtitle: surfaceSubtitle,
-        imageUrl: t2MapUrls[0]?.t2Anomaly ?? "",
-        fallbackImageUrls: t2MapUrls.slice(1).map((entry) => entry.t2Anomaly),
+        imageUrl: `${LOCAL_MAP_ASSET_BASE_URL}/global-2m-temperature-anomaly.png?v=${mapVersion}`,
+        fallbackImageUrls: t2MapUrls.map((entry) => entry.t2Anomaly),
         imageAlt: `${t.map2mTemperatureAnomalyTitle} (${formatDateLabel(surfaceAnomalyMetric?.latestDate ?? null, language)})`,
         freshness: surfaceAnomalyFreshness,
       },
@@ -900,8 +902,8 @@ export function App() {
         key: "map-sst",
         title: t.mapSstTitle,
         subtitle: sstSubtitle,
-        imageUrl: sstMapUrls[0]?.sst ?? "",
-        fallbackImageUrls: sstMapUrls.slice(1).map((entry) => entry.sst),
+        imageUrl: `${LOCAL_MAP_ASSET_BASE_URL}/global-sst.png?v=${mapVersion}`,
+        fallbackImageUrls: sstMapUrls.map((entry) => entry.sst),
         imageAlt: `${t.mapSstTitle} (${formatDateLabel(sstMetric?.latestDate ?? null, language)})`,
         freshness: sstFreshness,
       },
@@ -909,13 +911,13 @@ export function App() {
         key: "map-sst-anomaly",
         title: t.mapSstAnomalyTitle,
         subtitle: sstSubtitle,
-        imageUrl: sstMapUrls[0]?.sstAnomaly ?? "",
-        fallbackImageUrls: sstMapUrls.slice(1).map((entry) => entry.sstAnomaly),
+        imageUrl: `${LOCAL_MAP_ASSET_BASE_URL}/global-sst-anomaly.png?v=${mapVersion}`,
+        fallbackImageUrls: sstMapUrls.map((entry) => entry.sstAnomaly),
         imageAlt: `${t.mapSstAnomalyTitle} (${formatDateLabel(sstAnomalyMetric?.latestDate ?? null, language)})`,
         freshness: sstAnomalyFreshness,
       },
     ];
-  }, [snapshot.indicators, language, t]);
+  }, [snapshot.indicators, snapshot.updatedAtIso, language, t]);
 
   const renderIndicatorPanel = (
     metric: ClimateMetricSeries,

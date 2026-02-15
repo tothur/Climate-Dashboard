@@ -40,7 +40,7 @@ jobs:
 
       - name: Commit and push when data changed
         run: |
-          if git diff --quiet -- public/data/climate-realtime.json; then
+          if git diff --quiet -- public/data/climate-realtime.json public/data/maps; then
             echo "No dataset changes to commit."
             exit 0
           fi
@@ -48,5 +48,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/data/climate-realtime.json
+          if [ -d public/data/maps ]; then
+            git add public/data/maps/*.png 2>/dev/null || true
+          fi
           git commit -m "chore(data): daily climate dataset refresh"
           git push

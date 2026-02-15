@@ -1,10 +1,16 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const INPUT_PATH = resolve(ROOT_DIR, "public/data/climate-realtime.json");
 const DAY_MS = 86_400_000;
+const REQUIRED_MAP_FILES = [
+  resolve(ROOT_DIR, "public/data/maps/global-2m-temperature.png"),
+  resolve(ROOT_DIR, "public/data/maps/global-2m-temperature-anomaly.png"),
+  resolve(ROOT_DIR, "public/data/maps/global-sst.png"),
+  resolve(ROOT_DIR, "public/data/maps/global-sst-anomaly.png"),
+];
 
 const SERIES_RULES = {
   global_surface_temperature: {
@@ -330,6 +336,21 @@ function verifyTemperatureAnomalyAlignment(series, errors, warnings) {
   }
 }
 
+async function verifyMapFiles(payload, errors, warnings) {
+  const maps = payload && typeof payload === "object" && !Array.isArray(payload) ? payload.maps : null;
+  if (!maps || typeof maps !== "object" || Array.isArray(maps)) {
+    warnings.push("maps: missing maps metadata block");
+  }
+
+  for (const filePath of REQUIRED_MAP_FILES) {
+    try {
+      await access(filePath);
+    } catch {
+      errors.push(`maps: missing expected map file ${filePath}`);
+    }
+  }
+}
+
 async function main() {
   const raw = await readFile(INPUT_PATH, "utf8");
   const payload = JSON.parse(raw);
@@ -357,6 +378,7 @@ async function main() {
 
   verifyTemperatureAnomalyAlignment(series, errors, warnings);
   verifySeaIceConsistency(series, errors, warnings);
+  await verifyMapFiles(payload, errors, warnings);
 
   if (warnings.length) {
     console.warn("Data verification warnings:");

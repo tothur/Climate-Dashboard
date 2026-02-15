@@ -1,9 +1,10 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { access, mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT_PATH = resolve(ROOT_DIR, "public/data/climate-realtime.json");
+const MAP_OUTPUT_DIR = resolve(ROOT_DIR, "public/data/maps");
 
 const ERA5_GLOBAL_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_world_t2_day.json";
 const ERA5_NH_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_nh_t2_day.json";
@@ -24,6 +25,9 @@ const NSIDC_SOUTH_DAILY_EXTENT_URL =
 const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv";
 const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
 const NOAA_AGGI_CSV_URL = "https://gml.noaa.gov/aggi/AGGI_Table.csv";
+const CR_T2_LAST_MAP_DATE_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/last_map_date.json";
+const CR_SST_LAST_MAP_DATE_URL = "https://cr.acg.maine.edu/clim/sst_daily/json/dates_sstanom.json";
+const MAP_CLIMATOLOGY_PERIOD = "1991-2020";
 
 const DAY_MS = 86_400_000;
 const FUTURE_TOLERANCE_DAYS = 0;
@@ -76,6 +80,93 @@ function dateFromDecimalYear(decimalYear) {
 function parseIsoDateToUtc(dateIso) {
   const timestamp = Date.parse(`${dateIso}T00:00:00Z`);
   return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+async function fileExists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function dateIsoFromMapDatePayload(payload) {
+  if (!Array.isArray(payload) || payload.length < 6) return null;
+  const year = Number(payload[3]);
+  const month = Number(payload[4]);
+  const day = Number(payload[5]);
+  return formatDateFromParts(year, month, day);
+}
+
+function yearDayFromIso(dateIso) {
+  const parsed = parseIsoDateToUtc(dateIso);
+  if (parsed == null) return null;
+  const date = new Date(parsed);
+  const year = date.getUTCFullYear();
+  const dayOfYear = Math.floor((parsed - Date.UTC(year, 0, 1)) / DAY_MS) + 1;
+  if (!Number.isFinite(dayOfYear) || dayOfYear < 1 || dayOfYear > 366) return null;
+  return {
+    year,
+    dayOfYear,
+  };
+}
+
+function mapDayToken(dayOfYear) {
+  return String(Math.max(1, Math.min(366, dayOfYear))).padStart(3, "0");
+}
+
+function addUtcDays(dateIso, deltaDays) {
+  const parsed = parseIsoDateToUtc(dateIso);
+  if (parsed == null) return null;
+  const next = new Date(parsed);
+  next.setUTCDate(next.getUTCDate() + deltaDays);
+  return formatIsoDate(next);
+}
+
+function buildT2MapUrl(year, dayOfYear) {
+  const doy = mapDayToken(dayOfYear);
+  return `https://cr.acg.maine.edu/clim/t2_daily/maps/t2/world-wt/${year}/t2_world-wt_${year}_d${doy}.png`;
+}
+
+function buildT2AnomalyMapUrl(year, dayOfYear) {
+  const doy = mapDayToken(dayOfYear);
+  return `https://cr.acg.maine.edu/clim/t2_daily/maps/t2anom_${MAP_CLIMATOLOGY_PERIOD}/world-wt/${year}/t2anom_world-wt_${year}_d${doy}.png`;
+}
+
+function buildSstMapUrl(year, dayOfYear) {
+  const doy = mapDayToken(dayOfYear);
+  return `https://cr.acg.maine.edu/clim/sst_daily/maps/sst/world-wt3/${year}/sst_world-wt3_${year}_d${doy}.png`;
+}
+
+function buildSstAnomalyMapUrl(year, dayOfYear) {
+  const doy = mapDayToken(dayOfYear);
+  return `https://cr.acg.maine.edu/clim/sst_daily/maps/sstanom_${MAP_CLIMATOLOGY_PERIOD}/world-wt3/${year}/sstanom_world-wt3_${year}_d${doy}.png`;
+}
+
+async function downloadMapWithFallback(dateIso, buildUrl, maxBackDays = 20) {
+  if (!dateIso) throw new Error("Missing map date.");
+  let lastError = null;
+
+  for (let backDays = 0; backDays <= maxBackDays; backDays += 1) {
+    const candidateDate = addUtcDays(dateIso, -backDays);
+    if (!candidateDate) continue;
+    const candidate = yearDayFromIso(candidateDate);
+    if (!candidate) continue;
+
+    const url = buildUrl(candidate.year, candidate.dayOfYear);
+    try {
+      const bytes = await fetchBinary(url);
+      if (bytes instanceof Uint8Array && bytes.length > 0) {
+        return { bytes, url, dateIso: candidateDate };
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  const reason = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`Failed to download map after fallback attempts: ${reason}`);
 }
 
 function normalizePoints(points) {
@@ -135,7 +226,9 @@ async function fetchWithRetry(url, responseType) {
         throw new Error(`HTTP ${response.status} for ${url}`);
       }
 
-      return responseType === "json" ? await response.json() : await response.text();
+      if (responseType === "json") return await response.json();
+      if (responseType === "arrayBuffer") return new Uint8Array(await response.arrayBuffer());
+      return await response.text();
     } catch (error) {
       lastError = error;
       if (attempt < FETCH_RETRY_ATTEMPTS) {
@@ -157,6 +250,10 @@ async function fetchJson(url) {
 
 async function fetchText(url) {
   return await fetchWithRetry(url, "text");
+}
+
+async function fetchBinary(url) {
+  return await fetchWithRetry(url, "arrayBuffer");
 }
 
 function parseReanalyzerDailyJson(payload) {
@@ -595,6 +692,8 @@ async function updateOnce() {
     ch4Csv,
     aggiCsv,
     dailyGlobalMeanAnomalyCsv,
+    t2MapDatePayload,
+    sstMapDatePayload,
   ] = await Promise.all([
     fetchJson(ERA5_GLOBAL_SURFACE_TEMP_URL),
     fetchJson(OISST_GLOBAL_SST_URL),
@@ -611,6 +710,8 @@ async function updateOnce() {
     fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
     fetchText(NOAA_AGGI_CSV_URL),
     fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
+    fetchJson(CR_T2_LAST_MAP_DATE_URL),
+    fetchJson(CR_SST_LAST_MAP_DATE_URL),
   ]);
 
   const globalSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(surfacePayload), {
@@ -707,6 +808,78 @@ async function updateOnce() {
     maxAgeDays: 20,
   });
 
+  const t2MapDateIso = dateIsoFromMapDatePayload(t2MapDatePayload) ?? globalSurfaceTemperature.at(-1)?.date ?? null;
+  const sstMapDateIso = dateIsoFromMapDatePayload(sstMapDatePayload) ?? globalSeaSurfaceTemperature.at(-1)?.date ?? null;
+  const mapFiles = {
+    global_2m_temperature: "global-2m-temperature.png",
+    global_2m_temperature_anomaly: "global-2m-temperature-anomaly.png",
+    global_sst: "global-sst.png",
+    global_sst_anomaly: "global-sst-anomaly.png",
+  };
+  const mapSources = {};
+  const mapWarnings = [];
+
+  await mkdir(MAP_OUTPUT_DIR, { recursive: true });
+
+  const mapJobs = [
+    {
+      key: "global_2m_temperature",
+      dateIso: t2MapDateIso,
+      fileName: mapFiles.global_2m_temperature,
+      buildUrl: buildT2MapUrl,
+      sourcePage: "https://climatereanalyzer.org/clim/t2_daily/",
+    },
+    {
+      key: "global_2m_temperature_anomaly",
+      dateIso: t2MapDateIso,
+      fileName: mapFiles.global_2m_temperature_anomaly,
+      buildUrl: buildT2AnomalyMapUrl,
+      sourcePage: "https://climatereanalyzer.org/clim/t2_daily/",
+    },
+    {
+      key: "global_sst",
+      dateIso: sstMapDateIso,
+      fileName: mapFiles.global_sst,
+      buildUrl: buildSstMapUrl,
+      sourcePage: "https://climatereanalyzer.org/clim/sst_daily/",
+    },
+    {
+      key: "global_sst_anomaly",
+      dateIso: sstMapDateIso,
+      fileName: mapFiles.global_sst_anomaly,
+      buildUrl: buildSstAnomalyMapUrl,
+      sourcePage: "https://climatereanalyzer.org/clim/sst_daily/",
+    },
+  ];
+
+  for (const mapJob of mapJobs) {
+    const outputFilePath = resolve(MAP_OUTPUT_DIR, mapJob.fileName);
+    try {
+      const mapResult = await downloadMapWithFallback(mapJob.dateIso, mapJob.buildUrl);
+      await writeFile(outputFilePath, mapResult.bytes);
+      mapSources[mapJob.key] = {
+        path: `data/maps/${mapJob.fileName}`,
+        sourceUrl: mapResult.url,
+        sourcePage: mapJob.sourcePage,
+        date: mapResult.dateIso,
+      };
+    } catch (error) {
+      const existing = await fileExists(outputFilePath);
+      if (existing) {
+        mapWarnings.push(`${mapJob.key}: refresh failed; keeping previous map file.`);
+        mapSources[mapJob.key] = {
+          path: `data/maps/${mapJob.fileName}`,
+          sourceUrl: null,
+          sourcePage: mapJob.sourcePage,
+          date: null,
+        };
+      } else {
+        const reason = error instanceof Error ? error.message : String(error);
+        mapWarnings.push(`${mapJob.key}: ${reason}`);
+      }
+    }
+  }
+
   const generatedAtIso = new Date().toISOString();
 
   const output = {
@@ -732,7 +905,11 @@ async function updateOnce() {
       atmospheric_co2: NOAA_MAUNA_LOA_CO2_DAILY_URL,
       atmospheric_ch4: NOAA_GLOBAL_CH4_MONTHLY_URL,
       atmospheric_aggi: NOAA_AGGI_CSV_URL,
+      maps_2m_temperature_dates: CR_T2_LAST_MAP_DATE_URL,
+      maps_sst_dates: CR_SST_LAST_MAP_DATE_URL,
     },
+    maps: mapSources,
+    mapWarnings,
     series: {
       global_surface_temperature: globalSurfaceTemperature,
       global_sea_surface_temperature: globalSeaSurfaceTemperature,
@@ -790,6 +967,12 @@ async function updateOnce() {
 
   console.log(`Wrote ${OUTPUT_PATH}`);
   console.log(JSON.stringify(output.summary, null, 2));
+  if (mapWarnings.length) {
+    console.warn("Map update warnings:");
+    for (const warning of mapWarnings) {
+      console.warn(`- ${warning}`);
+    }
+  }
 }
 
 async function run() {
