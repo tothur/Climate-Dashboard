@@ -127,6 +127,7 @@ const STRINGS = {
     valueUnavailable: "No value",
     footerMode: "Mode",
     footerUpdated: "Updated",
+    footerCredit: "Made by András Tóth and GPT-5.3-Codex.",
   },
   hu: {
     appTitle: "Klíma Dashboard",
@@ -199,6 +200,7 @@ const STRINGS = {
     valueUnavailable: "Nincs érték",
     footerMode: "Mód",
     footerUpdated: "Frissítve",
+    footerCredit: "Készítette: András Tóth és GPT-5.3-Codex.",
   },
 } as const;
 
@@ -1455,6 +1457,7 @@ export function App() {
             ))}
           </div>
         </div>
+        <p className="footer-credit">{t.footerCredit}</p>
       </footer>
     </div>
   );

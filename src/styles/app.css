@@ -1012,6 +1012,14 @@ h3 {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
+.footer-credit {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 0.76rem;
+  line-height: 1.25;
+  color: color-mix(in srgb, var(--muted) 82%, var(--text));
+}
+
 .surge-section {
   background: linear-gradient(165deg, color-mix(in srgb, var(--panel) 92%, #ffffff 8%), var(--panel));
   border: 1px solid var(--border);
@@ -2313,6 +2321,10 @@ body.panel-expanded-lock {
 [data-theme="dark"] .footer-sources-links a:hover {
   border-color: rgba(96, 165, 250, 0.56);
   color: #bfdbfe;
+}
+
+[data-theme="dark"] .footer-credit {
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .section-toggle {
