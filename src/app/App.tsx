@@ -200,7 +200,7 @@ const STRINGS = {
     valueUnavailable: "Nincs érték",
     footerMode: "Mód",
     footerUpdated: "Frissítve",
-    footerCredit: "Készítette: András Tóth és GPT-5.3-Codex.",
+    footerCredit: "Készítette: Tóth András és a GPT-5.3-Codex.",
   },
 } as const;
 
