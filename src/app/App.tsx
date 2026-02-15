@@ -5,6 +5,7 @@ import { loadRuntimeDataSource } from "../data/runtime-source";
 import { buildClimateMonthlyComparisonOption, buildClimateTrendOption } from "../charts/iliTrend";
 import { buildForcingTrendOption } from "../charts/historicalTrend";
 import { EChartsPanel } from "../components/EChartsPanel";
+import { MapPanel } from "../components/MapPanel";
 
 const STORAGE_LANG_KEY = "climate-dashboard-lang";
 const STORAGE_THEME_KEY = "climate-dashboard-theme";
@@ -12,6 +13,7 @@ const REFERENCE_LEAP_YEAR = 2024;
 const REFERENCE_LEAP_YEAR_START_UTC = Date.UTC(REFERENCE_LEAP_YEAR, 0, 1);
 const CLIMATOLOGY_BASELINE_START_YEAR = 1991;
 const CLIMATOLOGY_BASELINE_END_YEAR = 2020;
+const MAP_CLIMATOLOGY_PERIOD = "1991-2020";
 const EARTH_LOGO_URL = `${import.meta.env.BASE_URL}earthicon.png`;
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
@@ -89,6 +91,15 @@ const STRINGS = {
     seaIceSectionTitle: "Sea Ice",
     seaIceSectionNote:
       "Global, Arctic, and Antarctic extent shown with daily points in a Jan-Dec comparison view.",
+    mapsSectionTitle: "Maps",
+    mapsSectionNote:
+      "Global Climate Reanalyzer map snapshots for 2m temperature, 2m anomaly, sea-surface temperature, and sea-surface temperature anomaly.",
+    map2mTemperatureTitle: "2m Temperature",
+    map2mTemperatureAnomalyTitle: "2m Temperature Anomaly",
+    mapSstTitle: "Sea Surface Temperature",
+    mapSstAnomalyTitle: "Sea Surface Temperature Anomaly",
+    mapGlobalSubtitle: "Global map · Climate Reanalyzer",
+    mapUnavailable: "Map unavailable",
     forcingTitle: "Forcing",
     forcingNote: "Atmospheric forcing signals from Mauna Loa CO2, global CH4 observations, and the NOAA Annual Greenhouse Gas Index.",
     sourceTitle: "Data source mode",
@@ -152,6 +163,15 @@ const STRINGS = {
     seaIceSectionTitle: "Tengeri jég",
     seaIceSectionNote:
       "Globális, arktiszi és antarktiszi jégkiterjedés napi adatokkal, január-decemberi összehasonlító nézetben.",
+    mapsSectionTitle: "Térképek",
+    mapsSectionNote:
+      "Globális Climate Reanalyzer térképkivonatok a 2 m hőmérsékletről, 2 m anomáliáról, tengerfelszíni hőmérsékletről és SST-anomáliáról.",
+    map2mTemperatureTitle: "2 m hőmérséklet",
+    map2mTemperatureAnomalyTitle: "2 m hőmérsékleti anomália",
+    mapSstTitle: "Tengerfelszíni hőmérséklet",
+    mapSstAnomalyTitle: "Tengerfelszíni hőmérsékleti anomália",
+    mapGlobalSubtitle: "Globális térkép · Climate Reanalyzer",
+    mapUnavailable: "A térkép nem érhető el",
     forcingTitle: "Éghajlati kényszerek",
     forcingNote: "Légköri kényszerek a Mauna Loa CO2, a globális CH4 megfigyelések és a NOAA éves üvegházhatásúgáz-index alapján.",
     sourceTitle: "Adatforrás mód",
@@ -223,6 +243,53 @@ function formatDateTimeLabel(dateIso: string, language: Language): string {
     minute: "2-digit",
     timeZoneName: "short",
   }).format(date);
+}
+
+interface MapDateParts {
+  year: number;
+  dayOfYear: number;
+}
+
+function padDayOfYear(dayOfYear: number): string {
+  return String(Math.max(1, Math.min(366, dayOfYear))).padStart(3, "0");
+}
+
+function buildMapDateParts(dateIso: string | null): MapDateParts {
+  const parsed = typeof dateIso === "string" ? Date.parse(`${dateIso}T00:00:00Z`) : Number.NaN;
+  const date = Number.isFinite(parsed) ? new Date(parsed) : new Date();
+  const year = date.getUTCFullYear();
+  const dayOfYear = Math.floor((Date.UTC(year, date.getUTCMonth(), date.getUTCDate()) - Date.UTC(year, 0, 1)) / 86_400_000) + 1;
+  return {
+    year,
+    dayOfYear,
+  };
+}
+
+function buildMapDateCandidates(baseDate: MapDateParts): MapDateParts[] {
+  const primary = {
+    year: baseDate.year,
+    dayOfYear: Math.max(1, Math.min(366, baseDate.dayOfYear)),
+  };
+  const previousDay =
+    primary.dayOfYear > 1
+      ? { year: primary.year, dayOfYear: primary.dayOfYear - 1 }
+      : { year: primary.year - 1, dayOfYear: 365 };
+  const previousYearSameDay = {
+    year: primary.year - 1,
+    dayOfYear: Math.max(1, Math.min(365, primary.dayOfYear)),
+  };
+  const previousYearPreviousDay = {
+    year: primary.year - 1,
+    dayOfYear: Math.max(1, Math.min(365, primary.dayOfYear - 1)),
+  };
+
+  const unique = new Map<string, MapDateParts>();
+  for (const candidate of [primary, previousDay, previousYearSameDay, previousYearPreviousDay]) {
+    if (candidate.year < 1900) continue;
+    const key = `${candidate.year}-${candidate.dayOfYear}`;
+    unique.set(key, candidate);
+  }
+  return Array.from(unique.values());
 }
 
 function formatAnnualAnomalyTopMeta(year: number, language: Language, isYtd: boolean, ytdLabel: string): string {
@@ -607,6 +674,7 @@ export function App() {
     createBundledDataSource("Loading live climate feeds; using bundled fallback in the meantime.")
   );
   const [climateSectionOpen, setClimateSectionOpen] = useState(true);
+  const [mapsSectionOpen, setMapsSectionOpen] = useState(true);
   const [forcingSectionOpen, setForcingSectionOpen] = useState(true);
 
   const t = STRINGS[language];
@@ -778,6 +846,76 @@ export function App() {
         }),
     [snapshot.indicators]
   );
+  const mapCards = useMemo(() => {
+    const metricByKey = new Map(snapshot.indicators.map((metric) => [metric.key, metric]));
+    const surfaceMetric = metricByKey.get("global_surface_temperature") ?? null;
+    const surfaceAnomalyMetric = metricByKey.get("global_surface_temperature_anomaly") ?? surfaceMetric ?? null;
+    const sstMetric = metricByKey.get("global_sea_surface_temperature") ?? null;
+    const sstAnomalyMetric = metricByKey.get("global_sea_surface_temperature_anomaly") ?? sstMetric ?? null;
+
+    const t2DateCandidates = buildMapDateCandidates(buildMapDateParts(surfaceMetric?.latestDate ?? null));
+    const sstDateCandidates = buildMapDateCandidates(buildMapDateParts(sstMetric?.latestDate ?? null));
+    const t2MapUrls = t2DateCandidates.map((candidate) => {
+      const doy = padDayOfYear(candidate.dayOfYear);
+      return {
+        t2: `https://cr.acg.maine.edu/clim/t2_daily/maps/t2/world-wt/${candidate.year}/t2_world-wt_${candidate.year}_d${doy}.png`,
+        t2Anomaly: `https://cr.acg.maine.edu/clim/t2_daily/maps/t2anom_${MAP_CLIMATOLOGY_PERIOD}/world-wt/${candidate.year}/t2anom_world-wt_${candidate.year}_d${doy}.png`,
+      };
+    });
+    const sstMapUrls = sstDateCandidates.map((candidate) => {
+      const doy = padDayOfYear(candidate.dayOfYear);
+      return {
+        sst: `https://cr.acg.maine.edu/clim/sst_daily/maps/sst/world-wt3/${candidate.year}/sst_world-wt3_${candidate.year}_d${doy}.png`,
+        sstAnomaly: `https://cr.acg.maine.edu/clim/sst_daily/maps/sstanom_${MAP_CLIMATOLOGY_PERIOD}/world-wt3/${candidate.year}/sstanom_world-wt3_${candidate.year}_d${doy}.png`,
+      };
+    });
+
+    const surfaceSubtitle = `${surfaceMetric?.source.shortName ?? "Climate Reanalyzer"} · ${t.mapGlobalSubtitle}`;
+    const sstSubtitle = `${sstMetric?.source.shortName ?? "Climate Reanalyzer"} · ${t.mapGlobalSubtitle}`;
+    const surfaceFreshness = surfaceMetric ? metricFreshnessBadge(surfaceMetric, language, t) : null;
+    const surfaceAnomalyFreshness = surfaceAnomalyMetric ? metricFreshnessBadge(surfaceAnomalyMetric, language, t) : surfaceFreshness;
+    const sstFreshness = sstMetric ? metricFreshnessBadge(sstMetric, language, t) : null;
+    const sstAnomalyFreshness = sstAnomalyMetric ? metricFreshnessBadge(sstAnomalyMetric, language, t) : sstFreshness;
+
+    return [
+      {
+        key: "map-2m-temperature",
+        title: t.map2mTemperatureTitle,
+        subtitle: surfaceSubtitle,
+        imageUrl: t2MapUrls[0]?.t2 ?? "",
+        fallbackImageUrls: t2MapUrls.slice(1).map((entry) => entry.t2),
+        imageAlt: `${t.map2mTemperatureTitle} (${formatDateLabel(surfaceMetric?.latestDate ?? null, language)})`,
+        freshness: surfaceFreshness,
+      },
+      {
+        key: "map-2m-temperature-anomaly",
+        title: t.map2mTemperatureAnomalyTitle,
+        subtitle: surfaceSubtitle,
+        imageUrl: t2MapUrls[0]?.t2Anomaly ?? "",
+        fallbackImageUrls: t2MapUrls.slice(1).map((entry) => entry.t2Anomaly),
+        imageAlt: `${t.map2mTemperatureAnomalyTitle} (${formatDateLabel(surfaceAnomalyMetric?.latestDate ?? null, language)})`,
+        freshness: surfaceAnomalyFreshness,
+      },
+      {
+        key: "map-sst",
+        title: t.mapSstTitle,
+        subtitle: sstSubtitle,
+        imageUrl: sstMapUrls[0]?.sst ?? "",
+        fallbackImageUrls: sstMapUrls.slice(1).map((entry) => entry.sst),
+        imageAlt: `${t.mapSstTitle} (${formatDateLabel(sstMetric?.latestDate ?? null, language)})`,
+        freshness: sstFreshness,
+      },
+      {
+        key: "map-sst-anomaly",
+        title: t.mapSstAnomalyTitle,
+        subtitle: sstSubtitle,
+        imageUrl: sstMapUrls[0]?.sstAnomaly ?? "",
+        fallbackImageUrls: sstMapUrls.slice(1).map((entry) => entry.sstAnomaly),
+        imageAlt: `${t.mapSstAnomalyTitle} (${formatDateLabel(sstAnomalyMetric?.latestDate ?? null, language)})`,
+        freshness: sstAnomalyFreshness,
+      },
+    ];
+  }, [snapshot.indicators, language, t]);
 
   const renderIndicatorPanel = (
     metric: ClimateMetricSeries,
@@ -1149,6 +1287,46 @@ export function App() {
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
                 )}
               </div>
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="collapsible-section">
+        <header className="section-header">
+          <div className="section-header-main">
+            <h2>{t.mapsSectionTitle}</h2>
+            <p>{t.mapsSectionNote}</p>
+          </div>
+          <button
+            type="button"
+            className="section-toggle"
+            aria-expanded={mapsSectionOpen}
+            onClick={() => setMapsSectionOpen((open) => !open)}
+          >
+            <span className={`section-toggle-icon ${mapsSectionOpen ? "open" : ""}`} aria-hidden="true" />
+            <span>{mapsSectionOpen ? t.sectionCollapse : t.sectionExpand}</span>
+          </button>
+        </header>
+
+        {mapsSectionOpen ? (
+          <div className="section-content">
+            <div className="charts-grid climate-grid maps-grid">
+              {mapCards.map((mapCard) => (
+                <MapPanel
+                  key={mapCard.key}
+                  title={mapCard.title}
+                  subtitle={mapCard.subtitle}
+                  imageUrl={mapCard.imageUrl}
+                  fallbackImageUrls={mapCard.fallbackImageUrls}
+                  imageAlt={mapCard.imageAlt}
+                  noImageLabel={t.mapUnavailable}
+                  expandLabel={t.chartFullscreenEnter}
+                  collapseLabel={t.chartFullscreenExit}
+                  freshnessLabel={mapCard.freshness?.label}
+                  freshnessTone={mapCard.freshness?.tone}
+                />
+              ))}
             </div>
           </div>
         ) : null}
