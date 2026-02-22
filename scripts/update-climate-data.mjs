@@ -91,12 +91,70 @@ async function fileExists(path) {
   }
 }
 
-function dateIsoFromMapDatePayload(payload) {
-  if (!Array.isArray(payload) || payload.length < 6) return null;
-  const year = Number(payload[3]);
-  const month = Number(payload[4]);
-  const day = Number(payload[5]);
+function formatMapDateCandidate(year, month, day) {
+  if (!Number.isFinite(year) || year < 1900 || year > 2200) return null;
+  if (!Number.isFinite(month) || !Number.isFinite(day)) return null;
   return formatDateFromParts(year, month, day);
+}
+
+function collectMapDateCandidates(payload, candidates, depth = 0) {
+  if (depth > 5 || payload == null) return;
+
+  if (typeof payload === "string") {
+    const token = payload.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(token)) candidates.push(token);
+    return;
+  }
+
+  if (Array.isArray(payload)) {
+    if (payload.length >= 6) {
+      const legacyDate = formatMapDateCandidate(Number(payload[3]), Number(payload[4]), Number(payload[5]));
+      if (legacyDate) candidates.push(legacyDate);
+    }
+
+    for (let index = 0; index <= payload.length - 3; index += 1) {
+      const tupleDate = formatMapDateCandidate(Number(payload[index]), Number(payload[index + 1]), Number(payload[index + 2]));
+      if (tupleDate) candidates.push(tupleDate);
+    }
+
+    for (const entry of payload) {
+      collectMapDateCandidates(entry, candidates, depth + 1);
+    }
+    return;
+  }
+
+  if (typeof payload !== "object") return;
+  const record = payload;
+
+  const dateKeys = ["date", "latest_date", "last_date", "map_date", "latestDate", "lastDate", "updated"];
+  for (const key of dateKeys) {
+    const token = typeof record[key] === "string" ? record[key].trim() : "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(token)) candidates.push(token);
+  }
+
+  const ymdDate = formatMapDateCandidate(
+    Number(record.year ?? record.y ?? record.yr),
+    Number(record.month ?? record.mon ?? record.m),
+    Number(record.day ?? record.dy ?? record.d)
+  );
+  if (ymdDate) candidates.push(ymdDate);
+
+  for (const value of Object.values(record)) {
+    collectMapDateCandidates(value, candidates, depth + 1);
+  }
+}
+
+function dateIsoFromMapDatePayload(payload) {
+  const candidates = [];
+  collectMapDateCandidates(payload, candidates);
+  if (!candidates.length) return null;
+
+  const dated = candidates
+    .map((dateIso) => ({ dateIso, timestamp: parseIsoDateToUtc(dateIso) }))
+    .filter((entry) => entry.timestamp != null)
+    .sort((left, right) => left.timestamp - right.timestamp);
+
+  return dated.length ? dated[dated.length - 1].dateIso : null;
 }
 
 function yearDayFromIso(dateIso) {
@@ -144,13 +202,30 @@ function buildSstAnomalyMapUrl(year, dayOfYear) {
   return `https://cr.acg.maine.edu/clim/sst_daily/maps/sstanom_${MAP_CLIMATOLOGY_PERIOD}/world-wt3/${year}/sstanom_world-wt3_${year}_d${doy}.png`;
 }
 
-async function downloadMapWithFallback(dateIso, buildUrl, maxBackDays = 20) {
+function buildMapSearchOffsets(maxBackDays, maxForwardDays) {
+  const offsets = [];
+  for (let forward = Math.max(0, maxForwardDays); forward >= 1; forward -= 1) {
+    offsets.push(forward);
+  }
+  offsets.push(0);
+  for (let back = 1; back <= Math.max(0, maxBackDays); back += 1) {
+    offsets.push(-back);
+  }
+  return offsets;
+}
+
+async function downloadMapWithFallback(dateIso, buildUrl, options = {}) {
   if (!dateIso) throw new Error("Missing map date.");
   let lastError = null;
+  const maxBackDays = Number.isFinite(options.maxBackDays) ? Number(options.maxBackDays) : 35;
+  const maxForwardDays = Number.isFinite(options.maxForwardDays) ? Number(options.maxForwardDays) : 2;
+  const offsets = buildMapSearchOffsets(maxBackDays, maxForwardDays);
+  const seenDates = new Set();
 
-  for (let backDays = 0; backDays <= maxBackDays; backDays += 1) {
-    const candidateDate = addUtcDays(dateIso, -backDays);
-    if (!candidateDate) continue;
+  for (const offset of offsets) {
+    const candidateDate = addUtcDays(dateIso, offset);
+    if (!candidateDate || seenDates.has(candidateDate)) continue;
+    seenDates.add(candidateDate);
     const candidate = yearDayFromIso(candidateDate);
     if (!candidate) continue;
 
@@ -165,7 +240,12 @@ async function downloadMapWithFallback(dateIso, buildUrl, maxBackDays = 20) {
     }
   }
 
-  const reason = lastError instanceof Error ? lastError.message : String(lastError);
+  const reason =
+    lastError instanceof Error
+      ? lastError.message
+      : lastError != null
+        ? String(lastError)
+        : "No map files found in forward/backward search window.";
   throw new Error(`Failed to download map after fallback attempts: ${reason}`);
 }
 
@@ -808,8 +888,9 @@ async function updateOnce() {
     maxAgeDays: 20,
   });
 
-  const t2MapDateIso = dateIsoFromMapDatePayload(t2MapDatePayload) ?? globalSurfaceTemperature.at(-1)?.date ?? null;
-  const sstMapDateIso = dateIsoFromMapDatePayload(sstMapDatePayload) ?? globalSeaSurfaceTemperature.at(-1)?.date ?? null;
+  const todayIso = formatIsoDate(new Date());
+  const t2MapDateIso = dateIsoFromMapDatePayload(t2MapDatePayload) ?? globalSurfaceTemperature.at(-1)?.date ?? todayIso;
+  const sstMapDateIso = dateIsoFromMapDatePayload(sstMapDatePayload) ?? globalSeaSurfaceTemperature.at(-1)?.date ?? todayIso;
   const mapFiles = {
     global_2m_temperature: "global-2m-temperature.png",
     global_2m_temperature_anomaly: "global-2m-temperature-anomaly.png",

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildDashboardSnapshot, createBundledDataSource } from "../data/adapter";
-import type { DashboardDataSource, Language, ResolvedTheme, ThemeMode, ClimateMetricSeries, DailyPoint } from "../domain/model";
+import type { ClimateMapKey, DashboardDataSource, Language, ResolvedTheme, ThemeMode, ClimateMetricSeries, DailyPoint } from "../domain/model";
 import { loadRuntimeDataSource } from "../data/runtime-source";
 import { buildClimateMonthlyComparisonOption, buildClimateTrendOption } from "../charts/iliTrend";
 import { buildForcingTrendOption } from "../charts/historicalTrend";
@@ -16,6 +16,12 @@ const CLIMATOLOGY_BASELINE_END_YEAR = 2020;
 const MAP_CLIMATOLOGY_PERIOD = "1991-2020";
 const EARTH_LOGO_URL = `${import.meta.env.BASE_URL}earthicon.png`;
 const LOCAL_MAP_ASSET_BASE_URL = `${import.meta.env.BASE_URL}data/maps`;
+const LOCAL_MAP_FILENAMES: Record<ClimateMapKey, string> = {
+  global_2m_temperature: "global-2m-temperature.png",
+  global_2m_temperature_anomaly: "global-2m-temperature-anomaly.png",
+  global_sst: "global-sst.png",
+  global_sst_anomaly: "global-sst-anomaly.png",
+};
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
 const TEMPERATURE_ANOMALY_KEYS = new Set(["global_surface_temperature_anomaly", "global_sea_surface_temperature_anomaly"]);
@@ -248,6 +254,13 @@ function formatDateTimeLabel(dateIso: string, language: Language): string {
   }).format(date);
 }
 
+function extractIsoDate(isoDateTime: string | null | undefined): string | null {
+  if (typeof isoDateTime !== "string") return null;
+  const parsed = Date.parse(isoDateTime);
+  if (!Number.isFinite(parsed)) return null;
+  return new Date(parsed).toISOString().slice(0, 10);
+}
+
 interface MapDateParts {
   year: number;
   dayOfYear: number;
@@ -269,30 +282,50 @@ function buildMapDateParts(dateIso: string | null): MapDateParts {
 }
 
 function buildMapDateCandidates(baseDate: MapDateParts): MapDateParts[] {
-  const primary = {
-    year: baseDate.year,
-    dayOfYear: Math.max(1, Math.min(366, baseDate.dayOfYear)),
-  };
-  const previousDay =
-    primary.dayOfYear > 1
-      ? { year: primary.year, dayOfYear: primary.dayOfYear - 1 }
-      : { year: primary.year - 1, dayOfYear: 365 };
+  const clampedDay = Math.max(1, Math.min(366, baseDate.dayOfYear));
+  const baseTimestamp = Date.UTC(baseDate.year, 0, 1) + (clampedDay - 1) * 86_400_000;
+  const recentCandidates: MapDateParts[] = [];
+  for (let backDays = 0; backDays <= 14; backDays += 1) {
+    const date = new Date(baseTimestamp - backDays * 86_400_000);
+    const year = date.getUTCFullYear();
+    const dayOfYear = Math.floor((Date.UTC(year, date.getUTCMonth(), date.getUTCDate()) - Date.UTC(year, 0, 1)) / 86_400_000) + 1;
+    recentCandidates.push({
+      year,
+      dayOfYear,
+    });
+  }
   const previousYearSameDay = {
-    year: primary.year - 1,
-    dayOfYear: Math.max(1, Math.min(365, primary.dayOfYear)),
+    year: baseDate.year - 1,
+    dayOfYear: Math.max(1, Math.min(365, clampedDay)),
   };
   const previousYearPreviousDay = {
-    year: primary.year - 1,
-    dayOfYear: Math.max(1, Math.min(365, primary.dayOfYear - 1)),
+    year: baseDate.year - 1,
+    dayOfYear: Math.max(1, Math.min(365, clampedDay - 1)),
   };
-
   const unique = new Map<string, MapDateParts>();
-  for (const candidate of [primary, previousDay, previousYearSameDay, previousYearPreviousDay]) {
+  for (const candidate of [...recentCandidates, previousYearSameDay, previousYearPreviousDay]) {
     if (candidate.year < 1900) continue;
     const key = `${candidate.year}-${candidate.dayOfYear}`;
     unique.set(key, candidate);
   }
   return Array.from(unique.values());
+}
+
+function uniqueNonEmptyStrings(values: Array<string | null | undefined>): string[] {
+  const unique = new Set<string>();
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    if (!trimmed) continue;
+    unique.add(trimmed);
+  }
+  return Array.from(unique);
+}
+
+function buildMapAssetUrl(path: string | null | undefined, fallbackFileName: string, versionToken: string): string {
+  const normalizedPath = typeof path === "string" ? path.replace(/^\/+/, "").trim() : "";
+  const baseUrl = normalizedPath ? `${import.meta.env.BASE_URL}${normalizedPath}` : `${LOCAL_MAP_ASSET_BASE_URL}/${fallbackFileName}`;
+  return `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}v=${versionToken}`;
 }
 
 function formatAnnualAnomalyTopMeta(year: number, language: Language, isYtd: boolean, ytdLabel: string): string {
@@ -665,6 +698,20 @@ function metricFreshnessBadge(
   return { tone, label };
 }
 
+function mapFreshnessBadge(
+  mapDateIso: string | null,
+  language: Language,
+  t: (typeof STRINGS)[Language]
+): { tone: FreshnessTone; label: string } | null {
+  if (!mapDateIso) return null;
+  const ageDays = utcDayAge(mapDateIso);
+  const tone: FreshnessTone =
+    ageDays == null ? "stale" : ageDays > 20 ? "stale" : ageDays > 10 ? "warning" : "fresh";
+  const statusSuffix = tone === "stale" ? ` · ${t.freshnessStale}` : tone === "warning" ? ` · ${t.freshnessLagging}` : "";
+  const label = `${t.freshnessAsOf}: ${formatDateLabel(mapDateIso, language)} · ${t.freshnessDaily}${statusSuffix}`;
+  return { tone, label };
+}
+
 export function App() {
   const [language, setLanguage] = useState<Language>(() => safeLanguage(localStorage.getItem(STORAGE_LANG_KEY)));
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => safeTheme(localStorage.getItem(STORAGE_THEME_KEY)));
@@ -855,9 +902,24 @@ export function App() {
     const surfaceAnomalyMetric = metricByKey.get("global_surface_temperature_anomaly") ?? surfaceMetric ?? null;
     const sstMetric = metricByKey.get("global_sea_surface_temperature") ?? null;
     const sstAnomalyMetric = metricByKey.get("global_sea_surface_temperature_anomaly") ?? sstMetric ?? null;
+    const mapAssets = dataSource.maps ?? {};
+    const mapVersion = encodeURIComponent(snapshot.updatedAtIso);
+    const generatedDateIso = extractIsoDate(snapshot.updatedAtIso);
 
-    const t2DateCandidates = buildMapDateCandidates(buildMapDateParts(surfaceMetric?.latestDate ?? null));
-    const sstDateCandidates = buildMapDateCandidates(buildMapDateParts(sstMetric?.latestDate ?? null));
+    const surfaceMapDateIso = mapAssets.global_2m_temperature?.date ?? null;
+    const surfaceAnomalyMapDateIso = mapAssets.global_2m_temperature_anomaly?.date ?? null;
+    const sstMapDateIso = mapAssets.global_sst?.date ?? null;
+    const sstAnomalyMapDateIso = mapAssets.global_sst_anomaly?.date ?? null;
+
+    const surfaceMapCandidateDateIso = surfaceMapDateIso ?? generatedDateIso ?? surfaceMetric?.latestDate ?? null;
+    const sstMapCandidateDateIso = sstMapDateIso ?? generatedDateIso ?? sstMetric?.latestDate ?? null;
+    const surfaceMapDisplayDateIso = surfaceMapDateIso ?? surfaceMetric?.latestDate ?? generatedDateIso ?? null;
+    const surfaceAnomalyMapDisplayDateIso = surfaceAnomalyMapDateIso ?? surfaceAnomalyMetric?.latestDate ?? surfaceMapDisplayDateIso;
+    const sstMapDisplayDateIso = sstMapDateIso ?? sstMetric?.latestDate ?? generatedDateIso ?? null;
+    const sstAnomalyMapDisplayDateIso = sstAnomalyMapDateIso ?? sstAnomalyMetric?.latestDate ?? sstMapDisplayDateIso;
+
+    const t2DateCandidates = buildMapDateCandidates(buildMapDateParts(surfaceMapCandidateDateIso));
+    const sstDateCandidates = buildMapDateCandidates(buildMapDateParts(sstMapCandidateDateIso));
     const t2MapUrls = t2DateCandidates.map((candidate) => {
       const doy = padDayOfYear(candidate.dayOfYear);
       return {
@@ -875,51 +937,64 @@ export function App() {
 
     const surfaceSubtitle = `${surfaceMetric?.source.shortName ?? "Climate Reanalyzer"} · ${t.mapGlobalSubtitle}`;
     const sstSubtitle = `${sstMetric?.source.shortName ?? "Climate Reanalyzer"} · ${t.mapGlobalSubtitle}`;
-    const surfaceFreshness = surfaceMetric ? metricFreshnessBadge(surfaceMetric, language, t) : null;
-    const surfaceAnomalyFreshness = surfaceAnomalyMetric ? metricFreshnessBadge(surfaceAnomalyMetric, language, t) : surfaceFreshness;
-    const sstFreshness = sstMetric ? metricFreshnessBadge(sstMetric, language, t) : null;
-    const sstAnomalyFreshness = sstAnomalyMetric ? metricFreshnessBadge(sstAnomalyMetric, language, t) : sstFreshness;
-    const mapVersion = encodeURIComponent(snapshot.updatedAtIso);
+    const surfaceFreshness = mapFreshnessBadge(surfaceMapDateIso, language, t) ?? (surfaceMetric ? metricFreshnessBadge(surfaceMetric, language, t) : null);
+    const surfaceAnomalyFreshness =
+      mapFreshnessBadge(surfaceAnomalyMapDateIso ?? surfaceMapDateIso, language, t) ??
+      (surfaceAnomalyMetric ? metricFreshnessBadge(surfaceAnomalyMetric, language, t) : surfaceFreshness);
+    const sstFreshness = mapFreshnessBadge(sstMapDateIso, language, t) ?? (sstMetric ? metricFreshnessBadge(sstMetric, language, t) : null);
+    const sstAnomalyFreshness =
+      mapFreshnessBadge(sstAnomalyMapDateIso ?? sstMapDateIso, language, t) ??
+      (sstAnomalyMetric ? metricFreshnessBadge(sstAnomalyMetric, language, t) : sstFreshness);
 
     return [
       {
         key: "map-2m-temperature",
         title: t.map2mTemperatureTitle,
         subtitle: surfaceSubtitle,
-        imageUrl: `${LOCAL_MAP_ASSET_BASE_URL}/global-2m-temperature.png?v=${mapVersion}`,
-        fallbackImageUrls: t2MapUrls.map((entry) => entry.t2),
-        imageAlt: `${t.map2mTemperatureTitle} (${formatDateLabel(surfaceMetric?.latestDate ?? null, language)})`,
+        imageUrl: buildMapAssetUrl(mapAssets.global_2m_temperature?.path, LOCAL_MAP_FILENAMES.global_2m_temperature, mapVersion),
+        fallbackImageUrls: uniqueNonEmptyStrings([mapAssets.global_2m_temperature?.sourceUrl, ...t2MapUrls.map((entry) => entry.t2)]),
+        imageAlt: `${t.map2mTemperatureTitle} (${formatDateLabel(surfaceMapDisplayDateIso, language)})`,
         freshness: surfaceFreshness,
       },
       {
         key: "map-2m-temperature-anomaly",
         title: t.map2mTemperatureAnomalyTitle,
         subtitle: surfaceSubtitle,
-        imageUrl: `${LOCAL_MAP_ASSET_BASE_URL}/global-2m-temperature-anomaly.png?v=${mapVersion}`,
-        fallbackImageUrls: t2MapUrls.map((entry) => entry.t2Anomaly),
-        imageAlt: `${t.map2mTemperatureAnomalyTitle} (${formatDateLabel(surfaceAnomalyMetric?.latestDate ?? null, language)})`,
+        imageUrl: buildMapAssetUrl(
+          mapAssets.global_2m_temperature_anomaly?.path,
+          LOCAL_MAP_FILENAMES.global_2m_temperature_anomaly,
+          mapVersion
+        ),
+        fallbackImageUrls: uniqueNonEmptyStrings([
+          mapAssets.global_2m_temperature_anomaly?.sourceUrl,
+          ...t2MapUrls.map((entry) => entry.t2Anomaly),
+        ]),
+        imageAlt: `${t.map2mTemperatureAnomalyTitle} (${formatDateLabel(surfaceAnomalyMapDisplayDateIso, language)})`,
         freshness: surfaceAnomalyFreshness,
       },
       {
         key: "map-sst",
         title: t.mapSstTitle,
         subtitle: sstSubtitle,
-        imageUrl: `${LOCAL_MAP_ASSET_BASE_URL}/global-sst.png?v=${mapVersion}`,
-        fallbackImageUrls: sstMapUrls.map((entry) => entry.sst),
-        imageAlt: `${t.mapSstTitle} (${formatDateLabel(sstMetric?.latestDate ?? null, language)})`,
+        imageUrl: buildMapAssetUrl(mapAssets.global_sst?.path, LOCAL_MAP_FILENAMES.global_sst, mapVersion),
+        fallbackImageUrls: uniqueNonEmptyStrings([mapAssets.global_sst?.sourceUrl, ...sstMapUrls.map((entry) => entry.sst)]),
+        imageAlt: `${t.mapSstTitle} (${formatDateLabel(sstMapDisplayDateIso, language)})`,
         freshness: sstFreshness,
       },
       {
         key: "map-sst-anomaly",
         title: t.mapSstAnomalyTitle,
         subtitle: sstSubtitle,
-        imageUrl: `${LOCAL_MAP_ASSET_BASE_URL}/global-sst-anomaly.png?v=${mapVersion}`,
-        fallbackImageUrls: sstMapUrls.map((entry) => entry.sstAnomaly),
-        imageAlt: `${t.mapSstAnomalyTitle} (${formatDateLabel(sstAnomalyMetric?.latestDate ?? null, language)})`,
+        imageUrl: buildMapAssetUrl(mapAssets.global_sst_anomaly?.path, LOCAL_MAP_FILENAMES.global_sst_anomaly, mapVersion),
+        fallbackImageUrls: uniqueNonEmptyStrings([
+          mapAssets.global_sst_anomaly?.sourceUrl,
+          ...sstMapUrls.map((entry) => entry.sstAnomaly),
+        ]),
+        imageAlt: `${t.mapSstAnomalyTitle} (${formatDateLabel(sstAnomalyMapDisplayDateIso, language)})`,
         freshness: sstAnomalyFreshness,
       },
     ];
-  }, [snapshot.indicators, snapshot.updatedAtIso, language, t]);
+  }, [snapshot.indicators, snapshot.updatedAtIso, dataSource.maps, language, t]);
 
   const renderIndicatorPanel = (
     metric: ClimateMetricSeries,
@@ -1202,26 +1277,28 @@ export function App() {
                 <h3>{t.regionalTemperaturesSectionTitle}</h3>
                 <p>{t.regionalTemperaturesSectionNote}</p>
               </div>
-              <div className="regional-summary-grid">
-                {regionalSummaryMetrics.map((metric) => {
-                  const freshness = metricFreshnessBadge(metric, language, t);
-                  return (
-                    <article className="alert-card summary" key={`${metric.key}-regional-summary`}>
-                      <span className="alert-kicker">{t.latestLabel}</span>
-                      <h2>{metricTitle(metric, language)}</h2>
-                      <p className="alert-emphasis">
-                        {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                      </p>
-                      <p>
-                        {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                      </p>
-                      <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
-                      <div className="alert-meta">
-                        <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
-                      </div>
-                    </article>
-                  );
-                })}
+              <div className="summary-cards-section">
+                <div className="regional-summary-grid">
+                  {regionalSummaryMetrics.map((metric) => {
+                    const freshness = metricFreshnessBadge(metric, language, t);
+                    return (
+                      <article className="alert-card summary" key={`${metric.key}-regional-summary`}>
+                        <span className="alert-kicker">{t.latestLabel}</span>
+                        <h2>{metricTitle(metric, language)}</h2>
+                        <p className="alert-emphasis">
+                          {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
+                        </p>
+                        <p>
+                          {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                        </p>
+                        <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                        <div className="alert-meta">
+                          <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
               <div className="charts-grid climate-grid">
                 {regionalTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
@@ -1235,25 +1312,27 @@ export function App() {
                 <h3>{t.oceansSectionTitle}</h3>
                 <p>{t.oceansSectionNote}</p>
               </div>
-              <div className="regional-summary-grid">
-                {oceanMetrics.map((metric) => {
-                  const freshness = metricFreshnessBadge(metric, language, t);
-                  return (
-                    <article className="alert-card summary" key={`${metric.key}-ocean-summary`}>
-                      <h2>{metricTitle(metric, language)}</h2>
-                      <p className="alert-emphasis">
-                        {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                      </p>
-                      <p>
-                        {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                      </p>
-                      <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
-                      <div className="alert-meta">
-                        <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
-                      </div>
-                    </article>
-                  );
-                })}
+              <div className="summary-cards-section">
+                <div className="regional-summary-grid">
+                  {oceanMetrics.map((metric) => {
+                    const freshness = metricFreshnessBadge(metric, language, t);
+                    return (
+                      <article className="alert-card summary" key={`${metric.key}-ocean-summary`}>
+                        <h2>{metricTitle(metric, language)}</h2>
+                        <p className="alert-emphasis">
+                          {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
+                        </p>
+                        <p>
+                          {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                        </p>
+                        <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                        <div className="alert-meta">
+                          <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
               <div className="charts-grid climate-grid">
                 {oceanMetrics.map((metric) => renderOceanPanel(metric))}
@@ -1265,26 +1344,28 @@ export function App() {
                 <h3>{t.seaIceSectionTitle}</h3>
                 <p>{t.seaIceSectionNote}</p>
               </div>
-              <div className="regional-summary-grid">
-                {seaIceSummaryMetrics.map((metric) => {
-                  const freshness = metricFreshnessBadge(metric, language, t);
-                  return (
-                    <article className="alert-card summary" key={`${metric.key}-sea-ice-summary`}>
-                      <span className="alert-kicker">{t.latestLabel}</span>
-                      <h2>{metricTitle(metric, language)}</h2>
-                      <p className="alert-emphasis">
-                        {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                      </p>
-                      <p>
-                        {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                      </p>
-                      <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
-                      <div className="alert-meta">
-                        <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
-                      </div>
-                    </article>
-                  );
-                })}
+              <div className="summary-cards-section">
+                <div className="regional-summary-grid">
+                  {seaIceSummaryMetrics.map((metric) => {
+                    const freshness = metricFreshnessBadge(metric, language, t);
+                    return (
+                      <article className="alert-card summary" key={`${metric.key}-sea-ice-summary`}>
+                        <span className="alert-kicker">{t.latestLabel}</span>
+                        <h2>{metricTitle(metric, language)}</h2>
+                        <p className="alert-emphasis">
+                          {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
+                        </p>
+                        <p>
+                          {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                        </p>
+                        <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                        <div className="alert-meta">
+                          <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
               <div className="charts-grid climate-grid sea-ice-grid">
                 {seaIceIndicatorLines.map(({ metric, lines, currentYear, climatology }) =>
@@ -1355,26 +1436,28 @@ export function App() {
 
         {forcingSectionOpen ? (
           <div className="section-content">
-            <div className="regional-summary-grid">
-              {snapshot.forcing.map((metric) => {
-                const freshness = metricFreshnessBadge(metric, language, t);
-                return (
-                  <article className="alert-card summary" key={`${metric.key}-forcing-summary`}>
-                    <span className="alert-kicker">{t.latestLabel}</span>
-                    <h2>{metricTitle(metric, language)}</h2>
-                    <p className="alert-emphasis">
-                      {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                    </p>
-                    <p>
-                      {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                    </p>
-                    <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
-                    <div className="alert-meta">
-                      <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
-                    </div>
-                  </article>
-                );
-              })}
+            <div className="summary-cards-section">
+              <div className="regional-summary-grid">
+                {snapshot.forcing.map((metric) => {
+                  const freshness = metricFreshnessBadge(metric, language, t);
+                  return (
+                    <article className="alert-card summary" key={`${metric.key}-forcing-summary`}>
+                      <span className="alert-kicker">{t.latestLabel}</span>
+                      <h2>{metricTitle(metric, language)}</h2>
+                      <p className="alert-emphasis">
+                        {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
+                      </p>
+                      <p>
+                        {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                      </p>
+                      <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                      <div className="alert-meta">
+                        <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
             </div>
             <div className={`charts-grid forcing-grid ${snapshot.forcing.length === 1 ? "forcing-grid-single" : ""}`}>
               {snapshot.forcing.map((metric) => {

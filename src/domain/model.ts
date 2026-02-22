@@ -50,11 +50,28 @@ export type DashboardSourceMode = "live" | "mixed" | "bundled";
 
 export type ClimateSeriesBundle = Record<ClimateMetricKey, DailyPoint[]>;
 
+export type ClimateMapKey =
+  | "global_2m_temperature"
+  | "global_2m_temperature_anomaly"
+  | "global_sst"
+  | "global_sst_anomaly";
+
+export interface ClimateMapAsset {
+  path: string;
+  sourceUrl: string | null;
+  sourcePage: string | null;
+  date: string | null;
+}
+
+export type ClimateMapAssets = Partial<Record<ClimateMapKey, ClimateMapAsset>>;
+
 export interface DashboardDataSource {
   sourceMode: DashboardSourceMode;
   series: ClimateSeriesBundle;
   warnings: string[];
   updatedAtIso: string;
+  maps?: ClimateMapAssets;
+  mapWarnings?: string[];
 }
 
 export interface DashboardSnapshot {

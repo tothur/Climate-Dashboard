@@ -1,5 +1,6 @@
 import type {
   ClimateMetricKey,
+  ClimateMapAssets,
   ClimateMetricSeries,
   ClimateMetricSource,
   ClimateSeriesBundle,
@@ -329,6 +330,8 @@ export function createBundledDataSource(note?: string): DashboardDataSource {
     series: createBundledClimateSeries(),
     warnings: note ? [note] : [],
     updatedAtIso: new Date().toISOString(),
+    maps: undefined,
+    mapWarnings: [],
   };
 }
 
@@ -336,6 +339,8 @@ export function createDataSourceFromSeries(input: {
   series: Partial<ClimateSeriesBundle>;
   warnings?: string[];
   updatedAtIso?: string;
+  maps?: ClimateMapAssets;
+  mapWarnings?: string[];
 }): DashboardDataSource {
   const mergedSeries = mergeSeriesWithBundled(input.series);
   const liveCount = CLIMATE_METRIC_KEYS.filter((key) => {
@@ -350,6 +355,8 @@ export function createDataSourceFromSeries(input: {
     series: mergedSeries,
     warnings: [...(input.warnings ?? [])],
     updatedAtIso: input.updatedAtIso ?? new Date().toISOString(),
+    maps: input.maps,
+    mapWarnings: [...(input.mapWarnings ?? [])],
   };
 }
 

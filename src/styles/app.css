@@ -1231,6 +1231,15 @@ h3 {
   gap: 12px;
 }
 
+.summary-cards-section {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: calc(var(--radius) + 2px);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.06), rgba(37, 99, 235, 0.01));
+}
+
 .climate-subsection-header {
   padding: 2px 4px 0;
 }
@@ -2392,6 +2401,11 @@ body.panel-expanded-lock {
 [data-theme="dark"] .collapsible-section {
   border-color: rgba(129, 140, 248, 0.3);
   background: linear-gradient(180deg, rgba(99, 102, 241, 0.18), rgba(30, 41, 59, 0.32));
+}
+
+[data-theme="dark"] .summary-cards-section {
+  border-color: rgba(96, 165, 250, 0.34);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.22), rgba(30, 41, 59, 0.38));
 }
 
 [data-theme="dark"] .alert-card.epidemic p {

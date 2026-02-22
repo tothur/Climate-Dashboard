@@ -1,5 +1,5 @@
 import { createDataSourceFromSeries } from "./adapter";
-import type { ClimateSeriesBundle, DashboardDataSource, DailyPoint } from "../domain/model";
+import type { ClimateMapAsset, ClimateMapAssets, ClimateMapKey, ClimateSeriesBundle, DashboardDataSource, DailyPoint } from "../domain/model";
 
 const ERA5_GLOBAL_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_world_t2_day.json";
 const ERA5_NH_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_nh_t2_day.json";
@@ -42,6 +42,12 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "atmospheric_co2",
   "atmospheric_ch4",
   "atmospheric_aggi",
+];
+const MAP_KEYS: ClimateMapKey[] = [
+  "global_2m_temperature",
+  "global_2m_temperature_anomaly",
+  "global_sst",
+  "global_sst_anomaly",
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -187,12 +193,52 @@ function readGeneratedSeries(payload: unknown): Partial<ClimateSeriesBundle> | n
   return parsed;
 }
 
+function readGeneratedMapWarnings(payload: unknown): string[] {
+  if (!isRecord(payload) || !Array.isArray(payload.mapWarnings)) return [];
+  return payload.mapWarnings
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+function parseGeneratedMapAsset(rawAsset: unknown): ClimateMapAsset | null {
+  if (!isRecord(rawAsset)) return null;
+  const path = typeof rawAsset.path === "string" ? rawAsset.path.trim() : "";
+  if (!path) return null;
+
+  const sourceUrl = typeof rawAsset.sourceUrl === "string" && rawAsset.sourceUrl.trim().length > 0 ? rawAsset.sourceUrl.trim() : null;
+  const sourcePage = typeof rawAsset.sourcePage === "string" && rawAsset.sourcePage.trim().length > 0 ? rawAsset.sourcePage.trim() : null;
+  const date = typeof rawAsset.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawAsset.date.trim()) ? rawAsset.date.trim() : null;
+
+  return {
+    path,
+    sourceUrl,
+    sourcePage,
+    date,
+  };
+}
+
+function readGeneratedMaps(payload: unknown): ClimateMapAssets | undefined {
+  if (!isRecord(payload) || !isRecord(payload.maps)) return undefined;
+
+  const parsed: ClimateMapAssets = {};
+  for (const key of MAP_KEYS) {
+    const mapAsset = parseGeneratedMapAsset(payload.maps[key]);
+    if (!mapAsset) continue;
+    parsed[key] = mapAsset;
+  }
+
+  return Object.keys(parsed).length ? parsed : undefined;
+}
+
 async function loadGeneratedLocalDataSource(): Promise<DashboardDataSource | null> {
   const payload = await fetchJson(LOCAL_GENERATED_DATA_URL);
   if (!payload) return null;
 
   const parsedSeries = readGeneratedSeries(payload);
   if (!parsedSeries) return null;
+  const mapAssets = readGeneratedMaps(payload);
+  const mapWarnings = readGeneratedMapWarnings(payload);
 
   const generatedAtIso =
     isRecord(payload) && typeof payload.generatedAtIso === "string" && Number.isFinite(Date.parse(payload.generatedAtIso))
@@ -203,6 +249,8 @@ async function loadGeneratedLocalDataSource(): Promise<DashboardDataSource | nul
     series: parsedSeries,
     warnings: [],
     updatedAtIso: generatedAtIso,
+    maps: mapAssets,
+    mapWarnings,
   });
 }
 
