@@ -1,4 +1,4 @@
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -39,10 +39,19 @@ const REQUEST_HEADERS = {
   "User-Agent": "Mozilla/5.0",
   Accept: "application/json,text/csv,*/*",
 };
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 function toFiniteNumber(value) {
   const numeric = typeof value === "number" ? value : Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function isPngBytes(bytes) {
+  if (!(bytes instanceof Uint8Array) || bytes.length < PNG_SIGNATURE.length) return false;
+  for (let index = 0; index < PNG_SIGNATURE.length; index += 1) {
+    if (bytes[index] !== PNG_SIGNATURE[index]) return false;
+  }
+  return true;
 }
 
 function formatIsoDate(date) {
@@ -232,9 +241,10 @@ async function downloadMapWithFallback(dateIso, buildUrl, options = {}) {
     const url = buildUrl(candidate.year, candidate.dayOfYear);
     try {
       const bytes = await fetchBinary(url);
-      if (bytes instanceof Uint8Array && bytes.length > 0) {
+      if (bytes instanceof Uint8Array && bytes.length > 0 && isPngBytes(bytes)) {
         return { bytes, url, dateIso: candidateDate };
       }
+      lastError = new Error(`Non-PNG response received for ${url}`);
     } catch (error) {
       lastError = error;
     }
@@ -947,13 +957,19 @@ async function updateOnce() {
     } catch (error) {
       const existing = await fileExists(outputFilePath);
       if (existing) {
-        mapWarnings.push(`${mapJob.key}: refresh failed; keeping previous map file.`);
-        mapSources[mapJob.key] = {
-          path: `data/maps/${mapJob.fileName}`,
-          sourceUrl: null,
-          sourcePage: mapJob.sourcePage,
-          date: null,
-        };
+        const existingBytes = await readFile(outputFilePath).catch(() => null);
+        if (existingBytes instanceof Uint8Array && isPngBytes(existingBytes)) {
+          mapWarnings.push(`${mapJob.key}: refresh failed; keeping previous map file.`);
+          mapSources[mapJob.key] = {
+            path: `data/maps/${mapJob.fileName}`,
+            sourceUrl: null,
+            sourcePage: mapJob.sourcePage,
+            date: null,
+          };
+        } else {
+          await unlink(outputFilePath).catch(() => {});
+          mapWarnings.push(`${mapJob.key}: refresh failed and existing file was invalid; removed stale map file.`);
+        }
       } else {
         const reason = error instanceof Error ? error.message : String(error);
         mapWarnings.push(`${mapJob.key}: ${reason}`);

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const INPUT_PATH = resolve(ROOT_DIR, "public/data/climate-realtime.json");
 const DAY_MS = 86_400_000;
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const REQUIRED_MAP_FILES = [
   resolve(ROOT_DIR, "public/data/maps/global-2m-temperature.png"),
   resolve(ROOT_DIR, "public/data/maps/global-2m-temperature-anomaly.png"),
@@ -150,6 +151,14 @@ function parseDailyIsoToUtc(dateIso) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) return null;
   const timestamp = Date.parse(`${dateIso}T00:00:00Z`);
   return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function isPngBytes(bytes) {
+  if (!(bytes instanceof Uint8Array) || bytes.length < PNG_SIGNATURE.length) return false;
+  for (let index = 0; index < PNG_SIGNATURE.length; index += 1) {
+    if (bytes[index] !== PNG_SIGNATURE[index]) return false;
+  }
+  return true;
 }
 
 function formatDate(dateIso) {
@@ -345,6 +354,10 @@ async function verifyMapFiles(payload, errors, warnings) {
   for (const filePath of REQUIRED_MAP_FILES) {
     try {
       await access(filePath);
+      const bytes = await readFile(filePath);
+      if (!isPngBytes(bytes)) {
+        errors.push(`maps: expected PNG but found invalid image payload in ${filePath}`);
+      }
     } catch {
       errors.push(`maps: missing expected map file ${filePath}`);
     }
