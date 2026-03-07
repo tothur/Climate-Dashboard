@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT_PATH = resolve(ROOT_DIR, "public/data/climate-realtime.json");
 const MAP_OUTPUT_DIR = resolve(ROOT_DIR, "public/data/maps");
+const BUNDLED_ENSO_OUTPUT_PATH = resolve(ROOT_DIR, "src/data/bundled-enso.ts");
 
 const ERA5_GLOBAL_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_world_t2_day.json";
 const ERA5_NH_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_nh_t2_day.json";
@@ -901,6 +902,13 @@ function parseIriEnsoOutlook(html) {
   };
 }
 
+function renderBundledEnsoModule(ensoOutlook) {
+  return `import type { EnsoOutlook } from "../domain/model";
+
+export const BUNDLED_ENSO_OUTLOOK: EnsoOutlook | null = ${JSON.stringify(ensoOutlook ?? null, null, 2)};
+`;
+}
+
 function mergeSeaIceSeries(north, south) {
   const northMap = new Map(north.map((point) => [point.date, point.value]));
   const southMap = new Map(south.map((point) => [point.date, point.value]));
@@ -1281,9 +1289,12 @@ async function updateOnce() {
   }
 
   await mkdir(resolve(ROOT_DIR, "public/data"), { recursive: true });
+  await mkdir(resolve(ROOT_DIR, "src/data"), { recursive: true });
   await writeFile(OUTPUT_PATH, `${JSON.stringify(output)}\n`, "utf8");
+  await writeFile(BUNDLED_ENSO_OUTPUT_PATH, renderBundledEnsoModule(ensoOutlook), "utf8");
 
   console.log(`Wrote ${OUTPUT_PATH}`);
+  console.log(`Wrote ${BUNDLED_ENSO_OUTPUT_PATH}`);
   console.log(JSON.stringify(output.summary, null, 2));
   if (mapWarnings.length) {
     console.warn("Map update warnings:");

@@ -10,6 +10,7 @@ import type {
   DailyPoint,
 } from "../domain/model";
 import { createBundledClimateSeries, CLIMATE_METRIC_KEYS } from "./bundled-sample";
+import { BUNDLED_ENSO_OUTLOOK } from "./bundled-enso";
 
 // Exported for compatibility with copied files that still reference these symbols.
 export const VIRO_ALL_KEY = "__all_series__";
@@ -331,7 +332,7 @@ export function createBundledDataSource(note?: string): DashboardDataSource {
     series: createBundledClimateSeries(),
     warnings: note ? [note] : [],
     updatedAtIso: new Date().toISOString(),
-    ensoOutlook: null,
+    ensoOutlook: BUNDLED_ENSO_OUTLOOK,
     maps: undefined,
     mapWarnings: [],
   };
