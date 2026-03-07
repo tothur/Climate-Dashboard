@@ -515,8 +515,8 @@ h3 {
 }
 
 .alert-card.summary.summary-top.topcat-enso {
-  --top-card-accent: #0f766e;
-  --top-card-soft: rgba(15, 118, 110, 0.14);
+  --top-card-accent: #15803d;
+  --top-card-soft: rgba(21, 128, 61, 0.14);
 }
 
 .alert-card.summary.summary-top.topcat-neutral {
