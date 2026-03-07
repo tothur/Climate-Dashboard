@@ -1,5 +1,15 @@
 import { createDataSourceFromSeries } from "./adapter";
-import type { ClimateMapAsset, ClimateMapAssets, ClimateMapKey, ClimateSeriesBundle, DashboardDataSource, DailyPoint } from "../domain/model";
+import type {
+  ClimateMapAsset,
+  ClimateMapAssets,
+  ClimateMapKey,
+  ClimateSeriesBundle,
+  DashboardDataSource,
+  DailyPoint,
+  EnsoCondition,
+  EnsoOutlook,
+  EnsoOutlookWindow,
+} from "../domain/model";
 
 const ERA5_GLOBAL_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_world_t2_day.json";
 const ERA5_NH_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_nh_t2_day.json";
@@ -193,6 +203,51 @@ function readGeneratedSeries(payload: unknown): Partial<ClimateSeriesBundle> | n
   return parsed;
 }
 
+function parseGeneratedEnsoWindow(rawWindow: unknown): EnsoOutlookWindow | null {
+  if (!isRecord(rawWindow)) return null;
+  const conditionValue = typeof rawWindow.condition === "string" ? rawWindow.condition.trim() : "";
+  const condition =
+    conditionValue === "la_nina" || conditionValue === "neutral" || conditionValue === "el_nino"
+      ? (conditionValue as EnsoCondition)
+      : null;
+  if (!condition) return null;
+
+  const probability = rawWindow.probability == null ? null : toFiniteNumber(rawWindow.probability);
+  const targetLabel = typeof rawWindow.targetLabel === "string" && rawWindow.targetLabel.trim().length > 0 ? rawWindow.targetLabel.trim() : null;
+
+  return {
+    condition,
+    probability,
+    targetLabel,
+  };
+}
+
+function readGeneratedEnsoOutlook(payload: unknown): EnsoOutlook | null {
+  if (!isRecord(payload) || !isRecord(payload.ensoOutlook)) return null;
+  const rawOutlook = payload.ensoOutlook;
+
+  const sourceLabel = typeof rawOutlook.sourceLabel === "string" ? rawOutlook.sourceLabel.trim() : "";
+  const sourceUrl = typeof rawOutlook.sourceUrl === "string" ? rawOutlook.sourceUrl.trim() : "";
+  if (!sourceLabel || !sourceUrl) return null;
+
+  const issuedDate =
+    typeof rawOutlook.issuedDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawOutlook.issuedDate.trim())
+      ? rawOutlook.issuedDate.trim()
+      : null;
+  const alertStatus = typeof rawOutlook.alertStatus === "string" && rawOutlook.alertStatus.trim().length > 0 ? rawOutlook.alertStatus.trim() : null;
+  const synopsis = typeof rawOutlook.synopsis === "string" && rawOutlook.synopsis.trim().length > 0 ? rawOutlook.synopsis.trim() : null;
+
+  return {
+    issuedDate,
+    alertStatus,
+    synopsis,
+    sourceLabel,
+    sourceUrl,
+    nextThreeMonths: parseGeneratedEnsoWindow(rawOutlook.nextThreeMonths),
+    nextSixMonths: parseGeneratedEnsoWindow(rawOutlook.nextSixMonths),
+  };
+}
+
 function readGeneratedMapWarnings(payload: unknown): string[] {
   if (!isRecord(payload) || !Array.isArray(payload.mapWarnings)) return [];
   return payload.mapWarnings
@@ -237,6 +292,7 @@ async function loadGeneratedLocalDataSource(): Promise<DashboardDataSource | nul
 
   const parsedSeries = readGeneratedSeries(payload);
   if (!parsedSeries) return null;
+  const ensoOutlook = readGeneratedEnsoOutlook(payload);
   const mapAssets = readGeneratedMaps(payload);
   const mapWarnings = readGeneratedMapWarnings(payload);
 
@@ -249,6 +305,7 @@ async function loadGeneratedLocalDataSource(): Promise<DashboardDataSource | nul
     series: parsedSeries,
     warnings: [],
     updatedAtIso: generatedAtIso,
+    ensoOutlook,
     maps: mapAssets,
     mapWarnings,
   });

@@ -514,6 +514,11 @@ h3 {
   --top-card-soft: rgba(124, 58, 237, 0.14);
 }
 
+.alert-card.summary.summary-top.topcat-enso {
+  --top-card-accent: #0f766e;
+  --top-card-soft: rgba(15, 118, 110, 0.14);
+}
+
 .alert-card.summary.summary-top.topcat-neutral {
   --top-card-accent: #2563eb;
   --top-card-soft: rgba(37, 99, 235, 0.14);
@@ -540,6 +545,43 @@ h3 {
   line-height: 1.3;
   font-weight: 560;
   color: color-mix(in srgb, var(--muted) 86%, var(--text) 14%);
+}
+
+.enso-summary-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.enso-summary-row {
+  display: grid;
+  gap: 2px;
+}
+
+.enso-summary-horizon {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--top-card-accent) 58%, var(--muted));
+}
+
+.enso-summary-condition {
+  font-size: 1.05rem;
+  line-height: 1.12;
+  font-weight: 760;
+  color: var(--text);
+}
+
+.enso-summary-detail {
+  font-size: 0.76rem;
+  line-height: 1.25;
+  font-weight: 560;
+  color: color-mix(in srgb, var(--muted) 84%, var(--text) 16%);
+}
+
+.enso-status-line {
+  margin-top: 8px;
 }
 
 .freshness-chip {

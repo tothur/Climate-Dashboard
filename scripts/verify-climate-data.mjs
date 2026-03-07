@@ -345,6 +345,58 @@ function verifyTemperatureAnomalyAlignment(series, errors, warnings) {
   }
 }
 
+function verifyEnsoOutlook(payload, nowMidnight, errors, warnings) {
+  const ensoOutlook = payload && typeof payload === "object" && !Array.isArray(payload) ? payload.ensoOutlook : null;
+  if (!ensoOutlook || typeof ensoOutlook !== "object" || Array.isArray(ensoOutlook)) {
+    errors.push("ensoOutlook: missing or invalid object");
+    return;
+  }
+
+  const issuedDate = typeof ensoOutlook.issuedDate === "string" ? ensoOutlook.issuedDate.trim() : "";
+  const issuedTs = parseDailyIsoToUtc(issuedDate);
+  if (issuedTs == null) {
+    errors.push("ensoOutlook: issuedDate is missing or invalid");
+  } else {
+    const ageDays = Math.floor((nowMidnight - issuedTs) / DAY_MS);
+    if (ageDays > 50) {
+      errors.push(`ensoOutlook: issuedDate ${issuedDate} is stale (${ageDays} days old)`);
+    }
+  }
+
+  if (typeof ensoOutlook.sourceLabel !== "string" || !ensoOutlook.sourceLabel.trim()) {
+    errors.push("ensoOutlook: sourceLabel is missing");
+  }
+  if (typeof ensoOutlook.sourceUrl !== "string" || !ensoOutlook.sourceUrl.trim()) {
+    errors.push("ensoOutlook: sourceUrl is missing");
+  }
+  if (typeof ensoOutlook.alertStatus !== "string" || !ensoOutlook.alertStatus.trim()) {
+    warnings.push("ensoOutlook: alertStatus is missing");
+  }
+
+  const windowKeys = ["nextThreeMonths", "nextSixMonths"];
+  for (const key of windowKeys) {
+    const rawWindow = ensoOutlook[key];
+    if (!rawWindow || typeof rawWindow !== "object" || Array.isArray(rawWindow)) {
+      errors.push(`ensoOutlook: ${key} is missing or invalid`);
+      continue;
+    }
+
+    const condition = typeof rawWindow.condition === "string" ? rawWindow.condition.trim() : "";
+    if (!["la_nina", "neutral", "el_nino"].includes(condition)) {
+      errors.push(`ensoOutlook: ${key}.condition is invalid (${JSON.stringify(rawWindow.condition)})`);
+    }
+
+    const probability = rawWindow.probability == null ? null : Number(rawWindow.probability);
+    if (probability == null || !Number.isFinite(probability) || probability < 0 || probability > 100) {
+      errors.push(`ensoOutlook: ${key}.probability is invalid (${JSON.stringify(rawWindow.probability)})`);
+    }
+
+    if (typeof rawWindow.targetLabel !== "string" || !rawWindow.targetLabel.trim()) {
+      warnings.push(`ensoOutlook: ${key}.targetLabel is missing`);
+    }
+  }
+}
+
 async function verifyMapFiles(payload, errors, warnings) {
   const maps = payload && typeof payload === "object" && !Array.isArray(payload) ? payload.maps : null;
   if (!maps || typeof maps !== "object" || Array.isArray(maps)) {
@@ -391,6 +443,7 @@ async function main() {
 
   verifyTemperatureAnomalyAlignment(series, errors, warnings);
   verifySeaIceConsistency(series, errors, warnings);
+  verifyEnsoOutlook(payload, nowMidnight, errors, warnings);
   await verifyMapFiles(payload, errors, warnings);
 
   if (warnings.length) {
@@ -408,7 +461,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Data verification passed (${Object.keys(SERIES_RULES).length} series checked).`);
+  console.log(`Data verification passed (${Object.keys(SERIES_RULES).length} series + ENSO outlook checked).`);
 }
 
 main().catch((error) => {

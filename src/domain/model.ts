@@ -50,6 +50,24 @@ export type DashboardSourceMode = "live" | "mixed" | "bundled";
 
 export type ClimateSeriesBundle = Record<ClimateMetricKey, DailyPoint[]>;
 
+export type EnsoCondition = "la_nina" | "neutral" | "el_nino";
+
+export interface EnsoOutlookWindow {
+  condition: EnsoCondition;
+  probability: number | null;
+  targetLabel: string | null;
+}
+
+export interface EnsoOutlook {
+  issuedDate: string | null;
+  alertStatus: string | null;
+  synopsis: string | null;
+  sourceLabel: string;
+  sourceUrl: string;
+  nextThreeMonths: EnsoOutlookWindow | null;
+  nextSixMonths: EnsoOutlookWindow | null;
+}
+
 export type ClimateMapKey =
   | "global_2m_temperature"
   | "global_2m_temperature_anomaly"
@@ -70,6 +88,7 @@ export interface DashboardDataSource {
   series: ClimateSeriesBundle;
   warnings: string[];
   updatedAtIso: string;
+  ensoOutlook?: EnsoOutlook | null;
   maps?: ClimateMapAssets;
   mapWarnings?: string[];
 }

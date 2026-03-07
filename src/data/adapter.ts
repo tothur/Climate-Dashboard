@@ -1,6 +1,7 @@
 import type {
   ClimateMetricKey,
   ClimateMapAssets,
+  EnsoOutlook,
   ClimateMetricSeries,
   ClimateMetricSource,
   ClimateSeriesBundle,
@@ -330,6 +331,7 @@ export function createBundledDataSource(note?: string): DashboardDataSource {
     series: createBundledClimateSeries(),
     warnings: note ? [note] : [],
     updatedAtIso: new Date().toISOString(),
+    ensoOutlook: null,
     maps: undefined,
     mapWarnings: [],
   };
@@ -339,6 +341,7 @@ export function createDataSourceFromSeries(input: {
   series: Partial<ClimateSeriesBundle>;
   warnings?: string[];
   updatedAtIso?: string;
+  ensoOutlook?: EnsoOutlook | null;
   maps?: ClimateMapAssets;
   mapWarnings?: string[];
 }): DashboardDataSource {
@@ -355,6 +358,7 @@ export function createDataSourceFromSeries(input: {
     series: mergedSeries,
     warnings: [...(input.warnings ?? [])],
     updatedAtIso: input.updatedAtIso ?? new Date().toISOString(),
+    ensoOutlook: input.ensoOutlook ?? null,
     maps: input.maps,
     mapWarnings: [...(input.mapWarnings ?? [])],
   };

@@ -25,6 +25,7 @@ const NSIDC_SOUTH_DAILY_EXTENT_URL =
 const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv";
 const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
 const NOAA_AGGI_CSV_URL = "https://gml.noaa.gov/aggi/AGGI_Table.csv";
+const NOAA_CPC_ENSO_DISCUSSION_URL = "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml";
 const CR_T2_LAST_MAP_DATE_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/last_map_date.json";
 const CR_SST_LAST_MAP_DATE_URL = "https://cr.acg.maine.edu/clim/sst_daily/json/dates_sstanom.json";
 const MAP_CLIMATOLOGY_PERIOD = "1991-2020";
@@ -40,10 +41,47 @@ const REQUEST_HEADERS = {
   Accept: "application/json,text/csv,*/*",
 };
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const MONTH_NAME_TO_NUMBER = {
+  January: 1,
+  February: 2,
+  March: 3,
+  April: 4,
+  May: 5,
+  June: 6,
+  July: 7,
+  August: 8,
+  September: 9,
+  October: 10,
+  November: 11,
+  December: 12,
+};
 
 function toFiniteNumber(value) {
   const numeric = typeof value === "number" ? value : Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function decodeHtmlEntities(value) {
+  return String(value ?? "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&rsquo;/gi, "'")
+    .replace(/&ndash;/gi, "-")
+    .replace(/&mdash;/gi, "-")
+    .replace(/&deg;/gi, " deg ")
+    .replace(/&#37;/g, "%")
+    .replace(/&Ntilde;/g, "N")
+    .replace(/&ntilde;/g, "n");
+}
+
+function stripHtmlTags(value) {
+  return String(value ?? "").replace(/<[^>]+>/g, " ");
+}
+
+function cleanHtmlText(value) {
+  return decodeHtmlEntities(stripHtmlTags(value)).replace(/\s+/g, " ").trim();
 }
 
 function isPngBytes(bytes) {
@@ -84,6 +122,16 @@ function dateFromDecimalYear(decimalYear) {
   const fraction = Math.max(0, Math.min(0.999999, decimalYear - year));
   const month = Math.max(1, Math.min(12, Math.floor(fraction * 12) + 1));
   return formatDateFromParts(year, month, 1);
+}
+
+function parseEnglishLongDateToIso(rawDate) {
+  const match = /^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/.exec(String(rawDate ?? "").trim());
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = MONTH_NAME_TO_NUMBER[match[2]];
+  const year = Number(match[3]);
+  if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) return null;
+  return formatDateFromParts(year, month, day);
 }
 
 function parseIsoDateToUtc(dateIso) {
@@ -687,6 +735,79 @@ function parseEcmwfClimatePulseGlobal2tDailyCsv(rawCsv) {
   return normalizePoints(points);
 }
 
+function normalizeEnsoCondition(rawValue) {
+  const normalized = String(rawValue ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z\s-]/g, " ");
+
+  if (normalized.includes("neutral")) return "neutral";
+  if (normalized.includes("la nina")) return "la_nina";
+  if (normalized.includes("el nino")) return "el_nino";
+  return null;
+}
+
+function extractEnsoWindowFromClause(clause) {
+  const cleanClause = String(clause ?? "").replace(/\s+/g, " ").trim();
+  if (!cleanClause) return null;
+
+  const probabilityMatch = cleanClause.match(/(\d{1,3})\s*%\s*chance/i);
+  if (!probabilityMatch) return null;
+
+  const conditionMatches = [...cleanClause.matchAll(/ENSO-neutral|El Nino|La Nina/gi)];
+  if (!conditionMatches.length) return null;
+
+  const lastCondition = conditionMatches[conditionMatches.length - 1]?.[0] ?? "";
+  const condition = normalizeEnsoCondition(lastCondition);
+  if (!condition) return null;
+
+  let targetLabel = null;
+  const chanceInMatch = cleanClause.match(/\(\s*\d{1,3}\s*%\s*chance\s+in\s+([^)]+?)\s*\)/i);
+  if (chanceInMatch) {
+    targetLabel = chanceInMatch[1].trim();
+  } else {
+    const inlinePeriodMatch = cleanClause.match(/\bin\s+([A-Za-z]+(?:-[A-Za-z]+)*(?:\s+[A-Za-z]+(?:-[A-Za-z]+)*)?\s+\d{4})/i);
+    if (inlinePeriodMatch) {
+      targetLabel = inlinePeriodMatch[1].trim();
+    }
+  }
+
+  return {
+    condition,
+    probability: Number(probabilityMatch[1]),
+    targetLabel,
+  };
+}
+
+function parseCpcEnsoOutlook(html) {
+  const rawHtml = String(html ?? "");
+  if (!rawHtml.trim()) return null;
+
+  const issuedMatch = cleanHtmlText(rawHtml).match(/\b\d{1,2}\s+[A-Z][a-z]+\s+\d{4}\b/);
+  const issuedDate = issuedMatch ? parseEnglishLongDateToIso(issuedMatch[0]) : null;
+
+  const synopsisMatch = rawHtml.match(/<u>\s*Synopsis:\s*<\/u>\s*&nbsp;\s*<strong>([\s\S]*?)<\/strong>/i);
+  const synopsis = synopsisMatch ? cleanHtmlText(synopsisMatch[1]) : null;
+
+  const pageText = cleanHtmlText(rawHtml);
+  const alertStatusMatch = pageText.match(/ENSO Alert System Status:\s*(.*?)\s*Synopsis:/i);
+  const alertStatus = alertStatusMatch ? alertStatusMatch[1].trim() : null;
+
+  const clauses = synopsis ? synopsis.split(/\s*,\s+with\s+/i) : [];
+  const nextThreeMonths = clauses.length ? extractEnsoWindowFromClause(clauses[0]) : null;
+  const nextSixMonths = clauses.length > 1 ? extractEnsoWindowFromClause(clauses.slice(1).join(", with ")) : null;
+
+  return {
+    issuedDate,
+    alertStatus,
+    synopsis,
+    sourceLabel: "NOAA CPC ENSO Diagnostic Discussion",
+    sourceUrl: NOAA_CPC_ENSO_DISCUSSION_URL,
+    nextThreeMonths,
+    nextSixMonths,
+  };
+}
+
 function mergeSeaIceSeries(north, south) {
   const northMap = new Map(north.map((point) => [point.date, point.value]));
   const southMap = new Map(south.map((point) => [point.date, point.value]));
@@ -782,6 +903,7 @@ async function updateOnce() {
     ch4Csv,
     aggiCsv,
     dailyGlobalMeanAnomalyCsv,
+    ensoDiscussionHtml,
     t2MapDatePayload,
     sstMapDatePayload,
   ] = await Promise.all([
@@ -800,6 +922,7 @@ async function updateOnce() {
     fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
     fetchText(NOAA_AGGI_CSV_URL),
     fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
+    fetchText(NOAA_CPC_ENSO_DISCUSSION_URL),
     fetchJson(CR_T2_LAST_MAP_DATE_URL),
     fetchJson(CR_SST_LAST_MAP_DATE_URL),
   ]);
@@ -897,6 +1020,7 @@ async function updateOnce() {
     maxValue: 10,
     maxAgeDays: 20,
   });
+  const ensoOutlook = parseCpcEnsoOutlook(ensoDiscussionHtml);
 
   const todayIso = formatIsoDate(new Date());
   const t2MapDateIso = dateIsoFromMapDatePayload(t2MapDatePayload) ?? globalSurfaceTemperature.at(-1)?.date ?? todayIso;
@@ -1002,9 +1126,11 @@ async function updateOnce() {
       atmospheric_co2: NOAA_MAUNA_LOA_CO2_DAILY_URL,
       atmospheric_ch4: NOAA_GLOBAL_CH4_MONTHLY_URL,
       atmospheric_aggi: NOAA_AGGI_CSV_URL,
+      enso_outlook: NOAA_CPC_ENSO_DISCUSSION_URL,
       maps_2m_temperature_dates: CR_T2_LAST_MAP_DATE_URL,
       maps_sst_dates: CR_SST_LAST_MAP_DATE_URL,
     },
+    ensoOutlook,
     maps: mapSources,
     mapWarnings,
     series: {

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { buildDashboardSnapshot, createBundledDataSource } from "../data/adapter";
-import type { ClimateMapKey, DashboardDataSource, Language, ResolvedTheme, ThemeMode, ClimateMetricSeries, DailyPoint } from "../domain/model";
+import type { ClimateMapKey, DashboardDataSource, EnsoCondition, EnsoOutlook, Language, ResolvedTheme, ThemeMode, ClimateMetricSeries, DailyPoint } from "../domain/model";
 import { loadRuntimeDataSource } from "../data/runtime-source";
 import { buildClimateMonthlyComparisonOption, buildClimateTrendOption } from "../charts/iliTrend";
 import { buildForcingTrendOption } from "../charts/historicalTrend";
@@ -65,6 +65,20 @@ const STRINGS = {
   en: {
     appTitle: "Climate Dashboard",
     appSubtitle: "Global climate indicators and forcings",
+    ensoOutlookTitle: "ENSO Outlook",
+    ensoNextThreeMonths: "Next 3 months",
+    ensoNextSixMonths: "Next 6 months",
+    ensoStatusLabel: "Status",
+    ensoConditionNeutral: "ENSO-neutral",
+    ensoConditionLaNina: "La Niña",
+    ensoConditionElNino: "El Niño",
+    ensoAlertNeutral: "ENSO-neutral",
+    ensoAlertLaNinaAdvisory: "La Niña Advisory",
+    ensoAlertElNinoAdvisory: "El Niño Advisory",
+    ensoAlertLaNinaWatch: "La Niña Watch",
+    ensoAlertElNinoWatch: "El Niño Watch",
+    ensoAlertFinalLaNina: "Final La Niña Advisory",
+    ensoAlertFinalElNino: "Final El Niño Advisory",
     language: "Language",
     theme: "Theme",
     themeSystem: "System",
@@ -138,6 +152,20 @@ const STRINGS = {
   hu: {
     appTitle: "Klíma Dashboard",
     appSubtitle: "Globális klímaindikátorok és éghajlati kényszerek",
+    ensoOutlookTitle: "ENSO kilátás",
+    ensoNextThreeMonths: "Következő 3 hónap",
+    ensoNextSixMonths: "Következő 6 hónap",
+    ensoStatusLabel: "Státusz",
+    ensoConditionNeutral: "ENSO-semleges",
+    ensoConditionLaNina: "La Niña",
+    ensoConditionElNino: "El Niño",
+    ensoAlertNeutral: "ENSO-semleges",
+    ensoAlertLaNinaAdvisory: "La Niña figyelmeztetés",
+    ensoAlertElNinoAdvisory: "El Niño figyelmeztetés",
+    ensoAlertLaNinaWatch: "Lehetséges La Niña",
+    ensoAlertElNinoWatch: "Lehetséges El Niño",
+    ensoAlertFinalLaNina: "Utolsó La Niña figyelmeztetés",
+    ensoAlertFinalElNino: "Utolsó El Niño figyelmeztetés",
     language: "Nyelv",
     theme: "Téma",
     themeSystem: "Rendszer",
@@ -349,6 +377,57 @@ function metricTitle(metric: ClimateMetricSeries, language: Language): string {
 function buildMonthLabels(language: Language): string[] {
   if (language === "hu") return ["Jan", "Febr", "Márc", "Ápr", "Máj", "Jún", "Júl", "Aug", "Szept", "Okt", "Nov", "Dec"];
   return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+}
+
+const ENSO_TARGET_MONTH_LABELS: Record<string, { en: string; hu: string }> = {
+  January: { en: "Jan", hu: "Jan" },
+  February: { en: "Feb", hu: "Febr" },
+  March: { en: "Mar", hu: "Márc" },
+  April: { en: "Apr", hu: "Ápr" },
+  May: { en: "May", hu: "Máj" },
+  June: { en: "Jun", hu: "Jún" },
+  July: { en: "Jul", hu: "Júl" },
+  August: { en: "Aug", hu: "Aug" },
+  September: { en: "Sep", hu: "Szept" },
+  October: { en: "Oct", hu: "Okt" },
+  November: { en: "Nov", hu: "Nov" },
+  December: { en: "Dec", hu: "Dec" },
+};
+
+function formatEnsoConditionLabel(condition: EnsoCondition, t: (typeof STRINGS)[Language]): string {
+  switch (condition) {
+    case "la_nina":
+      return t.ensoConditionLaNina;
+    case "el_nino":
+      return t.ensoConditionElNino;
+    default:
+      return t.ensoConditionNeutral;
+  }
+}
+
+function formatEnsoAlertStatusLabel(alertStatus: string | null, language: Language, t: (typeof STRINGS)[Language]): string {
+  const normalized = String(alertStatus ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z\s-]/g, " ");
+
+  if (!normalized) return language === "hu" ? "Nincs adat" : "No data";
+  if (normalized.includes("final la nina")) return t.ensoAlertFinalLaNina;
+  if (normalized.includes("final el nino")) return t.ensoAlertFinalElNino;
+  if (normalized.includes("la nina advisory")) return t.ensoAlertLaNinaAdvisory;
+  if (normalized.includes("el nino advisory")) return t.ensoAlertElNinoAdvisory;
+  if (normalized.includes("la nina watch")) return t.ensoAlertLaNinaWatch;
+  if (normalized.includes("el nino watch")) return t.ensoAlertElNinoWatch;
+  if (normalized.includes("neutral")) return t.ensoAlertNeutral;
+  return alertStatus ?? (language === "hu" ? "Nincs adat" : "No data");
+}
+
+function formatEnsoTargetLabel(targetLabel: string | null, language: Language): string {
+  if (!targetLabel) return "-";
+  return targetLabel.replace(
+    /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/g,
+    (match) => ENSO_TARGET_MONTH_LABELS[match]?.[language] ?? match
+  );
 }
 
 function pickComparisonYears(points: DailyPoint[]): number[] {
@@ -709,6 +788,20 @@ function mapFreshnessBadge(
     ageDays == null ? "stale" : ageDays > 20 ? "stale" : ageDays > 10 ? "warning" : "fresh";
   const statusSuffix = tone === "stale" ? ` · ${t.freshnessStale}` : tone === "warning" ? ` · ${t.freshnessLagging}` : "";
   const label = `${t.freshnessAsOf}: ${formatDateLabel(mapDateIso, language)} · ${t.freshnessDaily}${statusSuffix}`;
+  return { tone, label };
+}
+
+function ensoFreshnessBadge(
+  ensoOutlook: EnsoOutlook | null,
+  language: Language,
+  t: (typeof STRINGS)[Language]
+): { tone: FreshnessTone; label: string } | null {
+  if (!ensoOutlook?.issuedDate) return null;
+  const ageDays = utcDayAge(ensoOutlook.issuedDate);
+  const tone: FreshnessTone =
+    ageDays == null ? "stale" : ageDays > 55 ? "stale" : ageDays > 35 ? "warning" : "fresh";
+  const statusSuffix = tone === "stale" ? ` · ${t.freshnessStale}` : tone === "warning" ? ` · ${t.freshnessLagging}` : "";
+  const label = `${t.freshnessAsOf}: ${formatDateLabel(ensoOutlook.issuedDate, language)} · ${t.freshnessMonthly}${statusSuffix}`;
   return { tone, label };
 }
 
@@ -1085,6 +1178,8 @@ export function App() {
       : snapshot.sourceMode === "mixed"
         ? t.sourceMixed
         : t.sourceBundled;
+  const ensoOutlook = dataSource.ensoOutlook ?? null;
+  const ensoOutlookFreshness = ensoFreshnessBadge(ensoOutlook, language, t);
   const dailyGlobalMeanAnomalyFreshness = dailyGlobalMeanAnomalyMetric
     ? metricFreshnessBadge(dailyGlobalMeanAnomalyMetric, language, t)
     : null;
@@ -1147,16 +1242,45 @@ export function App() {
         {headlineMetrics.map((metric) => {
           const freshness = metricFreshnessBadge(metric, language, t);
           return (
-            <article className={`alert-card summary summary-top ${topSummaryCategoryClass(metric.key)}`} key={metric.key}>
-              <h2>{metricTitle(metric, language)}</h2>
-              <p className="alert-emphasis">
-                {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-              </p>
-              <p className="summary-meta">
-                {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-              </p>
-              <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
-            </article>
+            <Fragment key={metric.key}>
+              {metric.key === "atmospheric_co2" && ensoOutlook?.nextThreeMonths && ensoOutlook.nextSixMonths ? (
+                <article className="alert-card summary summary-top topcat-enso" key="enso-outlook-summary">
+                  <h2>{t.ensoOutlookTitle}</h2>
+                  <div className="enso-summary-list">
+                    <div className="enso-summary-row">
+                      <span className="enso-summary-horizon">{t.ensoNextThreeMonths}</span>
+                      <strong className="enso-summary-condition">{formatEnsoConditionLabel(ensoOutlook.nextThreeMonths.condition, t)}</strong>
+                      <span className="enso-summary-detail">
+                        {formatEnsoTargetLabel(ensoOutlook.nextThreeMonths.targetLabel, language)} · {ensoOutlook.nextThreeMonths.probability ?? "-"}%
+                      </span>
+                    </div>
+                    <div className="enso-summary-row">
+                      <span className="enso-summary-horizon">{t.ensoNextSixMonths}</span>
+                      <strong className="enso-summary-condition">{formatEnsoConditionLabel(ensoOutlook.nextSixMonths.condition, t)}</strong>
+                      <span className="enso-summary-detail">
+                        {formatEnsoTargetLabel(ensoOutlook.nextSixMonths.targetLabel, language)} · {ensoOutlook.nextSixMonths.probability ?? "-"}%
+                      </span>
+                    </div>
+                  </div>
+                  <p className="summary-meta enso-status-line">
+                    {t.ensoStatusLabel}: {formatEnsoAlertStatusLabel(ensoOutlook.alertStatus, language, t)}
+                  </p>
+                  {ensoOutlookFreshness ? (
+                    <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span>
+                  ) : null}
+                </article>
+              ) : null}
+              <article className={`alert-card summary summary-top ${topSummaryCategoryClass(metric.key)}`}>
+                <h2>{metricTitle(metric, language)}</h2>
+                <p className="alert-emphasis">
+                  {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
+                </p>
+                <p className="summary-meta">
+                  {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                </p>
+                <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+              </article>
+            </Fragment>
           );
         })}
       </section>
