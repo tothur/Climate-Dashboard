@@ -152,7 +152,7 @@ const STRINGS = {
   hu: {
     appTitle: "Klíma Dashboard",
     appSubtitle: "Globális klímaindikátorok és éghajlati kényszerek",
-    ensoOutlookTitle: "ENSO kilátás",
+    ensoOutlookTitle: "ENSO kilátások",
     ensoNextThreeMonths: "Következő 3 hónap",
     ensoNextSixMonths: "Következő 6 hónap",
     ensoStatusLabel: "Státusz",
@@ -880,7 +880,22 @@ export function App() {
         }),
     [snapshot.indicators, snapshot.forcing]
   );
-  const footerMetrics = useMemo(() => [...snapshot.indicators, ...snapshot.forcing], [snapshot.indicators, snapshot.forcing]);
+  const footerSources = useMemo(() => {
+    const ensoSource = dataSource.ensoOutlook;
+    const sources = [...snapshot.indicators, ...snapshot.forcing].map((metric) => ({
+      key: `${metric.key}-footer-source`,
+      url: metric.source.url,
+      label: `${metricTitle(metric, language)} · ${metric.source.shortName}`,
+    }));
+    if (ensoSource?.sourceUrl) {
+      sources.push({
+        key: "enso-outlook-footer-source",
+        url: ensoSource.sourceUrl,
+        label: `${t.ensoOutlookTitle} · ${ensoSource.sourceLabel || "NOAA CPC"}`,
+      });
+    }
+    return sources;
+  }, [snapshot.indicators, snapshot.forcing, language, dataSource.ensoOutlook, t]);
   const monthlyLabels = useMemo(() => buildMonthLabels(language), [language]);
   const indicatorLines = useMemo(
     () =>
@@ -1657,9 +1672,9 @@ export function App() {
         <div className="footer-sources">
           <strong className="footer-sources-title">{t.sourceCardsTitle}</strong>
           <div className="footer-sources-links">
-            {footerMetrics.map((metric) => (
-              <a key={`${metric.key}-footer-source`} href={metric.source.url} target="_blank" rel="noreferrer">
-                {metricTitle(metric, language)} · {metric.source.shortName}
+            {footerSources.map((source) => (
+              <a key={source.key} href={source.url} target="_blank" rel="noreferrer">
+                {source.label}
               </a>
             ))}
           </div>
