@@ -393,6 +393,20 @@ const ENSO_TARGET_MONTH_LABELS: Record<string, { en: string; hu: string }> = {
   November: { en: "Nov", hu: "Nov" },
   December: { en: "Dec", hu: "Dec" },
 };
+const ENSO_TARGET_SEASON_LABELS: Record<string, { en: string; hu: string }> = {
+  DJF: { en: "Dec-Feb", hu: "Dec-Febr" },
+  JFM: { en: "Jan-Mar", hu: "Jan-Márc" },
+  FMA: { en: "Feb-Apr", hu: "Febr-Ápr" },
+  MAM: { en: "Mar-May", hu: "Márc-Máj" },
+  AMJ: { en: "Apr-Jun", hu: "Ápr-Jún" },
+  MJJ: { en: "May-Jul", hu: "Máj-Júl" },
+  JJA: { en: "Jun-Aug", hu: "Jún-Aug" },
+  JAS: { en: "Jul-Sep", hu: "Júl-Szept" },
+  ASO: { en: "Aug-Oct", hu: "Aug-Okt" },
+  SON: { en: "Sep-Nov", hu: "Szept-Nov" },
+  OND: { en: "Oct-Dec", hu: "Okt-Dec" },
+  NDJ: { en: "Nov-Jan", hu: "Nov-Jan" },
+};
 
 function formatEnsoConditionLabel(condition: EnsoCondition, t: (typeof STRINGS)[Language]): string {
   switch (condition) {
@@ -424,6 +438,11 @@ function formatEnsoAlertStatusLabel(alertStatus: string | null, language: Langua
 
 function formatEnsoTargetLabel(targetLabel: string | null, language: Language): string {
   if (!targetLabel) return "-";
+  const seasonMatch = /^([A-Z]{3})\s+(\d{4})$/.exec(targetLabel.trim());
+  if (seasonMatch) {
+    const seasonLabel = ENSO_TARGET_SEASON_LABELS[seasonMatch[1]]?.[language] ?? seasonMatch[1];
+    return `${seasonLabel} ${seasonMatch[2]}`;
+  }
   return targetLabel.replace(
     /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/g,
     (match) => ENSO_TARGET_MONTH_LABELS[match]?.[language] ?? match
@@ -1258,27 +1277,13 @@ export function App() {
           const freshness = metricFreshnessBadge(metric, language, t);
           return (
             <Fragment key={metric.key}>
-              {metric.key === "atmospheric_co2" && ensoOutlook?.nextThreeMonths && ensoOutlook.nextSixMonths ? (
+              {metric.key === "atmospheric_co2" && ensoOutlook?.nextSixMonths ? (
                 <article className="alert-card summary summary-top topcat-enso" key="enso-outlook-summary">
                   <h2>{t.ensoOutlookTitle}</h2>
-                  <div className="enso-summary-list">
-                    <div className="enso-summary-row">
-                      <span className="enso-summary-horizon">{t.ensoNextThreeMonths}</span>
-                      <strong className="enso-summary-condition">{formatEnsoConditionLabel(ensoOutlook.nextThreeMonths.condition, t)}</strong>
-                      <span className="enso-summary-detail">
-                        {formatEnsoTargetLabel(ensoOutlook.nextThreeMonths.targetLabel, language)} · {ensoOutlook.nextThreeMonths.probability ?? "-"}%
-                      </span>
-                    </div>
-                    <div className="enso-summary-row">
-                      <span className="enso-summary-horizon">{t.ensoNextSixMonths}</span>
-                      <strong className="enso-summary-condition">{formatEnsoConditionLabel(ensoOutlook.nextSixMonths.condition, t)}</strong>
-                      <span className="enso-summary-detail">
-                        {formatEnsoTargetLabel(ensoOutlook.nextSixMonths.targetLabel, language)} · {ensoOutlook.nextSixMonths.probability ?? "-"}%
-                      </span>
-                    </div>
-                  </div>
-                  <p className="summary-meta enso-status-line">
-                    {t.ensoStatusLabel}: {formatEnsoAlertStatusLabel(ensoOutlook.alertStatus, language, t)}
+                  <p className="alert-emphasis">{formatEnsoConditionLabel(ensoOutlook.nextSixMonths.condition, t)}</p>
+                  <p className="summary-meta">
+                    {t.ensoNextSixMonths} · {formatEnsoTargetLabel(ensoOutlook.nextSixMonths.targetLabel, language)} ·{" "}
+                    {ensoOutlook.nextSixMonths.probability ?? "-"}%
                   </p>
                   {ensoOutlookFreshness ? (
                     <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span>

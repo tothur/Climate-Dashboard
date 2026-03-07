@@ -25,6 +25,7 @@ const NSIDC_SOUTH_DAILY_EXTENT_URL =
 const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv";
 const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
 const NOAA_AGGI_CSV_URL = "https://gml.noaa.gov/aggi/AGGI_Table.csv";
+const IRI_ENSO_CURRENT_URL = "https://iri.columbia.edu/our-expertise/climate/forecasts/enso/current/";
 const NOAA_CPC_ENSO_DISCUSSION_URL = "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml";
 const CR_T2_LAST_MAP_DATE_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/last_map_date.json";
 const CR_SST_LAST_MAP_DATE_URL = "https://cr.acg.maine.edu/clim/sst_daily/json/dates_sstanom.json";
@@ -55,6 +56,7 @@ const MONTH_NAME_TO_NUMBER = {
   November: 11,
   December: 12,
 };
+const ENSO_SEASON_CODES = ["DJF", "JFM", "FMA", "MAM", "AMJ", "MJJ", "JJA", "JAS", "ASO", "SON", "OND", "NDJ"];
 
 function toFiniteNumber(value) {
   const numeric = typeof value === "number" ? value : Number(value);
@@ -125,10 +127,20 @@ function dateFromDecimalYear(decimalYear) {
 }
 
 function parseEnglishLongDateToIso(rawDate) {
-  const match = /^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/.exec(String(rawDate ?? "").trim());
+  const normalized = String(rawDate ?? "").trim().replace(/,\s*/g, " ");
+  let match = /^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/.exec(normalized);
+  if (match) {
+    const day = Number(match[1]);
+    const month = MONTH_NAME_TO_NUMBER[match[2]];
+    const year = Number(match[3]);
+    if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) return null;
+    return formatDateFromParts(year, month, day);
+  }
+
+  match = /^([A-Za-z]+)\s+(\d{1,2})\s+(\d{4})$/.exec(normalized);
   if (!match) return null;
-  const day = Number(match[1]);
-  const month = MONTH_NAME_TO_NUMBER[match[2]];
+  const month = MONTH_NAME_TO_NUMBER[match[1]];
+  const day = Number(match[2]);
   const year = Number(match[3]);
   if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) return null;
   return formatDateFromParts(year, month, day);
@@ -808,6 +820,87 @@ function parseCpcEnsoOutlook(html) {
   };
 }
 
+function buildEnsoWindowFromProbabilities(targetLabel, laNinaProbability, neutralProbability, elNinoProbability) {
+  const probabilities = [
+    { condition: "la_nina", probability: Number(laNinaProbability) },
+    { condition: "neutral", probability: Number(neutralProbability) },
+    { condition: "el_nino", probability: Number(elNinoProbability) },
+  ].filter((entry) => Number.isFinite(entry.probability));
+
+  if (!probabilities.length) return null;
+
+  probabilities.sort((left, right) => right.probability - left.probability);
+  const strongest = probabilities[0];
+  return {
+    condition: strongest.condition,
+    probability: strongest.probability,
+    targetLabel,
+  };
+}
+
+function parseIriEnsoOutlook(html) {
+  const rawHtml = String(html ?? "");
+  if (!rawHtml.trim()) return null;
+
+  const pageText = cleanHtmlText(rawHtml);
+  const issuedMatch = pageText.match(/Published:\s*([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
+  const issuedDate = issuedMatch ? parseEnglishLongDateToIso(issuedMatch[1]) : null;
+  const forecastYear = issuedDate ? Number(issuedDate.slice(0, 4)) : new Date().getUTCFullYear();
+
+  const rows = [];
+  const rowKeys = new Set();
+  const seasonPattern = new RegExp(
+    `\\b(${ENSO_SEASON_CODES.join("|")})\\s+(\\d{1,3})\\s+(\\d{1,3})\\s+(\\d{1,3})\\b`,
+    "g"
+  );
+  for (const match of pageText.matchAll(seasonPattern)) {
+    const season = match[1];
+    const year = String(forecastYear);
+    const key = `${season}-${year}`;
+    if (rowKeys.has(key)) continue;
+    rowKeys.add(key);
+    rows.push({
+      season,
+      year,
+      targetLabel: `${season} ${year}`,
+      laNinaProbability: Number(match[2]),
+      neutralProbability: Number(match[3]),
+      elNinoProbability: Number(match[4]),
+    });
+  }
+
+  if (!rows.length) return null;
+
+  const discussionMatch = pageText.match(
+    /Most recent model forecasts indicate([\s\S]*?)(?:For the Apr-Jun 2026 season|Season La Ni|Based on the latest observations)/i
+  );
+  const synopsis = discussionMatch ? `Most recent model forecasts indicate${discussionMatch[1].trim()}` : null;
+
+  const nextThreeMonths = buildEnsoWindowFromProbabilities(
+    rows[Math.min(0, rows.length - 1)]?.targetLabel ?? null,
+    rows[Math.min(0, rows.length - 1)]?.laNinaProbability,
+    rows[Math.min(0, rows.length - 1)]?.neutralProbability,
+    rows[Math.min(0, rows.length - 1)]?.elNinoProbability
+  );
+  const mediumRangeRow = rows[Math.min(4, rows.length - 1)];
+  const nextSixMonths = buildEnsoWindowFromProbabilities(
+    mediumRangeRow?.targetLabel ?? null,
+    mediumRangeRow?.laNinaProbability,
+    mediumRangeRow?.neutralProbability,
+    mediumRangeRow?.elNinoProbability
+  );
+
+  return {
+    issuedDate,
+    alertStatus: null,
+    synopsis,
+    sourceLabel: "IRI ENSO Forecast",
+    sourceUrl: IRI_ENSO_CURRENT_URL,
+    nextThreeMonths,
+    nextSixMonths,
+  };
+}
+
 function mergeSeaIceSeries(north, south) {
   const northMap = new Map(north.map((point) => [point.date, point.value]));
   const southMap = new Map(south.map((point) => [point.date, point.value]));
@@ -903,6 +996,7 @@ async function updateOnce() {
     ch4Csv,
     aggiCsv,
     dailyGlobalMeanAnomalyCsv,
+    iriEnsoHtml,
     ensoDiscussionHtml,
     t2MapDatePayload,
     sstMapDatePayload,
@@ -922,6 +1016,7 @@ async function updateOnce() {
     fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
     fetchText(NOAA_AGGI_CSV_URL),
     fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
+    fetchText(IRI_ENSO_CURRENT_URL),
     fetchText(NOAA_CPC_ENSO_DISCUSSION_URL),
     fetchJson(CR_T2_LAST_MAP_DATE_URL),
     fetchJson(CR_SST_LAST_MAP_DATE_URL),
@@ -1020,7 +1115,7 @@ async function updateOnce() {
     maxValue: 10,
     maxAgeDays: 20,
   });
-  const ensoOutlook = parseCpcEnsoOutlook(ensoDiscussionHtml);
+  const ensoOutlook = parseIriEnsoOutlook(iriEnsoHtml) ?? parseCpcEnsoOutlook(ensoDiscussionHtml);
 
   const todayIso = formatIsoDate(new Date());
   const t2MapDateIso = dateIsoFromMapDatePayload(t2MapDatePayload) ?? globalSurfaceTemperature.at(-1)?.date ?? todayIso;
@@ -1126,7 +1221,7 @@ async function updateOnce() {
       atmospheric_co2: NOAA_MAUNA_LOA_CO2_DAILY_URL,
       atmospheric_ch4: NOAA_GLOBAL_CH4_MONTHLY_URL,
       atmospheric_aggi: NOAA_AGGI_CSV_URL,
-      enso_outlook: NOAA_CPC_ENSO_DISCUSSION_URL,
+      enso_outlook: ensoOutlook?.sourceUrl ?? IRI_ENSO_CURRENT_URL,
       maps_2m_temperature_dates: CR_T2_LAST_MAP_DATE_URL,
       maps_sst_dates: CR_SST_LAST_MAP_DATE_URL,
     },

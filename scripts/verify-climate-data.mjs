@@ -369,9 +369,6 @@ function verifyEnsoOutlook(payload, nowMidnight, errors, warnings) {
   if (typeof ensoOutlook.sourceUrl !== "string" || !ensoOutlook.sourceUrl.trim()) {
     errors.push("ensoOutlook: sourceUrl is missing");
   }
-  if (typeof ensoOutlook.alertStatus !== "string" || !ensoOutlook.alertStatus.trim()) {
-    warnings.push("ensoOutlook: alertStatus is missing");
-  }
 
   const windowKeys = ["nextThreeMonths", "nextSixMonths"];
   for (const key of windowKeys) {
