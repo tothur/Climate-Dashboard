@@ -69,6 +69,15 @@ function toFiniteNumber(value: unknown): number | null {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function isMissingReanalyzerValue(value: unknown): boolean {
+  if (value == null) return true;
+  if (typeof value === "number") return !Number.isFinite(value);
+  if (typeof value !== "string") return false;
+
+  const normalized = value.trim().toLowerCase();
+  return normalized.length === 0 || normalized === "null" || normalized === "nan" || normalized === "na";
+}
+
 function formatIsoDate(date: Date): string {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -335,8 +344,7 @@ function parseReanalyzerDailyJson(payload: unknown): DailyPoint[] {
 
     let effectiveLength = values.length;
     while (effectiveLength > 0) {
-      const trailingValue = toFiniteNumber(values[effectiveLength - 1]);
-      if (trailingValue == null || trailingValue === 0) {
+      if (isMissingReanalyzerValue(values[effectiveLength - 1])) {
         effectiveLength -= 1;
         continue;
       }

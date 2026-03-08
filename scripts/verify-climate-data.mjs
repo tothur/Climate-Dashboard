@@ -7,10 +7,26 @@ const INPUT_PATH = resolve(ROOT_DIR, "public/data/climate-realtime.json");
 const DAY_MS = 86_400_000;
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const REQUIRED_MAP_FILES = [
-  resolve(ROOT_DIR, "public/data/maps/global-2m-temperature.png"),
-  resolve(ROOT_DIR, "public/data/maps/global-2m-temperature-anomaly.png"),
-  resolve(ROOT_DIR, "public/data/maps/global-sst.png"),
-  resolve(ROOT_DIR, "public/data/maps/global-sst-anomaly.png"),
+  {
+    key: "global_2m_temperature",
+    path: "data/maps/global-2m-temperature.png",
+    filePath: resolve(ROOT_DIR, "public/data/maps/global-2m-temperature.png"),
+  },
+  {
+    key: "global_2m_temperature_anomaly",
+    path: "data/maps/global-2m-temperature-anomaly.png",
+    filePath: resolve(ROOT_DIR, "public/data/maps/global-2m-temperature-anomaly.png"),
+  },
+  {
+    key: "global_sst",
+    path: "data/maps/global-sst.png",
+    filePath: resolve(ROOT_DIR, "public/data/maps/global-sst.png"),
+  },
+  {
+    key: "global_sst_anomaly",
+    path: "data/maps/global-sst-anomaly.png",
+    filePath: resolve(ROOT_DIR, "public/data/maps/global-sst-anomaly.png"),
+  },
 ];
 
 const SERIES_RULES = {
@@ -397,18 +413,38 @@ function verifyEnsoOutlook(payload, nowMidnight, errors, warnings) {
 async function verifyMapFiles(payload, errors, warnings) {
   const maps = payload && typeof payload === "object" && !Array.isArray(payload) ? payload.maps : null;
   if (!maps || typeof maps !== "object" || Array.isArray(maps)) {
-    warnings.push("maps: missing maps metadata block");
+    errors.push("maps: missing maps metadata block");
   }
 
-  for (const filePath of REQUIRED_MAP_FILES) {
+  for (const mapConfig of REQUIRED_MAP_FILES) {
+    const mapEntry = maps && typeof maps === "object" && !Array.isArray(maps) ? maps[mapConfig.key] : null;
+    if (!mapEntry || typeof mapEntry !== "object" || Array.isArray(mapEntry)) {
+      errors.push(`maps.${mapConfig.key}: missing metadata entry`);
+    } else {
+      const path = typeof mapEntry.path === "string" ? mapEntry.path.trim() : "";
+      if (!path) {
+        errors.push(`maps.${mapConfig.key}.path is missing`);
+      } else if (path !== mapConfig.path) {
+        warnings.push(`maps.${mapConfig.key}.path is ${path}; expected ${mapConfig.path}`);
+      }
+
+      const date = typeof mapEntry.date === "string" ? mapEntry.date.trim() : "";
+      const dateTs = parseDailyIsoToUtc(date);
+      if (dateTs == null) {
+        errors.push(`maps.${mapConfig.key}.date is missing or invalid`);
+      } else if (dateTs > utcMidnightNow()) {
+        errors.push(`maps.${mapConfig.key}.date is in the future (${date})`);
+      }
+    }
+
     try {
-      await access(filePath);
-      const bytes = await readFile(filePath);
+      await access(mapConfig.filePath);
+      const bytes = await readFile(mapConfig.filePath);
       if (!isPngBytes(bytes)) {
-        errors.push(`maps: expected PNG but found invalid image payload in ${filePath}`);
+        errors.push(`maps: expected PNG but found invalid image payload in ${mapConfig.filePath}`);
       }
     } catch {
-      errors.push(`maps: missing expected map file ${filePath}`);
+      errors.push(`maps: missing expected map file ${mapConfig.filePath}`);
     }
   }
 }

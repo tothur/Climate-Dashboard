@@ -356,6 +356,10 @@ function buildMapAssetUrl(path: string | null | undefined, fallbackFileName: str
   return `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}v=${versionToken}`;
 }
 
+function formatMapImageAlt(title: string, mapDateIso: string | null, language: Language): string {
+  return mapDateIso ? `${title} (${formatDateLabel(mapDateIso, language)})` : title;
+}
+
 function formatAnnualAnomalyTopMeta(year: number, language: Language, isYtd: boolean, ytdLabel: string): string {
   const ytdSuffix = isYtd ? ` (${ytdLabel})` : "";
   if (language === "hu") return `Év: ${year}${ytdSuffix} vs 1850-1900`;
@@ -1026,9 +1030,7 @@ export function App() {
   const mapCards = useMemo(() => {
     const metricByKey = new Map(snapshot.indicators.map((metric) => [metric.key, metric]));
     const surfaceMetric = metricByKey.get("global_surface_temperature") ?? null;
-    const surfaceAnomalyMetric = metricByKey.get("global_surface_temperature_anomaly") ?? surfaceMetric ?? null;
     const sstMetric = metricByKey.get("global_sea_surface_temperature") ?? null;
-    const sstAnomalyMetric = metricByKey.get("global_sea_surface_temperature_anomaly") ?? sstMetric ?? null;
     const mapAssets = dataSource.maps ?? {};
     const mapVersion = encodeURIComponent(snapshot.updatedAtIso);
     const generatedDateIso = extractIsoDate(snapshot.updatedAtIso);
@@ -1038,12 +1040,12 @@ export function App() {
     const sstMapDateIso = mapAssets.global_sst?.date ?? null;
     const sstAnomalyMapDateIso = mapAssets.global_sst_anomaly?.date ?? null;
 
-    const surfaceMapCandidateDateIso = surfaceMapDateIso ?? generatedDateIso ?? surfaceMetric?.latestDate ?? null;
-    const sstMapCandidateDateIso = sstMapDateIso ?? generatedDateIso ?? sstMetric?.latestDate ?? null;
-    const surfaceMapDisplayDateIso = surfaceMapDateIso ?? surfaceMetric?.latestDate ?? generatedDateIso ?? null;
-    const surfaceAnomalyMapDisplayDateIso = surfaceAnomalyMapDateIso ?? surfaceAnomalyMetric?.latestDate ?? surfaceMapDisplayDateIso;
-    const sstMapDisplayDateIso = sstMapDateIso ?? sstMetric?.latestDate ?? generatedDateIso ?? null;
-    const sstAnomalyMapDisplayDateIso = sstAnomalyMapDateIso ?? sstAnomalyMetric?.latestDate ?? sstMapDisplayDateIso;
+    const surfaceMapCandidateDateIso = surfaceMapDateIso ?? surfaceMetric?.latestDate ?? generatedDateIso ?? null;
+    const sstMapCandidateDateIso = sstMapDateIso ?? sstMetric?.latestDate ?? generatedDateIso ?? null;
+    const surfaceMapDisplayDateIso = surfaceMapDateIso ?? null;
+    const surfaceAnomalyMapDisplayDateIso = surfaceAnomalyMapDateIso ?? null;
+    const sstMapDisplayDateIso = sstMapDateIso ?? null;
+    const sstAnomalyMapDisplayDateIso = sstAnomalyMapDateIso ?? null;
 
     const t2DateCandidates = buildMapDateCandidates(buildMapDateParts(surfaceMapCandidateDateIso));
     const sstDateCandidates = buildMapDateCandidates(buildMapDateParts(sstMapCandidateDateIso));
@@ -1064,14 +1066,10 @@ export function App() {
 
     const surfaceSubtitle = `${surfaceMetric?.source.shortName ?? "Climate Reanalyzer"} · ${t.mapGlobalSubtitle}`;
     const sstSubtitle = `${sstMetric?.source.shortName ?? "Climate Reanalyzer"} · ${t.mapGlobalSubtitle}`;
-    const surfaceFreshness = mapFreshnessBadge(surfaceMapDateIso, language, t) ?? (surfaceMetric ? metricFreshnessBadge(surfaceMetric, language, t) : null);
-    const surfaceAnomalyFreshness =
-      mapFreshnessBadge(surfaceAnomalyMapDateIso ?? surfaceMapDateIso, language, t) ??
-      (surfaceAnomalyMetric ? metricFreshnessBadge(surfaceAnomalyMetric, language, t) : surfaceFreshness);
-    const sstFreshness = mapFreshnessBadge(sstMapDateIso, language, t) ?? (sstMetric ? metricFreshnessBadge(sstMetric, language, t) : null);
-    const sstAnomalyFreshness =
-      mapFreshnessBadge(sstAnomalyMapDateIso ?? sstMapDateIso, language, t) ??
-      (sstAnomalyMetric ? metricFreshnessBadge(sstAnomalyMetric, language, t) : sstFreshness);
+    const surfaceFreshness = mapFreshnessBadge(surfaceMapDateIso, language, t);
+    const surfaceAnomalyFreshness = mapFreshnessBadge(surfaceAnomalyMapDateIso, language, t);
+    const sstFreshness = mapFreshnessBadge(sstMapDateIso, language, t);
+    const sstAnomalyFreshness = mapFreshnessBadge(sstAnomalyMapDateIso, language, t);
 
     return [
       {
@@ -1080,7 +1078,7 @@ export function App() {
         subtitle: surfaceSubtitle,
         imageUrl: buildMapAssetUrl(mapAssets.global_2m_temperature?.path, LOCAL_MAP_FILENAMES.global_2m_temperature, mapVersion),
         fallbackImageUrls: uniqueNonEmptyStrings([mapAssets.global_2m_temperature?.sourceUrl, ...t2MapUrls.map((entry) => entry.t2)]),
-        imageAlt: `${t.map2mTemperatureTitle} (${formatDateLabel(surfaceMapDisplayDateIso, language)})`,
+        imageAlt: formatMapImageAlt(t.map2mTemperatureTitle, surfaceMapDisplayDateIso, language),
         freshness: surfaceFreshness,
       },
       {
@@ -1096,7 +1094,7 @@ export function App() {
           mapAssets.global_2m_temperature_anomaly?.sourceUrl,
           ...t2MapUrls.map((entry) => entry.t2Anomaly),
         ]),
-        imageAlt: `${t.map2mTemperatureAnomalyTitle} (${formatDateLabel(surfaceAnomalyMapDisplayDateIso, language)})`,
+        imageAlt: formatMapImageAlt(t.map2mTemperatureAnomalyTitle, surfaceAnomalyMapDisplayDateIso, language),
         freshness: surfaceAnomalyFreshness,
       },
       {
@@ -1105,7 +1103,7 @@ export function App() {
         subtitle: sstSubtitle,
         imageUrl: buildMapAssetUrl(mapAssets.global_sst?.path, LOCAL_MAP_FILENAMES.global_sst, mapVersion),
         fallbackImageUrls: uniqueNonEmptyStrings([mapAssets.global_sst?.sourceUrl, ...sstMapUrls.map((entry) => entry.sst)]),
-        imageAlt: `${t.mapSstTitle} (${formatDateLabel(sstMapDisplayDateIso, language)})`,
+        imageAlt: formatMapImageAlt(t.mapSstTitle, sstMapDisplayDateIso, language),
         freshness: sstFreshness,
       },
       {
@@ -1117,7 +1115,7 @@ export function App() {
           mapAssets.global_sst_anomaly?.sourceUrl,
           ...sstMapUrls.map((entry) => entry.sstAnomaly),
         ]),
-        imageAlt: `${t.mapSstAnomalyTitle} (${formatDateLabel(sstAnomalyMapDisplayDateIso, language)})`,
+        imageAlt: formatMapImageAlt(t.mapSstAnomalyTitle, sstAnomalyMapDisplayDateIso, language),
         freshness: sstAnomalyFreshness,
       },
     ];

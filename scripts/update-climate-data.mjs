@@ -58,10 +58,38 @@ const MONTH_NAME_TO_NUMBER = {
   December: 12,
 };
 const ENSO_SEASON_CODES = ["DJF", "JFM", "FMA", "MAM", "AMJ", "MJJ", "JJA", "JAS", "ASO", "SON", "OND", "NDJ"];
+const ENSO_SEASON_CENTER_MONTH = {
+  DJF: 1,
+  JFM: 2,
+  FMA: 3,
+  MAM: 4,
+  AMJ: 5,
+  MJJ: 6,
+  JJA: 7,
+  JAS: 8,
+  ASO: 9,
+  SON: 10,
+  OND: 11,
+  NDJ: 12,
+};
+const MAP_KEYS = ["global_2m_temperature", "global_2m_temperature_anomaly", "global_sst", "global_sst_anomaly"];
 
 function toFiniteNumber(value) {
   const numeric = typeof value === "number" ? value : Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isMissingReanalyzerValue(value) {
+  if (value == null) return true;
+  if (typeof value === "number") return !Number.isFinite(value);
+  if (typeof value !== "string") return false;
+
+  const normalized = value.trim().toLowerCase();
+  return normalized.length === 0 || normalized === "null" || normalized === "nan" || normalized === "na";
 }
 
 function decodeHtmlEntities(value) {
@@ -158,6 +186,42 @@ async function fileExists(path) {
     return true;
   } catch {
     return false;
+  }
+}
+
+function parseStoredMapAsset(rawAsset) {
+  if (!isRecord(rawAsset)) return null;
+
+  const path = typeof rawAsset.path === "string" ? rawAsset.path.trim() : "";
+  if (!path) return null;
+
+  const sourceUrl = typeof rawAsset.sourceUrl === "string" && rawAsset.sourceUrl.trim().length > 0 ? rawAsset.sourceUrl.trim() : null;
+  const sourcePage = typeof rawAsset.sourcePage === "string" && rawAsset.sourcePage.trim().length > 0 ? rawAsset.sourcePage.trim() : null;
+  const date = typeof rawAsset.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawAsset.date.trim()) ? rawAsset.date.trim() : null;
+
+  return {
+    path,
+    sourceUrl,
+    sourcePage,
+    date,
+  };
+}
+
+async function loadPreviousMapSources() {
+  if (!(await fileExists(OUTPUT_PATH))) return {};
+
+  try {
+    const payload = JSON.parse(await readFile(OUTPUT_PATH, "utf8"));
+    if (!isRecord(payload) || !isRecord(payload.maps)) return {};
+
+    const previousMapSources = {};
+    for (const key of MAP_KEYS) {
+      const asset = parseStoredMapAsset(payload.maps[key]);
+      if (asset) previousMapSources[key] = asset;
+    }
+    return previousMapSources;
+  } catch {
+    return {};
   }
 }
 
@@ -430,8 +494,7 @@ function parseReanalyzerDailyJson(payload) {
 
     let effectiveLength = values.length;
     while (effectiveLength > 0) {
-      const trailingValue = toFiniteNumber(values[effectiveLength - 1]);
-      if (trailingValue == null || trailingValue === 0) {
+      if (isMissingReanalyzerValue(values[effectiveLength - 1])) {
         effectiveLength -= 1;
         continue;
       }
@@ -839,6 +902,33 @@ function buildEnsoWindowFromProbabilities(targetLabel, laNinaProbability, neutra
   };
 }
 
+function assignIriSeasonYears(rows, issuedDate) {
+  const parsedIssued = typeof issuedDate === "string" ? Date.parse(`${issuedDate}T00:00:00Z`) : Number.NaN;
+  const issuedDateValue = Number.isFinite(parsedIssued) ? new Date(parsedIssued) : new Date();
+  const issueOrdinal = issuedDateValue.getUTCFullYear() * 12 + issuedDateValue.getUTCMonth();
+  let previousOrdinal = issueOrdinal - 1;
+
+  return rows.map((row, index) => {
+    const centerMonth = ENSO_SEASON_CENTER_MONTH[row.season];
+    if (!Number.isFinite(centerMonth)) return row;
+
+    let year = issuedDateValue.getUTCFullYear();
+    let ordinal = year * 12 + (centerMonth - 1);
+    const minOrdinal = index === 0 ? issueOrdinal : previousOrdinal + 1;
+    while (ordinal < minOrdinal) {
+      year += 1;
+      ordinal = year * 12 + (centerMonth - 1);
+    }
+
+    previousOrdinal = ordinal;
+    return {
+      ...row,
+      year: String(year),
+      targetLabel: `${row.season} ${year}`,
+    };
+  });
+}
+
 function parseIriEnsoOutlook(html) {
   const rawHtml = String(html ?? "");
   if (!rawHtml.trim()) return null;
@@ -856,14 +946,13 @@ function parseIriEnsoOutlook(html) {
   );
   for (const match of pageText.matchAll(seasonPattern)) {
     const season = match[1];
-    const year = String(forecastYear);
-    const key = `${season}-${year}`;
+    const key = season;
     if (rowKeys.has(key)) continue;
     rowKeys.add(key);
     rows.push({
       season,
-      year,
-      targetLabel: `${season} ${year}`,
+      year: String(forecastYear),
+      targetLabel: `${season} ${forecastYear}`,
       laNinaProbability: Number(match[2]),
       neutralProbability: Number(match[3]),
       elNinoProbability: Number(match[4]),
@@ -871,19 +960,21 @@ function parseIriEnsoOutlook(html) {
   }
 
   if (!rows.length) return null;
+  const datedRows = assignIriSeasonYears(rows, issuedDate);
 
   const discussionMatch = pageText.match(
-    /Most recent model forecasts indicate([\s\S]*?)(?:For the Apr-Jun 2026 season|Season La Ni|Based on the latest observations)/i
+    /Most recent model forecasts indicate([\s\S]*?)(?:For the [A-Za-z]{3}-[A-Za-z]{3}\s+\d{4}(?:\/\d{2,4})?\s+season|Season La Ni|Based on the latest observations)/i
   );
   const synopsis = discussionMatch ? `Most recent model forecasts indicate${discussionMatch[1].trim()}` : null;
 
+  const nextSeasonRow = datedRows[0];
   const nextThreeMonths = buildEnsoWindowFromProbabilities(
-    rows[Math.min(0, rows.length - 1)]?.targetLabel ?? null,
-    rows[Math.min(0, rows.length - 1)]?.laNinaProbability,
-    rows[Math.min(0, rows.length - 1)]?.neutralProbability,
-    rows[Math.min(0, rows.length - 1)]?.elNinoProbability
+    nextSeasonRow?.targetLabel ?? null,
+    nextSeasonRow?.laNinaProbability,
+    nextSeasonRow?.neutralProbability,
+    nextSeasonRow?.elNinoProbability
   );
-  const mediumRangeRow = rows[Math.min(4, rows.length - 1)];
+  const mediumRangeRow = datedRows[Math.min(4, datedRows.length - 1)];
   const nextSixMonths = buildEnsoWindowFromProbabilities(
     mediumRangeRow?.targetLabel ?? null,
     mediumRangeRow?.laNinaProbability,
@@ -1134,6 +1225,7 @@ async function updateOnce() {
     global_sst: "global-sst.png",
     global_sst_anomaly: "global-sst-anomaly.png",
   };
+  const previousMapSources = await loadPreviousMapSources();
   const mapSources = {};
   const mapWarnings = [];
 
@@ -1186,13 +1278,19 @@ async function updateOnce() {
       if (existing) {
         const existingBytes = await readFile(outputFilePath).catch(() => null);
         if (existingBytes instanceof Uint8Array && isPngBytes(existingBytes)) {
-          mapWarnings.push(`${mapJob.key}: refresh failed; keeping previous map file.`);
-          mapSources[mapJob.key] = {
-            path: `data/maps/${mapJob.fileName}`,
-            sourceUrl: null,
-            sourcePage: mapJob.sourcePage,
-            date: null,
-          };
+          const previousMapSource = previousMapSources[mapJob.key];
+          if (previousMapSource?.date) {
+            mapWarnings.push(`${mapJob.key}: refresh failed; keeping previous map file and metadata.`);
+            mapSources[mapJob.key] = {
+              path: `data/maps/${mapJob.fileName}`,
+              sourceUrl: previousMapSource.sourceUrl,
+              sourcePage: previousMapSource.sourcePage ?? mapJob.sourcePage,
+              date: previousMapSource.date,
+            };
+          } else {
+            await unlink(outputFilePath).catch(() => {});
+            mapWarnings.push(`${mapJob.key}: refresh failed and previous metadata date was missing; removed stale map file.`);
+          }
         } else {
           await unlink(outputFilePath).catch(() => {});
           mapWarnings.push(`${mapJob.key}: refresh failed and existing file was invalid; removed stale map file.`);
