@@ -1455,6 +1455,7 @@ export function App() {
   const projectionSignalSummary = projectedAnnualGlobalMeanAnomaly?.ensoWindow
     ? `${t.projectionSignalLabel}: ${formatEnsoTargetLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.targetLabel, language)} · ${formatEnsoConditionLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.condition, t)} · ${projectedAnnualGlobalMeanAnomaly.ensoWindow.probability ?? "-"}%`
     : null;
+  const projectionSupportLabel = ensoOutlook?.sourceLabel ?? dailyGlobalMeanAnomalyMetric?.source.shortName ?? null;
 
   return (
     <div className="app-shell">
@@ -1926,6 +1927,7 @@ export function App() {
               <div className="summary-cards-section">
                 <div className="regional-summary-grid projection-summary-grid">
                   <article className="alert-card summary projection-summary-card">
+                    <span className="alert-kicker">{t.projectionExperimentalLabel}</span>
                     <h2>{t.projectedAnnualTemperatureAnomalyTitle}</h2>
                     <p className="alert-emphasis">
                       {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.value)}{" "}
@@ -1935,9 +1937,9 @@ export function App() {
                         language
                       )}
                     </p>
-                    <p className="summary-meta">{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p>
-                    <p className="summary-meta">
-                      {t.projectionExperimentalLabel} · {t.projectionRangeLabel}:{" "}
+                    <p>{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p>
+                    <p>
+                      {t.projectionRangeLabel}:{" "}
                       {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
                       {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)}{" "}
                       {cardUnitLabel(
@@ -1946,11 +1948,16 @@ export function App() {
                         language
                       )}
                     </p>
-                    <p className="summary-meta">{t.projectionMethodLabel}</p>
-                    {projectionSignalSummary ? <p className="summary-meta">{projectionSignalSummary}</p> : null}
+                    <p>{projectionSignalSummary ?? t.projectionMethodLabel}</p>
                     {projectionFreshness ? (
                       <span className={`freshness-chip ${projectionFreshness.tone}`}>{projectionFreshness.label}</span>
                     ) : null}
+                    <div className="alert-meta">
+                      <span className="alert-meta-chip confidence-medium">{t.projectionMethodLabel}</span>
+                      {projectionSupportLabel ? (
+                        <span className="alert-meta-chip confidence-medium">{projectionSupportLabel}</span>
+                      ) : null}
+                    </div>
                   </article>
                 </div>
               </div>
