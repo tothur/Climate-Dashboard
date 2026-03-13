@@ -1273,6 +1273,11 @@ h3 {
   gap: 12px;
 }
 
+.projection-summary-grid {
+  grid-template-columns: minmax(240px, 360px);
+  justify-content: start;
+}
+
 .summary-cards-section {
   display: grid;
   gap: 12px;

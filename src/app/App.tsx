@@ -1660,7 +1660,7 @@ export function App() {
                 <p>{t.regionalTemperaturesSectionNote}</p>
               </div>
               <div className="summary-cards-section">
-                <div className="regional-summary-grid">
+                <div className="regional-summary-grid projection-summary-grid">
                   {regionalSummaryMetrics.map((metric) => {
                     const freshness = metricFreshnessBadge(metric, language, t);
                     return (
