@@ -1278,6 +1278,11 @@ h3 {
   justify-content: start;
 }
 
+.projection-summary-card {
+  width: 100%;
+  max-width: 360px;
+}
+
 .summary-cards-section {
   display: grid;
   gap: 12px;

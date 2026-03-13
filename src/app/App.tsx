@@ -1924,8 +1924,8 @@ export function App() {
           {projectionsSectionOpen ? (
             <div className="section-content">
               <div className="summary-cards-section">
-                <div className="regional-summary-grid">
-                  <article className="alert-card summary">
+                <div className="regional-summary-grid projection-summary-grid">
+                  <article className="alert-card summary projection-summary-card">
                     <h2>{t.projectedAnnualTemperatureAnomalyTitle}</h2>
                     <p className="alert-emphasis">
                       {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.value)}{" "}
