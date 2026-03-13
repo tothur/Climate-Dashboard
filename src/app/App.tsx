@@ -1,6 +1,17 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { buildDashboardSnapshot, createBundledDataSource } from "../data/adapter";
-import type { ClimateMapKey, DashboardDataSource, EnsoCondition, EnsoOutlook, Language, ResolvedTheme, ThemeMode, ClimateMetricSeries, DailyPoint } from "../domain/model";
+import type {
+  ClimateMapKey,
+  DashboardDataSource,
+  EnsoCondition,
+  EnsoOutlook,
+  EnsoOutlookWindow,
+  Language,
+  ResolvedTheme,
+  ThemeMode,
+  ClimateMetricSeries,
+  DailyPoint,
+} from "../domain/model";
 import { loadRuntimeDataSource } from "../data/runtime-source";
 import { buildClimateMonthlyComparisonOption, buildClimateTrendOption } from "../charts/iliTrend";
 import { buildForcingTrendOption } from "../charts/historicalTrend";
@@ -9,6 +20,7 @@ import { MapPanel } from "../components/MapPanel";
 
 const STORAGE_LANG_KEY = "climate-dashboard-lang";
 const STORAGE_THEME_KEY = "climate-dashboard-theme";
+const DAY_MS = 86_400_000;
 const REFERENCE_LEAP_YEAR = 2024;
 const REFERENCE_LEAP_YEAR_START_UTC = Date.UTC(REFERENCE_LEAP_YEAR, 0, 1);
 const CLIMATOLOGY_BASELINE_START_YEAR = 1991;
@@ -104,6 +116,11 @@ const STRINGS = {
     annualGlobalTemperatureAnomalyTitle: "Annual Global Temperature Anomaly",
     annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, estimated 1850-1900 baseline)",
     annualGlobalTemperatureAnomalyMethod: "Mean of available daily anomalies (year-to-date for the current year).",
+    projectedAnnualTemperatureAnomalyTitle: "Projected Annual Temperature Anomaly",
+    projectionExperimentalLabel: "Experimental",
+    projectionRangeLabel: "Range",
+    projectionMethodLabel: "YTD + ENSO-tilted analogs",
+    projectionSignalLabel: "ENSO signal",
     yearLabel: "Year",
     regionalTemperaturesSectionTitle: "Regional Temperatures",
     regionalTemperaturesSectionNote:
@@ -191,6 +208,11 @@ const STRINGS = {
     annualGlobalTemperatureAnomalyTitle: "Éves globális hőmérsékleti anomália",
     annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850-1900-as referencia)",
     annualGlobalTemperatureAnomalyMethod: "Az elérhető napi anomáliák átlaga (az aktuális évben évközi átlag).",
+    projectedAnnualTemperatureAnomalyTitle: "Becsült éves hőmérsékleti anomália",
+    projectionExperimentalLabel: "Kísérleti",
+    projectionRangeLabel: "Tartomány",
+    projectionMethodLabel: "Évközi + ENSO-alapú analógok",
+    projectionSignalLabel: "ENSO jel",
     yearLabel: "Év",
     regionalTemperaturesSectionTitle: "Regionális hőmérsékletek",
     regionalTemperaturesSectionNote:
@@ -366,6 +388,11 @@ function formatAnnualAnomalyTopMeta(year: number, language: Language, isYtd: boo
   return `Year: ${year}${ytdSuffix} vs 1850-1900`;
 }
 
+function formatProjectionTopMeta(year: number, language: Language): string {
+  if (language === "hu") return `Év: ${year} becslés vs 1850-1900`;
+  return `Year: ${year} projection vs 1850-1900`;
+}
+
 function formatMetricValue(metric: ClimateMetricSeries, language: Language, unavailableText: string): string {
   if (metric.latestValue == null || !Number.isFinite(metric.latestValue)) return unavailableText;
   return new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
@@ -451,6 +478,183 @@ function formatEnsoTargetLabel(targetLabel: string | null, language: Language): 
     /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/g,
     (match) => ENSO_TARGET_MONTH_LABELS[match]?.[language] ?? match
   );
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function parseYearFromDateIso(dateIso: string): number | null {
+  const match = /^(\d{4})-\d{2}-\d{2}$/.exec(dateIso);
+  if (!match) return null;
+  const year = Number(match[1]);
+  return Number.isFinite(year) ? year : null;
+}
+
+function dayOfYearFromDateIso(dateIso: string): number | null {
+  const parsed = Date.parse(`${dateIso}T00:00:00Z`);
+  if (!Number.isFinite(parsed)) return null;
+  const date = new Date(parsed);
+  const start = Date.UTC(date.getUTCFullYear(), 0, 1);
+  return Math.floor((parsed - start) / DAY_MS) + 1;
+}
+
+function daysInYear(year: number): number {
+  return Math.round((Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / DAY_MS);
+}
+
+function meanPointValues(points: DailyPoint[]): number | null {
+  if (!points.length) return null;
+  let sum = 0;
+  let count = 0;
+  for (const point of points) {
+    const value = Number(point.value);
+    if (!Number.isFinite(value)) continue;
+    sum += value;
+    count += 1;
+  }
+  return count > 0 ? sum / count : null;
+}
+
+function projectionEnsoWindow(ensoOutlook: EnsoOutlook | null): EnsoOutlookWindow | null {
+  return ensoOutlook?.nextSixMonths ?? ensoOutlook?.nextThreeMonths ?? null;
+}
+
+function ensoPreferenceWeight(remainderShift: number, window: EnsoOutlookWindow | null): number {
+  if (!window) return 1;
+
+  const probability = clamp(window.probability ?? 50, 0, 100) / 100;
+  const normalizedShift = clamp(remainderShift / 0.25, -1, 1);
+
+  switch (window.condition) {
+    case "el_nino":
+      return clamp(1 + normalizedShift * 0.45 * probability, 0.35, 1.65);
+    case "la_nina":
+      return clamp(1 - normalizedShift * 0.45 * probability, 0.35, 1.65);
+    default:
+      return clamp(1 + (1 - Math.abs(normalizedShift)) * 0.35 * probability, 0.35, 1.35);
+  }
+}
+
+function weightedQuantile(
+  entries: Array<{ value: number; weight: number }>,
+  quantile: number
+): number | null {
+  if (!entries.length) return null;
+  const ordered = [...entries]
+    .filter((entry) => Number.isFinite(entry.value) && Number.isFinite(entry.weight) && entry.weight > 0)
+    .sort((left, right) => left.value - right.value);
+  if (!ordered.length) return null;
+
+  const totalWeight = ordered.reduce((sum, entry) => sum + entry.weight, 0);
+  if (!(totalWeight > 0)) return null;
+  const target = clamp(quantile, 0, 1) * totalWeight;
+
+  let cumulative = 0;
+  for (const entry of ordered) {
+    cumulative += entry.weight;
+    if (cumulative >= target) return entry.value;
+  }
+
+  return ordered[ordered.length - 1]?.value ?? null;
+}
+
+interface AnnualProjectionEstimate {
+  year: number;
+  value: number;
+  low: number;
+  high: number;
+  analogCount: number;
+  ensoWindow: EnsoOutlookWindow | null;
+}
+
+function buildAnnualProjectionEstimate(
+  points: DailyPoint[],
+  ensoOutlook: EnsoOutlook | null
+): AnnualProjectionEstimate | null {
+  if (!points.length) return null;
+
+  const latestPoint = points[points.length - 1];
+  const currentYear = parseYearFromDateIso(latestPoint.date);
+  const currentDayOfYear = dayOfYearFromDateIso(latestPoint.date);
+  if (currentYear == null || currentDayOfYear == null) return null;
+
+  const totalDays = daysInYear(currentYear);
+  const remainingDays = totalDays - currentDayOfYear;
+  if (remainingDays <= 0) return null;
+
+  const pointsByYear = new Map<number, DailyPoint[]>();
+  for (const point of points) {
+    const year = parseYearFromDateIso(point.date);
+    if (year == null) continue;
+    const bucket = pointsByYear.get(year) ?? [];
+    bucket.push(point);
+    pointsByYear.set(year, bucket);
+  }
+
+  const currentYearPoints = pointsByYear.get(currentYear) ?? [];
+  const currentObservedPoints = currentYearPoints.filter((point) => {
+    const dayOfYear = dayOfYearFromDateIso(point.date);
+    return dayOfYear != null && dayOfYear <= currentDayOfYear;
+  });
+  const currentYtdMean = meanPointValues(currentObservedPoints);
+  if (currentYtdMean == null || currentObservedPoints.length < Math.max(30, currentDayOfYear - 3)) return null;
+
+  const ensoWindow = projectionEnsoWindow(ensoOutlook);
+  const analogs = Array.from(pointsByYear.entries())
+    .filter(([year]) => year < currentYear)
+    .map(([year, yearPoints]) => {
+      const ytdPoints = yearPoints.filter((point) => {
+        const dayOfYear = dayOfYearFromDateIso(point.date);
+        return dayOfYear != null && dayOfYear <= currentDayOfYear;
+      });
+      const remainderPoints = yearPoints.filter((point) => {
+        const dayOfYear = dayOfYearFromDateIso(point.date);
+        return dayOfYear != null && dayOfYear > currentDayOfYear;
+      });
+
+      if (ytdPoints.length < currentObservedPoints.length * 0.94) return null;
+      if (remainderPoints.length < Math.max(45, remainingDays * 0.82)) return null;
+
+      const ytdMean = meanPointValues(ytdPoints);
+      const remainderMean = meanPointValues(remainderPoints);
+      if (ytdMean == null || remainderMean == null) return null;
+
+      const similarityWeight = Math.exp(-Math.pow((ytdMean - currentYtdMean) / 0.12, 2));
+      const outlookWeight = ensoPreferenceWeight(remainderMean - ytdMean, ensoWindow);
+      const projectedAnnualMean = ((currentYtdMean * currentDayOfYear) + (remainderMean * remainingDays)) / totalDays;
+
+      return {
+        year,
+        projectedAnnualMean,
+        weight: similarityWeight * outlookWeight,
+      };
+    })
+    .filter((entry): entry is { year: number; projectedAnnualMean: number; weight: number } => entry != null)
+    .sort((left, right) => right.weight - left.weight)
+    .slice(0, 12);
+
+  const validAnalogs = analogs.filter((entry) => Number.isFinite(entry.projectedAnnualMean) && entry.weight > 0);
+  if (validAnalogs.length < 5) return null;
+
+  const totalWeight = validAnalogs.reduce((sum, entry) => sum + entry.weight, 0);
+  if (!(totalWeight > 0)) return null;
+
+  const value =
+    validAnalogs.reduce((sum, entry) => sum + entry.projectedAnnualMean * entry.weight, 0) / totalWeight;
+  const weightedEntries = validAnalogs.map((entry) => ({ value: entry.projectedAnnualMean, weight: entry.weight }));
+  const low = weightedQuantile(weightedEntries, 0.15);
+  const high = weightedQuantile(weightedEntries, 0.85);
+  if (low == null || high == null) return null;
+
+  return {
+    year: currentYear,
+    value: Math.round(value * 1000) / 1000,
+    low: Math.round(low * 1000) / 1000,
+    high: Math.round(high * 1000) / 1000,
+    analogCount: validAnalogs.length,
+    ensoWindow,
+  };
 }
 
 function pickComparisonYears(points: DailyPoint[]): number[] {
@@ -844,6 +1048,7 @@ export function App() {
   const [forcingSectionOpen, setForcingSectionOpen] = useState(true);
 
   const t = STRINGS[language];
+  const ensoOutlook = dataSource.ensoOutlook ?? null;
 
   useEffect(() => {
     localStorage.setItem(STORAGE_LANG_KEY, language);
@@ -990,6 +1195,10 @@ export function App() {
     }
     return false;
   }, [dailyGlobalMeanAnomalyMetric, latestAnnualGlobalMeanAnomaly]);
+  const projectedAnnualGlobalMeanAnomaly = useMemo(() => {
+    if (!dailyGlobalMeanAnomalyMetric || !annualGlobalMeanAnomalyIsYtd) return null;
+    return buildAnnualProjectionEstimate(dailyGlobalMeanAnomalyMetric.points, ensoOutlook);
+  }, [dailyGlobalMeanAnomalyMetric, annualGlobalMeanAnomalyIsYtd, ensoOutlook]);
   const regionalTemperatureLines = useMemo(
     () =>
       indicatorLines
@@ -1210,11 +1419,15 @@ export function App() {
       : snapshot.sourceMode === "mixed"
         ? t.sourceMixed
         : t.sourceBundled;
-  const ensoOutlook = dataSource.ensoOutlook ?? null;
   const ensoOutlookFreshness = ensoFreshnessBadge(ensoOutlook, language, t);
   const dailyGlobalMeanAnomalyFreshness = dailyGlobalMeanAnomalyMetric
     ? metricFreshnessBadge(dailyGlobalMeanAnomalyMetric, language, t)
     : null;
+  const projectionFreshness = ensoOutlookFreshness ?? dailyGlobalMeanAnomalyFreshness;
+  const projectionNumberFormat = new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
+    minimumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
+    maximumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
+  });
 
   return (
     <div className="app-shell">
@@ -1268,6 +1481,38 @@ export function App() {
             </p>
             {dailyGlobalMeanAnomalyFreshness ? (
               <span className={`freshness-chip ${dailyGlobalMeanAnomalyFreshness.tone}`}>{dailyGlobalMeanAnomalyFreshness.label}</span>
+            ) : null}
+          </article>
+        ) : null}
+        {projectedAnnualGlobalMeanAnomaly ? (
+          <article className="alert-card summary summary-top topcat-anomaly" key="projected-annual-global-temperature-anomaly-summary">
+            <h2>{t.projectedAnnualTemperatureAnomalyTitle}</h2>
+            <p className="alert-emphasis">
+              {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.value)}{" "}
+              {cardUnitLabel(
+                DAILY_GLOBAL_MEAN_ANOMALY_KEY,
+                dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+                language
+              )}
+            </p>
+            <p className="summary-meta">{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p>
+            <p className="summary-meta">
+              {t.projectionExperimentalLabel} · {t.projectionRangeLabel}:{" "}
+              {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
+              {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)}{" "}
+              {cardUnitLabel(
+                DAILY_GLOBAL_MEAN_ANOMALY_KEY,
+                dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+                language
+              )}
+            </p>
+            <p className="summary-meta">
+              {projectedAnnualGlobalMeanAnomaly.ensoWindow
+                ? `${t.projectionSignalLabel}: ${formatEnsoTargetLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.targetLabel, language)} · ${formatEnsoConditionLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.condition, t)} · ${projectedAnnualGlobalMeanAnomaly.ensoWindow.probability ?? "-"}%`
+                : t.projectionMethodLabel}
+            </p>
+            {projectionFreshness ? (
+              <span className={`freshness-chip ${projectionFreshness.tone}`}>{projectionFreshness.label}</span>
             ) : null}
           </article>
         ) : null}
