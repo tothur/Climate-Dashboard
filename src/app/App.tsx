@@ -21,6 +21,11 @@ import { MapPanel } from "../components/MapPanel";
 const STORAGE_LANG_KEY = "climate-dashboard-lang";
 const STORAGE_THEME_KEY = "climate-dashboard-theme";
 const DAY_MS = 86_400_000;
+const PROJECTION_ANALOG_POOL_SIZE = 12;
+const PROJECTION_MAX_ANALOGS = 8;
+const PROJECTION_YTD_SIGMA = 0.16;
+const PROJECTION_RECENCY_SCALE_YEARS = 6;
+const PROJECTION_DELTA_SCALE = 0.18;
 const REFERENCE_LEAP_YEAR = 2024;
 const REFERENCE_LEAP_YEAR_START_UTC = Date.UTC(REFERENCE_LEAP_YEAR, 0, 1);
 const CLIMATOLOGY_BASELINE_START_YEAR = 1991;
@@ -119,8 +124,11 @@ const STRINGS = {
     projectedAnnualTemperatureAnomalyTitle: "Projected Annual Temperature Anomaly",
     projectionExperimentalLabel: "Experimental",
     projectionRangeLabel: "Range",
-    projectionMethodLabel: "YTD + ENSO-tilted analogs",
+    projectionMethodLabel: "YTD + recent analog seasonal paths",
     projectionSignalLabel: "ENSO signal",
+    projectionsTitle: "Projections",
+    projectionsNote:
+      "Experimental outlook based on the current year-to-date global anomaly, recent analog years, and the latest ENSO forecast.",
     yearLabel: "Year",
     regionalTemperaturesSectionTitle: "Regional Temperatures",
     regionalTemperaturesSectionNote:
@@ -211,8 +219,11 @@ const STRINGS = {
     projectedAnnualTemperatureAnomalyTitle: "Becsült éves hőmérsékleti anomália",
     projectionExperimentalLabel: "Kísérleti",
     projectionRangeLabel: "Tartomány",
-    projectionMethodLabel: "Évközi + ENSO-alapú analógok",
+    projectionMethodLabel: "Évközi + közeli analóg évek szezonális lefutása",
     projectionSignalLabel: "ENSO jel",
+    projectionsTitle: "Előrejelzések",
+    projectionsNote:
+      "Kísérleti becslés az aktuális évközi globális anomália, a közelmúlt analóg évei és a legfrissebb ENSO-kilátás alapján.",
     yearLabel: "Év",
     regionalTemperaturesSectionTitle: "Regionális hőmérsékletek",
     regionalTemperaturesSectionNote:
@@ -520,19 +531,19 @@ function projectionEnsoWindow(ensoOutlook: EnsoOutlook | null): EnsoOutlookWindo
   return ensoOutlook?.nextSixMonths ?? ensoOutlook?.nextThreeMonths ?? null;
 }
 
-function ensoPreferenceWeight(remainderShift: number, window: EnsoOutlookWindow | null): number {
+function ensoPreferenceWeight(annualDelta: number, window: EnsoOutlookWindow | null): number {
   if (!window) return 1;
 
   const probability = clamp(window.probability ?? 50, 0, 100) / 100;
-  const normalizedShift = clamp(remainderShift / 0.25, -1, 1);
+  const normalizedDelta = clamp(annualDelta / PROJECTION_DELTA_SCALE, -1, 1);
 
   switch (window.condition) {
     case "el_nino":
-      return clamp(1 + normalizedShift * 0.45 * probability, 0.35, 1.65);
+      return clamp(1 + normalizedDelta * probability, 0.35, 2);
     case "la_nina":
-      return clamp(1 - normalizedShift * 0.45 * probability, 0.35, 1.65);
+      return clamp(1 - normalizedDelta * probability, 0.35, 2);
     default:
-      return clamp(1 + (1 - Math.abs(normalizedShift)) * 0.35 * probability, 0.35, 1.35);
+      return clamp(1 + (1 - Math.abs(normalizedDelta)) * 0.35 * probability, 0.5, 1.35);
   }
 }
 
@@ -601,7 +612,7 @@ function buildAnnualProjectionEstimate(
   if (currentYtdMean == null || currentObservedPoints.length < Math.max(30, currentDayOfYear - 3)) return null;
 
   const ensoWindow = projectionEnsoWindow(ensoOutlook);
-  const analogs = Array.from(pointsByYear.entries())
+  const recentAnalogCandidates = Array.from(pointsByYear.entries())
     .filter(([year]) => year < currentYear)
     .map(([year, yearPoints]) => {
       const ytdPoints = yearPoints.filter((point) => {
@@ -617,22 +628,34 @@ function buildAnnualProjectionEstimate(
       if (remainderPoints.length < Math.max(45, remainingDays * 0.82)) return null;
 
       const ytdMean = meanPointValues(ytdPoints);
-      const remainderMean = meanPointValues(remainderPoints);
-      if (ytdMean == null || remainderMean == null) return null;
-
-      const similarityWeight = Math.exp(-Math.pow((ytdMean - currentYtdMean) / 0.12, 2));
-      const outlookWeight = ensoPreferenceWeight(remainderMean - ytdMean, ensoWindow);
-      const projectedAnnualMean = ((currentYtdMean * currentDayOfYear) + (remainderMean * remainingDays)) / totalDays;
+      const annualMean = meanPointValues(yearPoints);
+      if (ytdMean == null || annualMean == null) return null;
 
       return {
         year,
-        projectedAnnualMean,
-        weight: similarityWeight * outlookWeight,
+        ytdMean,
+        annualDelta: annualMean - ytdMean,
       };
     })
-    .filter((entry): entry is { year: number; projectedAnnualMean: number; weight: number } => entry != null)
+    .filter((entry): entry is { year: number; ytdMean: number; annualDelta: number } => entry != null)
+    .sort((left, right) => left.year - right.year)
+    .slice(-PROJECTION_ANALOG_POOL_SIZE);
+
+  const analogs = recentAnalogCandidates
+    .map((entry) => {
+      const similarityWeight = Math.exp(-Math.pow((entry.ytdMean - currentYtdMean) / PROJECTION_YTD_SIGMA, 2));
+      const recencyWeight = Math.exp(-Math.pow((currentYear - entry.year) / PROJECTION_RECENCY_SCALE_YEARS, 2));
+      const outlookWeight = ensoPreferenceWeight(entry.annualDelta, ensoWindow);
+      const projectedAnnualMean = currentYtdMean + entry.annualDelta;
+
+      return {
+        year: entry.year,
+        projectedAnnualMean,
+        weight: similarityWeight * recencyWeight * outlookWeight,
+      };
+    })
     .sort((left, right) => right.weight - left.weight)
-    .slice(0, 12);
+    .slice(0, PROJECTION_MAX_ANALOGS);
 
   const validAnalogs = analogs.filter((entry) => Number.isFinite(entry.projectedAnnualMean) && entry.weight > 0);
   if (validAnalogs.length < 5) return null;
@@ -1046,6 +1069,7 @@ export function App() {
   const [climateSectionOpen, setClimateSectionOpen] = useState(true);
   const [mapsSectionOpen, setMapsSectionOpen] = useState(true);
   const [forcingSectionOpen, setForcingSectionOpen] = useState(true);
+  const [projectionsSectionOpen, setProjectionsSectionOpen] = useState(true);
 
   const t = STRINGS[language];
   const ensoOutlook = dataSource.ensoOutlook ?? null;
@@ -1428,6 +1452,9 @@ export function App() {
     minimumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
     maximumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
   });
+  const projectionSignalSummary = projectedAnnualGlobalMeanAnomaly?.ensoWindow
+    ? `${t.projectionSignalLabel}: ${formatEnsoTargetLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.targetLabel, language)} · ${formatEnsoConditionLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.condition, t)} · ${projectedAnnualGlobalMeanAnomaly.ensoWindow.probability ?? "-"}%`
+    : null;
 
   return (
     <div className="app-shell">
@@ -1481,38 +1508,6 @@ export function App() {
             </p>
             {dailyGlobalMeanAnomalyFreshness ? (
               <span className={`freshness-chip ${dailyGlobalMeanAnomalyFreshness.tone}`}>{dailyGlobalMeanAnomalyFreshness.label}</span>
-            ) : null}
-          </article>
-        ) : null}
-        {projectedAnnualGlobalMeanAnomaly ? (
-          <article className="alert-card summary summary-top topcat-anomaly" key="projected-annual-global-temperature-anomaly-summary">
-            <h2>{t.projectedAnnualTemperatureAnomalyTitle}</h2>
-            <p className="alert-emphasis">
-              {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.value)}{" "}
-              {cardUnitLabel(
-                DAILY_GLOBAL_MEAN_ANOMALY_KEY,
-                dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
-                language
-              )}
-            </p>
-            <p className="summary-meta">{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p>
-            <p className="summary-meta">
-              {t.projectionExperimentalLabel} · {t.projectionRangeLabel}:{" "}
-              {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
-              {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)}{" "}
-              {cardUnitLabel(
-                DAILY_GLOBAL_MEAN_ANOMALY_KEY,
-                dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
-                language
-              )}
-            </p>
-            <p className="summary-meta">
-              {projectedAnnualGlobalMeanAnomaly.ensoWindow
-                ? `${t.projectionSignalLabel}: ${formatEnsoTargetLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.targetLabel, language)} · ${formatEnsoConditionLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.condition, t)} · ${projectedAnnualGlobalMeanAnomaly.ensoWindow.probability ?? "-"}%`
-                : t.projectionMethodLabel}
-            </p>
-            {projectionFreshness ? (
-              <span className={`freshness-chip ${projectionFreshness.tone}`}>{projectionFreshness.label}</span>
             ) : null}
           </article>
         ) : null}
@@ -1907,6 +1902,62 @@ export function App() {
           </div>
         ) : null}
       </section>
+
+      {projectedAnnualGlobalMeanAnomaly ? (
+        <section className="collapsible-section">
+          <header className="section-header">
+            <div className="section-header-main">
+              <h2>{t.projectionsTitle}</h2>
+              <p>{t.projectionsNote}</p>
+            </div>
+            <button
+              type="button"
+              className="section-toggle"
+              aria-expanded={projectionsSectionOpen}
+              onClick={() => setProjectionsSectionOpen((open) => !open)}
+            >
+              <span className={`section-toggle-icon ${projectionsSectionOpen ? "open" : ""}`} aria-hidden="true" />
+              <span>{projectionsSectionOpen ? t.sectionCollapse : t.sectionExpand}</span>
+            </button>
+          </header>
+
+          {projectionsSectionOpen ? (
+            <div className="section-content">
+              <div className="summary-cards-section">
+                <div className="regional-summary-grid">
+                  <article className="alert-card summary summary-top topcat-anomaly">
+                    <h2>{t.projectedAnnualTemperatureAnomalyTitle}</h2>
+                    <p className="alert-emphasis">
+                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.value)}{" "}
+                      {cardUnitLabel(
+                        DAILY_GLOBAL_MEAN_ANOMALY_KEY,
+                        dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+                        language
+                      )}
+                    </p>
+                    <p className="summary-meta">{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p>
+                    <p className="summary-meta">
+                      {t.projectionExperimentalLabel} · {t.projectionRangeLabel}:{" "}
+                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
+                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)}{" "}
+                      {cardUnitLabel(
+                        DAILY_GLOBAL_MEAN_ANOMALY_KEY,
+                        dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+                        language
+                      )}
+                    </p>
+                    <p className="summary-meta">{t.projectionMethodLabel}</p>
+                    {projectionSignalSummary ? <p className="summary-meta">{projectionSignalSummary}</p> : null}
+                    {projectionFreshness ? (
+                      <span className={`freshness-chip ${projectionFreshness.tone}`}>{projectionFreshness.label}</span>
+                    ) : null}
+                  </article>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <footer className="dashboard-footer">
         <div className="footer-strip">
