@@ -762,15 +762,8 @@ function buildAnnualProjectionTrendOption({
   const projectionLineColor = dark ? "#fbbf24" : "#d97706";
   const projectionBandFill = dark ? "rgba(251, 191, 36, 0.20)" : "rgba(245, 158, 11, 0.18)";
   const projectionBandStroke = dark ? "#fcd34d" : "#f59e0b";
-  const previousPoint = projectionIndex > 0 ? points[projectionIndex - 1] : null;
-  const projectionLineData = points.map((point, index) => {
-    if (previousPoint && index === projectionIndex - 1) return previousPoint.value;
-    if (index === projectionIndex) return projection.value;
-    return null;
-  });
-  const projectionPointData = points.map((point, index) => (index === projectionIndex ? point.value : null));
+  const historicalScatterData = points.map((point) => point.value);
   const projectedScatterData = points.map((point, index) => (index === projectionIndex ? projection.value : null));
-  const baseSeries = Array.isArray(option.series) ? option.series : option.series ? [option.series] : [];
   const tooltipNumberFormat = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -821,13 +814,25 @@ function buildAnnualProjectionTrendOption({
       },
     },
     series: [
-      ...baseSeries,
+      {
+        name: seriesName,
+        type: "scatter" as const,
+        data: historicalScatterData,
+        z: 3,
+        symbol: "circle",
+        symbolSize: compact ? 8 : 9,
+        itemStyle: {
+          color: dark ? "#38bdf8" : "#0284c7",
+          borderColor: dark ? "#e2e8f0" : "#ffffff",
+          borderWidth: 1.2,
+        },
+      },
       {
         name: rangeLabel,
         type: "custom" as const,
         silent: true,
         tooltip: { show: false },
-        z: 3,
+        z: 4,
         data: [[projectionDate, projection.low, projection.high]],
         renderItem: (_params: unknown, api: any) => {
           const xValue = String(api.value(0));
@@ -886,45 +891,15 @@ function buildAnnualProjectionTrendOption({
       },
       {
         name: projectionSeriesName,
-        type: "line" as const,
-        data: projectionLineData,
-        smooth: 0,
-        showSymbol: false,
-        connectNulls: false,
-        tooltip: { show: false },
-        z: 4,
-        lineStyle: {
-          color: projectionLineColor,
-          width: 2.2,
-          type: "dashed",
-          cap: "round",
-        },
-      },
-      {
-        name: seriesName,
-        type: "scatter" as const,
-        data: projectionPointData,
-        tooltip: { show: false },
-        z: 5,
-        symbol: "circle",
-        symbolSize: compact ? 9 : 10,
-        itemStyle: {
-          color: dark ? "#38bdf8" : "#0284c7",
-          borderColor: dark ? "#e2e8f0" : "#ffffff",
-          borderWidth: 1.4,
-        },
-      },
-      {
-        name: projectionSeriesName,
         type: "scatter" as const,
         data: projectedScatterData,
-        z: 6,
+        z: 5,
         symbol: "diamond",
-        symbolSize: compact ? 11 : 13,
+        symbolSize: compact ? 13 : 15,
         itemStyle: {
           color: projectionLineColor,
           borderColor: dark ? "#f8fafc" : "#ffffff",
-          borderWidth: 1.5,
+          borderWidth: 1.7,
         },
       },
     ],
