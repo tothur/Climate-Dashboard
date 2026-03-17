@@ -122,6 +122,9 @@ const STRINGS = {
     annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, estimated 1850-1900 baseline)",
     annualGlobalTemperatureAnomalyMethod: "Mean of available daily anomalies (year-to-date for the current year).",
     projectedAnnualTemperatureAnomalyTitle: "Projected Annual Temperature Anomaly",
+    projectedAnnualTemperatureAnomalyChartTitle: "Annual Global Temperature Anomaly + Projection",
+    projectedAnnualTemperatureAnomalyChartSubtitle:
+      "Historical annual means with the projected current-year value and confidence interval.",
     projectionExperimentalLabel: "Experimental",
     projectionRangeLabel: "Range",
     projectionMethodLabel: "YTD + recent analog seasonal paths",
@@ -217,6 +220,9 @@ const STRINGS = {
     annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850-1900-as referencia)",
     annualGlobalTemperatureAnomalyMethod: "Az elérhető napi anomáliák átlaga (az aktuális évben évközi átlag).",
     projectedAnnualTemperatureAnomalyTitle: "Becsült éves hőmérsékleti anomália",
+    projectedAnnualTemperatureAnomalyChartTitle: "Éves globális hőmérsékleti anomália + előrejelzés",
+    projectedAnnualTemperatureAnomalyChartSubtitle:
+      "Történeti éves átlagok az aktuális év becsült értékével és bizonytalansági tartományával.",
     projectionExperimentalLabel: "Kísérleti",
     projectionRangeLabel: "Tartomány",
     projectionMethodLabel: "Évközi + közeli analóg évek szezonális lefutása",
@@ -678,6 +684,251 @@ function buildAnnualProjectionEstimate(
     analogCount: validAnalogs.length,
     ensoWindow,
   };
+}
+
+function buildAnnualProjectionTrendOption({
+  points,
+  projection,
+  seriesName,
+  projectionSeriesName,
+  rangeLabel,
+  unit,
+  decimals = 2,
+  compact,
+  dark = false,
+  yAxisMin,
+  yAxisMax,
+  yAxisUnitLabel,
+  xAxisYearLabelStep = 1,
+  disableDataZoom = false,
+  forceMappedYearLabels = false,
+  showLegend = false,
+  color,
+  referenceLines,
+  labels,
+}: {
+  points: DailyPoint[];
+  projection: AnnualProjectionEstimate | null;
+  seriesName: string;
+  projectionSeriesName: string;
+  rangeLabel: string;
+  unit: string;
+  decimals?: number;
+  compact: boolean;
+  dark?: boolean;
+  yAxisMin?: number;
+  yAxisMax?: number;
+  yAxisUnitLabel?: string;
+  xAxisYearLabelStep?: number;
+  disableDataZoom?: boolean;
+  forceMappedYearLabels?: boolean;
+  showLegend?: boolean;
+  color?: string;
+  referenceLines?: Array<{
+    value: number;
+    label: string;
+    color: string;
+  }>;
+  labels?: {
+    noData: string;
+    latest: string;
+  };
+}) {
+  const option = buildClimateTrendOption({
+    points,
+    seriesName,
+    unit,
+    decimals,
+    yAxisMin,
+    yAxisMax,
+    yAxisUnitLabel,
+    xAxisYearLabelStep,
+    disableDataZoom,
+    forceMappedYearLabels,
+    showLegend,
+    compact,
+    dark,
+    color,
+    referenceLines,
+    labels,
+  });
+
+  if (!projection || !points.length) return option;
+
+  const projectionDate = `${projection.year}-01-01`;
+  const projectionIndex = points.findIndex((point) => point.date === projectionDate);
+  if (projectionIndex < 0) return option;
+
+  const projectionLineColor = dark ? "#fbbf24" : "#d97706";
+  const projectionBandFill = dark ? "rgba(251, 191, 36, 0.20)" : "rgba(245, 158, 11, 0.18)";
+  const projectionBandStroke = dark ? "#fcd34d" : "#f59e0b";
+  const previousPoint = projectionIndex > 0 ? points[projectionIndex - 1] : null;
+  const projectionLineData = points.map((point, index) => {
+    if (previousPoint && index === projectionIndex - 1) return previousPoint.value;
+    if (index === projectionIndex) return projection.value;
+    return null;
+  });
+  const projectionPointData = points.map((point, index) => (index === projectionIndex ? point.value : null));
+  const projectedScatterData = points.map((point, index) => (index === projectionIndex ? projection.value : null));
+  const baseSeries = Array.isArray(option.series) ? option.series : option.series ? [option.series] : [];
+  const tooltipNumberFormat = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+  const baseTooltip =
+    option.tooltip && typeof option.tooltip === "object" && !Array.isArray(option.tooltip) ? option.tooltip : {};
+
+  return {
+    ...option,
+    tooltip: {
+      ...baseTooltip,
+      formatter: (params: unknown) => {
+        const rows = Array.isArray(params) ? params : [];
+        if (!rows.length) return "";
+
+        const firstRow = rows[0] as { axisValue?: string; axisValueLabel?: string };
+        const rawAxisValue =
+          typeof firstRow.axisValue === "string"
+            ? firstRow.axisValue
+            : typeof firstRow.axisValueLabel === "string"
+              ? firstRow.axisValueLabel
+              : "";
+        const axisYear = parseYearFromDateIso(rawAxisValue);
+        const tooltipLines = [Number.isFinite(axisYear) ? String(axisYear) : rawAxisValue];
+
+        const actualRow = rows.find(
+          (row) =>
+            (row as { seriesName?: string; data?: number | null }).seriesName === seriesName &&
+            typeof (row as { data?: number | null }).data === "number"
+        ) as { marker?: string; data?: number | null } | undefined;
+        const projectedRow = rows.find(
+          (row) => (row as { seriesName?: string }).seriesName === projectionSeriesName
+        ) as { marker?: string; data?: number | null } | undefined;
+
+        if (typeof actualRow?.data === "number" && Number.isFinite(actualRow.data)) {
+          tooltipLines.push(`${actualRow.marker ?? ""} ${seriesName}: ${tooltipNumberFormat.format(actualRow.data)} ${unit}`);
+        }
+        if (typeof projectedRow?.data === "number" && Number.isFinite(projectedRow.data)) {
+          tooltipLines.push(
+            `${projectedRow.marker ?? ""} ${projectionSeriesName}: ${tooltipNumberFormat.format(projectedRow.data)} ${unit}`
+          );
+          tooltipLines.push(
+            `${rangeLabel}: ${tooltipNumberFormat.format(projection.low)}-${tooltipNumberFormat.format(projection.high)} ${unit}`
+          );
+        }
+
+        return tooltipLines.join("<br/>");
+      },
+    },
+    series: [
+      ...baseSeries,
+      {
+        name: rangeLabel,
+        type: "custom" as const,
+        silent: true,
+        tooltip: { show: false },
+        z: 3,
+        data: [[projectionDate, projection.low, projection.high]],
+        renderItem: (_params: unknown, api: any) => {
+          const xValue = String(api.value(0));
+          const lowValue = Number(api.value(1));
+          const highValue = Number(api.value(2));
+          const lowPoint = api.coord([xValue, lowValue]) as [number, number];
+          const highPoint = api.coord([xValue, highValue]) as [number, number];
+          const x = lowPoint[0];
+          const topY = highPoint[1];
+          const bottomY = lowPoint[1];
+          const halfWidth = compact ? 8 : 10;
+
+          return {
+            type: "group",
+            children: [
+              {
+                type: "rect",
+                shape: {
+                  x: x - halfWidth,
+                  y: topY,
+                  width: halfWidth * 2,
+                  height: Math.max(bottomY - topY, 1),
+                },
+                style: {
+                  fill: projectionBandFill,
+                  stroke: "transparent",
+                },
+              },
+              {
+                type: "line",
+                shape: { x1: x, y1: topY, x2: x, y2: bottomY },
+                style: {
+                  stroke: projectionBandStroke,
+                  lineWidth: 1.5,
+                },
+              },
+              {
+                type: "line",
+                shape: { x1: x - halfWidth, y1: topY, x2: x + halfWidth, y2: topY },
+                style: {
+                  stroke: projectionBandStroke,
+                  lineWidth: 1.5,
+                },
+              },
+              {
+                type: "line",
+                shape: { x1: x - halfWidth, y1: bottomY, x2: x + halfWidth, y2: bottomY },
+                style: {
+                  stroke: projectionBandStroke,
+                  lineWidth: 1.5,
+                },
+              },
+            ],
+          };
+        },
+      },
+      {
+        name: projectionSeriesName,
+        type: "line" as const,
+        data: projectionLineData,
+        smooth: 0,
+        showSymbol: false,
+        connectNulls: false,
+        tooltip: { show: false },
+        z: 4,
+        lineStyle: {
+          color: projectionLineColor,
+          width: 2.2,
+          type: "dashed",
+          cap: "round",
+        },
+      },
+      {
+        name: seriesName,
+        type: "scatter" as const,
+        data: projectionPointData,
+        tooltip: { show: false },
+        z: 5,
+        symbol: "circle",
+        symbolSize: compact ? 9 : 10,
+        itemStyle: {
+          color: dark ? "#38bdf8" : "#0284c7",
+          borderColor: dark ? "#e2e8f0" : "#ffffff",
+          borderWidth: 1.4,
+        },
+      },
+      {
+        name: projectionSeriesName,
+        type: "scatter" as const,
+        data: projectedScatterData,
+        z: 6,
+        symbol: "diamond",
+        symbolSize: compact ? 11 : 13,
+        itemStyle: {
+          color: projectionLineColor,
+          borderColor: dark ? "#f8fafc" : "#ffffff",
+          borderWidth: 1.5,
+        },
+      },
+    ],
+  } as ReturnType<typeof buildClimateTrendOption>;
 }
 
 function pickComparisonYears(points: DailyPoint[]): number[] {
@@ -1223,6 +1474,49 @@ export function App() {
     if (!dailyGlobalMeanAnomalyMetric || !annualGlobalMeanAnomalyIsYtd) return null;
     return buildAnnualProjectionEstimate(dailyGlobalMeanAnomalyMetric.points, ensoOutlook);
   }, [dailyGlobalMeanAnomalyMetric, annualGlobalMeanAnomalyIsYtd, ensoOutlook]);
+  const projectedAnnualGlobalMeanAnomalyChartOption = useMemo(() => {
+    if (!dailyGlobalMeanAnomalyMetric || !projectedAnnualGlobalMeanAnomaly || !annualGlobalMeanAnomalyPoints.length) return null;
+
+    return buildAnnualProjectionTrendOption({
+      points: annualGlobalMeanAnomalyPoints,
+      projection: projectedAnnualGlobalMeanAnomaly,
+      seriesName: t.annualGlobalTemperatureAnomalyTitle,
+      projectionSeriesName: t.projectedAnnualTemperatureAnomalyTitle,
+      rangeLabel: t.projectionRangeLabel,
+      unit: dailyGlobalMeanAnomalyMetric.unit,
+      decimals: dailyGlobalMeanAnomalyMetric.decimals,
+      yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
+      yAxisMax: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).max,
+      yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
+      xAxisYearLabelStep: 10,
+      disableDataZoom: true,
+      forceMappedYearLabels: true,
+      showLegend: false,
+      compact,
+      dark: resolvedTheme === "dark",
+      color: resolvedTheme === "dark" ? "#38bdf8" : "#0284c7",
+      referenceLines: [
+        { value: 1.5, label: "1.5°C", color: resolvedTheme === "dark" ? "#fbbf24" : "#f59e0b" },
+        { value: 2, label: "2.0°C", color: resolvedTheme === "dark" ? "#f87171" : "#dc2626" },
+      ],
+      labels: {
+        noData: t.noData,
+        latest: t.chartLatest,
+      },
+    });
+  }, [
+    annualGlobalMeanAnomalyPoints,
+    compact,
+    dailyGlobalMeanAnomalyMetric,
+    language,
+    projectedAnnualGlobalMeanAnomaly,
+    resolvedTheme,
+    t.annualGlobalTemperatureAnomalyTitle,
+    t.chartLatest,
+    t.noData,
+    t.projectedAnnualTemperatureAnomalyTitle,
+    t.projectionRangeLabel,
+  ]);
   const regionalTemperatureLines = useMemo(
     () =>
       indicatorLines
@@ -1961,6 +2255,19 @@ export function App() {
                   </article>
                 </div>
               </div>
+              {projectedAnnualGlobalMeanAnomalyChartOption ? (
+                <div className="charts-grid climate-grid">
+                  <EChartsPanel
+                    title={t.projectedAnnualTemperatureAnomalyChartTitle}
+                    subtitle={t.projectedAnnualTemperatureAnomalyChartSubtitle}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
+                    freshnessLabel={projectionFreshness?.label}
+                    freshnessTone={projectionFreshness?.tone}
+                    option={projectedAnnualGlobalMeanAnomalyChartOption}
+                  />
+                </div>
+              ) : null}
             </div>
           ) : null}
         </section>
