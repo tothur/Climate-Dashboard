@@ -1474,11 +1474,15 @@ export function App() {
     if (!dailyGlobalMeanAnomalyMetric || !annualGlobalMeanAnomalyIsYtd) return null;
     return buildAnnualProjectionEstimate(dailyGlobalMeanAnomalyMetric.points, ensoOutlook);
   }, [dailyGlobalMeanAnomalyMetric, annualGlobalMeanAnomalyIsYtd, ensoOutlook]);
+  const projectedAnnualChartPoints = useMemo(
+    () => annualGlobalMeanAnomalyPoints.filter((point) => (parseYearFromDateIso(point.date) ?? 0) >= 2010),
+    [annualGlobalMeanAnomalyPoints]
+  );
   const projectedAnnualGlobalMeanAnomalyChartOption = useMemo(() => {
-    if (!dailyGlobalMeanAnomalyMetric || !projectedAnnualGlobalMeanAnomaly || !annualGlobalMeanAnomalyPoints.length) return null;
+    if (!dailyGlobalMeanAnomalyMetric || !projectedAnnualGlobalMeanAnomaly || !projectedAnnualChartPoints.length) return null;
 
     return buildAnnualProjectionTrendOption({
-      points: annualGlobalMeanAnomalyPoints,
+      points: projectedAnnualChartPoints,
       projection: projectedAnnualGlobalMeanAnomaly,
       seriesName: t.annualGlobalTemperatureAnomalyTitle,
       projectionSeriesName: t.projectedAnnualTemperatureAnomalyTitle,
@@ -1488,7 +1492,7 @@ export function App() {
       yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
       yAxisMax: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).max,
       yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
-      xAxisYearLabelStep: 10,
+      xAxisYearLabelStep: 1,
       disableDataZoom: true,
       forceMappedYearLabels: true,
       showLegend: false,
@@ -1505,10 +1509,10 @@ export function App() {
       },
     });
   }, [
-    annualGlobalMeanAnomalyPoints,
     compact,
     dailyGlobalMeanAnomalyMetric,
     language,
+    projectedAnnualChartPoints,
     projectedAnnualGlobalMeanAnomaly,
     resolvedTheme,
     t.annualGlobalTemperatureAnomalyTitle,
