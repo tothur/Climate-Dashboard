@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { init, use, type EChartsType } from "echarts/core";
-import { LineChart, BarChart, ScatterChart } from "echarts/charts";
+import { LineChart, BarChart, ScatterChart, CustomChart } from "echarts/charts";
 import { GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, AriaComponent, MarkLineComponent, MarkAreaComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 
-use([LineChart, BarChart, ScatterChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, AriaComponent, MarkLineComponent, MarkAreaComponent, CanvasRenderer]);
+use([LineChart, BarChart, ScatterChart, CustomChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, AriaComponent, MarkLineComponent, MarkAreaComponent, CanvasRenderer]);
 
 type FreshnessTone = "fresh" | "warning" | "stale";
 
