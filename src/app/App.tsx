@@ -1475,7 +1475,7 @@ export function App() {
     return buildAnnualProjectionEstimate(dailyGlobalMeanAnomalyMetric.points, ensoOutlook);
   }, [dailyGlobalMeanAnomalyMetric, annualGlobalMeanAnomalyIsYtd, ensoOutlook]);
   const projectedAnnualChartPoints = useMemo(
-    () => annualGlobalMeanAnomalyPoints.filter((point) => (parseYearFromDateIso(point.date) ?? 0) >= 2010),
+    () => annualGlobalMeanAnomalyPoints.filter((point) => (parseYearFromDateIso(point.date) ?? 0) >= 2020),
     [annualGlobalMeanAnomalyPoints]
   );
   const projectedAnnualGlobalMeanAnomalyChartOption = useMemo(() => {
