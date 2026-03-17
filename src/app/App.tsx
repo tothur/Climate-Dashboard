@@ -762,8 +762,13 @@ function buildAnnualProjectionTrendOption({
   const projectionLineColor = dark ? "#fbbf24" : "#d97706";
   const projectionBandFill = dark ? "rgba(251, 191, 36, 0.20)" : "rgba(245, 158, 11, 0.18)";
   const projectionBandStroke = dark ? "#fcd34d" : "#f59e0b";
+  const historicalLineColor = dark ? "rgba(56, 189, 248, 0.45)" : "rgba(2, 132, 199, 0.4)";
+  const intervalMarkerFill = dark ? "#fde68a" : "#fbbf24";
   const historicalScatterData = points.map((point) => point.value);
+  const historicalLineData = points.map((point) => point.value);
   const projectedScatterData = points.map((point, index) => (index === projectionIndex ? projection.value : null));
+  const projectedLowScatterData = points.map((point, index) => (index === projectionIndex ? projection.low : null));
+  const projectedHighScatterData = points.map((point, index) => (index === projectionIndex ? projection.high : null));
   const tooltipNumberFormat = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -816,6 +821,21 @@ function buildAnnualProjectionTrendOption({
     series: [
       {
         name: seriesName,
+        type: "line" as const,
+        data: historicalLineData,
+        smooth: 0,
+        showSymbol: false,
+        connectNulls: false,
+        tooltip: { show: false },
+        z: 2,
+        lineStyle: {
+          color: historicalLineColor,
+          width: 1.2,
+          cap: "round",
+        },
+      },
+      {
+        name: seriesName,
         type: "scatter" as const,
         data: historicalScatterData,
         z: 3,
@@ -843,7 +863,7 @@ function buildAnnualProjectionTrendOption({
           const x = lowPoint[0];
           const topY = highPoint[1];
           const bottomY = lowPoint[1];
-          const halfWidth = compact ? 8 : 10;
+          const halfWidth = compact ? 10 : 12;
 
           return {
             type: "group",
@@ -866,7 +886,7 @@ function buildAnnualProjectionTrendOption({
                 shape: { x1: x, y1: topY, x2: x, y2: bottomY },
                 style: {
                   stroke: projectionBandStroke,
-                  lineWidth: 1.5,
+                  lineWidth: 1.8,
                 },
               },
               {
@@ -874,7 +894,7 @@ function buildAnnualProjectionTrendOption({
                 shape: { x1: x - halfWidth, y1: topY, x2: x + halfWidth, y2: topY },
                 style: {
                   stroke: projectionBandStroke,
-                  lineWidth: 1.5,
+                  lineWidth: 1.8,
                 },
               },
               {
@@ -882,7 +902,7 @@ function buildAnnualProjectionTrendOption({
                 shape: { x1: x - halfWidth, y1: bottomY, x2: x + halfWidth, y2: bottomY },
                 style: {
                   stroke: projectionBandStroke,
-                  lineWidth: 1.5,
+                  lineWidth: 1.8,
                 },
               },
             ],
@@ -890,10 +910,38 @@ function buildAnnualProjectionTrendOption({
         },
       },
       {
+        name: rangeLabel,
+        type: "scatter" as const,
+        data: projectedLowScatterData,
+        tooltip: { show: false },
+        z: 5,
+        symbol: "circle",
+        symbolSize: compact ? 7 : 8,
+        itemStyle: {
+          color: intervalMarkerFill,
+          borderColor: projectionBandStroke,
+          borderWidth: 1.2,
+        },
+      },
+      {
+        name: rangeLabel,
+        type: "scatter" as const,
+        data: projectedHighScatterData,
+        tooltip: { show: false },
+        z: 5,
+        symbol: "circle",
+        symbolSize: compact ? 7 : 8,
+        itemStyle: {
+          color: intervalMarkerFill,
+          borderColor: projectionBandStroke,
+          borderWidth: 1.2,
+        },
+      },
+      {
         name: projectionSeriesName,
         type: "scatter" as const,
         data: projectedScatterData,
-        z: 5,
+        z: 6,
         symbol: "diamond",
         symbolSize: compact ? 13 : 15,
         itemStyle: {
