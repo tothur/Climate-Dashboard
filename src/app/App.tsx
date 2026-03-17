@@ -759,11 +759,11 @@ function buildAnnualProjectionTrendOption({
   const projectionIndex = points.findIndex((point) => point.date === projectionDate);
   if (projectionIndex < 0) return option;
 
-  const projectionLineColor = dark ? "#fbbf24" : "#d97706";
-  const projectionBandFill = dark ? "rgba(251, 191, 36, 0.20)" : "rgba(245, 158, 11, 0.18)";
-  const projectionBandStroke = dark ? "#fcd34d" : "#f59e0b";
+  const projectionLineColor = dark ? "#f472b6" : "#db2777";
+  const projectionBandFill = dark ? "rgba(244, 114, 182, 0.20)" : "rgba(236, 72, 153, 0.18)";
+  const projectionBandStroke = dark ? "#f9a8d4" : "#be185d";
   const historicalLineColor = dark ? "rgba(56, 189, 248, 0.45)" : "rgba(2, 132, 199, 0.4)";
-  const intervalMarkerFill = dark ? "#fde68a" : "#fbbf24";
+  const intervalMarkerFill = dark ? "#fce7f3" : "#fff1f7";
   const historicalScatterData = points.map((point) => point.value);
   const historicalLineData = points.map((point) => point.value);
   const projectedScatterData = points.map((point, index) => (index === projectionIndex ? projection.value : null));
@@ -863,7 +863,8 @@ function buildAnnualProjectionTrendOption({
           const x = lowPoint[0];
           const topY = highPoint[1];
           const bottomY = lowPoint[1];
-          const halfWidth = compact ? 10 : 12;
+          const halfWidth = compact ? 11 : 13;
+          const bodyWidth = compact ? 8 : 10;
 
           return {
             type: "group",
@@ -871,14 +872,15 @@ function buildAnnualProjectionTrendOption({
               {
                 type: "rect",
                 shape: {
-                  x: x - halfWidth,
+                  x: x - bodyWidth / 2,
                   y: topY,
-                  width: halfWidth * 2,
+                  width: bodyWidth,
                   height: Math.max(bottomY - topY, 1),
                 },
                 style: {
                   fill: projectionBandFill,
-                  stroke: "transparent",
+                  stroke: projectionBandStroke,
+                  lineWidth: 1,
                 },
               },
               {
@@ -886,7 +888,7 @@ function buildAnnualProjectionTrendOption({
                 shape: { x1: x, y1: topY, x2: x, y2: bottomY },
                 style: {
                   stroke: projectionBandStroke,
-                  lineWidth: 1.8,
+                  lineWidth: 2.1,
                 },
               },
               {
@@ -894,7 +896,7 @@ function buildAnnualProjectionTrendOption({
                 shape: { x1: x - halfWidth, y1: topY, x2: x + halfWidth, y2: topY },
                 style: {
                   stroke: projectionBandStroke,
-                  lineWidth: 1.8,
+                  lineWidth: 2.1,
                 },
               },
               {
@@ -902,7 +904,7 @@ function buildAnnualProjectionTrendOption({
                 shape: { x1: x - halfWidth, y1: bottomY, x2: x + halfWidth, y2: bottomY },
                 style: {
                   stroke: projectionBandStroke,
-                  lineWidth: 1.8,
+                  lineWidth: 2.1,
                 },
               },
             ],
@@ -916,11 +918,11 @@ function buildAnnualProjectionTrendOption({
         tooltip: { show: false },
         z: 5,
         symbol: "circle",
-        symbolSize: compact ? 7 : 8,
+        symbolSize: compact ? 8 : 9,
         itemStyle: {
           color: intervalMarkerFill,
           borderColor: projectionBandStroke,
-          borderWidth: 1.2,
+          borderWidth: 1.4,
         },
       },
       {
@@ -930,11 +932,11 @@ function buildAnnualProjectionTrendOption({
         tooltip: { show: false },
         z: 5,
         symbol: "circle",
-        symbolSize: compact ? 7 : 8,
+        symbolSize: compact ? 8 : 9,
         itemStyle: {
           color: intervalMarkerFill,
           borderColor: projectionBandStroke,
-          borderWidth: 1.2,
+          borderWidth: 1.4,
         },
       },
       {
