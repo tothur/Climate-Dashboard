@@ -805,10 +805,10 @@ function buildAnnualProjectionTrendOption({
   const projectionLineColor = dark ? "#f472b6" : "#db2777";
   const projectionBandFill = dark ? "rgba(244, 114, 182, 0.20)" : "rgba(236, 72, 153, 0.18)";
   const projectionBandStroke = dark ? "#f9a8d4" : "#be185d";
-  const historicalLineColor = dark ? "rgba(56, 189, 248, 0.45)" : "rgba(2, 132, 199, 0.4)";
+  const historicalBarColor = dark ? "rgba(56, 189, 248, 0.72)" : "rgba(2, 132, 199, 0.78)";
+  const historicalBarBorder = dark ? "#7dd3fc" : "#0369a1";
   const intervalMarkerFill = dark ? "#fce7f3" : "#fff1f7";
-  const historicalScatterData = points.map((point) => point.value);
-  const historicalLineData = points.map((point) => point.value);
+  const historicalBarData = points.map((point) => point.value);
   const projectedScatterData = points.map((point, index) => (index === projectionIndex ? projection.value : null));
   const projectedLowScatterData = points.map((point, index) => (index === projectionIndex ? projection.low : null));
   const projectedHighScatterData = points.map((point, index) => (index === projectionIndex ? projection.high : null));
@@ -864,31 +864,16 @@ function buildAnnualProjectionTrendOption({
     series: [
       {
         name: seriesName,
-        type: "line" as const,
-        data: historicalLineData,
-        smooth: 0,
-        showSymbol: false,
-        connectNulls: false,
-        tooltip: { show: false },
+        type: "bar" as const,
+        data: historicalBarData,
         z: 2,
-        lineStyle: {
-          color: historicalLineColor,
-          width: 1.2,
-          cap: "round",
-        },
-      },
-      {
-        name: seriesName,
-        type: "scatter" as const,
-        data: historicalScatterData,
-        z: 3,
-        symbol: "circle",
-        symbolSize: compact ? 8 : 9,
         itemStyle: {
-          color: dark ? "#38bdf8" : "#0284c7",
-          borderColor: dark ? "#e2e8f0" : "#ffffff",
-          borderWidth: 1.2,
+          color: historicalBarColor,
+          borderColor: historicalBarBorder,
+          borderWidth: 1,
+          borderRadius: [3, 3, 0, 0],
         },
+        barMaxWidth: compact ? 20 : 28,
       },
       {
         name: rangeLabel,
