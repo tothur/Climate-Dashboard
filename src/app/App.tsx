@@ -129,6 +129,9 @@ const STRINGS = {
     projectionRangeLabel: "Range",
     projectionMethodLabel: "YTD + recent analog seasonal paths",
     projectionSignalLabel: "ENSO signal",
+    projectionProbabilityAboveOnePointFiveTitle: "Chance of 2026 > 1.5°C",
+    projectionProbabilityMethodLabel: "Weighted analog years",
+    projectionAnalogsLabel: "analogs",
     projectionsTitle: "Projections",
     projectionsNote:
       "Experimental outlook based on the current year-to-date global anomaly, recent analog years, and the latest ENSO forecast.",
@@ -227,6 +230,9 @@ const STRINGS = {
     projectionRangeLabel: "Tartomány",
     projectionMethodLabel: "Évközi + közeli analóg évek szezonális lefutása",
     projectionSignalLabel: "ENSO jel",
+    projectionProbabilityAboveOnePointFiveTitle: "Annak esélye, hogy 2026 > 1,5°C",
+    projectionProbabilityMethodLabel: "Súlyozott analóg évek",
+    projectionAnalogsLabel: "analóg",
     projectionsTitle: "Előrejelzések",
     projectionsNote:
       "Kísérleti becslés az aktuális évközi globális anomália, a közelmúlt analóg évei és a legfrissebb ENSO-kilátás alapján.",
@@ -581,6 +587,7 @@ interface AnnualProjectionEstimate {
   value: number;
   low: number;
   high: number;
+  probabilityAboveOnePointFive: number;
   analogCount: number;
   ensoWindow: EnsoOutlookWindow | null;
 }
@@ -671,6 +678,10 @@ function buildAnnualProjectionEstimate(
 
   const value =
     validAnalogs.reduce((sum, entry) => sum + entry.projectedAnnualMean * entry.weight, 0) / totalWeight;
+  const probabilityAboveOnePointFive =
+    validAnalogs
+      .filter((entry) => entry.projectedAnnualMean > 1.5)
+      .reduce((sum, entry) => sum + entry.weight, 0) / totalWeight;
   const weightedEntries = validAnalogs.map((entry) => ({ value: entry.projectedAnnualMean, weight: entry.weight }));
   const low = weightedQuantile(weightedEntries, 0.15);
   const high = weightedQuantile(weightedEntries, 0.85);
@@ -681,6 +692,7 @@ function buildAnnualProjectionEstimate(
     value: Math.round(value * 1000) / 1000,
     low: Math.round(low * 1000) / 1000,
     high: Math.round(high * 1000) / 1000,
+    probabilityAboveOnePointFive: Math.round(probabilityAboveOnePointFive * 1000) / 1000,
     analogCount: validAnalogs.length,
     ensoWindow,
   };
@@ -1775,6 +1787,11 @@ export function App() {
     minimumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
     maximumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
   });
+  const projectionPercentFormat = new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
+    style: "percent",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
   const projectionSignalSummary = projectedAnnualGlobalMeanAnomaly?.ensoWindow
     ? `${t.projectionSignalLabel}: ${formatEnsoTargetLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.targetLabel, language)} · ${formatEnsoConditionLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.condition, t)} · ${projectedAnnualGlobalMeanAnomaly.ensoWindow.probability ?? "-"}%`
     : null;
@@ -2280,6 +2297,33 @@ export function App() {
                       {projectionSupportLabel ? (
                         <span className="alert-meta-chip confidence-medium">{projectionSupportLabel}</span>
                       ) : null}
+                    </div>
+                  </article>
+                  <article className="alert-card summary projection-summary-card">
+                    <span className="alert-kicker">{t.projectionExperimentalLabel}</span>
+                    <h2>{t.projectionProbabilityAboveOnePointFiveTitle}</h2>
+                    <p className="alert-emphasis">
+                      {projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive)}
+                    </p>
+                    <p>{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p>
+                    <p>
+                      {t.projectionRangeLabel}: {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
+                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)}{" "}
+                      {cardUnitLabel(
+                        DAILY_GLOBAL_MEAN_ANOMALY_KEY,
+                        dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+                        language
+                      )}
+                    </p>
+                    <p>{projectionSignalSummary ?? t.projectionMethodLabel}</p>
+                    {projectionFreshness ? (
+                      <span className={`freshness-chip ${projectionFreshness.tone}`}>{projectionFreshness.label}</span>
+                    ) : null}
+                    <div className="alert-meta">
+                      <span className="alert-meta-chip confidence-medium">{t.projectionProbabilityMethodLabel}</span>
+                      <span className="alert-meta-chip confidence-medium">
+                        {projectedAnnualGlobalMeanAnomaly.analogCount} {t.projectionAnalogsLabel}
+                      </span>
                     </div>
                   </article>
                 </div>

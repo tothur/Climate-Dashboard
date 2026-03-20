@@ -1274,7 +1274,7 @@ h3 {
 }
 
 .projection-summary-grid {
-  grid-template-columns: minmax(240px, 360px);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 360px));
   justify-content: start;
 }
 
