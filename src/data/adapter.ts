@@ -21,6 +21,7 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "global_sea_surface_temperature",
   "global_mean_sea_level",
   "ocean_heat_content",
+  "earth_energy_imbalance",
   "northern_hemisphere_surface_temperature",
   "arctic_surface_temperature",
   "north_atlantic_sea_surface_temperature",
@@ -91,6 +92,20 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionEn: "Global 0-2000m ocean heat content (10^22 joules) from NOAA NCEI.",
       descriptionHu: "Globális 0-2000 m óceáni hőtartalom (10^22 joule) a NOAA NCEI adatai alapján.",
       url: "https://www.ncei.noaa.gov/data/oceans/woa/DATA_ANALYSIS/3M_HEAT_CONTENT/DATA/basin/3month/ohc2000m_levitus_climdash_seasonal.csv",
+    },
+  },
+  earth_energy_imbalance: {
+    titleEn: "Earth Energy Imbalance",
+    titleHu: "A Föld energiaegyensúlyának felborulása",
+    unit: "W/m²",
+    decimals: 2,
+    source: {
+      shortName: "NASA CERES EBAF",
+      descriptionEn:
+        "Global monthly top-of-atmosphere net flux from NASA CERES EBAF, used here as an Earth energy imbalance indicator.",
+      descriptionHu:
+        "A NASA CERES EBAF globális havi légkör teteji nettó sugárzási fluxusa, a Föld energiaegyensúlyának felborulását jelző mutatóként.",
+      url: "https://asdc.larc.nasa.gov/project/CERES/CERES_EBAF-TOA_Edition4.2.1",
     },
   },
   northern_hemisphere_surface_temperature: {

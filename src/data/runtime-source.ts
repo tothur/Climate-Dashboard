@@ -23,6 +23,10 @@ const ECMWF_PREINDUSTRIAL_OFFSET_C = 0.88;
 const CU_GLOBAL_MEAN_SEA_LEVEL_URL = "https://sealevel.colorado.edu/files/2025_rel1/gmsl_2025rel1_seasons_rmvd.txt";
 const NOAA_OCEAN_HEAT_CONTENT_2000M_URL =
   "https://www.ncei.noaa.gov/data/oceans/woa/DATA_ANALYSIS/3M_HEAT_CONTENT/DATA/basin/3month/ohc2000m_levitus_climdash_seasonal.csv";
+const NASA_CERES_EBAF_OPENDAP_BASE_URL = "https://opendap.larc.nasa.gov/opendap/CERES/EBAF/TOA_Edition4.2.1";
+const NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL = `${NASA_CERES_EBAF_OPENDAP_BASE_URL}/contents.html`;
+const NASA_CERES_EBAF_FILE_PATTERN = /CERES_EBAF-TOA_Edition4\.2\.1_\d{6}-\d{6}\.nc/g;
+const NASA_CERES_EBAF_TIME_BASE_UTC = Date.UTC(2000, 2, 1);
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
@@ -38,6 +42,7 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "global_sea_surface_temperature",
   "global_mean_sea_level",
   "ocean_heat_content",
+  "earth_energy_imbalance",
   "northern_hemisphere_surface_temperature",
   "southern_hemisphere_surface_temperature",
   "arctic_surface_temperature",
@@ -108,6 +113,12 @@ function dateFromDecimalYear(decimalYear: number): string | null {
   const fraction = Math.max(0, Math.min(0.999999, decimalYear - year));
   const month = Math.max(1, Math.min(12, Math.floor(fraction * 12) + 1));
   return formatDateFromParts(year, month, 1);
+}
+
+function monthDateFromUtcTimestamp(timestamp: number): string | null {
+  if (!Number.isFinite(timestamp)) return null;
+  const date = new Date(timestamp);
+  return formatDateFromParts(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
 }
 
 function normalizePoints(points: DailyPoint[]): DailyPoint[] {
@@ -659,6 +670,56 @@ function parseEcmwfClimatePulseGlobal2tDailyCsv(rawCsv: string): DailyPoint[] {
   return normalizePoints(points);
 }
 
+function extractLatestCeresEebafDatasetName(rawHtml: string): string | null {
+  const matches = rawHtml.match(NASA_CERES_EBAF_FILE_PATTERN) ?? [];
+  if (!matches.length) return null;
+  const ordered = matches.sort();
+  return ordered[ordered.length - 1] ?? null;
+}
+
+function buildCeresEarthEnergyImbalanceAsciiUrl(fileName: string): string {
+  return `${NASA_CERES_EBAF_OPENDAP_BASE_URL}/${fileName}.ascii?time,gtoa_net_all_mon`;
+}
+
+function parseCeresEarthEnergyImbalanceAscii(rawText: string): DailyPoint[] {
+  const lines = rawText.split(/\r?\n/);
+  let timeValues: number[] = [];
+  let fluxValues: number[] = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (line.startsWith("time,")) {
+      timeValues = line
+        .split(",")
+        .slice(1)
+        .map((token) => toFiniteNumber(token))
+        .filter((value): value is number => value != null);
+    } else if (line.startsWith("gtoa_net_all_mon.gtoa_net_all_mon,")) {
+      fluxValues = line
+        .split(",")
+        .slice(1)
+        .map((token) => toFiniteNumber(token))
+        .filter((value): value is number => value != null && value > -998);
+    }
+  }
+
+  if (!timeValues.length || !fluxValues.length) return [];
+
+  const points: DailyPoint[] = [];
+  const length = Math.min(timeValues.length, fluxValues.length);
+  for (let index = 0; index < length; index += 1) {
+    const dayOffset = timeValues[index];
+    const value = fluxValues[index];
+    if (!Number.isFinite(dayOffset) || !Number.isFinite(value)) continue;
+    const date = monthDateFromUtcTimestamp(NASA_CERES_EBAF_TIME_BASE_UTC + dayOffset * DAY_MS);
+    if (!date) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
 function mergeSeaIceSeries(north: DailyPoint[], south: DailyPoint[]): DailyPoint[] {
   const northMap = new Map<string, number>(north.map((point) => [point.date, point.value]));
   const southMap = new Map<string, number>(south.map((point) => [point.date, point.value]));
@@ -864,10 +925,15 @@ async function loadAggiSeries(): Promise<DailyPoint[] | null> {
 interface OceanSeriesBundle {
   globalMeanSeaLevel: DailyPoint[] | null;
   oceanHeatContent: DailyPoint[] | null;
+  earthEnergyImbalance: DailyPoint[] | null;
 }
 
 async function loadOceanSeriesBundle(): Promise<OceanSeriesBundle> {
-  const [gmslText, ohcCsv] = await Promise.all([fetchText(CU_GLOBAL_MEAN_SEA_LEVEL_URL), fetchText(NOAA_OCEAN_HEAT_CONTENT_2000M_URL)]);
+  const [gmslText, ohcCsv, ceresContentsHtml] = await Promise.all([
+    fetchText(CU_GLOBAL_MEAN_SEA_LEVEL_URL),
+    fetchText(NOAA_OCEAN_HEAT_CONTENT_2000M_URL),
+    fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL),
+  ]);
 
   const globalMeanSeaLevel = gmslText
     ? sanitizeSeries(parseGlobalMeanSeaLevelText(gmslText), {
@@ -885,9 +951,20 @@ async function loadOceanSeriesBundle(): Promise<OceanSeriesBundle> {
       })
     : [];
 
+  const ceresFileName = ceresContentsHtml ? extractLatestCeresEebafDatasetName(ceresContentsHtml) : null;
+  const ceresAscii = ceresFileName ? await fetchText(buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName)) : null;
+  const earthEnergyImbalance = ceresAscii
+    ? sanitizeSeries(parseCeresEarthEnergyImbalanceAscii(ceresAscii), {
+        minValue: -20,
+        maxValue: 20,
+        maxAgeDays: 220,
+      })
+    : [];
+
   return {
     globalMeanSeaLevel: globalMeanSeaLevel.length ? globalMeanSeaLevel : null,
     oceanHeatContent: oceanHeatContent.length ? oceanHeatContent : null,
+    earthEnergyImbalance: earthEnergyImbalance.length ? earthEnergyImbalance : null,
   };
 }
 
@@ -958,9 +1035,16 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     } else {
       warnings.push("Live Ocean Heat Content feed was unavailable or stale; using bundled fallback.");
     }
+
+    if (oceanResult.value.earthEnergyImbalance?.length) {
+      liveSeries.earth_energy_imbalance = oceanResult.value.earthEnergyImbalance;
+    } else {
+      warnings.push("Live Earth Energy Imbalance feed was unavailable or stale; using bundled fallback.");
+    }
   } else {
     warnings.push("Live Global Mean Sea Level feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live Ocean Heat Content feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Earth Energy Imbalance feed was unavailable or stale; using bundled fallback.");
   }
 
   if (regionalResult.status === "fulfilled") {

@@ -58,6 +58,13 @@ const SERIES_RULES = {
     minPoints: 70,
     minPointsLastYear: 0,
   },
+  earth_energy_imbalance: {
+    minValue: -20,
+    maxValue: 20,
+    maxAgeDays: 220,
+    minPoints: 250,
+    minPointsLastYear: 6,
+  },
   northern_hemisphere_surface_temperature: {
     minValue: -20,
     maxValue: 40,

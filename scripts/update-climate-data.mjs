@@ -19,6 +19,11 @@ const ECMWF_PREINDUSTRIAL_OFFSET_C = 0.88;
 const CU_GLOBAL_MEAN_SEA_LEVEL_URL = "https://sealevel.colorado.edu/files/2025_rel1/gmsl_2025rel1_seasons_rmvd.txt";
 const NOAA_OCEAN_HEAT_CONTENT_2000M_URL =
   "https://www.ncei.noaa.gov/data/oceans/woa/DATA_ANALYSIS/3M_HEAT_CONTENT/DATA/basin/3month/ohc2000m_levitus_climdash_seasonal.csv";
+const NASA_CERES_EBAF_OPENDAP_BASE_URL = "https://opendap.larc.nasa.gov/opendap/CERES/EBAF/TOA_Edition4.2.1";
+const NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL = `${NASA_CERES_EBAF_OPENDAP_BASE_URL}/contents.html`;
+const NASA_CERES_EBAF_PROJECT_URL = "https://asdc.larc.nasa.gov/project/CERES/CERES_EBAF-TOA_Edition4.2.1";
+const NASA_CERES_EBAF_FILE_PATTERN = /CERES_EBAF-TOA_Edition4\.2\.1_\d{6}-\d{6}\.nc/g;
+const NASA_CERES_EBAF_TIME_BASE_UTC = Date.UTC(2000, 2, 1);
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
@@ -153,6 +158,12 @@ function dateFromDecimalYear(decimalYear) {
   const fraction = Math.max(0, Math.min(0.999999, decimalYear - year));
   const month = Math.max(1, Math.min(12, Math.floor(fraction * 12) + 1));
   return formatDateFromParts(year, month, 1);
+}
+
+function monthDateFromUtcTimestamp(timestamp) {
+  if (!Number.isFinite(timestamp)) return null;
+  const date = new Date(timestamp);
+  return formatDateFromParts(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
 }
 
 function parseEnglishLongDateToIso(rawDate) {
@@ -811,6 +822,55 @@ function parseEcmwfClimatePulseGlobal2tDailyCsv(rawCsv) {
   return normalizePoints(points);
 }
 
+function extractLatestCeresEebafDatasetName(rawHtml) {
+  const matches = String(rawHtml ?? "").match(NASA_CERES_EBAF_FILE_PATTERN) ?? [];
+  if (!matches.length) return null;
+  return matches.sort().at(-1) ?? null;
+}
+
+function buildCeresEarthEnergyImbalanceAsciiUrl(fileName) {
+  return `${NASA_CERES_EBAF_OPENDAP_BASE_URL}/${fileName}.ascii?time,gtoa_net_all_mon`;
+}
+
+function parseCeresEarthEnergyImbalanceAscii(rawText) {
+  const lines = String(rawText ?? "").split(/\r?\n/);
+  let timeValues = [];
+  let fluxValues = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (line.startsWith("time,")) {
+      timeValues = line
+        .split(",")
+        .slice(1)
+        .map((token) => toFiniteNumber(token))
+        .filter((value) => value != null);
+    } else if (line.startsWith("gtoa_net_all_mon.gtoa_net_all_mon,")) {
+      fluxValues = line
+        .split(",")
+        .slice(1)
+        .map((token) => toFiniteNumber(token))
+        .filter((value) => value != null && value > -998);
+    }
+  }
+
+  if (!timeValues.length || !fluxValues.length) return [];
+
+  const points = [];
+  const length = Math.min(timeValues.length, fluxValues.length);
+  for (let index = 0; index < length; index += 1) {
+    const dayOffset = timeValues[index];
+    const value = fluxValues[index];
+    if (!Number.isFinite(dayOffset) || !Number.isFinite(value)) continue;
+    const date = monthDateFromUtcTimestamp(NASA_CERES_EBAF_TIME_BASE_UTC + dayOffset * DAY_MS);
+    if (!date) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
 function normalizeEnsoCondition(rawValue) {
   const normalized = String(rawValue ?? "")
     .trim()
@@ -1095,6 +1155,7 @@ async function updateOnce() {
     ch4Csv,
     aggiCsv,
     dailyGlobalMeanAnomalyCsv,
+    ceresContentsHtml,
     iriEnsoHtml,
     ensoDiscussionHtml,
     t2MapDatePayload,
@@ -1115,6 +1176,7 @@ async function updateOnce() {
     fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
     fetchText(NOAA_AGGI_CSV_URL),
     fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
+    fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL),
     fetchText(IRI_ENSO_CURRENT_URL),
     fetchText(NOAA_CPC_ENSO_DISCUSSION_URL),
     fetchJson(CR_T2_LAST_MAP_DATE_URL),
@@ -1208,6 +1270,13 @@ async function updateOnce() {
     minValue: 0.5,
     maxValue: 3.5,
     maxAgeDays: 1000,
+  });
+  const ceresFileName = extractLatestCeresEebafDatasetName(ceresContentsHtml);
+  const earthEnergyImbalanceAscii = ceresFileName ? await fetchText(buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName)) : "";
+  const earthEnergyImbalance = sanitizeSeries(parseCeresEarthEnergyImbalanceAscii(earthEnergyImbalanceAscii), {
+    minValue: -20,
+    maxValue: 20,
+    maxAgeDays: 220,
   });
   const dailyGlobalMeanTemperatureAnomaly = sanitizeSeries(parseEcmwfClimatePulseGlobal2tDailyCsv(dailyGlobalMeanAnomalyCsv), {
     minValue: -10,
@@ -1311,6 +1380,9 @@ async function updateOnce() {
       global_sea_surface_temperature: OISST_GLOBAL_SST_URL,
       global_mean_sea_level: CU_GLOBAL_MEAN_SEA_LEVEL_URL,
       ocean_heat_content: NOAA_OCEAN_HEAT_CONTENT_2000M_URL,
+      earth_energy_imbalance: ceresFileName
+        ? buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName)
+        : NASA_CERES_EBAF_PROJECT_URL,
       northern_hemisphere_surface_temperature: ERA5_NH_SURFACE_TEMP_URL,
       southern_hemisphere_surface_temperature: ERA5_SH_SURFACE_TEMP_URL,
       arctic_surface_temperature: ERA5_ARCTIC_SURFACE_TEMP_URL,
@@ -1339,6 +1411,7 @@ async function updateOnce() {
       global_sea_surface_temperature: globalSeaSurfaceTemperature,
       global_mean_sea_level: globalMeanSeaLevel,
       ocean_heat_content: oceanHeatContent,
+      earth_energy_imbalance: earthEnergyImbalance,
       northern_hemisphere_surface_temperature: northernHemisphereSurfaceTemperature,
       southern_hemisphere_surface_temperature: southernHemisphereSurfaceTemperature,
       arctic_surface_temperature: arcticSurfaceTemperature,
@@ -1359,6 +1432,7 @@ async function updateOnce() {
       global_sea_surface_temperature: summarize(globalSeaSurfaceTemperature),
       global_mean_sea_level: summarize(globalMeanSeaLevel),
       ocean_heat_content: summarize(oceanHeatContent),
+      earth_energy_imbalance: summarize(earthEnergyImbalance),
       northern_hemisphere_surface_temperature: summarize(northernHemisphereSurfaceTemperature),
       southern_hemisphere_surface_temperature: summarize(southernHemisphereSurfaceTemperature),
       arctic_surface_temperature: summarize(arcticSurfaceTemperature),

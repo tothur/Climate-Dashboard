@@ -41,9 +41,11 @@ const LOCAL_MAP_FILENAMES: Record<ClimateMapKey, string> = {
 };
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
+const EARTH_ENERGY_IMBALANCE_KEY: ClimateMetricSeries["key"] = "earth_energy_imbalance";
 const TEMPERATURE_ANOMALY_KEYS = new Set(["global_surface_temperature_anomaly", "global_sea_surface_temperature_anomaly"]);
 const DAILY_GLOBAL_MEAN_ANOMALY_KEY: ClimateMetricSeries["key"] = "daily_global_mean_temperature_anomaly";
 const GLOBAL_TEMPERATURE_KEYS = new Set(["global_surface_temperature", "global_sea_surface_temperature"]);
+const MONTHLY_COMPARISON_EXCLUDED_KEYS = new Set([...OCEAN_KEYS, EARTH_ENERGY_IMBALANCE_KEY]);
 const REGIONAL_TEMPERATURE_KEYS = new Set([
   "northern_hemisphere_surface_temperature",
   "southern_hemisphere_surface_temperature",
@@ -108,11 +110,16 @@ const STRINGS = {
     latestSignalsAria: "Latest climate indicators",
     climateIndicatorsTitle: "Climate Indicators",
     climateIndicatorsNote:
-      "Monthly Jan-Dec view with daily points for temperature and sea-ice indicators, plus long-term ocean-state charts.",
+      "Monthly Jan-Dec view with daily points for temperature and sea-ice indicators, plus long-term ocean-state and planetary energy-balance charts.",
     globalTemperaturesSectionTitle: "Global Temperatures",
     globalTemperaturesSectionNote: "Global surface and sea surface temperatures in a Jan-Dec daily comparison view.",
     oceansSectionTitle: "Oceans",
     oceansSectionNote: "Long-term ocean state indicators: global mean sea level and ocean heat content.",
+    earthEnergyImbalanceSectionTitle: "Earth Energy Imbalance",
+    earthEnergyImbalanceSectionNote:
+      "NASA CERES EBAF global net top-of-atmosphere flux, shown as a 12-month running mean to reduce monthly noise.",
+    earthEnergyImbalanceTitle: "Earth Energy Imbalance",
+    earthEnergyImbalanceSubtitle: "NASA CERES EBAF monthly global net TOA flux · 12-month running mean",
     temperatureAnomalySectionTitle: "Temperature Anomalies",
     temperatureAnomalySectionNote:
       "Global and sea-surface anomaly cards use a 1991-2020 climatology; daily and annual global-mean anomaly charts use an ERA5 preindustrial (1850-1900) estimate.",
@@ -130,8 +137,10 @@ const STRINGS = {
     projectionMethodLabel: "YTD + recent analog seasonal paths",
     projectionSignalLabel: "ENSO signal",
     projectionProbabilityAboveOnePointFiveTitle: "Chance of 2026 > 1.5°C",
+    projectionProbabilityWarmestRecordTitle: "Chance of warmest year on record",
     projectionProbabilityMethodLabel: "Weighted analog years",
     projectionAnalogsLabel: "analogs",
+    projectionRecordThresholdLabel: "Record to beat",
     projectionsTitle: "Projections",
     projectionsNote:
       "Experimental outlook based on the current year-to-date global anomaly, recent analog years, and the latest ENSO forecast.",
@@ -209,11 +218,16 @@ const STRINGS = {
     latestSignalsAria: "Legfrissebb klímaindikátorok",
     climateIndicatorsTitle: "Éghajlati Indikátorok",
     climateIndicatorsNote:
-      "Január-decemberi nézet napi adatokkal a hőmérsékleti és tengeri jég indikátorokhoz, valamint hosszú távú óceáni állapotgrafikonokkal.",
+      "Január-decemberi nézet napi adatokkal a hőmérsékleti és tengeri jég indikátorokhoz, valamint hosszú távú óceáni állapot- és bolygószintű energiaegyensúly-grafikonokkal.",
     globalTemperaturesSectionTitle: "Globális hőmérsékletek",
     globalTemperaturesSectionNote: "Globális felszíni és tengerfelszíni hőmérsékletek január-decemberi napi összehasonlító nézetben.",
     oceansSectionTitle: "Óceánok",
     oceansSectionNote: "Hosszú távú óceáni állapotmutatók: globális átlagos tengerszint és óceáni hőtartalom.",
+    earthEnergyImbalanceSectionTitle: "A Föld energiaegyensúlyának felborulása",
+    earthEnergyImbalanceSectionNote:
+      "A NASA CERES EBAF globális nettó légkör-teteji sugárzási fluxusa, 12 havi futóátlagként a havi zaj csökkentésére.",
+    earthEnergyImbalanceTitle: "A Föld energiaegyensúlyának felborulása",
+    earthEnergyImbalanceSubtitle: "NASA CERES EBAF havi globális nettó TOA fluxus · 12 havi futóátlag",
     temperatureAnomalySectionTitle: "Hőmérsékleti anomáliák",
     temperatureAnomalySectionNote:
       "A globális felszíni és tengerfelszíni anomáliák 1991-2020-as klimatológiára épülnek; a napi és éves globális átlaganomália-grafikonok ERA5-alapú, becsült 1850-1900-as bázishoz viszonyított értékeket mutatnak.",
@@ -231,8 +245,10 @@ const STRINGS = {
     projectionMethodLabel: "Évközi + közeli analóg évek szezonális lefutása",
     projectionSignalLabel: "ENSO jel",
     projectionProbabilityAboveOnePointFiveTitle: "Annak esélye, hogy 2026 > 1,5°C",
+    projectionProbabilityWarmestRecordTitle: "Annak esélye, hogy ez legyen a legmelegebb év a mérésekben",
     projectionProbabilityMethodLabel: "Súlyozott analóg évek",
     projectionAnalogsLabel: "analóg",
+    projectionRecordThresholdLabel: "Megközelítendő rekord",
     projectionsTitle: "Előrejelzések",
     projectionsNote:
       "Kísérleti becslés az aktuális évközi globális anomália, a közelmúlt analóg évei és a legfrissebb ENSO-kilátás alapján.",
@@ -588,7 +604,9 @@ interface AnnualProjectionEstimate {
   low: number;
   high: number;
   probabilityAboveOnePointFive: number;
+  probabilityWarmestOnRecord: number;
   analogCount: number;
+  recordThreshold: number;
   ensoWindow: EnsoOutlookWindow | null;
 }
 
@@ -623,6 +641,13 @@ function buildAnnualProjectionEstimate(
   });
   const currentYtdMean = meanPointValues(currentObservedPoints);
   if (currentYtdMean == null || currentObservedPoints.length < Math.max(30, currentDayOfYear - 3)) return null;
+
+  const priorAnnualMeans = Array.from(pointsByYear.entries())
+    .filter(([year, yearPoints]) => year < currentYear && yearPoints.length >= Math.max(300, daysInYear(year) - 3))
+    .map(([, yearPoints]) => meanPointValues(yearPoints))
+    .filter((value): value is number => value != null && Number.isFinite(value));
+  const recordThreshold = priorAnnualMeans.length ? Math.max(...priorAnnualMeans) : null;
+  if (recordThreshold == null) return null;
 
   const ensoWindow = projectionEnsoWindow(ensoOutlook);
   const recentAnalogCandidates = Array.from(pointsByYear.entries())
@@ -682,6 +707,10 @@ function buildAnnualProjectionEstimate(
     validAnalogs
       .filter((entry) => entry.projectedAnnualMean > 1.5)
       .reduce((sum, entry) => sum + entry.weight, 0) / totalWeight;
+  const probabilityWarmestOnRecord =
+    validAnalogs
+      .filter((entry) => entry.projectedAnnualMean > recordThreshold)
+      .reduce((sum, entry) => sum + entry.weight, 0) / totalWeight;
   const weightedEntries = validAnalogs.map((entry) => ({ value: entry.projectedAnnualMean, weight: entry.weight }));
   const low = weightedQuantile(weightedEntries, 0.15);
   const high = weightedQuantile(weightedEntries, 0.85);
@@ -693,7 +722,9 @@ function buildAnnualProjectionEstimate(
     low: Math.round(low * 1000) / 1000,
     high: Math.round(high * 1000) / 1000,
     probabilityAboveOnePointFive: Math.round(probabilityAboveOnePointFive * 1000) / 1000,
+    probabilityWarmestOnRecord: Math.round(probabilityWarmestOnRecord * 1000) / 1000,
     analogCount: validAnalogs.length,
+    recordThreshold: Math.round(recordThreshold * 1000) / 1000,
     ensoWindow,
   };
 }
@@ -1124,6 +1155,32 @@ function buildAnnualMeanSeries(points: DailyPoint[]): DailyPoint[] {
     .filter((point) => Number.isFinite(point.value));
 }
 
+function buildTrailingMeanSeries(points: DailyPoint[], windowSize: number): DailyPoint[] {
+  if (windowSize <= 1) return points;
+
+  const trailing: DailyPoint[] = [];
+  let runningSum = 0;
+
+  for (let index = 0; index < points.length; index += 1) {
+    const value = Number(points[index]?.value);
+    if (!Number.isFinite(value)) continue;
+    runningSum += value;
+
+    if (index >= windowSize) {
+      runningSum -= Number(points[index - windowSize]?.value ?? 0);
+    }
+
+    if (index < windowSize - 1) continue;
+
+    trailing.push({
+      date: points[index].date,
+      value: Math.round((runningSum / windowSize) * 1000) / 1000,
+    });
+  }
+
+  return trailing;
+}
+
 function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: number; max?: number } {
   switch (metricKey) {
     case "global_surface_temperature":
@@ -1134,6 +1191,8 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
       return { min: -40, max: 140 };
     case "ocean_heat_content":
       return { min: -20, max: 70 };
+    case "earth_energy_imbalance":
+      return { min: -0.5, max: 2.5 };
     case "northern_hemisphere_surface_temperature":
       return { min: 6, max: 24 };
     case "southern_hemisphere_surface_temperature":
@@ -1177,6 +1236,8 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
       return language === "hu" ? "milliméter (mm)" : "millimeters (mm)";
     case "ocean_heat_content":
       return language === "hu" ? "10^22 joule" : "10^22 joules";
+    case "earth_energy_imbalance":
+      return language === "hu" ? "watt per négyzetméter (W/m²)" : "watts per square meter (W/m²)";
     case "global_sea_ice_extent":
     case "arctic_sea_ice_extent":
     case "antarctic_sea_ice_extent":
@@ -1217,6 +1278,7 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
   if (SEA_ICE_KEYS.has(metricKey)) return "millió km2";
   if (metricKey === "global_mean_sea_level") return "mm";
   if (metricKey === "ocean_heat_content") return "10^22 J";
+  if (metricKey === EARTH_ENERGY_IMBALANCE_KEY) return "W/m²";
   if (metricKey === "atmospheric_aggi") return "index";
   if (
     GLOBAL_TEMPERATURE_KEYS.has(metricKey) ||
@@ -1272,6 +1334,8 @@ function freshnessPolicyForMetric(metricKey: ClimateMetricSeries["key"]): Freshn
       return { cadence: "monthly", warningDays: 120, staleDays: 240 };
     case "ocean_heat_content":
       return { cadence: "quarterly", warningDays: 180, staleDays: 360 };
+    case "earth_energy_imbalance":
+      return { cadence: "monthly", warningDays: 120, staleDays: 220 };
     case "atmospheric_aggi":
       return { cadence: "annual", warningDays: 550, staleDays: 900 };
     default:
@@ -1440,7 +1504,7 @@ export function App() {
   const indicatorLines = useMemo(
     () =>
       snapshot.indicators
-        .filter((metric) => !OCEAN_KEYS.has(metric.key))
+        .filter((metric) => !MONTHLY_COMPARISON_EXCLUDED_KEYS.has(metric.key))
         .map((metric) => {
         const years = pickYearsForMetric(metric.key, metric.points);
         const currentYear = years[years.length - 1];
@@ -1466,6 +1530,10 @@ export function App() {
           const rightRank = OCEAN_RANK.get(right.key) ?? Number.MAX_SAFE_INTEGER;
           return leftRank - rightRank;
         }),
+    [snapshot.indicators]
+  );
+  const earthEnergyImbalanceMetric = useMemo(
+    () => snapshot.indicators.find((metric) => metric.key === EARTH_ENERGY_IMBALANCE_KEY) ?? null,
     [snapshot.indicators]
   );
   const globalTemperatureLines = useMemo(
@@ -1511,6 +1579,10 @@ export function App() {
     if (!dailyGlobalMeanAnomalyMetric || !annualGlobalMeanAnomalyIsYtd) return null;
     return buildAnnualProjectionEstimate(dailyGlobalMeanAnomalyMetric.points, ensoOutlook);
   }, [dailyGlobalMeanAnomalyMetric, annualGlobalMeanAnomalyIsYtd, ensoOutlook]);
+  const earthEnergyImbalanceTrendPoints = useMemo(
+    () => (earthEnergyImbalanceMetric ? buildTrailingMeanSeries(earthEnergyImbalanceMetric.points, 12) : []),
+    [earthEnergyImbalanceMetric]
+  );
   const projectedAnnualChartPoints = useMemo(
     () => annualGlobalMeanAnomalyPoints.filter((point) => (parseYearFromDateIso(point.date) ?? 0) >= 2020),
     [annualGlobalMeanAnomalyPoints]
@@ -1781,6 +1853,9 @@ export function App() {
   const ensoOutlookFreshness = ensoFreshnessBadge(ensoOutlook, language, t);
   const dailyGlobalMeanAnomalyFreshness = dailyGlobalMeanAnomalyMetric
     ? metricFreshnessBadge(dailyGlobalMeanAnomalyMetric, language, t)
+    : null;
+  const earthEnergyImbalanceFreshness = earthEnergyImbalanceMetric
+    ? metricFreshnessBadge(earthEnergyImbalanceMetric, language, t)
     : null;
   const projectionFreshness = ensoOutlookFreshness ?? dailyGlobalMeanAnomalyFreshness;
   const projectionNumberFormat = new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
@@ -2062,6 +2137,49 @@ export function App() {
               </div>
             </div>
 
+            {earthEnergyImbalanceMetric && earthEnergyImbalanceTrendPoints.length ? (
+              <div className="climate-subsection">
+                <div className="climate-subsection-header">
+                  <h3>{t.earthEnergyImbalanceSectionTitle}</h3>
+                  <p>{t.earthEnergyImbalanceSectionNote}</p>
+                </div>
+                <div className="charts-grid climate-grid climate-grid-single">
+                  <EChartsPanel
+                    title={t.earthEnergyImbalanceTitle}
+                    subtitle={t.earthEnergyImbalanceSubtitle}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
+                    freshnessLabel={earthEnergyImbalanceFreshness?.label}
+                    freshnessTone={earthEnergyImbalanceFreshness?.tone}
+                    option={buildClimateTrendOption({
+                      points: earthEnergyImbalanceTrendPoints,
+                      seriesName: t.earthEnergyImbalanceTitle,
+                      unit: earthEnergyImbalanceMetric.unit,
+                      decimals: earthEnergyImbalanceMetric.decimals,
+                      lineWidth: 2.2,
+                      yAxisMin: indicatorYAxisBounds(earthEnergyImbalanceMetric.key).min,
+                      yAxisMax: indicatorYAxisBounds(earthEnergyImbalanceMetric.key).max,
+                      yAxisUnitLabel: indicatorYAxisUnitLabel(earthEnergyImbalanceMetric.key, language),
+                      xAxisYearLabelStep: 2,
+                      disableDataZoom: true,
+                      forceMappedYearLabels: true,
+                      showLegend: false,
+                      compact,
+                      dark: resolvedTheme === "dark",
+                      color: resolvedTheme === "dark" ? "#fbbf24" : "#d97706",
+                      referenceLines: [
+                        { value: 0, label: "0 W/m²", color: resolvedTheme === "dark" ? "#fef3c7" : "#92400e" },
+                      ],
+                      labels: {
+                        noData: t.noData,
+                        latest: t.chartLatest,
+                      },
+                    })}
+                  />
+                </div>
+              </div>
+            ) : null}
+
             <div className="climate-subsection">
               <div className="climate-subsection-header">
                 <h3>{t.seaIceSectionTitle}</h3>
@@ -2309,6 +2427,33 @@ export function App() {
                     <p>
                       {t.projectionRangeLabel}: {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
                       {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)}{" "}
+                      {cardUnitLabel(
+                        DAILY_GLOBAL_MEAN_ANOMALY_KEY,
+                        dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+                        language
+                      )}
+                    </p>
+                    <p>{projectionSignalSummary ?? t.projectionMethodLabel}</p>
+                    {projectionFreshness ? (
+                      <span className={`freshness-chip ${projectionFreshness.tone}`}>{projectionFreshness.label}</span>
+                    ) : null}
+                    <div className="alert-meta">
+                      <span className="alert-meta-chip confidence-medium">{t.projectionProbabilityMethodLabel}</span>
+                      <span className="alert-meta-chip confidence-medium">
+                        {projectedAnnualGlobalMeanAnomaly.analogCount} {t.projectionAnalogsLabel}
+                      </span>
+                    </div>
+                  </article>
+                  <article className="alert-card summary projection-summary-card">
+                    <span className="alert-kicker">{t.projectionExperimentalLabel}</span>
+                    <h2>{t.projectionProbabilityWarmestRecordTitle}</h2>
+                    <p className="alert-emphasis">
+                      {projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord)}
+                    </p>
+                    <p>{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p>
+                    <p>
+                      {t.projectionRecordThresholdLabel}:{" "}
+                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.recordThreshold)}{" "}
                       {cardUnitLabel(
                         DAILY_GLOBAL_MEAN_ANOMALY_KEY,
                         dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
