@@ -30,6 +30,8 @@ const WGMS_AMCE_ZIP_PATTERN = /(?:https:\/\/wgms\.ch)?\/downloads\/wgms-amce-\d{
 const WGMS_AMCE_GLOBAL_CSV_ENTRY = "global.csv";
 const NASA_ANTARCTICA_MASS_VARIATION_CHART_URL =
   "https://assets.science.nasa.gov/content/dam/science/microapps/vital-signs/data/charts/ice-sheets-antarctica.json";
+const NASA_GREENLAND_MASS_VARIATION_CHART_URL =
+  "https://assets.science.nasa.gov/content/dam/science/microapps/vital-signs/data/charts/ice-sheets-greenland.json";
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
@@ -1309,6 +1311,7 @@ async function updateOnce() {
     ceresContentsHtml,
     wgmsAmceHtml,
     antarcticaMassVariationPayload,
+    greenlandMassVariationPayload,
     iriEnsoHtml,
     ensoDiscussionHtml,
     t2MapDatePayload,
@@ -1332,6 +1335,7 @@ async function updateOnce() {
     fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL),
     fetchText(WGMS_MASS_CHANGE_ESTIMATES_URL),
     fetchJson(NASA_ANTARCTICA_MASS_VARIATION_CHART_URL),
+    fetchJson(NASA_GREENLAND_MASS_VARIATION_CHART_URL),
     fetchText(IRI_ENSO_CURRENT_URL),
     fetchText(NOAA_CPC_ENSO_DISCUSSION_URL),
     fetchJson(CR_T2_LAST_MAP_DATE_URL),
@@ -1447,6 +1451,12 @@ async function updateOnce() {
     maxValue: 4000,
     maxAgeDays: 430,
   });
+  const greenlandMassVariation = parseNasaMassVariationChartJson(greenlandMassVariationPayload);
+  const greenlandIceSheetMassBalance = sanitizeSeries(buildCumulativeLossSeries(greenlandMassVariation), {
+    minValue: 0,
+    maxValue: 7000,
+    maxAgeDays: 430,
+  });
   const dailyGlobalMeanTemperatureAnomaly = sanitizeSeries(parseEcmwfClimatePulseGlobal2tDailyCsv(dailyGlobalMeanAnomalyCsv), {
     minValue: -10,
     maxValue: 10,
@@ -1554,6 +1564,7 @@ async function updateOnce() {
         : NASA_CERES_EBAF_PROJECT_URL,
       global_glacier_mass_balance: wgmsAmceZipUrl ?? WGMS_MASS_CHANGE_ESTIMATES_URL,
       antarctic_ice_sheet_mass_balance: NASA_ANTARCTICA_MASS_VARIATION_CHART_URL,
+      greenland_ice_sheet_mass_balance: NASA_GREENLAND_MASS_VARIATION_CHART_URL,
       northern_hemisphere_surface_temperature: ERA5_NH_SURFACE_TEMP_URL,
       southern_hemisphere_surface_temperature: ERA5_SH_SURFACE_TEMP_URL,
       arctic_surface_temperature: ERA5_ARCTIC_SURFACE_TEMP_URL,
@@ -1585,6 +1596,7 @@ async function updateOnce() {
       earth_energy_imbalance: earthEnergyImbalance,
       global_glacier_mass_balance: globalGlacierMassBalance,
       antarctic_ice_sheet_mass_balance: antarcticIceSheetMassBalance,
+      greenland_ice_sheet_mass_balance: greenlandIceSheetMassBalance,
       northern_hemisphere_surface_temperature: northernHemisphereSurfaceTemperature,
       southern_hemisphere_surface_temperature: southernHemisphereSurfaceTemperature,
       arctic_surface_temperature: arcticSurfaceTemperature,
@@ -1608,6 +1620,7 @@ async function updateOnce() {
       earth_energy_imbalance: summarize(earthEnergyImbalance),
       global_glacier_mass_balance: summarize(globalGlacierMassBalance),
       antarctic_ice_sheet_mass_balance: summarize(antarcticIceSheetMassBalance),
+      greenland_ice_sheet_mass_balance: summarize(greenlandIceSheetMassBalance),
       northern_hemisphere_surface_temperature: summarize(northernHemisphereSurfaceTemperature),
       southern_hemisphere_surface_temperature: summarize(southernHemisphereSurfaceTemperature),
       arctic_surface_temperature: summarize(arcticSurfaceTemperature),

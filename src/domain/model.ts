@@ -10,6 +10,7 @@ export type ClimateMetricKey =
   | "earth_energy_imbalance"
   | "global_glacier_mass_balance"
   | "antarctic_ice_sheet_mass_balance"
+  | "greenland_ice_sheet_mass_balance"
   | "northern_hemisphere_surface_temperature"
   | "southern_hemisphere_surface_temperature"
   | "arctic_surface_temperature"

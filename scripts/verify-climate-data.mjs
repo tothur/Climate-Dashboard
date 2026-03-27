@@ -79,6 +79,13 @@ const SERIES_RULES = {
     minPoints: 200,
     minPointsLastYear: 8,
   },
+  greenland_ice_sheet_mass_balance: {
+    minValue: 0,
+    maxValue: 7000,
+    maxAgeDays: 430,
+    minPoints: 200,
+    minPointsLastYear: 8,
+  },
   northern_hemisphere_surface_temperature: {
     minValue: -20,
     maxValue: 40,

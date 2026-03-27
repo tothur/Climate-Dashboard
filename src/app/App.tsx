@@ -41,7 +41,12 @@ const LOCAL_MAP_FILENAMES: Record<ClimateMapKey, string> = {
 };
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
-const ICE_SHEET_AND_GLACIER_KEYS = new Set(["global_glacier_mass_balance", "antarctic_ice_sheet_mass_balance"]);
+const ICE_SHEET_AND_GLACIER_KEYS = new Set([
+  "global_glacier_mass_balance",
+  "antarctic_ice_sheet_mass_balance",
+  "greenland_ice_sheet_mass_balance",
+]);
+const ICE_SHEET_LOSS_KEYS = new Set(["antarctic_ice_sheet_mass_balance", "greenland_ice_sheet_mass_balance"]);
 const EARTH_ENERGY_IMBALANCE_KEY: ClimateMetricSeries["key"] = "earth_energy_imbalance";
 const TEMPERATURE_ANOMALY_KEYS = new Set(["global_surface_temperature_anomaly", "global_sea_surface_temperature_anomaly"]);
 const DAILY_GLOBAL_MEAN_ANOMALY_KEY: ClimateMetricSeries["key"] = "daily_global_mean_temperature_anomaly";
@@ -67,6 +72,7 @@ const OCEAN_RANK = new Map(OCEAN_ORDER.map((key, index) => [key, index]));
 const ICE_SHEET_AND_GLACIER_ORDER: ClimateMetricSeries["key"][] = [
   "global_glacier_mass_balance",
   "antarctic_ice_sheet_mass_balance",
+  "greenland_ice_sheet_mass_balance",
 ];
 const ICE_SHEET_AND_GLACIER_RANK = new Map(ICE_SHEET_AND_GLACIER_ORDER.map((key, index) => [key, index]));
 const TOP_SUMMARY_ORDER: ClimateMetricSeries["key"][] = [
@@ -160,7 +166,7 @@ const STRINGS = {
       "Global, Arctic, and Antarctic extent shown with daily points in a Jan-Dec comparison view.",
     iceSheetsAndGlaciersSectionTitle: "Ice Sheets and Glaciers",
     iceSheetsAndGlaciersSectionNote:
-      "Annual global glacier mass balance from WGMS, plus cumulative Antarctic ice-sheet mass loss since 2002 derived from NASA GRACE/GRACE-FO mass variation.",
+      "Annual global glacier mass balance from WGMS, plus cumulative Antarctic and Greenland ice-sheet mass loss since 2002 derived from NASA GRACE/GRACE-FO mass variation.",
     mapsSectionTitle: "Maps",
     mapsSectionNote:
       "Global Climate Reanalyzer map snapshots for 2m temperature, 2m anomaly, sea-surface temperature, and sea-surface temperature anomaly.",
@@ -271,7 +277,7 @@ const STRINGS = {
       "Globális, arktiszi és antarktiszi jégkiterjedés napi adatokkal, január-decemberi összehasonlító nézetben.",
     iceSheetsAndGlaciersSectionTitle: "Jégtakarók és gleccserek",
     iceSheetsAndGlaciersSectionNote:
-      "A WGMS éves globális gleccser-tömegmérlege, valamint a NASA GRACE/GRACE-FO tömegváltozási adataiból származtatott kumulatív antarktiszi jégtakaró-tömegveszteség 2002 óta.",
+      "A WGMS éves globális gleccser-tömegmérlege, valamint a NASA GRACE/GRACE-FO tömegváltozási adataiból származtatott kumulatív antarktiszi és grönlandi jégtakaró-tömegveszteség 2002 óta.",
     mapsSectionTitle: "Térképek",
     mapsSectionNote:
       "Globális Climate Reanalyzer térképkivonatok a 2 m hőmérsékletről, 2 m anomáliáról, tengerfelszíni hőmérsékletről és SST-anomáliáról.",
@@ -1194,6 +1200,8 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
       return { min: -700, max: 100 };
     case "antarctic_ice_sheet_mass_balance":
       return { min: 0, max: 3200 };
+    case "greenland_ice_sheet_mass_balance":
+      return { min: 0, max: 6200 };
     case "northern_hemisphere_surface_temperature":
       return { min: 6, max: 24 };
     case "southern_hemisphere_surface_temperature":
@@ -1240,6 +1248,7 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
     case "earth_energy_imbalance":
       return language === "hu" ? "watt per négyzetméter (W/m²)" : "watts per square meter (W/m²)";
     case "global_glacier_mass_balance":
+    case "greenland_ice_sheet_mass_balance":
       return language === "hu" ? "gigatonna (Gt)" : "gigatons (Gt)";
     case "antarctic_ice_sheet_mass_balance":
       return language === "hu" ? "gigatonna (Gt)" : "gigatons (Gt)";
@@ -1286,6 +1295,7 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
   if (metricKey === EARTH_ENERGY_IMBALANCE_KEY) return "W/m²";
   if (metricKey === "global_glacier_mass_balance") return "Gt";
   if (metricKey === "antarctic_ice_sheet_mass_balance") return "Gt";
+  if (metricKey === "greenland_ice_sheet_mass_balance") return "Gt";
   if (metricKey === "atmospheric_aggi") return "index";
   if (
     GLOBAL_TEMPERATURE_KEYS.has(metricKey) ||
@@ -1346,6 +1356,8 @@ function freshnessPolicyForMetric(metricKey: ClimateMetricSeries["key"]): Freshn
     case "global_glacier_mass_balance":
       return { cadence: "annual", warningDays: 650, staleDays: 1400 };
     case "antarctic_ice_sheet_mass_balance":
+      return { cadence: "monthly", warningDays: 220, staleDays: 430 };
+    case "greenland_ice_sheet_mass_balance":
       return { cadence: "monthly", warningDays: 220, staleDays: 430 };
     case "atmospheric_aggi":
       return { cadence: "annual", warningDays: 550, staleDays: 900 };
@@ -2261,15 +2273,19 @@ export function App() {
                     renderTrendPanel(metric, {
                       xAxisYearLabelStep: metric.key === "global_glacier_mass_balance" ? 5 : 2,
                       showArea: false,
-                      yAxisInverse: metric.key === "antarctic_ice_sheet_mass_balance",
+                      yAxisInverse: ICE_SHEET_LOSS_KEYS.has(metric.key),
                       color:
                         metric.key === "global_glacier_mass_balance"
                           ? resolvedTheme === "dark"
                             ? "#60a5fa"
                             : "#2563eb"
-                          : resolvedTheme === "dark"
-                            ? "#2dd4bf"
-                            : "#0f766e",
+                          : metric.key === "antarctic_ice_sheet_mass_balance"
+                            ? resolvedTheme === "dark"
+                              ? "#2dd4bf"
+                              : "#0f766e"
+                            : resolvedTheme === "dark"
+                              ? "#c084fc"
+                              : "#8b5cf6",
                     })
                   )}
                 </div>
