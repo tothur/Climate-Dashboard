@@ -22,6 +22,8 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "global_mean_sea_level",
   "ocean_heat_content",
   "earth_energy_imbalance",
+  "global_glacier_mass_balance",
+  "antarctic_ice_sheet_mass_balance",
   "northern_hemisphere_surface_temperature",
   "arctic_surface_temperature",
   "north_atlantic_sea_surface_temperature",
@@ -106,6 +108,34 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionHu:
         "A NASA CERES EBAF globális havi légkör teteji nettó sugárzási fluxusa, a Föld energiaegyensúlyának felborulását jelző mutatóként.",
       url: "https://asdc.larc.nasa.gov/project/CERES/CERES_EBAF-TOA_Edition4.2.1",
+    },
+  },
+  global_glacier_mass_balance: {
+    titleEn: "Global Glacier Mass Balance",
+    titleHu: "Globális gleccser-tömegmérleg",
+    unit: "Gt",
+    decimals: 1,
+    source: {
+      shortName: "WGMS annual estimates",
+      descriptionEn:
+        "Annual global glacier mass-change estimates in gigatons from the World Glacier Monitoring Service.",
+      descriptionHu:
+        "A gleccserek éves globális tömegváltozási becslései gigatonnában a World Glacier Monitoring Service adatai alapján.",
+      url: "https://wgms.ch/mass_change_estimates/",
+    },
+  },
+  antarctic_ice_sheet_mass_balance: {
+    titleEn: "Antarctic Ice Sheet Mass Balance",
+    titleHu: "Antarktiszi jégtakaró tömegmérlege",
+    unit: "Gt/yr",
+    decimals: 1,
+    source: {
+      shortName: "NASA GRACE/GRACE-FO (derived)",
+      descriptionEn:
+        "Trailing 12-month annualized Antarctic ice-sheet mass change derived from NASA Vital Signs GRACE/GRACE-FO mass-variation data.",
+      descriptionHu:
+        "A NASA Vital Signs GRACE/GRACE-FO tömegváltozási adatsorából származtatott, 12 havi gördülő, évesített antarktiszi jégtakaró-tömegváltozás.",
+      url: "https://science.nasa.gov/earth/explore/earth-indicators/ice-sheets/",
     },
   },
   northern_hemisphere_surface_temperature: {

@@ -65,6 +65,20 @@ const SERIES_RULES = {
     minPoints: 250,
     minPointsLastYear: 6,
   },
+  global_glacier_mass_balance: {
+    minValue: -1200,
+    maxValue: 250,
+    maxAgeDays: 1600,
+    minPoints: 30,
+    minPointsLastYear: 0,
+  },
+  antarctic_ice_sheet_mass_balance: {
+    minValue: -500,
+    maxValue: 250,
+    maxAgeDays: 430,
+    minPoints: 120,
+    minPointsLastYear: 2,
+  },
   northern_hemisphere_surface_temperature: {
     minValue: -20,
     maxValue: 40,

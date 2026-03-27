@@ -184,6 +184,8 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
   const globalMeanSeaLevel = generateMonthlySeries(1993, 1, endDateIso, -18, 0.283, 2.4, 0.25);
   const oceanHeatContent = generateMonthlySeries(1955, 1, endDateIso, -8.5, 0.058, 0.55, 0.08);
   const earthEnergyImbalance = generateMonthlySeries(2000, 3, endDateIso, 0.42, 0.0044, 0.16, 0.05, 2);
+  const globalGlacierMassBalance = generateAnnualSeries(1976, endDateIso, 28, -12.4, 44);
+  const antarcticIceSheetMassBalance = generateMonthlySeries(2003, 4, endDateIso, -65, -0.18, 24, 10, 3);
   const northernHemisphereSurfaceTemperature = generateSeries("1979-01-01", endDateIso, 14.2, 0.0015, 6.2, 365.25, 0.14);
   const southernHemisphereSurfaceTemperature = generateSeries("1979-01-01", endDateIso, 13.5, 0.0011, 2.2, 365.25, 0.1, 182.625);
   const arcticSurfaceTemperature = generateSeries("1979-01-01", endDateIso, -10.5, 0.0025, 13.6, 365.25, 0.22);
@@ -211,6 +213,8 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
     global_mean_sea_level: globalMeanSeaLevel,
     ocean_heat_content: oceanHeatContent,
     earth_energy_imbalance: earthEnergyImbalance,
+    global_glacier_mass_balance: globalGlacierMassBalance,
+    antarctic_ice_sheet_mass_balance: antarcticIceSheetMassBalance,
     northern_hemisphere_surface_temperature: northernHemisphereSurfaceTemperature,
     southern_hemisphere_surface_temperature: southernHemisphereSurfaceTemperature,
     arctic_surface_temperature: arcticSurfaceTemperature,
@@ -238,6 +242,8 @@ export const CLIMATE_METRIC_KEYS: ClimateMetricKey[] = [
   "global_mean_sea_level",
   "ocean_heat_content",
   "earth_energy_imbalance",
+  "global_glacier_mass_balance",
+  "antarctic_ice_sheet_mass_balance",
   "northern_hemisphere_surface_temperature",
   "arctic_surface_temperature",
   "north_atlantic_sea_surface_temperature",

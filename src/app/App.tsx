@@ -41,11 +41,12 @@ const LOCAL_MAP_FILENAMES: Record<ClimateMapKey, string> = {
 };
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
+const ICE_SHEET_AND_GLACIER_KEYS = new Set(["global_glacier_mass_balance", "antarctic_ice_sheet_mass_balance"]);
 const EARTH_ENERGY_IMBALANCE_KEY: ClimateMetricSeries["key"] = "earth_energy_imbalance";
 const TEMPERATURE_ANOMALY_KEYS = new Set(["global_surface_temperature_anomaly", "global_sea_surface_temperature_anomaly"]);
 const DAILY_GLOBAL_MEAN_ANOMALY_KEY: ClimateMetricSeries["key"] = "daily_global_mean_temperature_anomaly";
 const GLOBAL_TEMPERATURE_KEYS = new Set(["global_surface_temperature", "global_sea_surface_temperature"]);
-const MONTHLY_COMPARISON_EXCLUDED_KEYS = new Set([...OCEAN_KEYS, EARTH_ENERGY_IMBALANCE_KEY]);
+const MONTHLY_COMPARISON_EXCLUDED_KEYS = new Set([...OCEAN_KEYS, EARTH_ENERGY_IMBALANCE_KEY, ...ICE_SHEET_AND_GLACIER_KEYS]);
 const REGIONAL_TEMPERATURE_KEYS = new Set([
   "northern_hemisphere_surface_temperature",
   "southern_hemisphere_surface_temperature",
@@ -63,6 +64,11 @@ const REGIONAL_TEMPERATURE_ORDER: ClimateMetricSeries["key"][] = [
 const REGIONAL_TEMPERATURE_RANK = new Map(REGIONAL_TEMPERATURE_ORDER.map((key, index) => [key, index]));
 const OCEAN_ORDER: ClimateMetricSeries["key"][] = ["global_mean_sea_level", "ocean_heat_content"];
 const OCEAN_RANK = new Map(OCEAN_ORDER.map((key, index) => [key, index]));
+const ICE_SHEET_AND_GLACIER_ORDER: ClimateMetricSeries["key"][] = [
+  "global_glacier_mass_balance",
+  "antarctic_ice_sheet_mass_balance",
+];
+const ICE_SHEET_AND_GLACIER_RANK = new Map(ICE_SHEET_AND_GLACIER_ORDER.map((key, index) => [key, index]));
 const TOP_SUMMARY_ORDER: ClimateMetricSeries["key"][] = [
   "global_surface_temperature",
   "global_surface_temperature_anomaly",
@@ -152,6 +158,9 @@ const STRINGS = {
     seaIceSectionTitle: "Sea Ice",
     seaIceSectionNote:
       "Global, Arctic, and Antarctic extent shown with daily points in a Jan-Dec comparison view.",
+    iceSheetsAndGlaciersSectionTitle: "Ice Sheets and Glaciers",
+    iceSheetsAndGlaciersSectionNote:
+      "Annual global glacier mass balance from WGMS, plus trailing 12-month Antarctic ice-sheet mass balance derived from NASA GRACE/GRACE-FO mass variation.",
     mapsSectionTitle: "Maps",
     mapsSectionNote:
       "Global Climate Reanalyzer map snapshots for 2m temperature, 2m anomaly, sea-surface temperature, and sea-surface temperature anomaly.",
@@ -260,6 +269,9 @@ const STRINGS = {
     seaIceSectionTitle: "Tengeri jég",
     seaIceSectionNote:
       "Globális, arktiszi és antarktiszi jégkiterjedés napi adatokkal, január-decemberi összehasonlító nézetben.",
+    iceSheetsAndGlaciersSectionTitle: "Jégtakarók és gleccserek",
+    iceSheetsAndGlaciersSectionNote:
+      "A WGMS éves globális gleccser-tömegmérlege, valamint a NASA GRACE/GRACE-FO tömegváltozási adataiból származtatott, 12 havi gördülő antarktiszi jégtakaró-tömegmérleg.",
     mapsSectionTitle: "Térképek",
     mapsSectionNote:
       "Globális Climate Reanalyzer térképkivonatok a 2 m hőmérsékletről, 2 m anomáliáról, tengerfelszíni hőmérsékletről és SST-anomáliáról.",
@@ -1178,6 +1190,10 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
       return { min: -20, max: 70 };
     case "earth_energy_imbalance":
       return { min: -0.5, max: 2.5 };
+    case "global_glacier_mass_balance":
+      return { min: -700, max: 100 };
+    case "antarctic_ice_sheet_mass_balance":
+      return { min: -320, max: 120 };
     case "northern_hemisphere_surface_temperature":
       return { min: 6, max: 24 };
     case "southern_hemisphere_surface_temperature":
@@ -1223,6 +1239,10 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
       return language === "hu" ? "10^22 joule" : "10^22 joules";
     case "earth_energy_imbalance":
       return language === "hu" ? "watt per négyzetméter (W/m²)" : "watts per square meter (W/m²)";
+    case "global_glacier_mass_balance":
+      return language === "hu" ? "gigatonna (Gt)" : "gigatons (Gt)";
+    case "antarctic_ice_sheet_mass_balance":
+      return language === "hu" ? "gigatonna per év (Gt/év)" : "gigatons per year (Gt/yr)";
     case "global_sea_ice_extent":
     case "arctic_sea_ice_extent":
     case "antarctic_sea_ice_extent":
@@ -1264,6 +1284,8 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
   if (metricKey === "global_mean_sea_level") return "mm";
   if (metricKey === "ocean_heat_content") return "10^22 J";
   if (metricKey === EARTH_ENERGY_IMBALANCE_KEY) return "W/m²";
+  if (metricKey === "global_glacier_mass_balance") return "Gt";
+  if (metricKey === "antarctic_ice_sheet_mass_balance") return "Gt/év";
   if (metricKey === "atmospheric_aggi") return "index";
   if (
     GLOBAL_TEMPERATURE_KEYS.has(metricKey) ||
@@ -1321,6 +1343,10 @@ function freshnessPolicyForMetric(metricKey: ClimateMetricSeries["key"]): Freshn
       return { cadence: "quarterly", warningDays: 180, staleDays: 360 };
     case "earth_energy_imbalance":
       return { cadence: "monthly", warningDays: 120, staleDays: 220 };
+    case "global_glacier_mass_balance":
+      return { cadence: "annual", warningDays: 650, staleDays: 1400 };
+    case "antarctic_ice_sheet_mass_balance":
+      return { cadence: "monthly", warningDays: 220, staleDays: 430 };
     case "atmospheric_aggi":
       return { cadence: "annual", warningDays: 550, staleDays: 900 };
     default:
@@ -1652,6 +1678,17 @@ export function App() {
         }),
     [snapshot.indicators]
   );
+  const iceSheetAndGlacierMetrics = useMemo(
+    () =>
+      snapshot.indicators
+        .filter((metric) => ICE_SHEET_AND_GLACIER_RANK.has(metric.key))
+        .sort((left, right) => {
+          const leftRank = ICE_SHEET_AND_GLACIER_RANK.get(left.key) ?? Number.MAX_SAFE_INTEGER;
+          const rightRank = ICE_SHEET_AND_GLACIER_RANK.get(right.key) ?? Number.MAX_SAFE_INTEGER;
+          return leftRank - rightRank;
+        }),
+    [snapshot.indicators]
+  );
   const mapCards = useMemo(() => {
     const metricByKey = new Map(snapshot.indicators.map((metric) => [metric.key, metric]));
     const surfaceMetric = metricByKey.get("global_surface_temperature") ?? null;
@@ -1790,7 +1827,15 @@ export function App() {
     );
   };
 
-  const renderOceanPanel = (metric: ClimateMetricSeries) => {
+  const renderTrendPanel = (
+    metric: ClimateMetricSeries,
+    options?: {
+      xAxisYearLabelStep?: number;
+      lineWidth?: number;
+      color?: string;
+      showArea?: boolean;
+    }
+  ) => {
     const bounds = indicatorYAxisBounds(metric.key);
     const yAxisLabel = indicatorYAxisUnitLabel(metric.key, language);
     const freshness = metricFreshnessBadge(metric, language, t);
@@ -1809,17 +1854,18 @@ export function App() {
           seriesName: metricTitle(metric, language),
           unit: metric.unit,
           decimals: metric.decimals,
-          lineWidth: 2.1,
+          lineWidth: options?.lineWidth ?? 2.1,
           yAxisMin: bounds.min,
           yAxisMax: bounds.max,
           yAxisUnitLabel: yAxisLabel,
-          xAxisYearLabelStep: 10,
+          xAxisYearLabelStep: options?.xAxisYearLabelStep ?? 10,
           disableDataZoom: true,
           forceMappedYearLabels: true,
           showLegend: false,
           compact,
           dark: resolvedTheme === "dark",
-          color: resolvedTheme === "dark" ? "#38bdf8" : "#0284c7",
+          color: options?.color ?? (resolvedTheme === "dark" ? "#38bdf8" : "#0284c7"),
+          showArea: options?.showArea ?? true,
           labels: {
             noData: t.noData,
             latest: t.chartLatest,
@@ -1828,6 +1874,8 @@ export function App() {
       />
     );
   };
+
+  const renderOceanPanel = (metric: ClimateMetricSeries) => renderTrendPanel(metric);
 
   const sourceModeLabel =
     snapshot.sourceMode === "live"
@@ -2199,6 +2247,31 @@ export function App() {
                 )}
               </div>
             </div>
+
+            {iceSheetAndGlacierMetrics.length ? (
+              <div className="climate-subsection">
+                <div className="climate-subsection-header">
+                  <h3>{t.iceSheetsAndGlaciersSectionTitle}</h3>
+                  <p>{t.iceSheetsAndGlaciersSectionNote}</p>
+                </div>
+                <div className="charts-grid climate-grid">
+                  {iceSheetAndGlacierMetrics.map((metric) =>
+                    renderTrendPanel(metric, {
+                      xAxisYearLabelStep: metric.key === "global_glacier_mass_balance" ? 5 : 2,
+                      showArea: false,
+                      color:
+                        metric.key === "global_glacier_mass_balance"
+                          ? resolvedTheme === "dark"
+                            ? "#60a5fa"
+                            : "#2563eb"
+                          : resolvedTheme === "dark"
+                            ? "#2dd4bf"
+                            : "#0f766e",
+                    })
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </section>

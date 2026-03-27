@@ -1,6 +1,7 @@
 import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { inflateRawSync } from "node:zlib";
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT_PATH = resolve(ROOT_DIR, "public/data/climate-realtime.json");
@@ -24,6 +25,11 @@ const NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL = `${NASA_CERES_EBAF_OPENDAP_BASE_UR
 const NASA_CERES_EBAF_PROJECT_URL = "https://asdc.larc.nasa.gov/project/CERES/CERES_EBAF-TOA_Edition4.2.1";
 const NASA_CERES_EBAF_FILE_PATTERN = /CERES_EBAF-TOA_Edition4\.2\.1_\d{6}-\d{6}\.nc/g;
 const NASA_CERES_EBAF_TIME_BASE_UTC = Date.UTC(2000, 2, 1);
+const WGMS_MASS_CHANGE_ESTIMATES_URL = "https://wgms.ch/mass_change_estimates/";
+const WGMS_AMCE_ZIP_PATTERN = /(?:https:\/\/wgms\.ch)?\/downloads\/wgms-amce-\d{4}-\d{2}-\d{2}\.zip/g;
+const WGMS_AMCE_GLOBAL_CSV_ENTRY = "global.csv";
+const NASA_ANTARCTICA_MASS_VARIATION_CHART_URL =
+  "https://assets.science.nasa.gov/content/dam/science/microapps/vital-signs/data/charts/ice-sheets-antarctica.json";
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
@@ -871,6 +877,178 @@ function parseCeresEarthEnergyImbalanceAscii(rawText) {
   return normalizePoints(points);
 }
 
+function readUint16Le(bytes, offset) {
+  return bytes[offset] | (bytes[offset + 1] << 8);
+}
+
+function readUint32Le(bytes, offset) {
+  return (
+    bytes[offset] |
+    (bytes[offset + 1] << 8) |
+    (bytes[offset + 2] << 16) |
+    (bytes[offset + 3] << 24)
+  ) >>> 0;
+}
+
+function extractZipEntryText(zipBytes, entryName) {
+  if (!(zipBytes instanceof Uint8Array) || zipBytes.length < 22) {
+    throw new Error("WGMS ZIP archive was empty or invalid.");
+  }
+
+  let eocdOffset = -1;
+  for (let offset = zipBytes.length - 22; offset >= 0; offset -= 1) {
+    if (readUint32Le(zipBytes, offset) === 0x06054b50) {
+      eocdOffset = offset;
+      break;
+    }
+  }
+
+  if (eocdOffset < 0) {
+    throw new Error("WGMS ZIP archive is missing the end-of-central-directory record.");
+  }
+
+  const entryCount = readUint16Le(zipBytes, eocdOffset + 10);
+  const centralDirectoryOffset = readUint32Le(zipBytes, eocdOffset + 16);
+  const decoder = new TextDecoder();
+  let offset = centralDirectoryOffset;
+
+  for (let index = 0; index < entryCount; index += 1) {
+    if (readUint32Le(zipBytes, offset) !== 0x02014b50) break;
+
+    const compressionMethod = readUint16Le(zipBytes, offset + 10);
+    const compressedSize = readUint32Le(zipBytes, offset + 20);
+    const fileNameLength = readUint16Le(zipBytes, offset + 28);
+    const extraFieldLength = readUint16Le(zipBytes, offset + 30);
+    const commentLength = readUint16Le(zipBytes, offset + 32);
+    const localHeaderOffset = readUint32Le(zipBytes, offset + 42);
+    const fileName = decoder.decode(zipBytes.subarray(offset + 46, offset + 46 + fileNameLength));
+
+    if (fileName === entryName) {
+      if (readUint32Le(zipBytes, localHeaderOffset) !== 0x04034b50) {
+        throw new Error(`WGMS ZIP local header for ${entryName} was invalid.`);
+      }
+
+      const localFileNameLength = readUint16Le(zipBytes, localHeaderOffset + 26);
+      const localExtraLength = readUint16Le(zipBytes, localHeaderOffset + 28);
+      const dataStart = localHeaderOffset + 30 + localFileNameLength + localExtraLength;
+      const dataEnd = dataStart + compressedSize;
+      const compressedBytes = zipBytes.subarray(dataStart, dataEnd);
+
+      if (compressionMethod === 0) {
+        return decoder.decode(compressedBytes);
+      }
+      if (compressionMethod === 8) {
+        return decoder.decode(inflateRawSync(compressedBytes));
+      }
+
+      throw new Error(`WGMS ZIP entry ${entryName} used unsupported compression method ${compressionMethod}.`);
+    }
+
+    offset += 46 + fileNameLength + extraFieldLength + commentLength;
+  }
+
+  throw new Error(`WGMS ZIP archive did not contain ${entryName}.`);
+}
+
+function extractWgmsAmceZipUrl(rawHtml) {
+  const matches = String(rawHtml ?? "").match(WGMS_AMCE_ZIP_PATTERN) ?? [];
+  if (!matches.length) return null;
+  return new URL(matches[matches.length - 1], WGMS_MASS_CHANGE_ESTIMATES_URL).toString();
+}
+
+function parseWgmsGlobalGlacierCsv(rawCsv) {
+  const points = [];
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
+  let yearColumn = -1;
+  let gtColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const columns = line.split(",").map((column) => column.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((column) => column.toLowerCase());
+      yearColumn = header.indexOf("year");
+      gtColumn = header.indexOf("gt");
+      hasHeader = true;
+      continue;
+    }
+
+    if (yearColumn < 0 || gtColumn < 0) continue;
+    if (columns.length <= yearColumn || columns.length <= gtColumn) continue;
+
+    const year = Number(columns[yearColumn]);
+    const value = toFiniteNumber(columns[gtColumn]);
+    if (!Number.isFinite(year) || year < 1900 || year > 2200 || value == null) continue;
+
+    const date = formatDateFromParts(year, 1, 1);
+    if (!date) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseNasaMassVariationChartJson(payload) {
+  if (!isRecord(payload) || !Array.isArray(payload.items)) return [];
+
+  const points = [];
+  for (const item of payload.items) {
+    if (!isRecord(item)) continue;
+    const year = Number(item.year);
+    const month = Number(item.month);
+    const day = Number(item.day);
+    const value = toFiniteNumber(item.y);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day) || value == null) continue;
+    const date = formatDateFromParts(year, month, day);
+    if (!date) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
+function buildTrailingAnnualizedDeltaSeries(points, { minDays = 300, maxDays = 430, targetDays = 365 } = {}) {
+  const normalized = normalizePoints(points);
+  const output = [];
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    const current = normalized[index];
+    const currentTs = parseIsoDateToUtc(current.date);
+    if (currentTs == null) continue;
+
+    let bestPrevious = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    for (let previousIndex = index - 1; previousIndex >= 0; previousIndex -= 1) {
+      const previous = normalized[previousIndex];
+      const previousTs = parseIsoDateToUtc(previous.date);
+      if (previousTs == null) continue;
+
+      const deltaDays = Math.round((currentTs - previousTs) / DAY_MS);
+      if (deltaDays < minDays) continue;
+      if (deltaDays > maxDays) break;
+
+      const distanceFromTarget = Math.abs(deltaDays - targetDays);
+      if (distanceFromTarget >= bestDistance) continue;
+
+      bestDistance = distanceFromTarget;
+      bestPrevious = { point: previous, deltaDays };
+    }
+
+    if (!bestPrevious) continue;
+
+    output.push({
+      date: current.date,
+      value: Math.round((((current.value - bestPrevious.point.value) * 365) / bestPrevious.deltaDays) * 1000) / 1000,
+    });
+  }
+
+  return normalizePoints(output);
+}
+
 function normalizeEnsoCondition(rawValue) {
   const normalized = String(rawValue ?? "")
     .trim()
@@ -1156,6 +1334,8 @@ async function updateOnce() {
     aggiCsv,
     dailyGlobalMeanAnomalyCsv,
     ceresContentsHtml,
+    wgmsAmceHtml,
+    antarcticaMassVariationPayload,
     iriEnsoHtml,
     ensoDiscussionHtml,
     t2MapDatePayload,
@@ -1177,6 +1357,8 @@ async function updateOnce() {
     fetchText(NOAA_AGGI_CSV_URL),
     fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
     fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL),
+    fetchText(WGMS_MASS_CHANGE_ESTIMATES_URL),
+    fetchJson(NASA_ANTARCTICA_MASS_VARIATION_CHART_URL),
     fetchText(IRI_ENSO_CURRENT_URL),
     fetchText(NOAA_CPC_ENSO_DISCUSSION_URL),
     fetchJson(CR_T2_LAST_MAP_DATE_URL),
@@ -1277,6 +1459,20 @@ async function updateOnce() {
     minValue: -20,
     maxValue: 20,
     maxAgeDays: 220,
+  });
+  const wgmsAmceZipUrl = extractWgmsAmceZipUrl(wgmsAmceHtml);
+  const wgmsAmceZipBytes = wgmsAmceZipUrl ? await fetchBinary(wgmsAmceZipUrl) : null;
+  const wgmsGlobalCsv = wgmsAmceZipBytes ? extractZipEntryText(wgmsAmceZipBytes, WGMS_AMCE_GLOBAL_CSV_ENTRY) : "";
+  const globalGlacierMassBalance = sanitizeSeries(parseWgmsGlobalGlacierCsv(wgmsGlobalCsv), {
+    minValue: -1200,
+    maxValue: 250,
+    maxAgeDays: 1600,
+  });
+  const antarcticMassVariation = parseNasaMassVariationChartJson(antarcticaMassVariationPayload);
+  const antarcticIceSheetMassBalance = sanitizeSeries(buildTrailingAnnualizedDeltaSeries(antarcticMassVariation), {
+    minValue: -500,
+    maxValue: 250,
+    maxAgeDays: 430,
   });
   const dailyGlobalMeanTemperatureAnomaly = sanitizeSeries(parseEcmwfClimatePulseGlobal2tDailyCsv(dailyGlobalMeanAnomalyCsv), {
     minValue: -10,
@@ -1383,6 +1579,8 @@ async function updateOnce() {
       earth_energy_imbalance: ceresFileName
         ? buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName)
         : NASA_CERES_EBAF_PROJECT_URL,
+      global_glacier_mass_balance: wgmsAmceZipUrl ?? WGMS_MASS_CHANGE_ESTIMATES_URL,
+      antarctic_ice_sheet_mass_balance: NASA_ANTARCTICA_MASS_VARIATION_CHART_URL,
       northern_hemisphere_surface_temperature: ERA5_NH_SURFACE_TEMP_URL,
       southern_hemisphere_surface_temperature: ERA5_SH_SURFACE_TEMP_URL,
       arctic_surface_temperature: ERA5_ARCTIC_SURFACE_TEMP_URL,
@@ -1412,6 +1610,8 @@ async function updateOnce() {
       global_mean_sea_level: globalMeanSeaLevel,
       ocean_heat_content: oceanHeatContent,
       earth_energy_imbalance: earthEnergyImbalance,
+      global_glacier_mass_balance: globalGlacierMassBalance,
+      antarctic_ice_sheet_mass_balance: antarcticIceSheetMassBalance,
       northern_hemisphere_surface_temperature: northernHemisphereSurfaceTemperature,
       southern_hemisphere_surface_temperature: southernHemisphereSurfaceTemperature,
       arctic_surface_temperature: arcticSurfaceTemperature,
@@ -1433,6 +1633,8 @@ async function updateOnce() {
       global_mean_sea_level: summarize(globalMeanSeaLevel),
       ocean_heat_content: summarize(oceanHeatContent),
       earth_energy_imbalance: summarize(earthEnergyImbalance),
+      global_glacier_mass_balance: summarize(globalGlacierMassBalance),
+      antarctic_ice_sheet_mass_balance: summarize(antarcticIceSheetMassBalance),
       northern_hemisphere_surface_temperature: summarize(northernHemisphereSurfaceTemperature),
       southern_hemisphere_surface_temperature: summarize(southernHemisphereSurfaceTemperature),
       arctic_surface_temperature: summarize(arcticSurfaceTemperature),

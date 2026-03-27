@@ -18,6 +18,7 @@ interface BuildClimateTrendOptionArgs {
   compact: boolean;
   dark?: boolean;
   color?: string;
+  showArea?: boolean;
   referenceLines?: Array<{
     value: number;
     label: string;
@@ -409,6 +410,7 @@ export function buildClimateTrendOption({
   compact,
   dark = false,
   color,
+  showArea = true,
   referenceLines,
   labels,
 }: BuildClimateTrendOptionArgs): EChartsOption {
@@ -584,12 +586,14 @@ export function buildClimateTrendOption({
           width: lineWidth,
           cap: "round",
         },
-        areaStyle: {
-          color: new graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: areaTopColor },
-            { offset: 1, color: areaBottomColor },
-          ]),
-        },
+        areaStyle: showArea
+          ? {
+              color: new graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: areaTopColor },
+                { offset: 1, color: areaBottomColor },
+              ]),
+            }
+          : undefined,
         markLine: markLineData.length
           ? {
               symbol: ["none", "none"],

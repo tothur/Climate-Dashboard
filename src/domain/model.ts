@@ -8,6 +8,8 @@ export type ClimateMetricKey =
   | "global_mean_sea_level"
   | "ocean_heat_content"
   | "earth_energy_imbalance"
+  | "global_glacier_mass_balance"
+  | "antarctic_ice_sheet_mass_balance"
   | "northern_hemisphere_surface_temperature"
   | "southern_hemisphere_surface_temperature"
   | "arctic_surface_temperature"

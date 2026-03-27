@@ -43,6 +43,8 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "global_mean_sea_level",
   "ocean_heat_content",
   "earth_energy_imbalance",
+  "global_glacier_mass_balance",
+  "antarctic_ice_sheet_mass_balance",
   "northern_hemisphere_surface_temperature",
   "southern_hemisphere_surface_temperature",
   "arctic_surface_temperature",
@@ -1132,6 +1134,9 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
   } else {
     warnings.push("Live Daily Global Mean Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
   }
+
+  warnings.push("Live Global Glacier Mass Balance is only available through the generated local dataset snapshot; using bundled fallback.");
+  warnings.push("Live Antarctic Ice Sheet Mass Balance is only available through the generated local dataset snapshot; using bundled fallback.");
 
   return createDataSourceFromSeries({
     series: liveSeries,
