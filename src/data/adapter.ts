@@ -125,16 +125,16 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     },
   },
   antarctic_ice_sheet_mass_balance: {
-    titleEn: "Antarctic Ice Sheet Mass Balance",
-    titleHu: "Antarktiszi jégtakaró tömegmérlege",
-    unit: "Gt/yr",
+    titleEn: "Antarctic Ice Sheet Mass Loss",
+    titleHu: "Antarktiszi jégtakaró tömegvesztesége",
+    unit: "Gt",
     decimals: 1,
     source: {
       shortName: "NASA GRACE/GRACE-FO (derived)",
       descriptionEn:
-        "Trailing 12-month annualized Antarctic ice-sheet mass change derived from NASA Vital Signs GRACE/GRACE-FO mass-variation data.",
+        "Cumulative Antarctic ice-sheet mass loss since 2002, derived from NASA Vital Signs GRACE/GRACE-FO mass-variation data.",
       descriptionHu:
-        "A NASA Vital Signs GRACE/GRACE-FO tömegváltozási adatsorából származtatott, 12 havi gördülő, évesített antarktiszi jégtakaró-tömegváltozás.",
+        "A NASA Vital Signs GRACE/GRACE-FO tömegváltozási adatsorából származtatott kumulatív antarktiszi jégtakaró-tömegveszteség 2002 óta.",
       url: "https://science.nasa.gov/earth/explore/earth-indicators/ice-sheets/",
     },
   },

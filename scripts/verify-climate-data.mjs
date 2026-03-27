@@ -73,11 +73,11 @@ const SERIES_RULES = {
     minPointsLastYear: 0,
   },
   antarctic_ice_sheet_mass_balance: {
-    minValue: -500,
-    maxValue: 250,
+    minValue: 0,
+    maxValue: 4000,
     maxAgeDays: 430,
-    minPoints: 120,
-    minPointsLastYear: 2,
+    minPoints: 200,
+    minPointsLastYear: 8,
   },
   northern_hemisphere_surface_temperature: {
     minValue: -20,

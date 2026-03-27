@@ -160,7 +160,7 @@ const STRINGS = {
       "Global, Arctic, and Antarctic extent shown with daily points in a Jan-Dec comparison view.",
     iceSheetsAndGlaciersSectionTitle: "Ice Sheets and Glaciers",
     iceSheetsAndGlaciersSectionNote:
-      "Annual global glacier mass balance from WGMS, plus trailing 12-month Antarctic ice-sheet mass balance derived from NASA GRACE/GRACE-FO mass variation.",
+      "Annual global glacier mass balance from WGMS, plus cumulative Antarctic ice-sheet mass loss since 2002 derived from NASA GRACE/GRACE-FO mass variation.",
     mapsSectionTitle: "Maps",
     mapsSectionNote:
       "Global Climate Reanalyzer map snapshots for 2m temperature, 2m anomaly, sea-surface temperature, and sea-surface temperature anomaly.",
@@ -271,7 +271,7 @@ const STRINGS = {
       "Globális, arktiszi és antarktiszi jégkiterjedés napi adatokkal, január-decemberi összehasonlító nézetben.",
     iceSheetsAndGlaciersSectionTitle: "Jégtakarók és gleccserek",
     iceSheetsAndGlaciersSectionNote:
-      "A WGMS éves globális gleccser-tömegmérlege, valamint a NASA GRACE/GRACE-FO tömegváltozási adataiból származtatott, 12 havi gördülő antarktiszi jégtakaró-tömegmérleg.",
+      "A WGMS éves globális gleccser-tömegmérlege, valamint a NASA GRACE/GRACE-FO tömegváltozási adataiból származtatott kumulatív antarktiszi jégtakaró-tömegveszteség 2002 óta.",
     mapsSectionTitle: "Térképek",
     mapsSectionNote:
       "Globális Climate Reanalyzer térképkivonatok a 2 m hőmérsékletről, 2 m anomáliáról, tengerfelszíni hőmérsékletről és SST-anomáliáról.",
@@ -1193,7 +1193,7 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
     case "global_glacier_mass_balance":
       return { min: -700, max: 100 };
     case "antarctic_ice_sheet_mass_balance":
-      return { min: -320, max: 120 };
+      return { min: 0, max: 3200 };
     case "northern_hemisphere_surface_temperature":
       return { min: 6, max: 24 };
     case "southern_hemisphere_surface_temperature":
@@ -1242,7 +1242,7 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
     case "global_glacier_mass_balance":
       return language === "hu" ? "gigatonna (Gt)" : "gigatons (Gt)";
     case "antarctic_ice_sheet_mass_balance":
-      return language === "hu" ? "gigatonna per év (Gt/év)" : "gigatons per year (Gt/yr)";
+      return language === "hu" ? "gigatonna (Gt)" : "gigatons (Gt)";
     case "global_sea_ice_extent":
     case "arctic_sea_ice_extent":
     case "antarctic_sea_ice_extent":
@@ -1285,7 +1285,7 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
   if (metricKey === "ocean_heat_content") return "10^22 J";
   if (metricKey === EARTH_ENERGY_IMBALANCE_KEY) return "W/m²";
   if (metricKey === "global_glacier_mass_balance") return "Gt";
-  if (metricKey === "antarctic_ice_sheet_mass_balance") return "Gt/év";
+  if (metricKey === "antarctic_ice_sheet_mass_balance") return "Gt";
   if (metricKey === "atmospheric_aggi") return "index";
   if (
     GLOBAL_TEMPERATURE_KEYS.has(metricKey) ||

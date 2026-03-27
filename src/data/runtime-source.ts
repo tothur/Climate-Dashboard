@@ -1136,7 +1136,7 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
   }
 
   warnings.push("Live Global Glacier Mass Balance is only available through the generated local dataset snapshot; using bundled fallback.");
-  warnings.push("Live Antarctic Ice Sheet Mass Balance is only available through the generated local dataset snapshot; using bundled fallback.");
+  warnings.push("Live Antarctic Ice Sheet Mass Loss is only available through the generated local dataset snapshot; using bundled fallback.");
 
   return createDataSourceFromSeries({
     series: liveSeries,

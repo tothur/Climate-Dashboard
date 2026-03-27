@@ -1010,43 +1010,15 @@ function parseNasaMassVariationChartJson(payload) {
   return normalizePoints(points);
 }
 
-function buildTrailingAnnualizedDeltaSeries(points, { minDays = 300, maxDays = 430, targetDays = 365 } = {}) {
+function buildCumulativeLossSeries(points) {
   const normalized = normalizePoints(points);
-  const output = [];
+  if (!normalized.length) return [];
 
-  for (let index = 0; index < normalized.length; index += 1) {
-    const current = normalized[index];
-    const currentTs = parseIsoDateToUtc(current.date);
-    if (currentTs == null) continue;
-
-    let bestPrevious = null;
-    let bestDistance = Number.POSITIVE_INFINITY;
-
-    for (let previousIndex = index - 1; previousIndex >= 0; previousIndex -= 1) {
-      const previous = normalized[previousIndex];
-      const previousTs = parseIsoDateToUtc(previous.date);
-      if (previousTs == null) continue;
-
-      const deltaDays = Math.round((currentTs - previousTs) / DAY_MS);
-      if (deltaDays < minDays) continue;
-      if (deltaDays > maxDays) break;
-
-      const distanceFromTarget = Math.abs(deltaDays - targetDays);
-      if (distanceFromTarget >= bestDistance) continue;
-
-      bestDistance = distanceFromTarget;
-      bestPrevious = { point: previous, deltaDays };
-    }
-
-    if (!bestPrevious) continue;
-
-    output.push({
-      date: current.date,
-      value: Math.round((((current.value - bestPrevious.point.value) * 365) / bestPrevious.deltaDays) * 1000) / 1000,
-    });
-  }
-
-  return normalizePoints(output);
+  const baseline = normalized[0].value;
+  return normalized.map((point) => ({
+    date: point.date,
+    value: Math.round((baseline - point.value) * 1000) / 1000,
+  }));
 }
 
 function normalizeEnsoCondition(rawValue) {
@@ -1469,9 +1441,9 @@ async function updateOnce() {
     maxAgeDays: 1600,
   });
   const antarcticMassVariation = parseNasaMassVariationChartJson(antarcticaMassVariationPayload);
-  const antarcticIceSheetMassBalance = sanitizeSeries(buildTrailingAnnualizedDeltaSeries(antarcticMassVariation), {
-    minValue: -500,
-    maxValue: 250,
+  const antarcticIceSheetMassBalance = sanitizeSeries(buildCumulativeLossSeries(antarcticMassVariation), {
+    minValue: 0,
+    maxValue: 4000,
     maxAgeDays: 430,
   });
   const dailyGlobalMeanTemperatureAnomaly = sanitizeSeries(parseEcmwfClimatePulseGlobal2tDailyCsv(dailyGlobalMeanAnomalyCsv), {
