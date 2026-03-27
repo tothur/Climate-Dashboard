@@ -997,6 +997,7 @@ function parseNasaMassVariationChartJson(payload) {
   const points = [];
   for (const item of payload.items) {
     if (!isRecord(item)) continue;
+    if (item.y == null) continue;
     const year = Number(item.year);
     const month = Number(item.month);
     const day = Number(item.day);

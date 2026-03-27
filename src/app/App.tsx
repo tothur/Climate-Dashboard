@@ -1834,6 +1834,7 @@ export function App() {
       lineWidth?: number;
       color?: string;
       showArea?: boolean;
+      yAxisInverse?: boolean;
     }
   ) => {
     const bounds = indicatorYAxisBounds(metric.key);
@@ -1857,6 +1858,7 @@ export function App() {
           lineWidth: options?.lineWidth ?? 2.1,
           yAxisMin: bounds.min,
           yAxisMax: bounds.max,
+          yAxisInverse: options?.yAxisInverse ?? false,
           yAxisUnitLabel: yAxisLabel,
           xAxisYearLabelStep: options?.xAxisYearLabelStep ?? 10,
           disableDataZoom: true,
@@ -2259,6 +2261,7 @@ export function App() {
                     renderTrendPanel(metric, {
                       xAxisYearLabelStep: metric.key === "global_glacier_mass_balance" ? 5 : 2,
                       showArea: false,
+                      yAxisInverse: metric.key === "antarctic_ice_sheet_mass_balance",
                       color:
                         metric.key === "global_glacier_mass_balance"
                           ? resolvedTheme === "dark"

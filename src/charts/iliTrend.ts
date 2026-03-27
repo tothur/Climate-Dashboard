@@ -10,6 +10,7 @@ interface BuildClimateTrendOptionArgs {
   lineWidth?: number;
   yAxisMin?: number;
   yAxisMax?: number;
+  yAxisInverse?: boolean;
   yAxisUnitLabel?: string;
   xAxisYearLabelStep?: number;
   disableDataZoom?: boolean;
@@ -402,6 +403,7 @@ export function buildClimateTrendOption({
   lineWidth = 2.8,
   yAxisMin,
   yAxisMax,
+  yAxisInverse = false,
   yAxisUnitLabel,
   xAxisYearLabelStep = 1,
   disableDataZoom = false,
@@ -555,6 +557,7 @@ export function buildClimateTrendOption({
       type: "value",
       min: typeof yAxisMin === "number" ? yAxisMin : undefined,
       max: typeof yAxisMax === "number" ? yAxisMax : undefined,
+      inverse: yAxisInverse,
       name: yAxisName,
       nameLocation: "middle",
       nameRotate: 90,
