@@ -86,6 +86,7 @@ function yearFromDateToken(value: string): string {
 function buildYearAxisLabelMap(labels: string[], yearStep = 1): Map<string, string> {
   const safeStep = Math.max(1, Math.floor(yearStep));
   const map = new Map<string, string>();
+  const labeledYears = new Set<string>();
   for (const label of labels) {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(label);
     const year = match?.[1] ?? yearFromDateToken(label);
@@ -99,11 +100,10 @@ function buildYearAxisLabelMap(labels: string[], yearStep = 1): Map<string, stri
       continue;
     }
 
-    const month = Number(match[2]);
-    const day = Number(match[3]);
     const numericYear = Number(year);
-    const isYearAnchor = month === 1 && day === 1;
-    const shouldShow = isYearAnchor && Number.isFinite(numericYear) && numericYear % safeStep === 0;
+    const isFirstPointForYear = !labeledYears.has(year);
+    const shouldShow = isFirstPointForYear && Number.isFinite(numericYear) && numericYear % safeStep === 0;
+    if (isFirstPointForYear) labeledYears.add(year);
     map.set(label, shouldShow ? year : "");
   }
   return map;

@@ -2271,7 +2271,7 @@ export function App() {
                 <div className="charts-grid climate-grid">
                   {iceSheetAndGlacierMetrics.map((metric) =>
                     renderTrendPanel(metric, {
-                      xAxisYearLabelStep: metric.key === "global_glacier_mass_balance" ? 5 : 2,
+                      xAxisYearLabelStep: 5,
                       showArea: false,
                       yAxisInverse: ICE_SHEET_LOSS_KEYS.has(metric.key),
                       color:
