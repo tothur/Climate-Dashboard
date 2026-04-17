@@ -20,7 +20,7 @@ const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim
 const OISST_NORTH_ATLANTIC_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json";
 const ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL = "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv";
 const ECMWF_PREINDUSTRIAL_OFFSET_C = 0.88;
-const CU_GLOBAL_MEAN_SEA_LEVEL_URL = "https://sealevel.colorado.edu/files/2025_rel1/gmsl_2025rel1_seasons_rmvd.txt";
+const SEA_LEVEL_RESEARCH_GROUP_URL = "https://sealevel.colorado.edu/";
 const NOAA_OCEAN_HEAT_CONTENT_2000M_URL =
   "https://www.ncei.noaa.gov/data/oceans/woa/DATA_ANALYSIS/3M_HEAT_CONTENT/DATA/basin/3month/ohc2000m_levitus_climdash_seasonal.csv";
 const NASA_CERES_EBAF_OPENDAP_BASE_URL = "https://opendap.larc.nasa.gov/opendap/CERES/EBAF/TOA_Edition4.2.1";
@@ -67,6 +67,30 @@ const MAP_KEYS: ClimateMapKey[] = [
   "global_sst",
   "global_sst_anomaly",
 ];
+const LOCAL_GENERATED_SERIES_MAX_AGE_DAYS: Record<keyof ClimateSeriesBundle, number> = {
+  global_surface_temperature: 20,
+  global_sea_surface_temperature: 45,
+  global_mean_sea_level: 450,
+  ocean_heat_content: 900,
+  earth_energy_imbalance: 220,
+  global_glacier_mass_balance: 1600,
+  antarctic_ice_sheet_mass_balance: 430,
+  greenland_ice_sheet_mass_balance: 430,
+  northern_hemisphere_surface_temperature: 20,
+  southern_hemisphere_surface_temperature: 20,
+  arctic_surface_temperature: 20,
+  antarctic_surface_temperature: 20,
+  north_atlantic_sea_surface_temperature: 45,
+  global_surface_temperature_anomaly: 20,
+  global_sea_surface_temperature_anomaly: 45,
+  daily_global_mean_temperature_anomaly: 20,
+  global_sea_ice_extent: 20,
+  arctic_sea_ice_extent: 20,
+  antarctic_sea_ice_extent: 20,
+  atmospheric_co2: 120,
+  atmospheric_ch4: 220,
+  atmospheric_aggi: 1000,
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -124,6 +148,37 @@ function monthDateFromUtcTimestamp(timestamp: number): string | null {
   return formatDateFromParts(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
 }
 
+function extractLatestGlobalMeanSeaLevelUrl(homepageHtml: string | null | undefined): string | null {
+  let latestYear = -Infinity;
+  let latestUrl: string | null = null;
+
+  for (const match of String(homepageHtml ?? "").matchAll(
+    /((?:https?:\/\/sealevel\.colorado\.edu)?\/files\/(\d{4})_rel1\/gmsl_\d{4}rel1_seasons_rmvd\.txt)/gi
+  )) {
+    const rawUrl = match[1];
+    const year = Number(match[2]);
+    if (!rawUrl || !Number.isFinite(year)) continue;
+    if (year <= latestYear) continue;
+    latestYear = year;
+    latestUrl = new URL(rawUrl, SEA_LEVEL_RESEARCH_GROUP_URL).toString();
+  }
+
+  return latestUrl;
+}
+
+function buildGlobalMeanSeaLevelCandidateUrls(homepageHtml: string | null | undefined): string[] {
+  const candidateUrls: string[] = [];
+  const discoveredUrl = extractLatestGlobalMeanSeaLevelUrl(homepageHtml);
+  if (discoveredUrl) candidateUrls.push(discoveredUrl);
+
+  const currentYear = new Date().getUTCFullYear();
+  for (let year = currentYear; year >= currentYear - 2; year -= 1) {
+    candidateUrls.push(`${SEA_LEVEL_RESEARCH_GROUP_URL}files/${year}_rel1/gmsl_${year}rel1_seasons_rmvd.txt`);
+  }
+
+  return Array.from(new Set(candidateUrls));
+}
+
 function normalizePoints(points: DailyPoint[]): DailyPoint[] {
   const map = new Map<string, number>();
   for (const point of points) {
@@ -147,6 +202,21 @@ function parseIsoDateToUtc(dateIso: string): number | null {
 function utcMidnightNow(): number {
   const now = new Date();
   return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+}
+
+function isFreshGeneratedSeriesBundle(series: Partial<ClimateSeriesBundle>): boolean {
+  const nowMidnight = utcMidnightNow();
+
+  return SERIES_KEYS.every((key) => {
+    const points = series[key];
+    if (!Array.isArray(points) || points.length === 0) return false;
+
+    const latestPoint = points[points.length - 1];
+    const latestTime = parseIsoDateToUtc(latestPoint.date);
+    if (latestTime == null) return false;
+
+    return nowMidnight - latestTime <= LOCAL_GENERATED_SERIES_MAX_AGE_DAYS[key] * DAY_MS;
+  });
 }
 
 function sanitizeSeries(
@@ -198,6 +268,17 @@ async function fetchText(url: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+async function loadGlobalMeanSeaLevelText(): Promise<string | null> {
+  const homepageHtml = await fetchText(SEA_LEVEL_RESEARCH_GROUP_URL);
+
+  for (const url of buildGlobalMeanSeaLevelCandidateUrls(homepageHtml)) {
+    const text = await fetchText(url);
+    if (text) return text;
+  }
+
+  return null;
 }
 
 function readGeneratedSeries(payload: unknown): Partial<ClimateSeriesBundle> | null {
@@ -315,6 +396,7 @@ async function loadGeneratedLocalDataSource(): Promise<DashboardDataSource | nul
 
   const parsedSeries = readGeneratedSeries(payload);
   if (!parsedSeries) return null;
+  if (!isFreshGeneratedSeriesBundle(parsedSeries)) return null;
   const ensoOutlook = readGeneratedEnsoOutlook(payload);
   const mapAssets = readGeneratedMaps(payload);
   const mapWarnings = readGeneratedMapWarnings(payload);
@@ -933,7 +1015,7 @@ interface OceanSeriesBundle {
 
 async function loadOceanSeriesBundle(): Promise<OceanSeriesBundle> {
   const [gmslText, ohcCsv, ceresContentsHtml] = await Promise.all([
-    fetchText(CU_GLOBAL_MEAN_SEA_LEVEL_URL),
+    loadGlobalMeanSeaLevelText(),
     fetchText(NOAA_OCEAN_HEAT_CONTENT_2000M_URL),
     fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL),
   ]);

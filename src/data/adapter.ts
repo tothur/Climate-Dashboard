@@ -82,7 +82,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       shortName: "CU Sea Level Research Group",
       descriptionEn: "Global mean sea-level anomaly time series from the University of Colorado Sea Level Research Group.",
       descriptionHu: "Globális átlagos tengerszint-anomália idősor a műholdas korszak kezdetétől (1993-tól), a Coloradói Egyetem Sea Level Research Group adatai alapján.",
-      url: "https://sealevel.colorado.edu/files/2025_rel1/gmsl_2025rel1_seasons_rmvd.txt",
+      url: "https://sealevel.colorado.edu/",
     },
   },
   ocean_heat_content: {

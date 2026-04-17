@@ -17,7 +17,7 @@ const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim
 const OISST_NORTH_ATLANTIC_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json";
 const ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL = "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv";
 const ECMWF_PREINDUSTRIAL_OFFSET_C = 0.88;
-const CU_GLOBAL_MEAN_SEA_LEVEL_URL = "https://sealevel.colorado.edu/files/2025_rel1/gmsl_2025rel1_seasons_rmvd.txt";
+const SEA_LEVEL_RESEARCH_GROUP_URL = "https://sealevel.colorado.edu/";
 const NOAA_OCEAN_HEAT_CONTENT_2000M_URL =
   "https://www.ncei.noaa.gov/data/oceans/woa/DATA_ANALYSIS/3M_HEAT_CONTENT/DATA/basin/3month/ohc2000m_levitus_climdash_seasonal.csv";
 const NASA_CERES_EBAF_OPENDAP_BASE_URL = "https://opendap.larc.nasa.gov/opendap/CERES/EBAF/TOA_Edition4.2.1";
@@ -172,6 +172,57 @@ function monthDateFromUtcTimestamp(timestamp) {
   if (!Number.isFinite(timestamp)) return null;
   const date = new Date(timestamp);
   return formatDateFromParts(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
+}
+
+function extractLatestGlobalMeanSeaLevelUrl(homepageHtml) {
+  let latestYear = -Infinity;
+  let latestUrl = null;
+
+  for (const match of String(homepageHtml ?? "").matchAll(
+    /((?:https?:\/\/sealevel\.colorado\.edu)?\/files\/(\d{4})_rel1\/gmsl_\d{4}rel1_seasons_rmvd\.txt)/gi
+  )) {
+    const rawUrl = match[1];
+    const year = Number(match[2]);
+    if (!rawUrl || !Number.isFinite(year)) continue;
+    if (year <= latestYear) continue;
+    latestYear = year;
+    latestUrl = new URL(rawUrl, SEA_LEVEL_RESEARCH_GROUP_URL).toString();
+  }
+
+  return latestUrl;
+}
+
+function buildGlobalMeanSeaLevelCandidateUrls(homepageHtml) {
+  const candidateUrls = [];
+  const discoveredUrl = extractLatestGlobalMeanSeaLevelUrl(homepageHtml);
+  if (discoveredUrl) candidateUrls.push(discoveredUrl);
+
+  const currentYear = new Date().getUTCFullYear();
+  for (let year = currentYear; year >= currentYear - 2; year -= 1) {
+    candidateUrls.push(`${SEA_LEVEL_RESEARCH_GROUP_URL}files/${year}_rel1/gmsl_${year}rel1_seasons_rmvd.txt`);
+  }
+
+  return Array.from(new Set(candidateUrls));
+}
+
+async function loadGlobalMeanSeaLevelSource() {
+  let homepageHtml = "";
+  try {
+    homepageHtml = await fetchText(SEA_LEVEL_RESEARCH_GROUP_URL);
+  } catch {}
+
+  let lastError = null;
+  for (const url of buildGlobalMeanSeaLevelCandidateUrls(homepageHtml)) {
+    try {
+      const text = await fetchText(url);
+      return { text, sourceUrl: url };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  const reason = lastError instanceof Error ? lastError.message : "no release URL could be resolved";
+  throw new Error(`Failed to fetch a Colorado global mean sea level release: ${reason}`);
 }
 
 function parseEnglishLongDateToIso(rawDate) {
@@ -1295,7 +1346,7 @@ async function updateOnce() {
   const [
     surfacePayload,
     sstPayload,
-    gmslText,
+    gmslSource,
     ohcCsv,
     nhPayload,
     shPayload,
@@ -1319,7 +1370,7 @@ async function updateOnce() {
   ] = await Promise.all([
     fetchJson(ERA5_GLOBAL_SURFACE_TEMP_URL),
     fetchJson(OISST_GLOBAL_SST_URL),
-    fetchText(CU_GLOBAL_MEAN_SEA_LEVEL_URL),
+    loadGlobalMeanSeaLevelSource(),
     fetchText(NOAA_OCEAN_HEAT_CONTENT_2000M_URL),
     fetchJson(ERA5_NH_SURFACE_TEMP_URL),
     fetchJson(ERA5_SH_SURFACE_TEMP_URL),
@@ -1362,7 +1413,7 @@ async function updateOnce() {
     maxValue: 10,
     maxAgeDays: 45,
   });
-  const globalMeanSeaLevel = sanitizeSeries(parseGlobalMeanSeaLevelText(gmslText), {
+  const globalMeanSeaLevel = sanitizeSeries(parseGlobalMeanSeaLevelText(gmslSource.text), {
     minValue: -200,
     maxValue: 300,
     maxAgeDays: 450,
@@ -1557,7 +1608,7 @@ async function updateOnce() {
     sources: {
       global_surface_temperature: ERA5_GLOBAL_SURFACE_TEMP_URL,
       global_sea_surface_temperature: OISST_GLOBAL_SST_URL,
-      global_mean_sea_level: CU_GLOBAL_MEAN_SEA_LEVEL_URL,
+      global_mean_sea_level: gmslSource.sourceUrl,
       ocean_heat_content: NOAA_OCEAN_HEAT_CONTENT_2000M_URL,
       earth_energy_imbalance: ceresFileName
         ? buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName)
