@@ -1007,6 +1007,29 @@ h3 {
   color: #92400e;
 }
 
+.footer-warnings {
+  border-radius: 14px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.08);
+  color: color-mix(in srgb, var(--text) 82%, var(--muted));
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.footer-warnings summary {
+  cursor: pointer;
+  padding: 7px 10px;
+  font-weight: 720;
+  color: #92400e;
+}
+
+.footer-warnings ul {
+  margin: 0;
+  padding: 0 12px 10px 26px;
+  display: grid;
+  gap: 4px;
+}
+
 .footer-sources {
   display: grid;
   gap: 8px;
@@ -2370,6 +2393,16 @@ body.panel-expanded-lock {
 [data-theme="dark"] .footer-chip.warn {
   border-color: rgba(251, 191, 36, 0.45);
   background: rgba(146, 64, 14, 0.5);
+  color: #fef3c7;
+}
+
+[data-theme="dark"] .footer-warnings {
+  border-color: rgba(251, 191, 36, 0.38);
+  background: rgba(146, 64, 14, 0.26);
+  color: #fde68a;
+}
+
+[data-theme="dark"] .footer-warnings summary {
   color: #fef3c7;
 }
 

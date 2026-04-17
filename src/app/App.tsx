@@ -185,6 +185,7 @@ const STRINGS = {
     sourceLiveNote: "All series loaded from remote source feeds.",
     sourceMixedNote: "One or more live feeds failed; fallback data fills gaps.",
     sourceBundledNote: "All live feeds failed; bundled fallback drives every chart.",
+    sourceWarningsTitle: "Data warnings",
     sourceCardsTitle: "Primary sources",
     sourceLabel: "Source",
     chartFullscreenEnter: "Full screen",
@@ -296,6 +297,7 @@ const STRINGS = {
     sourceLiveNote: "Minden adatsor távoli élő adatforrásból töltődött be.",
     sourceMixedNote: "Egy vagy több élő adatforrás nem elérhető; a hiányt tartalék adatok pótolják.",
     sourceBundledNote: "Minden élő adatforrás nem elérhető; minden grafikon tartalék adatokat használ.",
+    sourceWarningsTitle: "Adatfigyelmeztetések",
     sourceCardsTitle: "Elsődleges források",
     sourceLabel: "Forrás",
     chartFullscreenEnter: "Teljes képernyő",
@@ -433,6 +435,36 @@ function buildMapAssetUrl(path: string | null | undefined, fallbackFileName: str
   const normalizedPath = typeof path === "string" ? path.replace(/^\/+/, "").trim() : "";
   const baseUrl = normalizedPath ? `${import.meta.env.BASE_URL}${normalizedPath}` : `${LOCAL_MAP_ASSET_BASE_URL}/${fallbackFileName}`;
   return `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}v=${versionToken}`;
+}
+
+function buildMapImageCandidates({
+  path,
+  fallbackFileName,
+  versionToken,
+  remoteUrls,
+  preferGeneratedMap = true,
+}: {
+  path: string | null | undefined;
+  fallbackFileName: string;
+  versionToken: string;
+  remoteUrls: Array<string | null | undefined>;
+  preferGeneratedMap?: boolean;
+}): { imageUrl: string; fallbackImageUrls: string[] } {
+  const hasGeneratedMapMetadata = typeof path === "string" && path.trim().length > 0;
+  const localImageUrl = buildMapAssetUrl(path, fallbackFileName, versionToken);
+  const remoteImageUrls = uniqueNonEmptyStrings(remoteUrls);
+
+  if ((hasGeneratedMapMetadata && preferGeneratedMap) || !remoteImageUrls.length) {
+    return {
+      imageUrl: localImageUrl,
+      fallbackImageUrls: remoteImageUrls,
+    };
+  }
+
+  return {
+    imageUrl: remoteImageUrls[0],
+    fallbackImageUrls: [...remoteImageUrls.slice(1), localImageUrl],
+  };
 }
 
 function formatMapImageAlt(title: string, mapDateIso: string | null, language: Language): string {
@@ -1744,14 +1776,48 @@ export function App() {
     const surfaceAnomalyFreshness = mapFreshnessBadge(surfaceAnomalyMapDateIso, language, t);
     const sstFreshness = mapFreshnessBadge(sstMapDateIso, language, t);
     const sstAnomalyFreshness = mapFreshnessBadge(sstAnomalyMapDateIso, language, t);
+    const surfaceImageCandidates = buildMapImageCandidates({
+      path: mapAssets.global_2m_temperature?.path,
+      fallbackFileName: LOCAL_MAP_FILENAMES.global_2m_temperature,
+      versionToken: mapVersion,
+      remoteUrls: [mapAssets.global_2m_temperature?.sourceUrl, ...t2MapUrls.map((entry) => entry.t2)],
+      preferGeneratedMap: surfaceFreshness?.tone !== "stale",
+    });
+    const surfaceAnomalyImageCandidates = buildMapImageCandidates({
+      path: mapAssets.global_2m_temperature_anomaly?.path,
+      fallbackFileName: LOCAL_MAP_FILENAMES.global_2m_temperature_anomaly,
+      versionToken: mapVersion,
+      remoteUrls: [
+        mapAssets.global_2m_temperature_anomaly?.sourceUrl,
+        ...t2MapUrls.map((entry) => entry.t2Anomaly),
+      ],
+      preferGeneratedMap: surfaceAnomalyFreshness?.tone !== "stale",
+    });
+    const sstImageCandidates = buildMapImageCandidates({
+      path: mapAssets.global_sst?.path,
+      fallbackFileName: LOCAL_MAP_FILENAMES.global_sst,
+      versionToken: mapVersion,
+      remoteUrls: [mapAssets.global_sst?.sourceUrl, ...sstMapUrls.map((entry) => entry.sst)],
+      preferGeneratedMap: sstFreshness?.tone !== "stale",
+    });
+    const sstAnomalyImageCandidates = buildMapImageCandidates({
+      path: mapAssets.global_sst_anomaly?.path,
+      fallbackFileName: LOCAL_MAP_FILENAMES.global_sst_anomaly,
+      versionToken: mapVersion,
+      remoteUrls: [
+        mapAssets.global_sst_anomaly?.sourceUrl,
+        ...sstMapUrls.map((entry) => entry.sstAnomaly),
+      ],
+      preferGeneratedMap: sstAnomalyFreshness?.tone !== "stale",
+    });
 
     return [
       {
         key: "map-2m-temperature",
         title: t.map2mTemperatureTitle,
         subtitle: surfaceSubtitle,
-        imageUrl: buildMapAssetUrl(mapAssets.global_2m_temperature?.path, LOCAL_MAP_FILENAMES.global_2m_temperature, mapVersion),
-        fallbackImageUrls: uniqueNonEmptyStrings([mapAssets.global_2m_temperature?.sourceUrl, ...t2MapUrls.map((entry) => entry.t2)]),
+        imageUrl: surfaceImageCandidates.imageUrl,
+        fallbackImageUrls: surfaceImageCandidates.fallbackImageUrls,
         imageAlt: formatMapImageAlt(t.map2mTemperatureTitle, surfaceMapDisplayDateIso, language),
         freshness: surfaceFreshness,
       },
@@ -1759,15 +1825,8 @@ export function App() {
         key: "map-2m-temperature-anomaly",
         title: t.map2mTemperatureAnomalyTitle,
         subtitle: surfaceSubtitle,
-        imageUrl: buildMapAssetUrl(
-          mapAssets.global_2m_temperature_anomaly?.path,
-          LOCAL_MAP_FILENAMES.global_2m_temperature_anomaly,
-          mapVersion
-        ),
-        fallbackImageUrls: uniqueNonEmptyStrings([
-          mapAssets.global_2m_temperature_anomaly?.sourceUrl,
-          ...t2MapUrls.map((entry) => entry.t2Anomaly),
-        ]),
+        imageUrl: surfaceAnomalyImageCandidates.imageUrl,
+        fallbackImageUrls: surfaceAnomalyImageCandidates.fallbackImageUrls,
         imageAlt: formatMapImageAlt(t.map2mTemperatureAnomalyTitle, surfaceAnomalyMapDisplayDateIso, language),
         freshness: surfaceAnomalyFreshness,
       },
@@ -1775,8 +1834,8 @@ export function App() {
         key: "map-sst",
         title: t.mapSstTitle,
         subtitle: sstSubtitle,
-        imageUrl: buildMapAssetUrl(mapAssets.global_sst?.path, LOCAL_MAP_FILENAMES.global_sst, mapVersion),
-        fallbackImageUrls: uniqueNonEmptyStrings([mapAssets.global_sst?.sourceUrl, ...sstMapUrls.map((entry) => entry.sst)]),
+        imageUrl: sstImageCandidates.imageUrl,
+        fallbackImageUrls: sstImageCandidates.fallbackImageUrls,
         imageAlt: formatMapImageAlt(t.mapSstTitle, sstMapDisplayDateIso, language),
         freshness: sstFreshness,
       },
@@ -1784,11 +1843,8 @@ export function App() {
         key: "map-sst-anomaly",
         title: t.mapSstAnomalyTitle,
         subtitle: sstSubtitle,
-        imageUrl: buildMapAssetUrl(mapAssets.global_sst_anomaly?.path, LOCAL_MAP_FILENAMES.global_sst_anomaly, mapVersion),
-        fallbackImageUrls: uniqueNonEmptyStrings([
-          mapAssets.global_sst_anomaly?.sourceUrl,
-          ...sstMapUrls.map((entry) => entry.sstAnomaly),
-        ]),
+        imageUrl: sstAnomalyImageCandidates.imageUrl,
+        fallbackImageUrls: sstAnomalyImageCandidates.fallbackImageUrls,
         imageAlt: formatMapImageAlt(t.mapSstAnomalyTitle, sstAnomalyMapDisplayDateIso, language),
         freshness: sstAnomalyFreshness,
       },
@@ -1897,6 +1953,10 @@ export function App() {
       : snapshot.sourceMode === "mixed"
         ? t.sourceMixed
         : t.sourceBundled;
+  const footerWarnings = useMemo(
+    () => uniqueNonEmptyStrings([...snapshot.warnings, ...(dataSource.mapWarnings ?? [])]),
+    [snapshot.warnings, dataSource.mapWarnings]
+  );
   const ensoOutlookFreshness = ensoFreshnessBadge(ensoOutlook, language, t);
   const dailyGlobalMeanAnomalyFreshness = dailyGlobalMeanAnomalyMetric
     ? metricFreshnessBadge(dailyGlobalMeanAnomalyMetric, language, t)
@@ -2577,6 +2637,18 @@ export function App() {
             {t.footerUpdated}: {formatDateTimeLabel(snapshot.updatedAtIso, language)}
           </span>
         </div>
+        {footerWarnings.length ? (
+          <details className="footer-warnings">
+            <summary>
+              {t.sourceWarningsTitle} ({footerWarnings.length})
+            </summary>
+            <ul>
+              {footerWarnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
         <div className="footer-sources">
           <strong className="footer-sources-title">{t.sourceCardsTitle}</strong>
           <div className="footer-sources-links">

@@ -27,6 +27,13 @@ const NASA_CERES_EBAF_OPENDAP_BASE_URL = "https://opendap.larc.nasa.gov/opendap/
 const NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL = `${NASA_CERES_EBAF_OPENDAP_BASE_URL}/contents.html`;
 const NASA_CERES_EBAF_FILE_PATTERN = /CERES_EBAF-TOA_Edition4\.2\.1_\d{6}-\d{6}\.nc/g;
 const NASA_CERES_EBAF_TIME_BASE_UTC = Date.UTC(2000, 2, 1);
+const WGMS_MASS_CHANGE_ESTIMATES_URL = "https://wgms.ch/mass_change_estimates/";
+const WGMS_AMCE_ZIP_PATTERN = /(?:https:\/\/wgms\.ch)?\/downloads\/wgms-amce-\d{4}-\d{2}-\d{2}\.zip/g;
+const WGMS_AMCE_GLOBAL_CSV_ENTRY = "global.csv";
+const NASA_ANTARCTICA_MASS_VARIATION_CHART_URL =
+  "https://assets.science.nasa.gov/content/dam/science/microapps/vital-signs/data/charts/ice-sheets-antarctica.json";
+const NASA_GREENLAND_MASS_VARIATION_CHART_URL =
+  "https://assets.science.nasa.gov/content/dam/science/microapps/vital-signs/data/charts/ice-sheets-greenland.json";
 const NSIDC_NORTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv";
 const NSIDC_SOUTH_DAILY_EXTENT_URL =
@@ -265,6 +272,16 @@ async function fetchText(url: string): Promise<string | null> {
     const response = await fetch(url, { cache: "no-cache" });
     if (!response.ok) return null;
     return await response.text();
+  } catch {
+    return null;
+  }
+}
+
+async function fetchBinary(url: string): Promise<Uint8Array | null> {
+  try {
+    const response = await fetch(url, { cache: "no-cache" });
+    if (!response.ok) return null;
+    return new Uint8Array(await response.arrayBuffer());
   } catch {
     return null;
   }
@@ -805,6 +822,163 @@ function parseCeresEarthEnergyImbalanceAscii(rawText: string): DailyPoint[] {
   return normalizePoints(points);
 }
 
+function readUint16Le(bytes: Uint8Array, offset: number): number {
+  return bytes[offset] | (bytes[offset + 1] << 8);
+}
+
+function readUint32Le(bytes: Uint8Array, offset: number): number {
+  return (
+    bytes[offset] |
+    (bytes[offset + 1] << 8) |
+    (bytes[offset + 2] << 16) |
+    (bytes[offset + 3] << 24)
+  ) >>> 0;
+}
+
+async function inflateRawDeflateText(bytes: Uint8Array): Promise<string> {
+  const DecompressionStreamCtor = (globalThis as unknown as {
+    DecompressionStream?: new (format: string) => unknown;
+  }).DecompressionStream;
+  if (!DecompressionStreamCtor) {
+    throw new Error("Browser does not support DecompressionStream.");
+  }
+
+  let lastError: unknown = null;
+  for (const format of ["deflate-raw", "deflate"]) {
+    try {
+      const compressedBuffer = new ArrayBuffer(bytes.byteLength);
+      new Uint8Array(compressedBuffer).set(bytes);
+      const compressedStream = new Blob([compressedBuffer]).stream();
+      const inflatedStream = compressedStream.pipeThrough(new DecompressionStreamCtor(format) as never);
+      return await new Response(inflatedStream).text();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  const reason = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`Unable to decompress ZIP entry: ${reason}`);
+}
+
+async function extractZipEntryText(zipBytes: Uint8Array, entryName: string): Promise<string | null> {
+  if (zipBytes.length < 22) return null;
+
+  let eocdOffset = -1;
+  for (let offset = zipBytes.length - 22; offset >= 0; offset -= 1) {
+    if (readUint32Le(zipBytes, offset) === 0x06054b50) {
+      eocdOffset = offset;
+      break;
+    }
+  }
+  if (eocdOffset < 0) return null;
+
+  const entryCount = readUint16Le(zipBytes, eocdOffset + 10);
+  const centralDirectoryOffset = readUint32Le(zipBytes, eocdOffset + 16);
+  const decoder = new TextDecoder();
+  let offset = centralDirectoryOffset;
+
+  for (let index = 0; index < entryCount; index += 1) {
+    if (readUint32Le(zipBytes, offset) !== 0x02014b50) break;
+
+    const compressionMethod = readUint16Le(zipBytes, offset + 10);
+    const compressedSize = readUint32Le(zipBytes, offset + 20);
+    const fileNameLength = readUint16Le(zipBytes, offset + 28);
+    const extraFieldLength = readUint16Le(zipBytes, offset + 30);
+    const commentLength = readUint16Le(zipBytes, offset + 32);
+    const localHeaderOffset = readUint32Le(zipBytes, offset + 42);
+    const fileName = decoder.decode(zipBytes.subarray(offset + 46, offset + 46 + fileNameLength));
+
+    if (fileName === entryName) {
+      if (readUint32Le(zipBytes, localHeaderOffset) !== 0x04034b50) return null;
+
+      const localFileNameLength = readUint16Le(zipBytes, localHeaderOffset + 26);
+      const localExtraLength = readUint16Le(zipBytes, localHeaderOffset + 28);
+      const dataStart = localHeaderOffset + 30 + localFileNameLength + localExtraLength;
+      const dataEnd = dataStart + compressedSize;
+      const compressedBytes = zipBytes.subarray(dataStart, dataEnd);
+
+      if (compressionMethod === 0) return decoder.decode(compressedBytes);
+      if (compressionMethod === 8) return await inflateRawDeflateText(compressedBytes);
+      return null;
+    }
+
+    offset += 46 + fileNameLength + extraFieldLength + commentLength;
+  }
+
+  return null;
+}
+
+function extractWgmsAmceZipUrl(rawHtml: string | null | undefined): string | null {
+  const matches = String(rawHtml ?? "").match(WGMS_AMCE_ZIP_PATTERN) ?? [];
+  if (!matches.length) return null;
+  return new URL(matches[matches.length - 1], WGMS_MASS_CHANGE_ESTIMATES_URL).toString();
+}
+
+function parseWgmsGlobalGlacierCsv(rawCsv: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
+  let yearColumn = -1;
+  let gtColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const columns = line.split(",").map((column) => column.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((column) => column.toLowerCase());
+      yearColumn = header.indexOf("year");
+      gtColumn = header.indexOf("gt");
+      hasHeader = true;
+      continue;
+    }
+
+    if (yearColumn < 0 || gtColumn < 0) continue;
+    if (columns.length <= yearColumn || columns.length <= gtColumn) continue;
+
+    const year = Number(columns[yearColumn]);
+    const value = toFiniteNumber(columns[gtColumn]);
+    if (!Number.isFinite(year) || year < 1900 || year > 2200 || value == null) continue;
+
+    const date = formatDateFromParts(year, 1, 1);
+    if (!date) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseNasaMassVariationChartJson(payload: unknown): DailyPoint[] {
+  if (!isRecord(payload) || !Array.isArray(payload.items)) return [];
+
+  const points: DailyPoint[] = [];
+  for (const item of payload.items) {
+    if (!isRecord(item) || item.y == null) continue;
+    const year = Number(item.year);
+    const month = Number(item.month);
+    const day = Number(item.day);
+    const value = toFiniteNumber(item.y);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day) || value == null) continue;
+    const date = formatDateFromParts(year, month, day);
+    if (!date) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
+function buildCumulativeLossSeries(points: DailyPoint[]): DailyPoint[] {
+  const normalized = normalizePoints(points);
+  if (!normalized.length) return [];
+
+  const baseline = normalized[0].value;
+  return normalized.map((point) => ({
+    date: point.date,
+    value: Math.round((baseline - point.value) * 1000) / 1000,
+  }));
+}
+
 function mergeSeaIceSeries(north: DailyPoint[], south: DailyPoint[]): DailyPoint[] {
   const northMap = new Map<string, number>(north.map((point) => [point.date, point.value]));
   const southMap = new Map<string, number>(south.map((point) => [point.date, point.value]));
@@ -1064,6 +1238,55 @@ async function loadDailyGlobalMeanTemperatureAnomalySeries(): Promise<DailyPoint
   return points.length ? points : null;
 }
 
+async function loadGlobalGlacierMassBalanceSeries(): Promise<DailyPoint[] | null> {
+  const wgmsHtml = await fetchText(WGMS_MASS_CHANGE_ESTIMATES_URL);
+  const wgmsAmceZipUrl = extractWgmsAmceZipUrl(wgmsHtml);
+  if (!wgmsAmceZipUrl) return null;
+
+  const wgmsAmceZipBytes = await fetchBinary(wgmsAmceZipUrl);
+  if (!wgmsAmceZipBytes) return null;
+
+  const wgmsGlobalCsv = await extractZipEntryText(wgmsAmceZipBytes, WGMS_AMCE_GLOBAL_CSV_ENTRY);
+  if (!wgmsGlobalCsv) return null;
+
+  const points = sanitizeSeries(parseWgmsGlobalGlacierCsv(wgmsGlobalCsv), {
+    minValue: -1200,
+    maxValue: 250,
+    maxAgeDays: 1600,
+  });
+  return points.length ? points : null;
+}
+
+async function loadIceSheetMassLossSeries(url: string, maxValue: number): Promise<DailyPoint[] | null> {
+  const payload = await fetchJson(url);
+  const points = sanitizeSeries(buildCumulativeLossSeries(parseNasaMassVariationChartJson(payload)), {
+    minValue: 0,
+    maxValue,
+    maxAgeDays: 430,
+  });
+  return points.length ? points : null;
+}
+
+interface IceSheetAndGlacierSeriesBundle {
+  globalGlacierMassBalance: DailyPoint[] | null;
+  antarcticIceSheetMassBalance: DailyPoint[] | null;
+  greenlandIceSheetMassBalance: DailyPoint[] | null;
+}
+
+async function loadIceSheetAndGlacierSeriesBundle(): Promise<IceSheetAndGlacierSeriesBundle> {
+  const [glacierResult, antarcticResult, greenlandResult] = await Promise.allSettled([
+    loadGlobalGlacierMassBalanceSeries(),
+    loadIceSheetMassLossSeries(NASA_ANTARCTICA_MASS_VARIATION_CHART_URL, 4000),
+    loadIceSheetMassLossSeries(NASA_GREENLAND_MASS_VARIATION_CHART_URL, 7000),
+  ]);
+
+  return {
+    globalGlacierMassBalance: glacierResult.status === "fulfilled" ? glacierResult.value : null,
+    antarcticIceSheetMassBalance: antarcticResult.status === "fulfilled" ? antarcticResult.value : null,
+    greenlandIceSheetMassBalance: greenlandResult.status === "fulfilled" ? greenlandResult.value : null,
+  };
+}
+
 export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
   const localDataSource = await loadGeneratedLocalDataSource();
   if (localDataSource) return localDataSource;
@@ -1071,8 +1294,18 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
   const warnings: string[] = [];
   const liveSeries: Partial<ClimateSeriesBundle> = {};
 
-  const [surfaceResult, sstResult, oceanResult, regionalResult, seaIceResult, co2Result, ch4Result, aggiResult, dailyGlobalMeanAnomalyResult] =
-    await Promise.allSettled([
+  const [
+    surfaceResult,
+    sstResult,
+    oceanResult,
+    regionalResult,
+    seaIceResult,
+    co2Result,
+    ch4Result,
+    aggiResult,
+    dailyGlobalMeanAnomalyResult,
+    iceSheetAndGlacierResult,
+  ] = await Promise.allSettled([
     loadSurfaceTempSeriesBundle(),
     loadSeaSurfaceTempSeriesBundle(),
     loadOceanSeriesBundle(),
@@ -1082,6 +1315,7 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     loadCh4Series(),
     loadAggiSeries(),
     loadDailyGlobalMeanTemperatureAnomalySeries(),
+    loadIceSheetAndGlacierSeriesBundle(),
   ]);
 
   if (surfaceResult.status === "fulfilled" && surfaceResult.value.absolute?.length) {
@@ -1218,9 +1452,29 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     warnings.push("Live Daily Global Mean Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
   }
 
-  warnings.push("Live Global Glacier Mass Balance is only available through the generated local dataset snapshot; using bundled fallback.");
-  warnings.push("Live Antarctic Ice Sheet Mass Loss is only available through the generated local dataset snapshot; using bundled fallback.");
-  warnings.push("Live Greenland Ice Sheet Mass Loss is only available through the generated local dataset snapshot; using bundled fallback.");
+  if (iceSheetAndGlacierResult.status === "fulfilled") {
+    if (iceSheetAndGlacierResult.value.globalGlacierMassBalance?.length) {
+      liveSeries.global_glacier_mass_balance = iceSheetAndGlacierResult.value.globalGlacierMassBalance;
+    } else {
+      warnings.push("Live Global Glacier Mass Balance feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (iceSheetAndGlacierResult.value.antarcticIceSheetMassBalance?.length) {
+      liveSeries.antarctic_ice_sheet_mass_balance = iceSheetAndGlacierResult.value.antarcticIceSheetMassBalance;
+    } else {
+      warnings.push("Live Antarctic Ice Sheet Mass Loss feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (iceSheetAndGlacierResult.value.greenlandIceSheetMassBalance?.length) {
+      liveSeries.greenland_ice_sheet_mass_balance = iceSheetAndGlacierResult.value.greenlandIceSheetMassBalance;
+    } else {
+      warnings.push("Live Greenland Ice Sheet Mass Loss feed was unavailable or stale; using bundled fallback.");
+    }
+  } else {
+    warnings.push("Live Global Glacier Mass Balance feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Antarctic Ice Sheet Mass Loss feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Greenland Ice Sheet Mass Loss feed was unavailable or stale; using bundled fallback.");
+  }
 
   return createDataSourceFromSeries({
     series: liveSeries,
