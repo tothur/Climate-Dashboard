@@ -136,6 +136,7 @@ const STRINGS = {
     temperatureAnomalySectionNote:
       "Global and sea-surface anomaly cards use a 1991-2020 climatology; daily and annual global-mean anomaly charts use an ERA5 preindustrial (1850-1900) estimate.",
     dailyGlobalTemperatureAnomalyTitle: "Daily Global Mean Temperature Anomaly",
+    dailyGlobalTemperatureAnomaly365DayAverage: "365-day average",
     dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, estimated 1850-1900 baseline)",
     annualGlobalTemperatureAnomalyTitle: "Annual Global Temperature Anomaly",
     annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, estimated 1850-1900 baseline)",
@@ -248,6 +249,7 @@ const STRINGS = {
     temperatureAnomalySectionNote:
       "A globális felszíni és tengerfelszíni anomáliák 1991-2020-as klimatológiára épülnek; a napi és éves globális átlaganomália-grafikonok ERA5-alapú, becsült 1850-1900-as bázishoz viszonyított értékeket mutatnak.",
     dailyGlobalTemperatureAnomalyTitle: "Napi globális átlaghőmérséklet-anomália",
+    dailyGlobalTemperatureAnomaly365DayAverage: "365 napos átlag",
     dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850-1900-as referencia)",
     annualGlobalTemperatureAnomalyTitle: "Éves globális hőmérsékleti anomália",
     annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850-1900-as referencia)",
@@ -1607,6 +1609,10 @@ export function App() {
     () => (dailyGlobalMeanAnomalyMetric ? buildAnnualMeanSeries(dailyGlobalMeanAnomalyMetric.points) : []),
     [dailyGlobalMeanAnomalyMetric]
   );
+  const dailyGlobalMeanAnomaly365DayPoints = useMemo(
+    () => (dailyGlobalMeanAnomalyMetric ? buildTrailingMeanSeries(dailyGlobalMeanAnomalyMetric.points, 365) : []),
+    [dailyGlobalMeanAnomalyMetric]
+  );
   const latestAnnualGlobalMeanAnomaly = useMemo(() => {
     if (!annualGlobalMeanAnomalyPoints.length) return null;
     const latest = annualGlobalMeanAnomalyPoints[annualGlobalMeanAnomalyPoints.length - 1];
@@ -2119,7 +2125,7 @@ export function App() {
                       seriesName: t.dailyGlobalTemperatureAnomalyTitle,
                       unit: dailyGlobalMeanAnomalyMetric.unit,
                       decimals: dailyGlobalMeanAnomalyMetric.decimals,
-                      lineWidth: 2,
+                      lineWidth: 1.15,
                       yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
                       yAxisMax: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).max,
                       yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
@@ -2129,6 +2135,16 @@ export function App() {
                       showLegend: false,
                       compact,
                       dark: resolvedTheme === "dark",
+                      color: resolvedTheme === "dark" ? "rgba(125, 211, 252, 0.58)" : "rgba(147, 197, 253, 0.68)",
+                      showArea: false,
+                      overlaySeries: [
+                        {
+                          points: dailyGlobalMeanAnomaly365DayPoints,
+                          seriesName: t.dailyGlobalTemperatureAnomaly365DayAverage,
+                          color: resolvedTheme === "dark" ? "#38bdf8" : "#2563eb",
+                          lineWidth: 3.6,
+                        },
+                      ],
                       referenceLines: [
                         { value: 1.5, label: "1.5°C", color: resolvedTheme === "dark" ? "#fbbf24" : "#f59e0b" },
                         { value: 2, label: "2.0°C", color: resolvedTheme === "dark" ? "#f87171" : "#dc2626" },

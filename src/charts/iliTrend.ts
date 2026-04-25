@@ -20,6 +20,12 @@ interface BuildClimateTrendOptionArgs {
   dark?: boolean;
   color?: string;
   showArea?: boolean;
+  overlaySeries?: Array<{
+    points: DailyPoint[];
+    seriesName: string;
+    color?: string;
+    lineWidth?: number;
+  }>;
   referenceLines?: Array<{
     value: number;
     label: string;
@@ -413,6 +419,7 @@ export function buildClimateTrendOption({
   dark = false,
   color,
   showArea = true,
+  overlaySeries = [],
   referenceLines,
   labels,
 }: BuildClimateTrendOptionArgs): EChartsOption {
@@ -456,6 +463,27 @@ export function buildClimateTrendOption({
   const xLabels = points.map((point) => point.date);
   const values = points.map((point) => point.value);
   const hasData = xLabels.length > 0;
+  const overlaySeriesOptions = overlaySeries.map((overlay) => {
+    const valuesByDate = new Map(
+      overlay.points
+        .filter((point) => Number.isFinite(point.value))
+        .map((point) => [point.date, point.value] as const)
+    );
+    return {
+      name: overlay.seriesName,
+      type: "line" as const,
+      data: hasData ? xLabels.map((label) => valuesByDate.get(label) ?? null) : [null],
+      smooth: 0.24,
+      showSymbol: false,
+      connectNulls: false,
+      z: 4,
+      lineStyle: {
+        color: overlay.color ?? lineColor,
+        width: overlay.lineWidth ?? lineWidth,
+        cap: "round" as const,
+      },
+    };
+  });
 
   const dataZoom = disableDataZoom ? undefined : buildCompactDataZoom(xLabels, compact, palette);
   const formatter = formatterFor(decimals);
@@ -514,12 +542,13 @@ export function buildClimateTrendOption({
         const rows = Array.isArray(params) ? params : [];
         if (!rows.length) return "";
         const axisLabel = (rows[0] as { axisValueLabel?: string }).axisValueLabel ?? "";
-        const metricRow = rows[0] as { marker?: string; seriesName?: string; data?: number | null };
-        const value =
-          typeof metricRow.data === "number" && Number.isFinite(metricRow.data)
-            ? `${formatter.format(metricRow.data)} ${unit}`
-            : "-";
-        return `${axisLabel}<br/>${metricRow.marker ?? ""} ${metricRow.seriesName ?? ""}: ${value}`;
+        const lines = [axisLabel];
+        for (const row of rows as Array<{ marker?: string; seriesName?: string; data?: number | null }>) {
+          const value =
+            typeof row.data === "number" && Number.isFinite(row.data) ? `${formatter.format(row.data)} ${unit}` : "-";
+          lines.push(`${row.marker ?? ""} ${row.seriesName ?? ""}: ${value}`);
+        }
+        return lines.join("<br/>");
       },
     },
     legend: {
@@ -606,6 +635,7 @@ export function buildClimateTrendOption({
             }
           : undefined,
       },
+      ...overlaySeriesOptions,
     ],
   };
 }
