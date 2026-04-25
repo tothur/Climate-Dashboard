@@ -85,6 +85,10 @@ const TOP_SUMMARY_ORDER: ClimateMetricSeries["key"][] = [
   "atmospheric_ch4",
 ];
 const TOP_SUMMARY_RANK = new Map(TOP_SUMMARY_ORDER.map((key, index) => [key, index]));
+const RECORD_WARNING_KEYS: ClimateMetricSeries["key"][] = [
+  "global_surface_temperature_anomaly",
+  "global_sea_surface_temperature_anomaly",
+];
 const SEA_ICE_SUMMARY_ORDER: ClimateMetricSeries["key"][] = [
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
@@ -120,6 +124,11 @@ const STRINGS = {
     latestLabel: "Latest",
     latestAnnualLabel: "Latest annual value",
     latestSignalsAria: "Latest climate indicators",
+    recordWarningsAria: "Record climate warnings",
+    recordWarningKicker: "Record warning",
+    recordWarningDateMeta: "Date",
+    highestEverGlobalSurfaceTemperatureAnomalyTitle: "Highest Ever Global Surface Temperature Anomaly",
+    highestEverGlobalSeaSurfaceTemperatureAnomalyTitle: "Highest Ever Global Sea Surface Temperature Anomaly",
     climateIndicatorsTitle: "Climate Indicators",
     climateIndicatorsNote:
       "Monthly Jan-Dec view with daily points for temperature and sea-ice indicators, plus long-term ocean-state and planetary energy-balance charts.",
@@ -233,6 +242,11 @@ const STRINGS = {
     latestLabel: "Legfrissebb",
     latestAnnualLabel: "Legfrissebb éves érték",
     latestSignalsAria: "Legfrissebb klímaindikátorok",
+    recordWarningsAria: "Rekord éghajlati figyelmeztetések",
+    recordWarningKicker: "Rekordfigyelmeztetés",
+    recordWarningDateMeta: "Dátum",
+    highestEverGlobalSurfaceTemperatureAnomalyTitle: "Mindenkori legmagasabb globális felszíni hőmérsékleti anomália",
+    highestEverGlobalSeaSurfaceTemperatureAnomalyTitle: "Mindenkori legmagasabb globális tengerfelszíni hőmérsékleti anomália",
     climateIndicatorsTitle: "Éghajlati Indikátorok",
     climateIndicatorsNote:
       "Január-decemberi nézet napi adatokkal a hőmérsékleti és tengeri jég indikátorokhoz, valamint hosszú távú óceáni állapot- és bolygószintű energiaegyensúly-grafikonokkal.",
@@ -484,16 +498,51 @@ function formatProjectionTopMeta(year: number, language: Language): string {
   return `Year: ${year} projection vs 1850-1900`;
 }
 
-function formatMetricValue(metric: ClimateMetricSeries, language: Language, unavailableText: string): string {
-  if (metric.latestValue == null || !Number.isFinite(metric.latestValue)) return unavailableText;
+function formatNumericValue(value: number | null | undefined, decimals: number, language: Language, unavailableText: string): string {
+  if (value == null || !Number.isFinite(value)) return unavailableText;
   return new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
-    minimumFractionDigits: metric.decimals,
-    maximumFractionDigits: metric.decimals,
-  }).format(metric.latestValue);
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+}
+
+function formatMetricValue(metric: ClimateMetricSeries, language: Language, unavailableText: string): string {
+  return formatNumericValue(metric.latestValue, metric.decimals, language, unavailableText);
 }
 
 function metricTitle(metric: ClimateMetricSeries, language: Language): string {
   return language === "hu" ? metric.titleHu : metric.titleEn;
+}
+
+function recordWarningTitle(metricKey: ClimateMetricSeries["key"], t: (typeof STRINGS)[Language]): string {
+  switch (metricKey) {
+    case "global_surface_temperature_anomaly":
+      return t.highestEverGlobalSurfaceTemperatureAnomalyTitle;
+    case "global_sea_surface_temperature_anomaly":
+      return t.highestEverGlobalSeaSurfaceTemperatureAnomalyTitle;
+    default:
+      return "";
+  }
+}
+
+function latestRecordHighPoint(metric: ClimateMetricSeries): DailyPoint | null {
+  let latestPoint: DailyPoint | null = null;
+  let recordValue = Number.NEGATIVE_INFINITY;
+
+  for (const point of metric.points) {
+    if (!Number.isFinite(point.value)) continue;
+    if (point.value > recordValue) recordValue = point.value;
+  }
+
+  for (let index = metric.points.length - 1; index >= 0; index -= 1) {
+    const point = metric.points[index];
+    if (!Number.isFinite(point.value)) continue;
+    latestPoint = point;
+    break;
+  }
+
+  if (!latestPoint || !Number.isFinite(recordValue)) return null;
+  return latestPoint.value >= recordValue ? latestPoint : null;
 }
 
 function buildMonthLabels(language: Language): string[] {
@@ -1541,6 +1590,16 @@ export function App() {
         }),
     [snapshot.indicators, snapshot.forcing]
   );
+  const recordWarningCards = useMemo(
+    () =>
+      RECORD_WARNING_KEYS.map((metricKey) => {
+        const metric = snapshot.indicators.find((candidate) => candidate.key === metricKey);
+        if (!metric) return null;
+        const recordPoint = latestRecordHighPoint(metric);
+        return recordPoint ? { metric, recordPoint } : null;
+      }).filter((entry): entry is { metric: ClimateMetricSeries; recordPoint: DailyPoint } => entry != null),
+    [snapshot.indicators]
+  );
   const footerSources = useMemo(() => {
     const ensoSource = dataSource.ensoOutlook;
     const sources = [...snapshot.indicators, ...snapshot.forcing].map((metric) => ({
@@ -2016,6 +2075,30 @@ export function App() {
 
         </div>
       </header>
+
+      {recordWarningCards.length ? (
+        <section className="record-warnings-grid" aria-label={t.recordWarningsAria}>
+          {recordWarningCards.map(({ metric, recordPoint }) => {
+            const freshness = metricFreshnessBadge(metric, language, t);
+            return (
+              <article className="alert-card record-warning-card" key={`${metric.key}-record-warning`}>
+                <span className="alert-kicker">{t.recordWarningKicker}</span>
+                <h2>{recordWarningTitle(metric.key, t)}</h2>
+                <p className="alert-emphasis">
+                  {formatNumericValue(recordPoint.value, metric.decimals, language, t.valueUnavailable)}{" "}
+                  {cardUnitLabel(metric.key, metric.unit, language)}
+                </p>
+                <div className="alert-meta">
+                  <span className="alert-meta-chip confidence-low">
+                    {t.recordWarningDateMeta}: {formatDateLabel(recordPoint.date, language)}
+                  </span>
+                  <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      ) : null}
 
       <section className="alerts-grid" aria-label={t.latestSignalsAria}>
         {latestAnnualGlobalMeanAnomaly ? (
