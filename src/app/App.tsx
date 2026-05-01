@@ -128,6 +128,7 @@ const STRINGS = {
     aiSummaryAria: "AI climate summary",
     aiSummaryTitle: "AI Summary",
     aiSummaryKicker: "AI-summary",
+    aiSummaryLoading: "Loading latest AI summary",
     aiSummaryRecordHigh: "latest value is at or above the same-date historical record",
     aiSummaryNearRecordHigh: "latest value is near the same-date historical record",
     aiSummaryAboveMean: "above the 1991-2020 mean for this date",
@@ -258,6 +259,7 @@ const STRINGS = {
     aiSummaryAria: "AI klímaösszefoglaló",
     aiSummaryTitle: "AI összefoglaló",
     aiSummaryKicker: "AI-összefoglaló",
+    aiSummaryLoading: "A legfrissebb AI-összefoglaló betöltése",
     aiSummaryRecordHigh: "a legfrissebb érték eléri vagy meghaladja az azonos dátumú történeti rekordot",
     aiSummaryNearRecordHigh: "a legfrissebb érték közel van az azonos dátumú történeti rekordhoz",
     aiSummaryAboveMean: "az 1991-2020-as azonos dátumú átlag felett",
@@ -1693,6 +1695,7 @@ export function App() {
   const [dataSource, setDataSource] = useState<DashboardDataSource>(() =>
     createBundledDataSource("Loading live climate feeds; using bundled fallback in the meantime.")
   );
+  const [runtimeDataReady, setRuntimeDataReady] = useState(false);
   const [climateSectionOpen, setClimateSectionOpen] = useState(true);
   const [mapsSectionOpen, setMapsSectionOpen] = useState(true);
   const [forcingSectionOpen, setForcingSectionOpen] = useState(true);
@@ -1740,6 +1743,11 @@ export function App() {
       .then((nextSource) => {
         if (!active) return;
         setDataSource(nextSource);
+        setRuntimeDataReady(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        setRuntimeDataReady(true);
       });
 
     return () => {
@@ -2268,7 +2276,14 @@ export function App() {
               </span>
               <span className="alert-kicker">{t.aiSummaryKicker}</span>
             </div>
-            <p>{aiDashboardSummary.headline}</p>
+            {runtimeDataReady ? (
+              <p>{aiDashboardSummary.headline}</p>
+            ) : (
+              <div className="ai-summary-loading" role="status" aria-live="polite">
+                <span className="ai-summary-spinner" aria-hidden="true" />
+                <span>{t.aiSummaryLoading}</span>
+              </div>
+            )}
           </div>
         </div>
       </section>

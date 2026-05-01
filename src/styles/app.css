@@ -107,6 +107,22 @@ h3 {
   }
 }
 
+@keyframes summary-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes summary-pulse {
+  0%,
+  100% {
+    opacity: 0.58;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .topbar {
   position: relative;
   overflow: hidden;
@@ -336,6 +352,29 @@ h3 {
   font-weight: 620;
   overflow-wrap: anywhere;
   hyphens: auto;
+}
+
+.ai-summary-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  color: color-mix(in srgb, var(--text) 72%, var(--muted));
+  font-size: 0.86rem;
+  line-height: 1.32;
+  font-weight: 700;
+  animation: summary-pulse 1.35s ease-in-out infinite;
+}
+
+.ai-summary-spinner {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 2px solid rgba(37, 99, 235, 0.18);
+  border-top-color: #2563eb;
+  border-right-color: #0f766e;
+  animation: summary-spin 760ms linear infinite;
 }
 
 .alert-card {
