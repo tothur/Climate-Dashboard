@@ -2983,16 +2983,20 @@ body.panel-expanded-lock {
   .ai-summary-panel {
     align-items: stretch;
     flex-direction: column;
+    justify-content: flex-start;
+    gap: 10px;
     padding: 12px;
   }
 
   .ai-summary-main {
     align-items: flex-start;
     flex-direction: column;
+    flex: 0 1 auto;
     gap: 6px;
   }
 
   .ai-temperature-checks {
+    flex: 0 1 auto;
     width: 100%;
     justify-content: flex-start;
   }
