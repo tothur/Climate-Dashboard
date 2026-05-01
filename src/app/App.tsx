@@ -124,6 +124,22 @@ const STRINGS = {
     latestLabel: "Latest",
     latestAnnualLabel: "Latest annual value",
     latestSignalsAria: "Latest climate indicators",
+    aiSummaryAria: "AI climate summary",
+    aiSummaryTitle: "AI Summary",
+    aiSummaryKicker: "Dashboard briefing",
+    aiSummaryCriticalLabel: "Warning",
+    aiSummaryWatchLabel: "Watch",
+    aiSummaryNormalLabel: "Normal",
+    aiSummaryRecordHigh: "latest value is at or above the same-date historical record",
+    aiSummaryNearRecordHigh: "latest value is near the same-date historical record",
+    aiSummaryAboveMean: "above the 1991-2020 mean for this date",
+    aiSummaryBelowMean: "below the 1991-2020 mean for this date",
+    aiSummaryComparedWithMean: "vs 1991-2020 mean",
+    aiSummaryComparedWithRecord: "vs same-date record",
+    aiSummaryRankLabel: "same-date rank",
+    aiSummaryNoWarnings: "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records.",
+    aiSummaryWithWarnings: "Temperature checks need attention:",
+    aiSummaryMostImportantSignals: "Key signals:",
     recordWarningsAria: "Record climate warnings",
     recordWarningKicker: "Record warning",
     recordWarningDateMeta: "Date",
@@ -242,6 +258,22 @@ const STRINGS = {
     latestLabel: "Legfrissebb",
     latestAnnualLabel: "Legfrissebb éves érték",
     latestSignalsAria: "Legfrissebb klímaindikátorok",
+    aiSummaryAria: "AI klímaösszefoglaló",
+    aiSummaryTitle: "AI összefoglaló",
+    aiSummaryKicker: "Dashboard-értékelés",
+    aiSummaryCriticalLabel: "Figyelmeztetés",
+    aiSummaryWatchLabel: "Figyelés",
+    aiSummaryNormalLabel: "Normál",
+    aiSummaryRecordHigh: "a legfrissebb érték eléri vagy meghaladja az azonos dátumú történeti rekordot",
+    aiSummaryNearRecordHigh: "a legfrissebb érték közel van az azonos dátumú történeti rekordhoz",
+    aiSummaryAboveMean: "az 1991-2020-as azonos dátumú átlag felett",
+    aiSummaryBelowMean: "az 1991-2020-as azonos dátumú átlag alatt",
+    aiSummaryComparedWithMean: "az 1991-2020-as átlaghoz képest",
+    aiSummaryComparedWithRecord: "az azonos dátumú rekordhoz képest",
+    aiSummaryRankLabel: "azonos dátumú rang",
+    aiSummaryNoWarnings: "A globális felszíni hőmérséklet és a globális tengerfelszíni hőmérséklet nem szokatlanul magas az azonos dátumú történeti rekordokhoz képest.",
+    aiSummaryWithWarnings: "A hőmérsékleti ellenőrzések figyelmet igényelnek:",
+    aiSummaryMostImportantSignals: "Fő jelzések:",
     recordWarningsAria: "Rekord éghajlati figyelmeztetések",
     recordWarningKicker: "Rekordfigyelmeztetés",
     recordWarningDateMeta: "Dátum",
@@ -543,6 +575,188 @@ function latestRecordHighPoint(metric: ClimateMetricSeries): DailyPoint | null {
 
   if (!latestPoint || !Number.isFinite(recordValue)) return null;
   return latestPoint.value >= recordValue ? latestPoint : null;
+}
+
+type AiSummaryTone = "critical" | "watch" | "normal";
+
+interface SameDateTemperatureCheck {
+  metric: ClimateMetricSeries;
+  latestPoint: DailyPoint;
+  tone: AiSummaryTone;
+  baselineMean: number | null;
+  differenceFromMean: number | null;
+  previousRecord: number | null;
+  differenceFromRecord: number | null;
+  rank: number | null;
+  sampleSize: number;
+}
+
+interface AiDashboardSummary {
+  tone: AiSummaryTone;
+  headline: string;
+  keySignals: string[];
+  checks: SameDateTemperatureCheck[];
+}
+
+function toneRank(tone: AiSummaryTone): number {
+  switch (tone) {
+    case "critical":
+      return 2;
+    case "watch":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function latestFinitePoint(points: DailyPoint[]): DailyPoint | null {
+  for (let index = points.length - 1; index >= 0; index -= 1) {
+    const point = points[index];
+    if (Number.isFinite(point.value)) return point;
+  }
+  return null;
+}
+
+function sameCalendarDayStats(
+  metric: ClimateMetricSeries,
+  baselineStartYear: number,
+  baselineEndYear: number
+): SameDateTemperatureCheck | null {
+  const latestPoint = latestFinitePoint(metric.points);
+  if (!latestPoint) return null;
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(latestPoint.date);
+  if (!match) return null;
+  const latestYear = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const axisDay = axisDayFromMonthDay(month, day);
+  if (!Number.isFinite(latestYear) || axisDay == null) return null;
+
+  const historicalValues: number[] = [];
+  const baselineValues: number[] = [];
+
+  for (const point of metric.points) {
+    const pointMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(point.date);
+    if (!pointMatch) continue;
+    const pointYear = Number(pointMatch[1]);
+    const pointAxisDay = axisDayFromMonthDay(Number(pointMatch[2]), Number(pointMatch[3]));
+    const value = Number(point.value);
+    if (!Number.isFinite(pointYear) || pointAxisDay !== axisDay || !Number.isFinite(value)) continue;
+
+    if (point.date < latestPoint.date) historicalValues.push(value);
+    if (pointYear >= baselineStartYear && pointYear <= baselineEndYear) baselineValues.push(value);
+  }
+
+  if (!historicalValues.length) return null;
+
+  const baselineMean = baselineValues.length ? baselineValues.reduce((sum, value) => sum + value, 0) / baselineValues.length : null;
+  const previousRecord = Math.max(...historicalValues);
+  const differenceFromMean = baselineMean == null ? null : latestPoint.value - baselineMean;
+  const differenceFromRecord = latestPoint.value - previousRecord;
+  const rank = [...historicalValues, latestPoint.value].filter((value) => value > latestPoint.value).length + 1;
+  const watchThreshold = metric.key === "global_sea_surface_temperature" ? 0.35 : 0.5;
+  const nearRecordMargin = metric.key === "global_sea_surface_temperature" ? 0.05 : 0.12;
+  const tone: AiSummaryTone =
+    differenceFromRecord >= -0.005
+      ? "critical"
+      : rank <= 3 || (differenceFromMean != null && differenceFromMean >= watchThreshold) || differenceFromRecord >= -nearRecordMargin
+        ? "watch"
+        : "normal";
+
+  return {
+    metric,
+    latestPoint,
+    tone,
+    baselineMean,
+    differenceFromMean,
+    previousRecord,
+    differenceFromRecord,
+    rank,
+    sampleSize: historicalValues.length + 1,
+  };
+}
+
+function signedTemperatureDelta(value: number | null, decimals: number, language: Language, unavailableText: string): string {
+  if (value == null || !Number.isFinite(value)) return unavailableText;
+  const formatted = formatNumericValue(Math.abs(value), decimals, language, unavailableText);
+  return `${value >= 0 ? "+" : "-"}${formatted}`;
+}
+
+function sameDateCheckReason(check: SameDateTemperatureCheck, t: (typeof STRINGS)[Language]): string {
+  if (check.differenceFromRecord != null && check.differenceFromRecord >= -0.005) return t.aiSummaryRecordHigh;
+  if (check.tone === "watch") return t.aiSummaryNearRecordHigh;
+  if (check.differenceFromMean != null && check.differenceFromMean >= 0) return t.aiSummaryAboveMean;
+  return t.aiSummaryBelowMean;
+}
+
+function formatRankLabel(rank: number | null, sampleSize: number, language: Language, unavailableText: string): string {
+  if (rank == null || !Number.isFinite(rank)) return unavailableText;
+  return language === "hu" ? `${rank}. / ${sampleSize}` : `#${rank} of ${sampleSize}`;
+}
+
+function buildAiDashboardSummary({
+  snapshot,
+  language,
+  t,
+  latestAnnualGlobalMeanAnomaly,
+  projectedAnnualGlobalMeanAnomaly,
+  ensoOutlook,
+}: {
+  snapshot: ReturnType<typeof buildDashboardSnapshot>;
+  language: Language;
+  t: (typeof STRINGS)[Language];
+  latestAnnualGlobalMeanAnomaly: { year: number; value: number } | null;
+  projectedAnnualGlobalMeanAnomaly: AnnualProjectionEstimate | null;
+  ensoOutlook: EnsoOutlook | null;
+}): AiDashboardSummary {
+  const metricByKey = new Map([...snapshot.indicators, ...snapshot.forcing].map((metric) => [metric.key, metric]));
+  const checks = ["global_surface_temperature", "global_sea_surface_temperature"]
+    .map((key) => {
+      const metric = metricByKey.get(key as ClimateMetricSeries["key"]);
+      return metric ? sameCalendarDayStats(metric, CLIMATOLOGY_BASELINE_START_YEAR, CLIMATOLOGY_BASELINE_END_YEAR) : null;
+    })
+    .filter((entry): entry is SameDateTemperatureCheck => entry != null);
+  const tone = checks.reduce<AiSummaryTone>(
+    (currentTone, check) => (toneRank(check.tone) > toneRank(currentTone) ? check.tone : currentTone),
+    "normal"
+  );
+
+  const warningChecks = checks.filter((check) => check.tone !== "normal");
+  const headline =
+    warningChecks.length > 0
+      ? `${t.aiSummaryWithWarnings} ${warningChecks.map((check) => `${metricTitle(check.metric, language)} ${sameDateCheckReason(check, t)}`).join("; ")}.`
+      : t.aiSummaryNoWarnings;
+
+  const keySignals: string[] = [];
+  if (latestAnnualGlobalMeanAnomaly) {
+    keySignals.push(
+      `${t.annualGlobalTemperatureAnomalyTitle}: ${formatNumericValue(latestAnnualGlobalMeanAnomaly.value, 2, language, t.valueUnavailable)} ${cardUnitLabel(DAILY_GLOBAL_MEAN_ANOMALY_KEY, "deg C", language)}`
+    );
+  }
+  if (projectedAnnualGlobalMeanAnomaly) {
+    keySignals.push(
+      `${t.projectedAnnualTemperatureAnomalyTitle}: ${formatNumericValue(projectedAnnualGlobalMeanAnomaly.value, 2, language, t.valueUnavailable)} ${cardUnitLabel(DAILY_GLOBAL_MEAN_ANOMALY_KEY, "deg C", language)}`
+    );
+  }
+  const seaIce = metricByKey.get("global_sea_ice_extent");
+  if (seaIce?.latestValue != null) {
+    keySignals.push(`${metricTitle(seaIce, language)}: ${formatMetricValue(seaIce, language, t.valueUnavailable)} ${cardUnitLabel(seaIce.key, seaIce.unit, language)}`);
+  }
+  const co2 = metricByKey.get("atmospheric_co2");
+  if (co2?.latestValue != null) {
+    keySignals.push(`${metricTitle(co2, language)}: ${formatMetricValue(co2, language, t.valueUnavailable)} ${cardUnitLabel(co2.key, co2.unit, language)}`);
+  }
+  if (ensoOutlook?.nextSixMonths) {
+    keySignals.push(`${t.ensoOutlookTitle}: ${formatEnsoConditionLabel(ensoOutlook.nextSixMonths.condition, t)} ${ensoOutlook.nextSixMonths.probability ?? "-"}%`);
+  }
+
+  return {
+    tone,
+    headline,
+    keySignals: keySignals.slice(0, 5),
+    checks,
+  };
 }
 
 function buildMonthLabels(language: Language): string[] {
@@ -1699,6 +1913,18 @@ export function App() {
     if (!dailyGlobalMeanAnomalyMetric || !annualGlobalMeanAnomalyIsYtd) return null;
     return buildAnnualProjectionEstimate(dailyGlobalMeanAnomalyMetric.points, ensoOutlook);
   }, [dailyGlobalMeanAnomalyMetric, annualGlobalMeanAnomalyIsYtd, ensoOutlook]);
+  const aiDashboardSummary = useMemo(
+    () =>
+      buildAiDashboardSummary({
+        snapshot,
+        language,
+        t,
+        latestAnnualGlobalMeanAnomaly,
+        projectedAnnualGlobalMeanAnomaly,
+        ensoOutlook,
+      }),
+    [snapshot, language, t, latestAnnualGlobalMeanAnomaly, projectedAnnualGlobalMeanAnomaly, ensoOutlook]
+  );
   const earthEnergyImbalanceTrendPoints = useMemo(
     () => (earthEnergyImbalanceMetric ? buildTrailingMeanSeries(earthEnergyImbalanceMetric.points, 12) : []),
     [earthEnergyImbalanceMetric]
@@ -2075,6 +2301,61 @@ export function App() {
 
         </div>
       </header>
+
+      <section className={`ai-summary-panel ${aiDashboardSummary.tone}`} aria-label={t.aiSummaryAria}>
+        <div className="ai-summary-main">
+          <span className="alert-kicker">{t.aiSummaryKicker}</span>
+          <h2>{t.aiSummaryTitle}</h2>
+          <p>{aiDashboardSummary.headline}</p>
+          {aiDashboardSummary.keySignals.length ? (
+            <div className="ai-summary-signals">
+              <span>{t.aiSummaryMostImportantSignals}</span>
+              {aiDashboardSummary.keySignals.map((signal) => (
+                <span className="alert-meta-chip" key={signal}>
+                  {signal}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="ai-temperature-checks">
+          {aiDashboardSummary.checks.map((check) => (
+            <article className={`ai-check-card ${check.tone}`} key={`${check.metric.key}-ai-check`}>
+              <div className="ai-check-header">
+                <h3>{metricTitle(check.metric, language)}</h3>
+                <span className={`ai-tone-pill ${check.tone}`}>
+                  {check.tone === "critical"
+                    ? t.aiSummaryCriticalLabel
+                    : check.tone === "watch"
+                      ? t.aiSummaryWatchLabel
+                      : t.aiSummaryNormalLabel}
+                </span>
+              </div>
+              <p className="ai-check-value">
+                {formatNumericValue(check.latestPoint.value, check.metric.decimals, language, t.valueUnavailable)}{" "}
+                {cardUnitLabel(check.metric.key, check.metric.unit, language)}
+              </p>
+              <div className="ai-check-details">
+                <span>
+                  {signedTemperatureDelta(check.differenceFromMean, check.metric.decimals, language, t.valueUnavailable)}{" "}
+                  {cardUnitLabel(check.metric.key, check.metric.unit, language)} {t.aiSummaryComparedWithMean}
+                </span>
+                <span>
+                  {signedTemperatureDelta(check.differenceFromRecord, check.metric.decimals, language, t.valueUnavailable)}{" "}
+                  {cardUnitLabel(check.metric.key, check.metric.unit, language)} {t.aiSummaryComparedWithRecord}
+                </span>
+                <span>
+                  {t.aiSummaryRankLabel}: {formatRankLabel(check.rank, check.sampleSize, language, t.valueUnavailable)}
+                </span>
+              </div>
+              <p className="summary-meta">
+                {t.chartLatest}: {formatDateLabel(check.latestPoint.date, language)}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {recordWarningCards.length ? (
         <section className="record-warnings-grid" aria-label={t.recordWarningsAria}>
