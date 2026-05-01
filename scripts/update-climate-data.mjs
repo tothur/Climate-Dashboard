@@ -88,7 +88,7 @@ const ENSO_SEASON_CENTER_MONTH = {
 const MAP_KEYS = ["global_2m_temperature", "global_2m_temperature_anomaly", "global_sst", "global_sst_anomaly"];
 const DEFAULT_OPENAI_SUMMARY_MODEL = "gpt-5.4-mini";
 const OPENAI_SUMMARY_ALLOWED_MODELS = new Set([DEFAULT_OPENAI_SUMMARY_MODEL]);
-const OPENAI_SUMMARY_MAX_OUTPUT_TOKENS = 180;
+const OPENAI_SUMMARY_MAX_OUTPUT_TOKENS = 600;
 const OPENAI_SUMMARY_TIMEOUT_MS = 20_000;
 const AI_SUMMARY_FINGERPRINT_KEYS = [
   "global_surface_temperature",
@@ -1505,6 +1505,22 @@ function extractResponseOutputText(responsePayload) {
   return chunks.join("").trim();
 }
 
+function openAiResponseDiagnostic(responsePayload) {
+  if (!isRecord(responsePayload)) return "response payload was not an object";
+  const status = typeof responsePayload.status === "string" ? responsePayload.status : "unknown";
+  const incompleteReason = isRecord(responsePayload.incomplete_details)
+    ? responsePayload.incomplete_details.reason ?? "unknown"
+    : null;
+  const outputTokenCount = isRecord(responsePayload.usage) ? responsePayload.usage.output_tokens : null;
+  return [
+    `status=${status}`,
+    incompleteReason ? `incomplete_reason=${incompleteReason}` : null,
+    Number.isFinite(outputTokenCount) ? `output_tokens=${outputTokenCount}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 function parseAiSummaryJson(rawText) {
   const trimmed = String(rawText ?? "").trim();
   const jsonText = trimmed.startsWith("{") ? trimmed : trimmed.match(/\{[\s\S]*\}/)?.[0] ?? "";
@@ -1625,8 +1641,9 @@ async function requestOpenAiSummary(summaryInput, model) {
     }
 
     const payload = await response.json();
-    const parsed = parseAiSummaryJson(extractResponseOutputText(payload));
-    if (!parsed) throw new Error("OpenAI summary response was not valid compact JSON.");
+    const outputText = extractResponseOutputText(payload);
+    const parsed = parseAiSummaryJson(outputText);
+    if (!parsed) throw new Error(`OpenAI summary response was not valid compact JSON (${openAiResponseDiagnostic(payload)}).`);
     return {
       ...parsed,
       usage: isRecord(payload.usage) ? payload.usage : undefined,
