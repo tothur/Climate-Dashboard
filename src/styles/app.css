@@ -259,6 +259,7 @@ h3 {
 
 .ai-summary-panel {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -291,7 +292,11 @@ h3 {
   align-items: center;
   gap: 10px;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 520px;
+}
+
+.ai-summary-main .alert-kicker {
+  flex: 0 0 auto;
 }
 
 .ai-summary-main p {
@@ -309,14 +314,15 @@ h3 {
   gap: 8px;
   align-items: center;
   justify-content: flex-end;
-  flex: 0 0 auto;
+  flex: 1 1 320px;
+  min-width: 0;
 }
 
 .ai-check-pill {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  max-width: 260px;
+  max-width: min(260px, 100%);
   border-radius: 999px;
   border: 1px solid rgba(15, 23, 42, 0.18);
   background: rgba(16, 185, 129, 0.14);
@@ -2987,6 +2993,7 @@ body.panel-expanded-lock {
   }
 
   .ai-temperature-checks {
+    width: 100%;
     justify-content: flex-start;
   }
 
