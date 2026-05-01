@@ -139,7 +139,6 @@ const STRINGS = {
     aiSummaryComparedWithRecord: "vs same-date record",
     aiSummaryRankLabel: "same-date rank",
     aiSummaryNoWarnings: "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records.",
-    aiSummaryWithWarnings: "Temperature checks need attention:",
     aiSummaryMostImportantSignals: "Key signals:",
     recordWarningsAria: "Record climate warnings",
     recordWarningKicker: "Record warning",
@@ -273,7 +272,6 @@ const STRINGS = {
     aiSummaryComparedWithRecord: "az azonos dátumú rekordhoz képest",
     aiSummaryRankLabel: "azonos dátumú rang",
     aiSummaryNoWarnings: "A globális felszíni hőmérséklet és a globális tengerfelszíni hőmérséklet nem szokatlanul magas az azonos dátumú történeti rekordokhoz képest.",
-    aiSummaryWithWarnings: "A hőmérsékleti ellenőrzések figyelmet igényelnek:",
     aiSummaryMostImportantSignals: "Fő jelzések:",
     recordWarningsAria: "Rekord éghajlati figyelmeztetések",
     recordWarningKicker: "Rekordfigyelmeztetés",
@@ -712,7 +710,7 @@ function buildAiDashboardSummary({
   const headline = generatedText
     ? generatedText
     : warningChecks.length > 0
-      ? `${t.aiSummaryWithWarnings} ${warningChecks.map((check) => `${metricTitle(check.metric, language)} ${sameDateCheckReason(check, t)}`).join("; ")}.`
+      ? `${warningChecks.map((check) => `${metricTitle(check.metric, language)} ${sameDateCheckReason(check, t)}`).join("; ")}.`
       : t.aiSummaryNoWarnings;
 
   return {

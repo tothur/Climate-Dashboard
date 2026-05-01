@@ -111,7 +111,7 @@ npm run dev:live
 
 ### Optional OpenAI Daily Summary
 
-If `OPENAI_API_KEY` is present in the update environment, `data:update:raw` generates one compact AI summary through the OpenAI Responses API and stores it in `public/data/climate-realtime.json` as `aiSummary`.
+If `OPENAI_API_KEY` is present in the update environment, `data:update:raw` generates one compact 2-3 sentence AI summary through the OpenAI Responses API and stores it in `public/data/climate-realtime.json` as `aiSummary`.
 
 Cost and safety controls:
 

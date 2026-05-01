@@ -439,6 +439,7 @@ function sameDateTemperatureCheck(key, series) {
 
 function buildTemperatureSummaryTextEn(temperatureChecks) {
   const warningChecks = temperatureChecks.filter((check) => check.tone !== "normal");
+  const normalChecks = temperatureChecks.filter((check) => check.tone === "normal");
   const names = {
     global_surface_temperature: "Global Surface Temperature",
     global_sea_surface_temperature: "Global Sea Surface Temperature",
@@ -447,12 +448,22 @@ function buildTemperatureSummaryTextEn(temperatureChecks) {
     critical: "latest value is at or above the same-date historical record",
     watch: "latest value is near the same-date historical record",
   };
+  const normalText = normalChecks.length
+    ? `${normalChecks.map((check) => names[check.key]).join(" and ")} ${
+        normalChecks.length === 1 ? "is" : "are"
+      } not unusually high versus the same-date historical record.`
+    : "Other temperature checks are shown below.";
 
   return warningChecks.length
-    ? `Temperature checks need attention: ${warningChecks
-        .map((check) => `${names[check.key]} ${reasons[check.tone]}`)
-        .join("; ")}.`
-    : "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records.";
+    ? `${warningChecks.map((check) => `${names[check.key]} ${reasons[check.tone]}`).join("; ")}. ${normalText}`
+    : "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records. Key climate indicators below show the latest available readings.";
+}
+
+function sentenceCount(text) {
+  return String(text ?? "")
+    .split(/[.!?]+(?:\s|$)/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean).length;
 }
 
 function verifyAiSummary(payload, series, nowMidnight, errors) {
@@ -463,8 +474,14 @@ function verifyAiSummary(payload, series, nowMidnight, errors) {
   }
 
   const textEn = typeof aiSummary.textEn === "string" ? aiSummary.textEn.trim() : "";
-  if (!textEn || textEn.length > 260) {
+  if (!textEn || textEn.length > 650) {
     errors.push("aiSummary.textEn is missing or too long");
+  }
+  if (aiSummary.source === "openai") {
+    const textEnSentenceCount = sentenceCount(textEn);
+    if (textEnSentenceCount < 2 || textEnSentenceCount > 3) {
+      errors.push(`aiSummary.textEn has ${textEnSentenceCount} sentences; expected 2 or 3`);
+    }
   }
   if (AI_SUMMARY_DISALLOWED_TEXT_PATTERN.test(textEn)) {
     errors.push("aiSummary.textEn contains disallowed temperature wording");
@@ -507,7 +524,7 @@ function verifyAiSummary(payload, series, nowMidnight, errors) {
 
   const hasTemperatureWarning = expectedChecks.some((check) => check.tone !== "normal");
   const expectedText = buildTemperatureSummaryTextEn(expectedChecks);
-  if (hasTemperatureWarning && !textEn.startsWith(expectedText.replace(/\.$/, ""))) {
+  if (hasTemperatureWarning && !textEn.startsWith(expectedText.split(".")[0])) {
     errors.push("aiSummary.textEn does not begin with the computed temperature warning");
   }
   if (!hasTemperatureWarning && !/not unusually high/i.test(textEn)) {

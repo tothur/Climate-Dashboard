@@ -1434,6 +1434,7 @@ function aiSummaryModel(warnings) {
 
 function buildTemperatureSummaryTextEn(temperatureChecks) {
   const warningChecks = temperatureChecks.filter((check) => check.tone !== "normal");
+  const normalChecks = temperatureChecks.filter((check) => check.tone === "normal");
   const names = {
     global_surface_temperature: "Global Surface Temperature",
     global_sea_surface_temperature: "Global Sea Surface Temperature",
@@ -1442,16 +1443,20 @@ function buildTemperatureSummaryTextEn(temperatureChecks) {
     critical: "latest value is at or above the same-date historical record",
     watch: "latest value is near the same-date historical record",
   };
+  const normalText = normalChecks.length
+    ? `${normalChecks.map((check) => names[check.key]).join(" and ")} ${
+        normalChecks.length === 1 ? "is" : "are"
+      } not unusually high versus the same-date historical record.`
+    : "Other temperature checks are shown below.";
 
   return warningChecks.length
-    ? `Temperature checks need attention: ${warningChecks
-        .map((check) => `${names[check.key]} ${reasons[check.tone]}`)
-        .join("; ")}.`
-    : "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records.";
+    ? `${warningChecks.map((check) => `${names[check.key]} ${reasons[check.tone]}`).join("; ")}. ${normalText}`
+    : "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records. Key climate indicators below show the latest available readings.";
 }
 
 function buildTemperatureSummaryTextHu(temperatureChecks) {
   const warningChecks = temperatureChecks.filter((check) => check.tone !== "normal");
+  const normalChecks = temperatureChecks.filter((check) => check.tone === "normal");
   const names = {
     global_surface_temperature: "Globális felszíni hőmérséklet",
     global_sea_surface_temperature: "Globális tengerfelszíni hőmérséklet",
@@ -1460,12 +1465,13 @@ function buildTemperatureSummaryTextHu(temperatureChecks) {
     critical: "a legfrissebb érték eléri vagy meghaladja az azonos dátumú történeti rekordot",
     watch: "a legfrissebb érték közel van az azonos dátumú történeti rekordhoz",
   };
+  const normalText = normalChecks.length
+    ? `${normalChecks.map((check) => names[check.key]).join(" és ")} nem szokatlanul magas az azonos dátumú történeti rekordhoz képest.`
+    : "A további hőmérsékleti ellenőrzések lent láthatók.";
 
   return warningChecks.length
-    ? `A hőmérsékleti ellenőrzések figyelmet igényelnek: ${warningChecks
-        .map((check) => `${names[check.key]} ${reasons[check.tone]}`)
-        .join("; ")}.`
-    : "A globális felszíni hőmérséklet és a globális tengerfelszíni hőmérséklet nem szokatlanul magas az azonos dátumú történeti rekordokhoz képest.";
+    ? `${warningChecks.map((check) => `${names[check.key]} ${reasons[check.tone]}`).join("; ")}. ${normalText}`
+    : "A globális felszíni hőmérséklet és a globális tengerfelszíni hőmérséklet nem szokatlanul magas az azonos dátumú történeti rekordokhoz képest. A lenti fő indikátorok a legfrissebb elérhető adatokat mutatják.";
 }
 
 function buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks }) {
@@ -1529,12 +1535,19 @@ function parseAiSummaryJson(rawText) {
     const parsed = JSON.parse(jsonText);
     if (!isRecord(parsed)) return null;
     const textEn = typeof parsed.textEn === "string" ? parsed.textEn.trim() : "";
-    if (!textEn || textEn.length > 260) return null;
-    const textHu = typeof parsed.textHu === "string" && parsed.textHu.trim().length <= 300 ? parsed.textHu.trim() : null;
+    if (!textEn || textEn.length > 650) return null;
+    const textHu = typeof parsed.textHu === "string" && parsed.textHu.trim().length <= 750 ? parsed.textHu.trim() : null;
     return { textEn, textHu };
   } catch {
     return null;
   }
+}
+
+function sentenceCount(text) {
+  return String(text ?? "")
+    .split(/[.!?]+(?:\s|$)/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean).length;
 }
 
 function buildAllowedContextSignals(summary, ensoOutlook) {
@@ -1566,14 +1579,23 @@ function buildAllowedContextSignals(summary, ensoOutlook) {
 function validateOpenAiSummaryText(openAiSummary, localSummary, temperatureChecks) {
   const textEn = openAiSummary.textEn.trim();
   const textHu = openAiSummary.textHu?.trim() || localSummary.textHu;
-  if (!textEn || textEn.length > 260 || AI_SUMMARY_DISALLOWED_TEXT_PATTERN.test(textEn)) return null;
+  const textEnSentenceCount = sentenceCount(textEn);
+  if (
+    !textEn ||
+    textEn.length > 650 ||
+    textEnSentenceCount < 2 ||
+    textEnSentenceCount > 3 ||
+    AI_SUMMARY_DISALLOWED_TEXT_PATTERN.test(textEn)
+  ) {
+    return null;
+  }
 
   const hasTemperatureWarning = temperatureChecks.some((check) => check.tone !== "normal");
   if (hasTemperatureWarning) {
     const requiredPrefixEn = localSummary.textEn.replace(/\.$/, "");
     const requiredPrefixHu = localSummary.textHu.replace(/\.$/, "");
-    if (!textEn.startsWith(requiredPrefixEn)) return null;
-    if (!textHu.startsWith(requiredPrefixHu)) {
+    if (!textEn.startsWith(requiredPrefixEn.split(".")[0])) return null;
+    if (!textHu.startsWith(requiredPrefixHu.split(".")[0])) {
       return {
         textEn,
         textHu: localSummary.textHu,
@@ -1585,7 +1607,7 @@ function validateOpenAiSummaryText(openAiSummary, localSummary, temperatureCheck
 
   return {
     textEn,
-    textHu: textHu.length <= 300 ? textHu : localSummary.textHu,
+    textHu: textHu.length <= 750 ? textHu : localSummary.textHu,
   };
 }
 
@@ -1604,9 +1626,9 @@ async function requestOpenAiSummary(summaryInput, model) {
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model,
-        instructions:
-          "You write one compact climate dashboard briefing. Use only the supplied JSON facts and the required temperature language. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.",
+    model,
+    instructions:
+          "You write a compact climate dashboard briefing in 2 or 3 sentences. Use only the supplied JSON facts and the required temperature language. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.",
         input: JSON.stringify(summaryInput),
         text: {
           format: {
@@ -1619,7 +1641,7 @@ async function requestOpenAiSummary(summaryInput, model) {
               properties: {
                 textEn: {
                   type: "string",
-                  description: "One concise English sentence. It must follow the supplied temperatureBrief rules.",
+                  description: "Two or three concise English sentences. It must follow the supplied temperatureBrief rules.",
                 },
                 textHu: {
                   type: ["string", "null"],
@@ -1690,13 +1712,13 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
       requiredSentenceEn: localSummary.textEn,
       requiredSentenceHu: localSummary.textHu,
       rules: hasTemperatureWarning
-        ? "textEn must start exactly with requiredSentenceEn without its final period; textHu must start exactly with requiredSentenceHu without its final period. Do not mention normal temperature checks."
+        ? "textEn must start with the first sentence of requiredSentenceEn. textHu must start with the first sentence of requiredSentenceHu. Do not mention normal temperature checks unless they are already in requiredSentenceEn."
         : "textEn must clearly say both global surface temperature and global sea surface temperature are not unusually high versus same-date historical records.",
       checks: temperatureChecks,
     },
     allowedContextSignals: buildAllowedContextSignals(summary, ensoOutlook?.nextSixMonths ?? null),
     requiredBehavior:
-      "Temperature status is authoritative. Do not reinterpret the temperature checks. If you add context, use only one allowedContextSignals item and keep the output compact.",
+      "Temperature status is authoritative. Do not reinterpret the temperature checks. Write 2 or 3 sentences total. If you add context, use only allowedContextSignals items and keep the output compact.",
   };
 
   try {
