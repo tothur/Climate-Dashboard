@@ -1643,10 +1643,14 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
   ].filter(Boolean);
   const fingerprint = buildAiSummaryFingerprint(summary, ensoOutlook);
   const localSummary = buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks });
+  const hasOpenAiApiKey = Boolean(process.env.OPENAI_API_KEY?.trim());
+  const model = aiSummaryModel(warnings);
 
   if (shouldReusePreviousAiSummary(previousAiSummary, fingerprint, new Date(generatedAtIso))) {
     const validatedPreviousSummary = validateOpenAiSummaryText(previousAiSummary, localSummary, temperatureChecks);
-    if (validatedPreviousSummary) {
+    const canReusePreviousSummary =
+      !hasOpenAiApiKey || (previousAiSummary.source === "openai" && previousAiSummary.model === model);
+    if (validatedPreviousSummary && canReusePreviousSummary) {
       return {
         ...previousAiSummary,
         textEn: validatedPreviousSummary.textEn,
@@ -1654,10 +1658,13 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
         temperatureChecks: temperatureChecks.map(({ key, tone }) => ({ key, tone })),
       };
     }
-    warnings.push("Previous AI summary failed validation; refreshing summary text.");
+    warnings.push(
+      validatedPreviousSummary
+        ? "Previous AI summary cache skipped; refreshing summary text with the configured OpenAI model."
+        : "Previous AI summary failed validation; refreshing summary text."
+    );
   }
 
-  const model = aiSummaryModel(warnings);
   const hasTemperatureWarning = temperatureChecks.some((check) => check.tone !== "normal");
   const summaryInput = {
     generatedAtIso,
