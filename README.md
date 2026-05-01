@@ -117,10 +117,11 @@ Cost and safety controls:
 
 - The browser never receives the API key; the API call runs only inside the data updater.
 - The updater sends only compact latest metrics and temperature-record checks, not full time series.
-- The default model is `gpt-4.1-nano`; override with `OPENAI_SUMMARY_MODEL` if needed.
+- The OpenAI summary model is restricted to `gpt-5.4-mini`; `OPENAI_SUMMARY_MODEL` cannot select any other model.
 - Output is capped at 180 tokens.
 - The updater reuses the previous summary when the relevant metrics have not changed, and also limits generation to at most once per UTC day in watch mode.
 - If the API key is absent or the request fails, the dashboard uses the local rule-based summary.
+- The model response must match a strict JSON schema and pass deterministic validation against the computed temperature status before it is published.
 
 For GitHub Actions, add `OPENAI_API_KEY` as a repository secret. Without that secret, the workflow still succeeds and uses the local summary fallback.
 

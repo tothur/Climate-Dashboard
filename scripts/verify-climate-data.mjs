@@ -28,6 +28,9 @@ const REQUIRED_MAP_FILES = [
     filePath: resolve(ROOT_DIR, "public/data/maps/global-sst-anomaly.png"),
   },
 ];
+const AI_SUMMARY_ALLOWED_MODELS = new Set(["local-rules", "gpt-5.4-mini"]);
+const AI_SUMMARY_DISALLOWED_TEXT_PATTERN = /\brecord\s+lows?\b|\brecord\s+cold\b|\bcoldest\b|\bcooling\b/i;
+const AI_SUMMARY_TEMPERATURE_KEYS = ["global_surface_temperature", "global_sea_surface_temperature"];
 
 const SERIES_RULES = {
   global_surface_temperature: {
@@ -207,6 +210,10 @@ function isPngBytes(bytes) {
 
 function formatDate(dateIso) {
   return typeof dateIso === "string" ? dateIso : "(missing)";
+}
+
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function getSummaryEntry(payload, key) {
@@ -389,6 +396,125 @@ function verifyTemperatureAnomalyAlignment(series, errors, warnings) {
   }
 }
 
+function latestFinitePoint(series) {
+  for (let index = series.length - 1; index >= 0; index -= 1) {
+    const point = series[index];
+    if (Number.isFinite(point?.value)) return point;
+  }
+  return null;
+}
+
+function sameDateTemperatureCheck(key, series) {
+  const latestPoint = latestFinitePoint(series);
+  if (!latestPoint || !/^\d{4}-\d{2}-\d{2}$/.test(latestPoint.date)) return null;
+
+  const monthDay = latestPoint.date.slice(5);
+  const historicalValues = [];
+  const baselineValues = [];
+
+  for (const point of series) {
+    if (!point?.date || point.date.slice(5) !== monthDay || !Number.isFinite(point.value)) continue;
+    const year = Number(point.date.slice(0, 4));
+    if (point.date < latestPoint.date) historicalValues.push(point.value);
+    if (year >= 1991 && year <= 2020) baselineValues.push(point.value);
+  }
+
+  if (!historicalValues.length) return null;
+  const baselineMean = baselineValues.length ? baselineValues.reduce((sum, value) => sum + value, 0) / baselineValues.length : null;
+  const previousRecord = Math.max(...historicalValues);
+  const differenceFromMean = baselineMean == null ? null : latestPoint.value - baselineMean;
+  const differenceFromRecord = latestPoint.value - previousRecord;
+  const rank = [...historicalValues, latestPoint.value].filter((value) => value > latestPoint.value).length + 1;
+  const watchThreshold = key === "global_sea_surface_temperature" ? 0.35 : 0.5;
+  const nearRecordMargin = key === "global_sea_surface_temperature" ? 0.05 : 0.12;
+  const tone =
+    differenceFromRecord >= -0.005
+      ? "critical"
+      : rank <= 3 || (differenceFromMean != null && differenceFromMean >= watchThreshold) || differenceFromRecord >= -nearRecordMargin
+        ? "watch"
+        : "normal";
+
+  return { key, tone };
+}
+
+function buildTemperatureSummaryTextEn(temperatureChecks) {
+  const warningChecks = temperatureChecks.filter((check) => check.tone !== "normal");
+  const names = {
+    global_surface_temperature: "Global Surface Temperature",
+    global_sea_surface_temperature: "Global Sea Surface Temperature",
+  };
+  const reasons = {
+    critical: "latest value is at or above the same-date historical record",
+    watch: "latest value is near the same-date historical record",
+  };
+
+  return warningChecks.length
+    ? `Temperature checks need attention: ${warningChecks
+        .map((check) => `${names[check.key]} ${reasons[check.tone]}`)
+        .join("; ")}.`
+    : "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records.";
+}
+
+function verifyAiSummary(payload, series, nowMidnight, errors) {
+  const aiSummary = isRecord(payload) ? payload.aiSummary : null;
+  if (!isRecord(aiSummary)) {
+    errors.push("aiSummary: missing or invalid object");
+    return;
+  }
+
+  const textEn = typeof aiSummary.textEn === "string" ? aiSummary.textEn.trim() : "";
+  if (!textEn || textEn.length > 260) {
+    errors.push("aiSummary.textEn is missing or too long");
+  }
+  if (AI_SUMMARY_DISALLOWED_TEXT_PATTERN.test(textEn)) {
+    errors.push("aiSummary.textEn contains disallowed temperature wording");
+  }
+
+  const generatedAtIso = typeof aiSummary.generatedAtIso === "string" ? aiSummary.generatedAtIso.trim() : "";
+  const generatedAtMs = Date.parse(generatedAtIso);
+  if (!Number.isFinite(generatedAtMs)) {
+    errors.push("aiSummary.generatedAtIso is missing or invalid");
+  } else if (generatedAtMs > nowMidnight + DAY_MS) {
+    errors.push(`aiSummary.generatedAtIso is in the future (${generatedAtIso})`);
+  }
+
+  const model = typeof aiSummary.model === "string" ? aiSummary.model.trim() : "";
+  if (!AI_SUMMARY_ALLOWED_MODELS.has(model)) {
+    errors.push(`aiSummary.model is not allowed (${JSON.stringify(aiSummary.model)})`);
+  }
+  if (aiSummary.source !== "openai" && aiSummary.source !== "local") {
+    errors.push(`aiSummary.source is invalid (${JSON.stringify(aiSummary.source)})`);
+  }
+  if (typeof aiSummary.fingerprint !== "string" || !aiSummary.fingerprint.trim()) {
+    errors.push("aiSummary.fingerprint is missing");
+  }
+
+  const expectedChecks = AI_SUMMARY_TEMPERATURE_KEYS.map((key) =>
+    sameDateTemperatureCheck(key, Array.isArray(series[key]) ? series[key] : [])
+  ).filter(Boolean);
+  const actualChecks = Array.isArray(aiSummary.temperatureChecks) ? aiSummary.temperatureChecks : [];
+
+  for (const expectedCheck of expectedChecks) {
+    const actualCheck = actualChecks.find((check) => isRecord(check) && check.key === expectedCheck.key);
+    if (!actualCheck) {
+      errors.push(`aiSummary.temperatureChecks missing ${expectedCheck.key}`);
+      continue;
+    }
+    if (actualCheck.tone !== expectedCheck.tone) {
+      errors.push(`aiSummary.temperatureChecks.${expectedCheck.key} is ${actualCheck.tone}; expected ${expectedCheck.tone}`);
+    }
+  }
+
+  const hasTemperatureWarning = expectedChecks.some((check) => check.tone !== "normal");
+  const expectedText = buildTemperatureSummaryTextEn(expectedChecks);
+  if (hasTemperatureWarning && !textEn.startsWith(expectedText.replace(/\.$/, ""))) {
+    errors.push("aiSummary.textEn does not begin with the computed temperature warning");
+  }
+  if (!hasTemperatureWarning && !/not unusually high/i.test(textEn)) {
+    errors.push("aiSummary.textEn does not include the computed normal temperature status");
+  }
+}
+
 function verifyEnsoOutlook(payload, nowMidnight, errors, warnings) {
   const ensoOutlook = payload && typeof payload === "object" && !Array.isArray(payload) ? payload.ensoOutlook : null;
   if (!ensoOutlook || typeof ensoOutlook !== "object" || Array.isArray(ensoOutlook)) {
@@ -504,6 +630,7 @@ async function main() {
 
   verifyTemperatureAnomalyAlignment(series, errors, warnings);
   verifySeaIceConsistency(series, errors, warnings);
+  verifyAiSummary(payload, series, nowMidnight, errors);
   verifyEnsoOutlook(payload, nowMidnight, errors, warnings);
   await verifyMapFiles(payload, errors, warnings);
 

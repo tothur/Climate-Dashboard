@@ -86,7 +86,8 @@ const ENSO_SEASON_CENTER_MONTH = {
   NDJ: 12,
 };
 const MAP_KEYS = ["global_2m_temperature", "global_2m_temperature_anomaly", "global_sst", "global_sst_anomaly"];
-const OPENAI_SUMMARY_MODEL = process.env.OPENAI_SUMMARY_MODEL?.trim() || "gpt-4.1-nano";
+const DEFAULT_OPENAI_SUMMARY_MODEL = "gpt-5.4-mini";
+const OPENAI_SUMMARY_ALLOWED_MODELS = new Set([DEFAULT_OPENAI_SUMMARY_MODEL]);
 const OPENAI_SUMMARY_MAX_OUTPUT_TOKENS = 180;
 const OPENAI_SUMMARY_TIMEOUT_MS = 20_000;
 const AI_SUMMARY_FINGERPRINT_KEYS = [
@@ -98,6 +99,7 @@ const AI_SUMMARY_FINGERPRINT_KEYS = [
   "global_sea_ice_extent",
   "atmospheric_co2",
 ];
+const AI_SUMMARY_DISALLOWED_TEXT_PATTERN = /\brecord\s+lows?\b|\brecord\s+cold\b|\bcoldest\b|\bcooling\b/i;
 
 function toFiniteNumber(value) {
   const numeric = typeof value === "number" ? value : Number(value);
@@ -1421,7 +1423,16 @@ function buildAiSummaryFingerprint(summary, ensoOutlook) {
   return Buffer.from(JSON.stringify(compact)).toString("base64url").slice(0, 64);
 }
 
-function buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks }) {
+function aiSummaryModel(warnings) {
+  const requestedModel = process.env.OPENAI_SUMMARY_MODEL?.trim();
+  if (!requestedModel) return DEFAULT_OPENAI_SUMMARY_MODEL;
+  if (OPENAI_SUMMARY_ALLOWED_MODELS.has(requestedModel)) return requestedModel;
+
+  warnings.push("OpenAI daily summary model was not allowed; using gpt-5.4-mini.");
+  return DEFAULT_OPENAI_SUMMARY_MODEL;
+}
+
+function buildTemperatureSummaryTextEn(temperatureChecks) {
   const warningChecks = temperatureChecks.filter((check) => check.tone !== "normal");
   const names = {
     global_surface_temperature: "Global Surface Temperature",
@@ -1431,15 +1442,36 @@ function buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks })
     critical: "latest value is at or above the same-date historical record",
     watch: "latest value is near the same-date historical record",
   };
-  const textEn = warningChecks.length
+
+  return warningChecks.length
     ? `Temperature checks need attention: ${warningChecks
         .map((check) => `${names[check.key]} ${reasons[check.tone]}`)
         .join("; ")}.`
     : "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records.";
+}
 
+function buildTemperatureSummaryTextHu(temperatureChecks) {
+  const warningChecks = temperatureChecks.filter((check) => check.tone !== "normal");
+  const names = {
+    global_surface_temperature: "Globális felszíni hőmérséklet",
+    global_sea_surface_temperature: "Globális tengerfelszíni hőmérséklet",
+  };
+  const reasons = {
+    critical: "a legfrissebb érték eléri vagy meghaladja az azonos dátumú történeti rekordot",
+    watch: "a legfrissebb érték közel van az azonos dátumú történeti rekordhoz",
+  };
+
+  return warningChecks.length
+    ? `A hőmérsékleti ellenőrzések figyelmet igényelnek: ${warningChecks
+        .map((check) => `${names[check.key]} ${reasons[check.tone]}`)
+        .join("; ")}.`
+    : "A globális felszíni hőmérséklet és a globális tengerfelszíni hőmérséklet nem szokatlanul magas az azonos dátumú történeti rekordokhoz képest.";
+}
+
+function buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks }) {
   return {
-    textEn,
-    textHu: null,
+    textEn: buildTemperatureSummaryTextEn(temperatureChecks),
+    textHu: buildTemperatureSummaryTextHu(temperatureChecks),
     generatedAtIso,
     model: "local-rules",
     source: "local",
@@ -1489,7 +1521,59 @@ function parseAiSummaryJson(rawText) {
   }
 }
 
-async function requestOpenAiSummary(summaryInput) {
+function buildAllowedContextSignals(summary, ensoOutlook) {
+  const signals = [];
+  const dailyAnomaly = summary.daily_global_mean_temperature_anomaly;
+  const co2 = summary.atmospheric_co2;
+  const seaIce = summary.global_sea_ice_extent;
+
+  if (dailyAnomaly?.latestDate && Number.isFinite(dailyAnomaly.latestValue)) {
+    signals.push(
+      `Daily global mean temperature anomaly is ${dailyAnomaly.latestValue}C versus the approximate 1850-1900 baseline as of ${dailyAnomaly.latestDate}.`
+    );
+  }
+  if (co2?.latestDate && Number.isFinite(co2.latestValue)) {
+    signals.push(`Atmospheric CO2 is ${co2.latestValue} ppm as of ${co2.latestDate}.`);
+  }
+  if (seaIce?.latestDate && Number.isFinite(seaIce.latestValue)) {
+    signals.push(`Global sea ice extent is ${seaIce.latestValue} million square kilometers as of ${seaIce.latestDate}.`);
+  }
+  if (ensoOutlook?.targetLabel && ensoOutlook.condition && Number.isFinite(ensoOutlook.probability)) {
+    signals.push(
+      `ENSO outlook shows ${ensoOutlook.probability}% probability of ${ensoOutlook.condition.replaceAll("_", " ")} for ${ensoOutlook.targetLabel}.`
+    );
+  }
+
+  return signals.slice(0, 4);
+}
+
+function validateOpenAiSummaryText(openAiSummary, localSummary, temperatureChecks) {
+  const textEn = openAiSummary.textEn.trim();
+  const textHu = openAiSummary.textHu?.trim() || localSummary.textHu;
+  if (!textEn || textEn.length > 260 || AI_SUMMARY_DISALLOWED_TEXT_PATTERN.test(textEn)) return null;
+
+  const hasTemperatureWarning = temperatureChecks.some((check) => check.tone !== "normal");
+  if (hasTemperatureWarning) {
+    const requiredPrefixEn = localSummary.textEn.replace(/\.$/, "");
+    const requiredPrefixHu = localSummary.textHu.replace(/\.$/, "");
+    if (!textEn.startsWith(requiredPrefixEn)) return null;
+    if (!textHu.startsWith(requiredPrefixHu)) {
+      return {
+        textEn,
+        textHu: localSummary.textHu,
+      };
+    }
+  } else if (!/not unusually high/i.test(textEn)) {
+    return null;
+  }
+
+  return {
+    textEn,
+    textHu: textHu.length <= 300 ? textHu : localSummary.textHu,
+  };
+}
+
+async function requestOpenAiSummary(summaryInput, model) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) return null;
 
@@ -1504,10 +1588,32 @@ async function requestOpenAiSummary(summaryInput) {
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model: OPENAI_SUMMARY_MODEL,
+        model,
         instructions:
-          "You write one compact dashboard summary from provided climate metrics. Use only the supplied JSON facts. Do not add new data, causes, predictions, or advice. Return strict JSON with textEn and textHu. Each text must be one sentence under 190 characters.",
+          "You write one compact climate dashboard briefing. Use only the supplied JSON facts and the required temperature language. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.",
         input: JSON.stringify(summaryInput),
+        text: {
+          format: {
+            type: "json_schema",
+            name: "daily_climate_summary",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                textEn: {
+                  type: "string",
+                  description: "One concise English sentence. It must follow the supplied temperatureBrief rules.",
+                },
+                textHu: {
+                  type: ["string", "null"],
+                  description: "Hungarian equivalent of textEn, or null if a faithful translation is not possible.",
+                },
+              },
+              required: ["textEn", "textHu"],
+            },
+          },
+        },
         max_output_tokens: OPENAI_SUMMARY_MAX_OUTPUT_TOKENS,
         store: false,
       }),
@@ -1536,32 +1642,52 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
     sameDateTemperatureCheck("global_sea_surface_temperature", series.global_sea_surface_temperature),
   ].filter(Boolean);
   const fingerprint = buildAiSummaryFingerprint(summary, ensoOutlook);
+  const localSummary = buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks });
 
   if (shouldReusePreviousAiSummary(previousAiSummary, fingerprint, new Date(generatedAtIso))) {
-    return {
-      ...previousAiSummary,
-      temperatureChecks: temperatureChecks.map(({ key, tone }) => ({ key, tone })),
-    };
+    const validatedPreviousSummary = validateOpenAiSummaryText(previousAiSummary, localSummary, temperatureChecks);
+    if (validatedPreviousSummary) {
+      return {
+        ...previousAiSummary,
+        textEn: validatedPreviousSummary.textEn,
+        textHu: validatedPreviousSummary.textHu,
+        temperatureChecks: temperatureChecks.map(({ key, tone }) => ({ key, tone })),
+      };
+    }
+    warnings.push("Previous AI summary failed validation; refreshing summary text.");
   }
 
-  const localSummary = buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks });
+  const model = aiSummaryModel(warnings);
+  const hasTemperatureWarning = temperatureChecks.some((check) => check.tone !== "normal");
   const summaryInput = {
     generatedAtIso,
-    temperatureChecks,
-    keySignals: Object.fromEntries(AI_SUMMARY_FINGERPRINT_KEYS.map((key) => [key, summary[key] ?? null])),
-    ensoOutlook: ensoOutlook?.nextSixMonths ?? null,
+    temperatureBrief: {
+      hasWarning: hasTemperatureWarning,
+      requiredSentenceEn: localSummary.textEn,
+      requiredSentenceHu: localSummary.textHu,
+      rules: hasTemperatureWarning
+        ? "textEn must start exactly with requiredSentenceEn without its final period; textHu must start exactly with requiredSentenceHu without its final period. Do not mention normal temperature checks."
+        : "textEn must clearly say both global surface temperature and global sea surface temperature are not unusually high versus same-date historical records.",
+      checks: temperatureChecks,
+    },
+    allowedContextSignals: buildAllowedContextSignals(summary, ensoOutlook?.nextSixMonths ?? null),
     requiredBehavior:
-      "Mention temperature warnings first. If neither global surface temperature nor global sea surface temperature is watch/critical, say they are not unusually high versus same-date historical records.",
+      "Temperature status is authoritative. Do not reinterpret the temperature checks. If you add context, use only one allowedContextSignals item and keep the output compact.",
   };
 
   try {
-    const openAiSummary = await requestOpenAiSummary(summaryInput);
+    const openAiSummary = await requestOpenAiSummary(summaryInput, model);
     if (!openAiSummary) return localSummary;
+    const validatedSummary = validateOpenAiSummaryText(openAiSummary, localSummary, temperatureChecks);
+    if (!validatedSummary) {
+      warnings.push("OpenAI daily summary failed validation; using local summary fallback.");
+      return localSummary;
+    }
     return {
-      textEn: openAiSummary.textEn,
-      textHu: openAiSummary.textHu,
+      textEn: validatedSummary.textEn,
+      textHu: validatedSummary.textHu,
       generatedAtIso,
-      model: OPENAI_SUMMARY_MODEL,
+      model,
       source: "openai",
       fingerprint,
       temperatureChecks: localSummary.temperatureChecks,
@@ -1569,7 +1695,8 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    warnings.push(`OpenAI daily summary unavailable; using local summary fallback. ${message}`);
+    console.warn(`[ai-summary] ${message}`);
+    warnings.push("OpenAI daily summary unavailable; using local summary fallback.");
     return localSummary;
   }
 }
@@ -1955,7 +2082,7 @@ async function updateOnce() {
     ensoOutlook,
     aiSummary,
     maps: mapSources,
-    mapWarnings: [...mapWarnings, ...aiSummaryWarnings],
+    mapWarnings,
     series: seriesOutput,
     summary: summaryOutput,
   };
@@ -1981,6 +2108,12 @@ async function updateOnce() {
   if (output.mapWarnings.length) {
     console.warn("Update warnings:");
     for (const warning of output.mapWarnings) {
+      console.warn(`- ${warning}`);
+    }
+  }
+  if (aiSummaryWarnings.length) {
+    console.warn("AI summary warnings:");
+    for (const warning of aiSummaryWarnings) {
       console.warn(`- ${warning}`);
     }
   }
