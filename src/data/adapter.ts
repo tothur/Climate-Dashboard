@@ -393,6 +393,7 @@ export function createBundledDataSource(note?: string): DashboardDataSource {
     warnings: note ? [note] : [],
     updatedAtIso: new Date().toISOString(),
     ensoOutlook: BUNDLED_ENSO_OUTLOOK,
+    aiSummary: null,
     maps: undefined,
     mapWarnings: [],
   };
@@ -403,6 +404,7 @@ export function createDataSourceFromSeries(input: {
   warnings?: string[];
   updatedAtIso?: string;
   ensoOutlook?: EnsoOutlook | null;
+  aiSummary?: DashboardDataSource["aiSummary"];
   maps?: ClimateMapAssets;
   mapWarnings?: string[];
 }): DashboardDataSource {
@@ -420,6 +422,7 @@ export function createDataSourceFromSeries(input: {
     warnings: [...(input.warnings ?? [])],
     updatedAtIso: input.updatedAtIso ?? new Date().toISOString(),
     ensoOutlook: input.ensoOutlook ?? null,
+    aiSummary: input.aiSummary ?? null,
     maps: input.maps,
     mapWarnings: [...(input.mapWarnings ?? [])],
   };

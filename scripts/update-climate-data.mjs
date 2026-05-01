@@ -86,6 +86,18 @@ const ENSO_SEASON_CENTER_MONTH = {
   NDJ: 12,
 };
 const MAP_KEYS = ["global_2m_temperature", "global_2m_temperature_anomaly", "global_sst", "global_sst_anomaly"];
+const OPENAI_SUMMARY_MODEL = process.env.OPENAI_SUMMARY_MODEL?.trim() || "gpt-4.1-nano";
+const OPENAI_SUMMARY_MAX_OUTPUT_TOKENS = 180;
+const OPENAI_SUMMARY_TIMEOUT_MS = 20_000;
+const AI_SUMMARY_FINGERPRINT_KEYS = [
+  "global_surface_temperature",
+  "global_sea_surface_temperature",
+  "global_surface_temperature_anomaly",
+  "global_sea_surface_temperature_anomaly",
+  "daily_global_mean_temperature_anomaly",
+  "global_sea_ice_extent",
+  "atmospheric_co2",
+];
 
 function toFiniteNumber(value) {
   const numeric = typeof value === "number" ? value : Number(value);
@@ -292,6 +304,48 @@ async function loadPreviousMapSources() {
     return previousMapSources;
   } catch {
     return {};
+  }
+}
+
+async function loadPreviousAiSummary() {
+  if (!(await fileExists(OUTPUT_PATH))) return null;
+
+  try {
+    const payload = JSON.parse(await readFile(OUTPUT_PATH, "utf8"));
+    const aiSummary = isRecord(payload) && isRecord(payload.aiSummary) ? payload.aiSummary : null;
+    if (!aiSummary) return null;
+
+    const textEn = typeof aiSummary.textEn === "string" ? aiSummary.textEn.trim() : "";
+    const generatedAtIso =
+      typeof aiSummary.generatedAtIso === "string" && Number.isFinite(Date.parse(aiSummary.generatedAtIso))
+        ? aiSummary.generatedAtIso
+        : "";
+    const model = typeof aiSummary.model === "string" ? aiSummary.model.trim() : "";
+    const source = aiSummary.source === "openai" || aiSummary.source === "local" ? aiSummary.source : null;
+    const fingerprint = typeof aiSummary.fingerprint === "string" ? aiSummary.fingerprint.trim() : "";
+    if (!textEn || !generatedAtIso || !model || !source || !fingerprint) return null;
+
+    const temperatureChecks = Array.isArray(aiSummary.temperatureChecks)
+      ? aiSummary.temperatureChecks.filter(
+          (entry) =>
+            isRecord(entry) &&
+            (entry.key === "global_surface_temperature" || entry.key === "global_sea_surface_temperature") &&
+            (entry.tone === "critical" || entry.tone === "watch" || entry.tone === "normal")
+        )
+      : [];
+
+    return {
+      textEn,
+      textHu: typeof aiSummary.textHu === "string" && aiSummary.textHu.trim().length > 0 ? aiSummary.textHu.trim() : null,
+      generatedAtIso,
+      model,
+      source,
+      fingerprint,
+      temperatureChecks,
+      usage: isRecord(aiSummary.usage) ? aiSummary.usage : undefined,
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -1293,6 +1347,233 @@ function summarize(series) {
   };
 }
 
+function latestFinitePoint(series) {
+  for (let index = series.length - 1; index >= 0; index -= 1) {
+    const point = series[index];
+    if (Number.isFinite(point?.value)) return point;
+  }
+  return null;
+}
+
+function sameDateTemperatureCheck(key, series) {
+  const latestPoint = latestFinitePoint(series);
+  if (!latestPoint || !/^\d{4}-\d{2}-\d{2}$/.test(latestPoint.date)) return null;
+
+  const monthDay = latestPoint.date.slice(5);
+  const historicalValues = [];
+  const baselineValues = [];
+
+  for (const point of series) {
+    if (!point?.date || point.date.slice(5) !== monthDay || !Number.isFinite(point.value)) continue;
+    const year = Number(point.date.slice(0, 4));
+    if (point.date < latestPoint.date) historicalValues.push(point.value);
+    if (year >= 1991 && year <= 2020) baselineValues.push(point.value);
+  }
+
+  if (!historicalValues.length) return null;
+  const baselineMean = baselineValues.length ? baselineValues.reduce((sum, value) => sum + value, 0) / baselineValues.length : null;
+  const previousRecord = Math.max(...historicalValues);
+  const differenceFromMean = baselineMean == null ? null : latestPoint.value - baselineMean;
+  const differenceFromRecord = latestPoint.value - previousRecord;
+  const rank = [...historicalValues, latestPoint.value].filter((value) => value > latestPoint.value).length + 1;
+  const watchThreshold = key === "global_sea_surface_temperature" ? 0.35 : 0.5;
+  const nearRecordMargin = key === "global_sea_surface_temperature" ? 0.05 : 0.12;
+  const tone =
+    differenceFromRecord >= -0.005
+      ? "critical"
+      : rank <= 3 || (differenceFromMean != null && differenceFromMean >= watchThreshold) || differenceFromRecord >= -nearRecordMargin
+        ? "watch"
+        : "normal";
+
+  return {
+    key,
+    latestDate: latestPoint.date,
+    latestValue: Math.round(latestPoint.value * 1000) / 1000,
+    baselineMean: baselineMean == null ? null : Math.round(baselineMean * 1000) / 1000,
+    differenceFromMean: differenceFromMean == null ? null : Math.round(differenceFromMean * 1000) / 1000,
+    previousRecord: Math.round(previousRecord * 1000) / 1000,
+    differenceFromRecord: Math.round(differenceFromRecord * 1000) / 1000,
+    rank,
+    sampleSize: historicalValues.length + 1,
+    tone,
+  };
+}
+
+function buildAiSummaryFingerprint(summary, ensoOutlook) {
+  const compact = {
+    series: Object.fromEntries(
+      AI_SUMMARY_FINGERPRINT_KEYS.map((key) => [
+        key,
+        {
+          latestDate: summary[key]?.latestDate ?? null,
+          latestValue: summary[key]?.latestValue ?? null,
+        },
+      ])
+    ),
+    enso: ensoOutlook?.nextSixMonths
+      ? {
+          condition: ensoOutlook.nextSixMonths.condition,
+          probability: ensoOutlook.nextSixMonths.probability,
+          targetLabel: ensoOutlook.nextSixMonths.targetLabel,
+        }
+      : null,
+  };
+  return Buffer.from(JSON.stringify(compact)).toString("base64url").slice(0, 64);
+}
+
+function buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks }) {
+  const warningChecks = temperatureChecks.filter((check) => check.tone !== "normal");
+  const names = {
+    global_surface_temperature: "Global Surface Temperature",
+    global_sea_surface_temperature: "Global Sea Surface Temperature",
+  };
+  const reasons = {
+    critical: "latest value is at or above the same-date historical record",
+    watch: "latest value is near the same-date historical record",
+  };
+  const textEn = warningChecks.length
+    ? `Temperature checks need attention: ${warningChecks
+        .map((check) => `${names[check.key]} ${reasons[check.tone]}`)
+        .join("; ")}.`
+    : "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records.";
+
+  return {
+    textEn,
+    textHu: null,
+    generatedAtIso,
+    model: "local-rules",
+    source: "local",
+    fingerprint,
+    temperatureChecks: temperatureChecks.map(({ key, tone }) => ({ key, tone })),
+  };
+}
+
+function shouldReusePreviousAiSummary(previousAiSummary, fingerprint, now = new Date()) {
+  if (!previousAiSummary) return false;
+  if (previousAiSummary.fingerprint === fingerprint) return true;
+
+  const generated = new Date(previousAiSummary.generatedAtIso);
+  if (!Number.isFinite(generated.getTime())) return false;
+  return generated.toISOString().slice(0, 10) === now.toISOString().slice(0, 10);
+}
+
+function extractResponseOutputText(responsePayload) {
+  if (!isRecord(responsePayload)) return "";
+  if (typeof responsePayload.output_text === "string") return responsePayload.output_text.trim();
+  if (!Array.isArray(responsePayload.output)) return "";
+
+  const chunks = [];
+  for (const outputItem of responsePayload.output) {
+    if (!isRecord(outputItem) || !Array.isArray(outputItem.content)) continue;
+    for (const contentItem of outputItem.content) {
+      if (!isRecord(contentItem)) continue;
+      if (typeof contentItem.text === "string") chunks.push(contentItem.text);
+    }
+  }
+  return chunks.join("").trim();
+}
+
+function parseAiSummaryJson(rawText) {
+  const trimmed = String(rawText ?? "").trim();
+  const jsonText = trimmed.startsWith("{") ? trimmed : trimmed.match(/\{[\s\S]*\}/)?.[0] ?? "";
+  if (!jsonText) return null;
+  try {
+    const parsed = JSON.parse(jsonText);
+    if (!isRecord(parsed)) return null;
+    const textEn = typeof parsed.textEn === "string" ? parsed.textEn.trim() : "";
+    if (!textEn || textEn.length > 260) return null;
+    const textHu = typeof parsed.textHu === "string" && parsed.textHu.trim().length <= 300 ? parsed.textHu.trim() : null;
+    return { textEn, textHu };
+  } catch {
+    return null;
+  }
+}
+
+async function requestOpenAiSummary(summaryInput) {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) return null;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OPENAI_SUMMARY_TIMEOUT_MS);
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: OPENAI_SUMMARY_MODEL,
+        instructions:
+          "You write one compact dashboard summary from provided climate metrics. Use only the supplied JSON facts. Do not add new data, causes, predictions, or advice. Return strict JSON with textEn and textHu. Each text must be one sentence under 190 characters.",
+        input: JSON.stringify(summaryInput),
+        max_output_tokens: OPENAI_SUMMARY_MAX_OUTPUT_TOKENS,
+        store: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(`OpenAI summary request failed with HTTP ${response.status}${errorText ? `: ${errorText.slice(0, 180)}` : ""}`);
+    }
+
+    const payload = await response.json();
+    const parsed = parseAiSummaryJson(extractResponseOutputText(payload));
+    if (!parsed) throw new Error("OpenAI summary response was not valid compact JSON.");
+    return {
+      ...parsed,
+      usage: isRecord(payload.usage) ? payload.usage : undefined,
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSummary, generatedAtIso, warnings }) {
+  const temperatureChecks = [
+    sameDateTemperatureCheck("global_surface_temperature", series.global_surface_temperature),
+    sameDateTemperatureCheck("global_sea_surface_temperature", series.global_sea_surface_temperature),
+  ].filter(Boolean);
+  const fingerprint = buildAiSummaryFingerprint(summary, ensoOutlook);
+
+  if (shouldReusePreviousAiSummary(previousAiSummary, fingerprint, new Date(generatedAtIso))) {
+    return {
+      ...previousAiSummary,
+      temperatureChecks: temperatureChecks.map(({ key, tone }) => ({ key, tone })),
+    };
+  }
+
+  const localSummary = buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks });
+  const summaryInput = {
+    generatedAtIso,
+    temperatureChecks,
+    keySignals: Object.fromEntries(AI_SUMMARY_FINGERPRINT_KEYS.map((key) => [key, summary[key] ?? null])),
+    ensoOutlook: ensoOutlook?.nextSixMonths ?? null,
+    requiredBehavior:
+      "Mention temperature warnings first. If neither global surface temperature nor global sea surface temperature is watch/critical, say they are not unusually high versus same-date historical records.",
+  };
+
+  try {
+    const openAiSummary = await requestOpenAiSummary(summaryInput);
+    if (!openAiSummary) return localSummary;
+    return {
+      textEn: openAiSummary.textEn,
+      textHu: openAiSummary.textHu,
+      generatedAtIso,
+      model: OPENAI_SUMMARY_MODEL,
+      source: "openai",
+      fingerprint,
+      temperatureChecks: localSummary.temperatureChecks,
+      usage: openAiSummary.usage,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    warnings.push(`OpenAI daily summary unavailable; using local summary fallback. ${message}`);
+    return localSummary;
+  }
+}
+
 function sleep(ms) {
   return new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 }
@@ -1525,6 +1806,7 @@ async function updateOnce() {
     global_sst_anomaly: "global-sst-anomaly.png",
   };
   const previousMapSources = await loadPreviousMapSources();
+  const previousAiSummary = await loadPreviousAiSummary();
   const mapSources = {};
   const mapWarnings = [];
 
@@ -1602,6 +1884,40 @@ async function updateOnce() {
   }
 
   const generatedAtIso = new Date().toISOString();
+  const seriesOutput = {
+    global_surface_temperature: globalSurfaceTemperature,
+    global_sea_surface_temperature: globalSeaSurfaceTemperature,
+    global_mean_sea_level: globalMeanSeaLevel,
+    ocean_heat_content: oceanHeatContent,
+    earth_energy_imbalance: earthEnergyImbalance,
+    global_glacier_mass_balance: globalGlacierMassBalance,
+    antarctic_ice_sheet_mass_balance: antarcticIceSheetMassBalance,
+    greenland_ice_sheet_mass_balance: greenlandIceSheetMassBalance,
+    northern_hemisphere_surface_temperature: northernHemisphereSurfaceTemperature,
+    southern_hemisphere_surface_temperature: southernHemisphereSurfaceTemperature,
+    arctic_surface_temperature: arcticSurfaceTemperature,
+    antarctic_surface_temperature: antarcticSurfaceTemperature,
+    north_atlantic_sea_surface_temperature: northAtlanticSeaSurfaceTemperature,
+    global_surface_temperature_anomaly: globalSurfaceTemperatureAnomaly,
+    global_sea_surface_temperature_anomaly: globalSeaSurfaceTemperatureAnomaly,
+    daily_global_mean_temperature_anomaly: dailyGlobalMeanTemperatureAnomaly,
+    global_sea_ice_extent: globalSeaIceExtent,
+    arctic_sea_ice_extent: arcticSeaIceExtent,
+    antarctic_sea_ice_extent: antarcticSeaIceExtent,
+    atmospheric_co2: atmosphericCo2,
+    atmospheric_ch4: atmosphericCh4,
+    atmospheric_aggi: atmosphericAggi,
+  };
+  const summaryOutput = Object.fromEntries(Object.entries(seriesOutput).map(([key, series]) => [key, summarize(series)]));
+  const aiSummaryWarnings = [];
+  const aiSummary = await buildDailyAiSummary({
+    summary: summaryOutput,
+    series: seriesOutput,
+    ensoOutlook,
+    previousAiSummary,
+    generatedAtIso,
+    warnings: aiSummaryWarnings,
+  });
 
   const output = {
     generatedAtIso,
@@ -1637,56 +1953,11 @@ async function updateOnce() {
       maps_sst_dates: CR_SST_LAST_MAP_DATE_URL,
     },
     ensoOutlook,
+    aiSummary,
     maps: mapSources,
-    mapWarnings,
-    series: {
-      global_surface_temperature: globalSurfaceTemperature,
-      global_sea_surface_temperature: globalSeaSurfaceTemperature,
-      global_mean_sea_level: globalMeanSeaLevel,
-      ocean_heat_content: oceanHeatContent,
-      earth_energy_imbalance: earthEnergyImbalance,
-      global_glacier_mass_balance: globalGlacierMassBalance,
-      antarctic_ice_sheet_mass_balance: antarcticIceSheetMassBalance,
-      greenland_ice_sheet_mass_balance: greenlandIceSheetMassBalance,
-      northern_hemisphere_surface_temperature: northernHemisphereSurfaceTemperature,
-      southern_hemisphere_surface_temperature: southernHemisphereSurfaceTemperature,
-      arctic_surface_temperature: arcticSurfaceTemperature,
-      antarctic_surface_temperature: antarcticSurfaceTemperature,
-      north_atlantic_sea_surface_temperature: northAtlanticSeaSurfaceTemperature,
-      global_surface_temperature_anomaly: globalSurfaceTemperatureAnomaly,
-      global_sea_surface_temperature_anomaly: globalSeaSurfaceTemperatureAnomaly,
-      daily_global_mean_temperature_anomaly: dailyGlobalMeanTemperatureAnomaly,
-      global_sea_ice_extent: globalSeaIceExtent,
-      arctic_sea_ice_extent: arcticSeaIceExtent,
-      antarctic_sea_ice_extent: antarcticSeaIceExtent,
-      atmospheric_co2: atmosphericCo2,
-      atmospheric_ch4: atmosphericCh4,
-      atmospheric_aggi: atmosphericAggi,
-    },
-    summary: {
-      global_surface_temperature: summarize(globalSurfaceTemperature),
-      global_sea_surface_temperature: summarize(globalSeaSurfaceTemperature),
-      global_mean_sea_level: summarize(globalMeanSeaLevel),
-      ocean_heat_content: summarize(oceanHeatContent),
-      earth_energy_imbalance: summarize(earthEnergyImbalance),
-      global_glacier_mass_balance: summarize(globalGlacierMassBalance),
-      antarctic_ice_sheet_mass_balance: summarize(antarcticIceSheetMassBalance),
-      greenland_ice_sheet_mass_balance: summarize(greenlandIceSheetMassBalance),
-      northern_hemisphere_surface_temperature: summarize(northernHemisphereSurfaceTemperature),
-      southern_hemisphere_surface_temperature: summarize(southernHemisphereSurfaceTemperature),
-      arctic_surface_temperature: summarize(arcticSurfaceTemperature),
-      antarctic_surface_temperature: summarize(antarcticSurfaceTemperature),
-      north_atlantic_sea_surface_temperature: summarize(northAtlanticSeaSurfaceTemperature),
-      global_surface_temperature_anomaly: summarize(globalSurfaceTemperatureAnomaly),
-      global_sea_surface_temperature_anomaly: summarize(globalSeaSurfaceTemperatureAnomaly),
-      daily_global_mean_temperature_anomaly: summarize(dailyGlobalMeanTemperatureAnomaly),
-      global_sea_ice_extent: summarize(globalSeaIceExtent),
-      arctic_sea_ice_extent: summarize(arcticSeaIceExtent),
-      antarctic_sea_ice_extent: summarize(antarcticSeaIceExtent),
-      atmospheric_co2: summarize(atmosphericCo2),
-      atmospheric_ch4: summarize(atmosphericCh4),
-      atmospheric_aggi: summarize(atmosphericAggi),
-    },
+    mapWarnings: [...mapWarnings, ...aiSummaryWarnings],
+    series: seriesOutput,
+    summary: summaryOutput,
   };
 
   const emptySeries = Object.entries(output.series)
@@ -1707,9 +1978,9 @@ async function updateOnce() {
   console.log(`Wrote ${OUTPUT_PATH}`);
   console.log(`Wrote ${BUNDLED_ENSO_OUTPUT_PATH}`);
   console.log(JSON.stringify(output.summary, null, 2));
-  if (mapWarnings.length) {
-    console.warn("Map update warnings:");
-    for (const warning of mapWarnings) {
+  if (output.mapWarnings.length) {
+    console.warn("Update warnings:");
+    for (const warning of output.mapWarnings) {
       console.warn(`- ${warning}`);
     }
   }

@@ -72,6 +72,23 @@ export interface EnsoOutlook {
   nextSixMonths: EnsoOutlookWindow | null;
 }
 
+export type AiSummaryTone = "critical" | "watch" | "normal";
+
+export interface AiSummaryTemperatureCheck {
+  key: "global_surface_temperature" | "global_sea_surface_temperature";
+  tone: AiSummaryTone;
+}
+
+export interface AiSummary {
+  textEn: string;
+  textHu?: string | null;
+  generatedAtIso: string;
+  model: string;
+  source: "openai" | "local";
+  fingerprint: string;
+  temperatureChecks: AiSummaryTemperatureCheck[];
+}
+
 export type ClimateMapKey =
   | "global_2m_temperature"
   | "global_2m_temperature_anomaly"
@@ -93,6 +110,7 @@ export interface DashboardDataSource {
   warnings: string[];
   updatedAtIso: string;
   ensoOutlook?: EnsoOutlook | null;
+  aiSummary?: AiSummary | null;
   maps?: ClimateMapAssets;
   mapWarnings?: string[];
 }

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { buildDashboardSnapshot, createBundledDataSource } from "../data/adapter";
 import type {
   ClimateMapKey,
+  AiSummary,
   DashboardDataSource,
   EnsoCondition,
   EnsoOutlook,
@@ -687,10 +688,12 @@ function buildAiDashboardSummary({
   snapshot,
   language,
   t,
+  aiSummary,
 }: {
   snapshot: ReturnType<typeof buildDashboardSnapshot>;
   language: Language;
   t: (typeof STRINGS)[Language];
+  aiSummary: AiSummary | null;
 }): AiDashboardSummary {
   const metricByKey = new Map([...snapshot.indicators, ...snapshot.forcing].map((metric) => [metric.key, metric]));
   const checks = ["global_surface_temperature", "global_sea_surface_temperature"]
@@ -705,8 +708,10 @@ function buildAiDashboardSummary({
   );
 
   const warningChecks = checks.filter((check) => check.tone !== "normal");
-  const headline =
-    warningChecks.length > 0
+  const generatedText = language === "hu" ? aiSummary?.textHu || aiSummary?.textEn : aiSummary?.textEn;
+  const headline = generatedText
+    ? generatedText
+    : warningChecks.length > 0
       ? `${t.aiSummaryWithWarnings} ${warningChecks.map((check) => `${metricTitle(check.metric, language)} ${sameDateCheckReason(check, t)}`).join("; ")}.`
       : t.aiSummaryNoWarnings;
 
@@ -1877,8 +1882,9 @@ export function App() {
         snapshot,
         language,
         t,
+        aiSummary: dataSource.aiSummary ?? null,
       }),
-    [snapshot, language, t]
+    [snapshot, language, t, dataSource.aiSummary]
   );
   const earthEnergyImbalanceTrendPoints = useMemo(
     () => (earthEnergyImbalanceMetric ? buildTrailingMeanSeries(earthEnergyImbalanceMetric.points, 12) : []),

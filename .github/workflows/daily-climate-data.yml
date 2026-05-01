@@ -33,6 +33,8 @@ jobs:
         run: npm ci
 
       - name: Refresh climate dataset
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: npm run data:update
 
       - name: Verify refreshed dataset

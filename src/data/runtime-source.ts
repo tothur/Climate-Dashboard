@@ -6,6 +6,7 @@ import type {
   ClimateSeriesBundle,
   DashboardDataSource,
   DailyPoint,
+  AiSummary,
   EnsoCondition,
   EnsoOutlook,
   EnsoOutlookWindow,
@@ -407,6 +408,44 @@ function readGeneratedMaps(payload: unknown): ClimateMapAssets | undefined {
   return Object.keys(parsed).length ? parsed : undefined;
 }
 
+function readGeneratedAiSummary(payload: unknown): AiSummary | null {
+  if (!isRecord(payload) || !isRecord(payload.aiSummary)) return null;
+  const raw = payload.aiSummary;
+  const textEn = typeof raw.textEn === "string" ? raw.textEn.trim() : "";
+  const generatedAtIso =
+    typeof raw.generatedAtIso === "string" && Number.isFinite(Date.parse(raw.generatedAtIso))
+      ? raw.generatedAtIso
+      : "";
+  const model = typeof raw.model === "string" ? raw.model.trim() : "";
+  const source = raw.source === "openai" || raw.source === "local" ? raw.source : null;
+  const fingerprint = typeof raw.fingerprint === "string" ? raw.fingerprint.trim() : "";
+  if (!textEn || !generatedAtIso || !model || !source || !fingerprint) return null;
+
+  const temperatureChecks = Array.isArray(raw.temperatureChecks)
+    ? raw.temperatureChecks
+        .map((entry) => {
+          if (!isRecord(entry)) return null;
+          const key =
+            entry.key === "global_surface_temperature" || entry.key === "global_sea_surface_temperature"
+              ? entry.key
+              : null;
+          const tone = entry.tone === "critical" || entry.tone === "watch" || entry.tone === "normal" ? entry.tone : null;
+          return key && tone ? { key, tone } : null;
+        })
+        .filter((entry): entry is AiSummary["temperatureChecks"][number] => entry != null)
+    : [];
+
+  return {
+    textEn,
+    textHu: typeof raw.textHu === "string" && raw.textHu.trim().length > 0 ? raw.textHu.trim() : null,
+    generatedAtIso,
+    model,
+    source,
+    fingerprint,
+    temperatureChecks,
+  };
+}
+
 async function loadGeneratedLocalDataSource(): Promise<DashboardDataSource | null> {
   const payload = await fetchJson(LOCAL_GENERATED_DATA_URL);
   if (!payload) return null;
@@ -415,6 +454,7 @@ async function loadGeneratedLocalDataSource(): Promise<DashboardDataSource | nul
   if (!parsedSeries) return null;
   if (!isFreshGeneratedSeriesBundle(parsedSeries)) return null;
   const ensoOutlook = readGeneratedEnsoOutlook(payload);
+  const aiSummary = readGeneratedAiSummary(payload);
   const mapAssets = readGeneratedMaps(payload);
   const mapWarnings = readGeneratedMapWarnings(payload);
 
@@ -428,6 +468,7 @@ async function loadGeneratedLocalDataSource(): Promise<DashboardDataSource | nul
     warnings: [],
     updatedAtIso: generatedAtIso,
     ensoOutlook,
+    aiSummary,
     maps: mapAssets,
     mapWarnings,
   });

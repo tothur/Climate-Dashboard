@@ -105,8 +105,24 @@ npm run dev:live
 - Writes `public/data/climate-realtime.json` with:
   - `generatedAtIso`
   - `sources`
+  - `aiSummary`
   - `series`
   - `summary`
+
+### Optional OpenAI Daily Summary
+
+If `OPENAI_API_KEY` is present in the update environment, `data:update:raw` generates one compact AI summary through the OpenAI Responses API and stores it in `public/data/climate-realtime.json` as `aiSummary`.
+
+Cost and safety controls:
+
+- The browser never receives the API key; the API call runs only inside the data updater.
+- The updater sends only compact latest metrics and temperature-record checks, not full time series.
+- The default model is `gpt-4.1-nano`; override with `OPENAI_SUMMARY_MODEL` if needed.
+- Output is capped at 180 tokens.
+- The updater reuses the previous summary when the relevant metrics have not changed, and also limits generation to at most once per UTC day in watch mode.
+- If the API key is absent or the request fails, the dashboard uses the local rule-based summary.
+
+For GitHub Actions, add `OPENAI_API_KEY` as a repository secret. Without that secret, the workflow still succeeds and uses the local summary fallback.
 
 ### What `data:verify` checks
 
