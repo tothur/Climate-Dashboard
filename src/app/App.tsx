@@ -127,7 +127,9 @@ const STRINGS = {
     latestSignalsAria: "Latest climate indicators",
     aiSummaryAria: "AI climate summary",
     aiSummaryTitle: "AI Summary",
-    aiSummaryKicker: "Summary",
+    aiSummaryKicker: "AI-summary",
+    aiSummaryGeneratedLabel: "AI generated",
+    aiSummaryFallbackLabel: "Local fallback",
     aiSummaryCriticalLabel: "Warning",
     aiSummaryWatchLabel: "Watch",
     aiSummaryNormalLabel: "Normal",
@@ -261,7 +263,9 @@ const STRINGS = {
     latestSignalsAria: "Legfrissebb klímaindikátorok",
     aiSummaryAria: "AI klímaösszefoglaló",
     aiSummaryTitle: "AI összefoglaló",
-    aiSummaryKicker: "Összefoglaló",
+    aiSummaryKicker: "AI-összefoglaló",
+    aiSummaryGeneratedLabel: "AI által generált",
+    aiSummaryFallbackLabel: "Helyi tartalék",
     aiSummaryCriticalLabel: "Figyelmeztetés",
     aiSummaryWatchLabel: "Figyelés",
     aiSummaryNormalLabel: "Normál",
@@ -2265,8 +2269,16 @@ export function App() {
 
       <section className={`ai-summary-panel ${aiDashboardSummary.tone}`} aria-label={t.aiSummaryAria}>
         <div className="ai-summary-main">
-          <span className="alert-kicker">{t.aiSummaryKicker}</span>
-          <p>{aiDashboardSummary.headline}</p>
+          <span className="ai-summary-icon" aria-hidden="true">AI</span>
+          <div className="ai-summary-copy">
+            <div className="ai-summary-label-row">
+              <span className="alert-kicker">{t.aiSummaryKicker}</span>
+              <span className={`ai-generated-chip ${dataSource.aiSummary?.source === "openai" ? "generated" : "fallback"}`}>
+                {dataSource.aiSummary?.source === "openai" ? t.aiSummaryGeneratedLabel : t.aiSummaryFallbackLabel}
+              </span>
+            </div>
+            <p>{aiDashboardSummary.headline}</p>
+          </div>
         </div>
 
         <div className="ai-temperature-checks">
