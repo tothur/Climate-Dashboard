@@ -93,13 +93,72 @@ const OPENAI_SUMMARY_TIMEOUT_MS = 20_000;
 const AI_SUMMARY_FINGERPRINT_KEYS = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
+  "northern_hemisphere_surface_temperature",
+  "southern_hemisphere_surface_temperature",
+  "arctic_surface_temperature",
+  "antarctic_surface_temperature",
+  "north_atlantic_sea_surface_temperature",
   "global_surface_temperature_anomaly",
   "global_sea_surface_temperature_anomaly",
   "daily_global_mean_temperature_anomaly",
+  "global_mean_sea_level",
+  "ocean_heat_content",
+  "earth_energy_imbalance",
+  "global_glacier_mass_balance",
+  "antarctic_ice_sheet_mass_balance",
+  "greenland_ice_sheet_mass_balance",
   "global_sea_ice_extent",
+  "arctic_sea_ice_extent",
+  "antarctic_sea_ice_extent",
   "atmospheric_co2",
+  "atmospheric_ch4",
+  "atmospheric_aggi",
 ];
 const AI_SUMMARY_DISALLOWED_TEXT_PATTERN = /\brecord\s+lows?\b|\brecord\s+cold\b|\bcoldest\b|\bcooling\b/i;
+const AI_SUMMARY_STALE_TEXT_PATTERN = /\bhistorical rank\b/i;
+const AI_SUMMARY_SIGNAL_LABELS = {
+  global_surface_temperature: "Global Surface Temperature",
+  global_sea_surface_temperature: "Global Sea Surface Temperature",
+  northern_hemisphere_surface_temperature: "Northern Hemisphere Surface Temperature",
+  southern_hemisphere_surface_temperature: "Southern Hemisphere Surface Temperature",
+  arctic_surface_temperature: "Arctic Surface Temperature",
+  antarctic_surface_temperature: "Antarctic Surface Temperature",
+  north_atlantic_sea_surface_temperature: "North Atlantic Sea Surface Temperature",
+  global_surface_temperature_anomaly: "Global Surface Temperature Anomaly",
+  global_sea_surface_temperature_anomaly: "Global Sea Surface Temperature Anomaly",
+  daily_global_mean_temperature_anomaly: "Daily Global Mean Temperature Anomaly",
+  global_mean_sea_level: "Global Mean Sea Level",
+  ocean_heat_content: "Ocean Heat Content",
+  earth_energy_imbalance: "Earth Energy Imbalance",
+  global_glacier_mass_balance: "Global Glacier Mass Balance",
+  antarctic_ice_sheet_mass_balance: "Antarctic Ice Sheet Mass Balance",
+  greenland_ice_sheet_mass_balance: "Greenland Ice Sheet Mass Balance",
+  global_sea_ice_extent: "Global Sea Ice Extent",
+  arctic_sea_ice_extent: "Arctic Sea Ice Extent",
+  antarctic_sea_ice_extent: "Antarctic Sea Ice Extent",
+  atmospheric_co2: "Atmospheric CO2",
+  atmospheric_ch4: "Atmospheric CH4",
+  atmospheric_aggi: "Annual Greenhouse Gas Index",
+};
+const AI_SUMMARY_SIGNAL_CATEGORIES = {
+  northern_hemisphere_surface_temperature: "regional",
+  southern_hemisphere_surface_temperature: "regional",
+  arctic_surface_temperature: "regional",
+  antarctic_surface_temperature: "regional",
+  north_atlantic_sea_surface_temperature: "oceanic",
+  global_mean_sea_level: "oceanic",
+  ocean_heat_content: "oceanic",
+  earth_energy_imbalance: "energy imbalance",
+  global_glacier_mass_balance: "cryosphere",
+  antarctic_ice_sheet_mass_balance: "cryosphere",
+  greenland_ice_sheet_mass_balance: "cryosphere",
+  global_sea_ice_extent: "sea ice",
+  arctic_sea_ice_extent: "sea ice",
+  antarctic_sea_ice_extent: "sea ice",
+  atmospheric_co2: "forcing",
+  atmospheric_ch4: "forcing",
+  atmospheric_aggi: "forcing",
+};
 
 function toFiniteNumber(value) {
   const numeric = typeof value === "number" ? value : Number(value);
@@ -1401,6 +1460,142 @@ function sameDateTemperatureCheck(key, series) {
   };
 }
 
+function sameDateRankSignal(key, series, { direction = "high", watchRank = 3, nearRecordMargin = null } = {}) {
+  const latestPoint = latestFinitePoint(series);
+  if (!latestPoint || !/^\d{4}-\d{2}-\d{2}$/.test(latestPoint.date)) return null;
+
+  const monthDay = latestPoint.date.slice(5);
+  const historicalValues = [];
+
+  for (const point of series) {
+    if (!point?.date || point.date.slice(5) !== monthDay || !Number.isFinite(point.value) || point.date >= latestPoint.date) continue;
+    historicalValues.push(point.value);
+  }
+
+  if (historicalValues.length < 20) return null;
+
+  const betterThanLatest =
+    direction === "low"
+      ? historicalValues.filter((value) => value < latestPoint.value).length
+      : historicalValues.filter((value) => value > latestPoint.value).length;
+  const rank = betterThanLatest + 1;
+  const record = direction === "low" ? Math.min(...historicalValues) : Math.max(...historicalValues);
+  const differenceFromRecord = latestPoint.value - record;
+  const nearRecord =
+    nearRecordMargin == null
+      ? false
+      : direction === "low"
+        ? differenceFromRecord <= nearRecordMargin
+        : differenceFromRecord >= -nearRecordMargin;
+  const tone = rank === 1 || nearRecord ? "critical" : rank <= watchRank ? "watch" : "normal";
+  if (tone === "normal") return null;
+
+  return {
+    key,
+    label: AI_SUMMARY_SIGNAL_LABELS[key] ?? key,
+    category: AI_SUMMARY_SIGNAL_CATEGORIES[key] ?? "climate",
+    tone,
+    direction,
+    basis: "same-date historical rank",
+    latestDate: latestPoint.date,
+    latestValue: Math.round(latestPoint.value * 1000) / 1000,
+    recordValue: Math.round(record * 1000) / 1000,
+    differenceFromRecord: Math.round(differenceFromRecord * 1000) / 1000,
+    rank,
+    sampleSize: historicalValues.length + 1,
+  };
+}
+
+function historicalRankSignal(key, series, { direction = "high", watchRank = 3, minSampleSize = 20 } = {}) {
+  const latestPoint = latestFinitePoint(series);
+  if (!latestPoint) return null;
+
+  const historicalValues = series
+    .filter((point) => point?.date < latestPoint.date && Number.isFinite(point.value))
+    .map((point) => point.value);
+  if (historicalValues.length < minSampleSize) return null;
+
+  const betterThanLatest =
+    direction === "low"
+      ? historicalValues.filter((value) => value < latestPoint.value).length
+      : historicalValues.filter((value) => value > latestPoint.value).length;
+  const rank = betterThanLatest + 1;
+  const record = direction === "low" ? Math.min(...historicalValues) : Math.max(...historicalValues);
+  const mean = historicalValues.reduce((sum, value) => sum + value, 0) / historicalValues.length;
+  const variance = historicalValues.reduce((sum, value) => sum + (value - mean) ** 2, 0) / historicalValues.length;
+  const stdDev = variance > 0 ? Math.sqrt(variance) : null;
+  const zScore = stdDev ? (latestPoint.value - mean) / stdDev : null;
+  const severityScore = zScore == null ? null : direction === "low" ? -zScore : zScore;
+  const tone =
+    rank === 1 || (severityScore != null && severityScore >= 3)
+      ? "critical"
+      : rank <= watchRank || (severityScore != null && severityScore >= 2.5)
+        ? "watch"
+        : "normal";
+  if (tone === "normal") return null;
+
+  return {
+    key,
+    label: AI_SUMMARY_SIGNAL_LABELS[key] ?? key,
+    category: AI_SUMMARY_SIGNAL_CATEGORIES[key] ?? "climate",
+    tone,
+    direction,
+    basis: "full-record historical rank",
+    latestDate: latestPoint.date,
+    latestValue: Math.round(latestPoint.value * 1000) / 1000,
+    recordValue: Math.round(record * 1000) / 1000,
+    differenceFromRecord: Math.round((latestPoint.value - record) * 1000) / 1000,
+    zScore: zScore == null ? null : Math.round(zScore * 100) / 100,
+    rank,
+    sampleSize: historicalValues.length + 1,
+  };
+}
+
+function signalPriority(signal) {
+  const categoryPriority = {
+    regional: 4,
+    oceanic: 4,
+    cryosphere: 4,
+    "energy imbalance": 4,
+    "sea ice": 4,
+    forcing: 3,
+    climate: 2,
+  };
+  return (
+    (signal.tone === "critical" ? 100 : 50) +
+    (categoryPriority[signal.category] ?? 1) * 5 +
+    Math.max(0, 8 - signal.rank)
+  );
+}
+
+function buildAiSummaryAnomalySignals(series) {
+  const signalBuilders = [
+    () => sameDateRankSignal("northern_hemisphere_surface_temperature", series.northern_hemisphere_surface_temperature, { nearRecordMargin: 0.12 }),
+    () => sameDateRankSignal("southern_hemisphere_surface_temperature", series.southern_hemisphere_surface_temperature, { nearRecordMargin: 0.12 }),
+    () => sameDateRankSignal("arctic_surface_temperature", series.arctic_surface_temperature, { nearRecordMargin: 0.3 }),
+    () => sameDateRankSignal("antarctic_surface_temperature", series.antarctic_surface_temperature, { nearRecordMargin: 0.3 }),
+    () => sameDateRankSignal("north_atlantic_sea_surface_temperature", series.north_atlantic_sea_surface_temperature, { nearRecordMargin: 0.08 }),
+    () => historicalRankSignal("global_mean_sea_level", series.global_mean_sea_level),
+    () => historicalRankSignal("ocean_heat_content", series.ocean_heat_content),
+    () => historicalRankSignal("earth_energy_imbalance", series.earth_energy_imbalance),
+    () => historicalRankSignal("global_glacier_mass_balance", series.global_glacier_mass_balance, { direction: "low" }),
+    () => historicalRankSignal("antarctic_ice_sheet_mass_balance", series.antarctic_ice_sheet_mass_balance),
+    () => historicalRankSignal("greenland_ice_sheet_mass_balance", series.greenland_ice_sheet_mass_balance),
+    () => sameDateRankSignal("global_sea_ice_extent", series.global_sea_ice_extent, { direction: "low", nearRecordMargin: 0.15 }),
+    () => sameDateRankSignal("arctic_sea_ice_extent", series.arctic_sea_ice_extent, { direction: "low", nearRecordMargin: 0.1 }),
+    () => sameDateRankSignal("antarctic_sea_ice_extent", series.antarctic_sea_ice_extent, { direction: "low", nearRecordMargin: 0.1 }),
+    () => historicalRankSignal("atmospheric_co2", series.atmospheric_co2),
+    () => historicalRankSignal("atmospheric_ch4", series.atmospheric_ch4),
+    () => historicalRankSignal("atmospheric_aggi", series.atmospheric_aggi),
+  ];
+
+  return signalBuilders
+    .map((buildSignal) => buildSignal())
+    .filter(Boolean)
+    .sort((left, right) => signalPriority(right) - signalPriority(left) || left.label.localeCompare(right.label))
+    .slice(0, 6);
+}
+
 function buildAiSummaryFingerprint(summary, ensoOutlook) {
   const compact = {
     series: Object.fromEntries(
@@ -1432,7 +1627,20 @@ function aiSummaryModel(warnings) {
   return DEFAULT_OPENAI_SUMMARY_MODEL;
 }
 
-function buildTemperatureSummaryTextEn(temperatureChecks) {
+function anomalySignalPhrase(signal) {
+  const scope = signal.basis === "same-date historical rank" ? "for this date" : "in its historical record";
+  const rankText =
+    signal.direction === "low"
+      ? signal.rank === 1
+        ? `is the lowest observed value ${scope}`
+        : `is among the lowest observed values ${scope}`
+      : signal.rank === 1
+        ? `is at a record high ${scope}`
+        : `is near a record high ${scope}`;
+  return `${signal.label} ${rankText}`;
+}
+
+function buildTemperatureSummaryTextEn(temperatureChecks, anomalySignals = []) {
   const warningChecks = temperatureChecks.filter((check) => check.tone !== "normal");
   const normalChecks = temperatureChecks.filter((check) => check.tone === "normal");
   const names = {
@@ -1448,13 +1656,24 @@ function buildTemperatureSummaryTextEn(temperatureChecks) {
         normalChecks.length === 1 ? "is" : "are"
       } not unusually high versus the same-date historical record.`
     : "Other temperature checks are shown below.";
+  const selectedAnomalies = anomalySignals.slice(0, 2);
+  const anomalyText = selectedAnomalies.length
+    ? `Broader notable signal${selectedAnomalies.length === 1 ? "" : "s"}: ${selectedAnomalies.map(anomalySignalPhrase).join("; ")}.`
+    : "Key climate indicators below show the latest available readings.";
 
   return warningChecks.length
-    ? `${warningChecks.map((check) => `${names[check.key]} ${reasons[check.tone]}`).join("; ")}. ${normalText}`
-    : "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records. Key climate indicators below show the latest available readings.";
+    ? `${warningChecks.map((check) => `${names[check.key]} ${reasons[check.tone]}`).join("; ")}. ${
+        anomalySignals.length ? anomalyText : normalText
+      }`
+    : `Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records. ${anomalyText}`;
 }
 
-function buildTemperatureSummaryTextHu(temperatureChecks) {
+function anomalySignalPhraseHu(signal) {
+  const recordText = signal.rank === 1 ? "rekordszinten van" : "rekordközeli szinten van";
+  return `${signal.label} ${recordText}`;
+}
+
+function buildTemperatureSummaryTextHu(temperatureChecks, anomalySignals = []) {
   const warningChecks = temperatureChecks.filter((check) => check.tone !== "normal");
   const normalChecks = temperatureChecks.filter((check) => check.tone === "normal");
   const names = {
@@ -1468,16 +1687,21 @@ function buildTemperatureSummaryTextHu(temperatureChecks) {
   const normalText = normalChecks.length
     ? `${normalChecks.map((check) => names[check.key]).join(" és ")} nem szokatlanul magas az azonos dátumú történeti rekordhoz képest.`
     : "A további hőmérsékleti ellenőrzések lent láthatók.";
+  const anomalyText = anomalySignals.length
+    ? `További fontos jelzés: ${anomalySignals.slice(0, 2).map(anomalySignalPhraseHu).join("; ")}.`
+    : "A lenti fő indikátorok a legfrissebb elérhető adatokat mutatják.";
 
   return warningChecks.length
-    ? `${warningChecks.map((check) => `${names[check.key]} ${reasons[check.tone]}`).join("; ")}. ${normalText}`
-    : "A globális felszíni hőmérséklet és a globális tengerfelszíni hőmérséklet nem szokatlanul magas az azonos dátumú történeti rekordokhoz képest. A lenti fő indikátorok a legfrissebb elérhető adatokat mutatják.";
+    ? `${warningChecks.map((check) => `${names[check.key]} ${reasons[check.tone]}`).join("; ")}. ${
+        anomalySignals.length ? anomalyText : normalText
+      }`
+    : `A globális felszíni hőmérséklet és a globális tengerfelszíni hőmérséklet nem szokatlanul magas az azonos dátumú történeti rekordokhoz képest. ${anomalyText}`;
 }
 
-function buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks }) {
+function buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks, anomalySignals }) {
   return {
-    textEn: buildTemperatureSummaryTextEn(temperatureChecks),
-    textHu: buildTemperatureSummaryTextHu(temperatureChecks),
+    textEn: buildTemperatureSummaryTextEn(temperatureChecks, anomalySignals),
+    textHu: buildTemperatureSummaryTextHu(temperatureChecks, anomalySignals),
     generatedAtIso,
     model: "local-rules",
     source: "local",
@@ -1576,7 +1800,12 @@ function buildAllowedContextSignals(summary, ensoOutlook) {
   return signals.slice(0, 4);
 }
 
-function validateOpenAiSummaryText(openAiSummary, localSummary, temperatureChecks) {
+function buildAiSummaryContextSignals(summary, ensoOutlook, anomalySignals) {
+  const anomalyContext = anomalySignals.map((signal) => `${anomalySignalPhrase(signal)} as of ${signal.latestDate}.`);
+  return [...anomalyContext, ...buildAllowedContextSignals(summary, ensoOutlook)].slice(0, 6);
+}
+
+function validateOpenAiSummaryText(openAiSummary, localSummary, temperatureChecks, anomalySignals = []) {
   const textEn = openAiSummary.textEn.trim();
   const textHu = openAiSummary.textHu?.trim() || localSummary.textHu;
   const textEnSentenceCount = sentenceCount(textEn);
@@ -1585,7 +1814,8 @@ function validateOpenAiSummaryText(openAiSummary, localSummary, temperatureCheck
     textEn.length > 650 ||
     textEnSentenceCount < 2 ||
     textEnSentenceCount > 3 ||
-    AI_SUMMARY_DISALLOWED_TEXT_PATTERN.test(textEn)
+    AI_SUMMARY_DISALLOWED_TEXT_PATTERN.test(textEn) ||
+    AI_SUMMARY_STALE_TEXT_PATTERN.test(textEn)
   ) {
     return null;
   }
@@ -1603,6 +1833,12 @@ function validateOpenAiSummaryText(openAiSummary, localSummary, temperatureCheck
     }
   } else if (!/not unusually high/i.test(textEn)) {
     return null;
+  }
+
+  if (anomalySignals.length) {
+    const requiredAnomalyLabels = anomalySignals.slice(0, 3).map((signal) => signal.label.toLowerCase());
+    const normalizedText = textEn.toLowerCase();
+    if (!requiredAnomalyLabels.some((label) => normalizedText.includes(label))) return null;
   }
 
   return {
@@ -1680,13 +1916,14 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
     sameDateTemperatureCheck("global_surface_temperature", series.global_surface_temperature),
     sameDateTemperatureCheck("global_sea_surface_temperature", series.global_sea_surface_temperature),
   ].filter(Boolean);
+  const anomalySignals = buildAiSummaryAnomalySignals(series);
   const fingerprint = buildAiSummaryFingerprint(summary, ensoOutlook);
-  const localSummary = buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks });
+  const localSummary = buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks, anomalySignals });
   const hasOpenAiApiKey = Boolean(process.env.OPENAI_API_KEY?.trim());
   const model = aiSummaryModel(warnings);
 
   if (shouldReusePreviousAiSummary(previousAiSummary, fingerprint, new Date(generatedAtIso))) {
-    const validatedPreviousSummary = validateOpenAiSummaryText(previousAiSummary, localSummary, temperatureChecks);
+    const validatedPreviousSummary = validateOpenAiSummaryText(previousAiSummary, localSummary, temperatureChecks, anomalySignals);
     const canReusePreviousSummary =
       !hasOpenAiApiKey || (previousAiSummary.source === "openai" && previousAiSummary.model === model);
     if (validatedPreviousSummary && canReusePreviousSummary) {
@@ -1716,15 +1953,16 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
         : "textEn must clearly say both global surface temperature and global sea surface temperature are not unusually high versus same-date historical records.",
       checks: temperatureChecks,
     },
-    allowedContextSignals: buildAllowedContextSignals(summary, ensoOutlook?.nextSixMonths ?? null),
+    anomalySignals,
+    allowedContextSignals: buildAiSummaryContextSignals(summary, ensoOutlook?.nextSixMonths ?? null, anomalySignals),
     requiredBehavior:
-      "Temperature status is authoritative. Do not reinterpret the temperature checks. Write 2 or 3 sentences total. If you add context, use only allowedContextSignals items and keep the output compact.",
+      "Temperature status is authoritative. Do not reinterpret the temperature checks. Write 2 or 3 sentences total. Mention temperature status first. If anomalySignals is not empty, include at least one of the first three anomalySignals by label before general context. If you add context, use only anomalySignals or allowedContextSignals items and keep the output compact.",
   };
 
   try {
     const openAiSummary = await requestOpenAiSummary(summaryInput, model);
     if (!openAiSummary) return localSummary;
-    const validatedSummary = validateOpenAiSummaryText(openAiSummary, localSummary, temperatureChecks);
+    const validatedSummary = validateOpenAiSummaryText(openAiSummary, localSummary, temperatureChecks, anomalySignals);
     if (!validatedSummary) {
       warnings.push("OpenAI daily summary failed validation; using local summary fallback.");
       return localSummary;
