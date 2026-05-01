@@ -594,7 +594,6 @@ interface SameDateTemperatureCheck {
 interface AiDashboardSummary {
   tone: AiSummaryTone;
   headline: string;
-  keySignals: string[];
   checks: SameDateTemperatureCheck[];
 }
 
@@ -677,12 +676,6 @@ function sameCalendarDayStats(
   };
 }
 
-function signedTemperatureDelta(value: number | null, decimals: number, language: Language, unavailableText: string): string {
-  if (value == null || !Number.isFinite(value)) return unavailableText;
-  const formatted = formatNumericValue(Math.abs(value), decimals, language, unavailableText);
-  return `${value >= 0 ? "+" : "-"}${formatted}`;
-}
-
 function sameDateCheckReason(check: SameDateTemperatureCheck, t: (typeof STRINGS)[Language]): string {
   if (check.differenceFromRecord != null && check.differenceFromRecord >= -0.005) return t.aiSummaryRecordHigh;
   if (check.tone === "watch") return t.aiSummaryNearRecordHigh;
@@ -690,25 +683,14 @@ function sameDateCheckReason(check: SameDateTemperatureCheck, t: (typeof STRINGS
   return t.aiSummaryBelowMean;
 }
 
-function formatRankLabel(rank: number | null, sampleSize: number, language: Language, unavailableText: string): string {
-  if (rank == null || !Number.isFinite(rank)) return unavailableText;
-  return language === "hu" ? `${rank}. / ${sampleSize}` : `#${rank} of ${sampleSize}`;
-}
-
 function buildAiDashboardSummary({
   snapshot,
   language,
   t,
-  latestAnnualGlobalMeanAnomaly,
-  projectedAnnualGlobalMeanAnomaly,
-  ensoOutlook,
 }: {
   snapshot: ReturnType<typeof buildDashboardSnapshot>;
   language: Language;
   t: (typeof STRINGS)[Language];
-  latestAnnualGlobalMeanAnomaly: { year: number; value: number } | null;
-  projectedAnnualGlobalMeanAnomaly: AnnualProjectionEstimate | null;
-  ensoOutlook: EnsoOutlook | null;
 }): AiDashboardSummary {
   const metricByKey = new Map([...snapshot.indicators, ...snapshot.forcing].map((metric) => [metric.key, metric]));
   const checks = ["global_surface_temperature", "global_sea_surface_temperature"]
@@ -728,33 +710,9 @@ function buildAiDashboardSummary({
       ? `${t.aiSummaryWithWarnings} ${warningChecks.map((check) => `${metricTitle(check.metric, language)} ${sameDateCheckReason(check, t)}`).join("; ")}.`
       : t.aiSummaryNoWarnings;
 
-  const keySignals: string[] = [];
-  if (latestAnnualGlobalMeanAnomaly) {
-    keySignals.push(
-      `${t.annualGlobalTemperatureAnomalyTitle}: ${formatNumericValue(latestAnnualGlobalMeanAnomaly.value, 2, language, t.valueUnavailable)} ${cardUnitLabel(DAILY_GLOBAL_MEAN_ANOMALY_KEY, "deg C", language)}`
-    );
-  }
-  if (projectedAnnualGlobalMeanAnomaly) {
-    keySignals.push(
-      `${t.projectedAnnualTemperatureAnomalyTitle}: ${formatNumericValue(projectedAnnualGlobalMeanAnomaly.value, 2, language, t.valueUnavailable)} ${cardUnitLabel(DAILY_GLOBAL_MEAN_ANOMALY_KEY, "deg C", language)}`
-    );
-  }
-  const seaIce = metricByKey.get("global_sea_ice_extent");
-  if (seaIce?.latestValue != null) {
-    keySignals.push(`${metricTitle(seaIce, language)}: ${formatMetricValue(seaIce, language, t.valueUnavailable)} ${cardUnitLabel(seaIce.key, seaIce.unit, language)}`);
-  }
-  const co2 = metricByKey.get("atmospheric_co2");
-  if (co2?.latestValue != null) {
-    keySignals.push(`${metricTitle(co2, language)}: ${formatMetricValue(co2, language, t.valueUnavailable)} ${cardUnitLabel(co2.key, co2.unit, language)}`);
-  }
-  if (ensoOutlook?.nextSixMonths) {
-    keySignals.push(`${t.ensoOutlookTitle}: ${formatEnsoConditionLabel(ensoOutlook.nextSixMonths.condition, t)} ${ensoOutlook.nextSixMonths.probability ?? "-"}%`);
-  }
-
   return {
     tone,
     headline,
-    keySignals: keySignals.slice(0, 5),
     checks,
   };
 }
@@ -1919,11 +1877,8 @@ export function App() {
         snapshot,
         language,
         t,
-        latestAnnualGlobalMeanAnomaly,
-        projectedAnnualGlobalMeanAnomaly,
-        ensoOutlook,
       }),
-    [snapshot, language, t, latestAnnualGlobalMeanAnomaly, projectedAnnualGlobalMeanAnomaly, ensoOutlook]
+    [snapshot, language, t]
   );
   const earthEnergyImbalanceTrendPoints = useMemo(
     () => (earthEnergyImbalanceMetric ? buildTrailingMeanSeries(earthEnergyImbalanceMetric.points, 12) : []),
@@ -2305,54 +2260,21 @@ export function App() {
       <section className={`ai-summary-panel ${aiDashboardSummary.tone}`} aria-label={t.aiSummaryAria}>
         <div className="ai-summary-main">
           <span className="alert-kicker">{t.aiSummaryKicker}</span>
-          <h2>{t.aiSummaryTitle}</h2>
           <p>{aiDashboardSummary.headline}</p>
-          {aiDashboardSummary.keySignals.length ? (
-            <div className="ai-summary-signals">
-              <span>{t.aiSummaryMostImportantSignals}</span>
-              {aiDashboardSummary.keySignals.map((signal) => (
-                <span className="alert-meta-chip" key={signal}>
-                  {signal}
-                </span>
-              ))}
-            </div>
-          ) : null}
         </div>
 
         <div className="ai-temperature-checks">
           {aiDashboardSummary.checks.map((check) => (
-            <article className={`ai-check-card ${check.tone}`} key={`${check.metric.key}-ai-check`}>
-              <div className="ai-check-header">
-                <h3>{metricTitle(check.metric, language)}</h3>
-                <span className={`ai-tone-pill ${check.tone}`}>
-                  {check.tone === "critical"
-                    ? t.aiSummaryCriticalLabel
-                    : check.tone === "watch"
-                      ? t.aiSummaryWatchLabel
-                      : t.aiSummaryNormalLabel}
-                </span>
-              </div>
-              <p className="ai-check-value">
-                {formatNumericValue(check.latestPoint.value, check.metric.decimals, language, t.valueUnavailable)}{" "}
-                {cardUnitLabel(check.metric.key, check.metric.unit, language)}
-              </p>
-              <div className="ai-check-details">
-                <span>
-                  {signedTemperatureDelta(check.differenceFromMean, check.metric.decimals, language, t.valueUnavailable)}{" "}
-                  {cardUnitLabel(check.metric.key, check.metric.unit, language)} {t.aiSummaryComparedWithMean}
-                </span>
-                <span>
-                  {signedTemperatureDelta(check.differenceFromRecord, check.metric.decimals, language, t.valueUnavailable)}{" "}
-                  {cardUnitLabel(check.metric.key, check.metric.unit, language)} {t.aiSummaryComparedWithRecord}
-                </span>
-                <span>
-                  {t.aiSummaryRankLabel}: {formatRankLabel(check.rank, check.sampleSize, language, t.valueUnavailable)}
-                </span>
-              </div>
-              <p className="summary-meta">
-                {t.chartLatest}: {formatDateLabel(check.latestPoint.date, language)}
-              </p>
-            </article>
+            <span className={`ai-check-pill ${check.tone}`} key={`${check.metric.key}-ai-check`}>
+              <span>{metricTitle(check.metric, language)}</span>
+              <strong>
+                {check.tone === "critical"
+                  ? t.aiSummaryCriticalLabel
+                  : check.tone === "watch"
+                    ? t.aiSummaryWatchLabel
+                    : t.aiSummaryNormalLabel}
+              </strong>
+            </span>
           ))}
         </div>
       </section>
