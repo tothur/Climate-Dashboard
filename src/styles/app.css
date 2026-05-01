@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
-  --font-display: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
-  --font-sans: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+  --font-display: "Inter Tight", "Inter", "Avenir Next", "Segoe UI", sans-serif;
+  --font-sans: "Inter", "Avenir Next", "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --bg: #f3f6fb;
   --panel: #ffffff;
@@ -75,6 +75,8 @@ body {
   font-family: var(--font-sans);
   color: var(--text);
   background: radial-gradient(circle at 12% 0%, rgba(37, 99, 235, 0.08), transparent 32%), var(--bg);
+  font-optical-sizing: auto;
+  font-feature-settings: "cv02" 1, "cv03" 1, "cv04" 1, "cv11" 1;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
@@ -83,7 +85,7 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .app-shell {
@@ -167,7 +169,7 @@ h3 {
 .topbar h1 {
   margin: 0;
   font-size: clamp(1.55rem, 2.6vw, 2rem);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   line-height: 1.06;
   font-weight: 760;
   color: #0b1732;
@@ -462,7 +464,7 @@ h3 {
   margin: 0;
   font-size: var(--type-card-title-size);
   line-height: 1.24;
-  letter-spacing: -0.005em;
+  letter-spacing: 0;
   text-transform: none;
   font-weight: var(--type-card-title-weight);
   color: var(--muted);
@@ -516,6 +518,15 @@ h3 {
   font-size: 0.7rem;
   font-weight: 640;
   line-height: 1.2;
+}
+
+.alert-meta-chip,
+.freshness-chip,
+.panel-freshness-chip,
+.footer-chip,
+.source-chip {
+  font-family: var(--font-mono);
+  letter-spacing: 0;
 }
 
 .alert-meta-chip.confidence-high {
@@ -616,7 +627,7 @@ h3 {
   display: block;
   font-size: clamp(1.15rem, 1.5vw, 1.5rem);
   line-height: 1.15;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   font-weight: 700;
   color: var(--pathogen-emphasis, var(--text));
 }
@@ -818,7 +829,7 @@ h3 {
 .alert-card.epidemic h2 {
   font-size: clamp(1.2rem, 1.75vw, 1.55rem);
   line-height: 1.12;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   text-transform: none;
   font-weight: 700;
   color: var(--text);
@@ -941,7 +952,7 @@ h3 {
   margin: 0;
   font-size: var(--type-section-title-size);
   font-weight: var(--type-section-title-weight);
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
 }
 
 .region-divider p {
@@ -1049,7 +1060,7 @@ h3 {
   margin: 0;
   font-size: var(--type-section-title-size);
   font-weight: var(--type-section-title-weight);
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
 }
 
 .quality-header p {
@@ -1077,7 +1088,7 @@ h3 {
   display: block;
   margin-top: 8px;
   font-size: 1.3rem;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .quality-card p {
@@ -1296,7 +1307,7 @@ h3 {
   margin: 0;
   font-size: var(--type-section-title-size);
   font-weight: var(--type-section-title-weight);
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
 }
 
 .surge-header p {
@@ -1461,7 +1472,7 @@ h3 {
   margin: 0;
   font-size: var(--type-section-title-size);
   font-weight: var(--type-section-title-weight);
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
 }
 
 .section-header-main p {
@@ -1514,7 +1525,7 @@ h3 {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 720;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .climate-subsection-header p {
@@ -1612,7 +1623,7 @@ h3 {
   margin: 0;
   font-size: var(--type-section-title-size);
   font-weight: var(--type-section-title-weight);
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
 }
 
 .glance-header p {
@@ -1706,7 +1717,7 @@ h3 {
   display: block;
   margin-top: 8px;
   font-size: 1.4rem;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .stat-week-chip {
@@ -1871,7 +1882,7 @@ h3 {
   margin: 0;
   font-size: var(--type-section-title-size);
   font-weight: var(--type-section-title-weight);
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
 }
 
 .virology-header p {
@@ -2028,7 +2039,7 @@ h3 {
   margin: 0;
   font-size: var(--type-section-title-size);
   font-weight: var(--type-section-title-weight);
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
 }
 
 .table-header p {
@@ -2155,7 +2166,7 @@ h3 {
   margin: 0;
   font-size: 0.99rem;
   font-weight: 700;
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
 }
 
 .panel-header p {
@@ -2389,7 +2400,7 @@ body.panel-expanded-lock {
   margin: 0;
   font-size: var(--type-section-title-size);
   font-weight: var(--type-section-title-weight);
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
 }
 
 .historical-header p {
