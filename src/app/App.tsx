@@ -128,9 +128,6 @@ const STRINGS = {
     aiSummaryAria: "AI climate summary",
     aiSummaryTitle: "AI Summary",
     aiSummaryKicker: "AI-summary",
-    aiSummaryCriticalLabel: "Warning",
-    aiSummaryWatchLabel: "Watch",
-    aiSummaryNormalLabel: "Normal",
     aiSummaryRecordHigh: "latest value is at or above the same-date historical record",
     aiSummaryNearRecordHigh: "latest value is near the same-date historical record",
     aiSummaryAboveMean: "above the 1991-2020 mean for this date",
@@ -261,9 +258,6 @@ const STRINGS = {
     aiSummaryAria: "AI klímaösszefoglaló",
     aiSummaryTitle: "AI összefoglaló",
     aiSummaryKicker: "AI-összefoglaló",
-    aiSummaryCriticalLabel: "Figyelmeztetés",
-    aiSummaryWatchLabel: "Figyelés",
-    aiSummaryNormalLabel: "Normál",
     aiSummaryRecordHigh: "a legfrissebb érték eléri vagy meghaladja az azonos dátumú történeti rekordot",
     aiSummaryNearRecordHigh: "a legfrissebb érték közel van az azonos dátumú történeti rekordhoz",
     aiSummaryAboveMean: "az 1991-2020-as azonos dátumú átlag felett",
@@ -2264,24 +2258,18 @@ export function App() {
       <section className={`ai-summary-panel ${aiDashboardSummary.tone}`} aria-label={t.aiSummaryAria}>
         <div className="ai-summary-main">
           <div className="ai-summary-copy">
-            <span className="alert-kicker">{t.aiSummaryKicker}</span>
+            <div className="ai-summary-label-row">
+              <span className="ai-generic-mark" aria-label="AI generated">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M12 2.8 13.55 7.2 18 8.75l-4.45 1.55L12 14.8l-1.55-4.5L6 8.75l4.45-1.55L12 2.8Z" />
+                  <path d="M17.9 13.1 18.8 15.6l2.5.9-2.5.9-.9 2.5-.9-2.5-2.5-.9 2.5-.9.9-2.5Z" />
+                  <path d="M6.1 14.1 6.8 16l1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7.7-1.9Z" />
+                </svg>
+              </span>
+              <span className="alert-kicker">{t.aiSummaryKicker}</span>
+            </div>
             <p>{aiDashboardSummary.headline}</p>
           </div>
-        </div>
-
-        <div className="ai-temperature-checks">
-          {aiDashboardSummary.checks.map((check) => (
-            <span className={`ai-check-pill ${check.tone}`} key={`${check.metric.key}-ai-check`}>
-              <span>{metricTitle(check.metric, language)}</span>
-              <strong>
-                {check.tone === "critical"
-                  ? t.aiSummaryCriticalLabel
-                  : check.tone === "watch"
-                    ? t.aiSummaryWatchLabel
-                    : t.aiSummaryNormalLabel}
-              </strong>
-            </span>
-          ))}
         </div>
       </section>
 
