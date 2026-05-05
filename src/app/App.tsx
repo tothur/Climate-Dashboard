@@ -2569,7 +2569,6 @@ export function App() {
   ].filter((card): card is NonNullable<typeof card> => card != null);
   const overviewMapCards = [
     mapCards.find((card) => card.key === "map-2m-temperature-anomaly"),
-    mapCards.find((card) => card.key === "map-sst-anomaly"),
   ].filter((card): card is (typeof mapCards)[number] => card != null);
   const overviewHighlights = [
     recordWarningCards[0]
