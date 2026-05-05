@@ -40,6 +40,28 @@ const LOCAL_MAP_FILENAMES: Record<ClimateMapKey, string> = {
   global_sst: "global-sst.png",
   global_sst_anomaly: "global-sst-anomaly.png",
 };
+type DashboardView = "overview" | "indicators" | "forcing" | "maps" | "projections" | "sources";
+type ToolkitIconName =
+  | "alert"
+  | "bars"
+  | "calendar"
+  | "cloud"
+  | "download"
+  | "globe"
+  | "home"
+  | "info"
+  | "leaf"
+  | "map"
+  | "more"
+  | "ocean"
+  | "reports"
+  | "search"
+  | "snow"
+  | "temperature"
+  | "trend"
+  | "up";
+
+const DASHBOARD_VIEW_IDS = new Set<DashboardView>(["overview", "indicators", "forcing", "maps", "projections", "sources"]);
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
 const ICE_SHEET_AND_GLACIER_KEYS = new Set([
@@ -210,7 +232,7 @@ const STRINGS = {
     sourceMixedNote: "One or more live feeds failed; fallback data fills gaps.",
     sourceBundledNote: "All live feeds failed; bundled fallback drives every chart.",
     sourceWarningsTitle: "Data warnings",
-    sourceCardsTitle: "Primary sources",
+    sourceCardsTitle: "Data",
     sourceLabel: "Source",
     chartFullscreenEnter: "Full screen",
     chartFullscreenExit: "Exit full screen",
@@ -341,7 +363,7 @@ const STRINGS = {
     sourceMixedNote: "Egy vagy több élő adatforrás nem elérhető; a hiányt tartalék adatok pótolják.",
     sourceBundledNote: "Minden élő adatforrás nem elérhető; minden grafikon tartalék adatokat használ.",
     sourceWarningsTitle: "Adatfigyelmeztetések",
-    sourceCardsTitle: "Elsődleges források",
+    sourceCardsTitle: "Adatok",
     sourceLabel: "Forrás",
     chartFullscreenEnter: "Teljes képernyő",
     chartFullscreenExit: "Kilépés",
@@ -378,7 +400,186 @@ function safeLanguage(raw: string | null): Language {
 
 function safeTheme(raw: string | null): ThemeMode {
   if (raw === "dark" || raw === "light" || raw === "system") return raw;
-  return "system";
+  return "light";
+}
+
+function dashboardViewFromHash(hash: string): DashboardView {
+  const normalized = hash.replace(/^#/, "");
+  return DASHBOARD_VIEW_IDS.has(normalized as DashboardView) ? (normalized as DashboardView) : "overview";
+}
+
+function metricCategoryTone(metricKey: ClimateMetricSeries["key"]): "temperature" | "success" | "info" | "purple" | "neutral" {
+  if (metricKey.includes("temperature") || metricKey.includes("anomaly")) return "temperature";
+  if (metricKey.includes("co2") || metricKey.includes("ch4") || metricKey.includes("n2o") || metricKey.includes("aggi")) return "success";
+  if (metricKey.includes("sea_level") || metricKey.includes("ocean")) return "info";
+  if (metricKey.includes("ice") || metricKey.includes("glacier")) return "purple";
+  return "neutral";
+}
+
+function metricIconName(metricKey: ClimateMetricSeries["key"]): ToolkitIconName {
+  if (metricKey.includes("temperature") || metricKey.includes("anomaly")) return "temperature";
+  if (metricKey.includes("co2") || metricKey.includes("ch4") || metricKey.includes("n2o") || metricKey.includes("aggi")) return "leaf";
+  if (metricKey.includes("sea_level") || metricKey.includes("ocean")) return "ocean";
+  if (metricKey.includes("ice") || metricKey.includes("glacier")) return "snow";
+  return "trend";
+}
+
+function ToolkitIcon({ name, className }: { name: ToolkitIconName; className?: string }) {
+  const common = {
+    className,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.9,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+    focusable: false,
+  };
+
+  switch (name) {
+    case "alert":
+      return (
+        <svg {...common}>
+          <path d="M12 9v4" />
+          <path d="M12 17h.01" />
+          <path d="M10.2 3.9 2.8 17.1A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.9L13.8 3.9a2 2 0 0 0-3.6 0Z" />
+        </svg>
+      );
+    case "bars":
+      return (
+        <svg {...common}>
+          <path d="M5 19V9" />
+          <path d="M12 19V5" />
+          <path d="M19 19v-7" />
+        </svg>
+      );
+    case "calendar":
+      return (
+        <svg {...common}>
+          <path d="M7 3v4" />
+          <path d="M17 3v4" />
+          <path d="M4 9h16" />
+          <rect width="16" height="15" x="4" y="5" rx="2" />
+        </svg>
+      );
+    case "cloud":
+      return (
+        <svg {...common}>
+          <path d="M17.5 18H8a5 5 0 1 1 1.1-9.9A6 6 0 0 1 20 12.2 3.2 3.2 0 0 1 17.5 18Z" />
+        </svg>
+      );
+    case "download":
+      return (
+        <svg {...common}>
+          <path d="M12 3v11" />
+          <path d="m7 10 5 5 5-5" />
+          <path d="M5 20h14" />
+        </svg>
+      );
+    case "globe":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M3 12h18" />
+          <path d="M12 3a13.8 13.8 0 0 1 0 18" />
+          <path d="M12 3a13.8 13.8 0 0 0 0 18" />
+        </svg>
+      );
+    case "home":
+      return (
+        <svg {...common}>
+          <path d="m3 11 9-8 9 8" />
+          <path d="M5 10v10h14V10" />
+          <path d="M10 20v-6h4v6" />
+        </svg>
+      );
+    case "info":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 10v6" />
+          <path d="M12 7h.01" />
+        </svg>
+      );
+    case "leaf":
+      return (
+        <svg {...common}>
+          <path d="M5 20c7-1 12-6 14-15-8 1-13 4-15 9-1 3 0 5 1 6Z" />
+          <path d="M5 20c3-5 7-8 12-10" />
+        </svg>
+      );
+    case "map":
+      return (
+        <svg {...common}>
+          <path d="m9 18-6 3V6l6-3 6 3 6-3v15l-6 3-6-3Z" />
+          <path d="M9 3v15" />
+          <path d="M15 6v15" />
+        </svg>
+      );
+    case "more":
+      return (
+        <svg {...common}>
+          <path d="M5 12h.01" />
+          <path d="M12 12h.01" />
+          <path d="M19 12h.01" />
+        </svg>
+      );
+    case "ocean":
+      return (
+        <svg {...common}>
+          <path d="M3 8c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2" />
+          <path d="M3 14c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2" />
+          <path d="M3 20c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2" />
+        </svg>
+      );
+    case "reports":
+      return (
+        <svg {...common}>
+          <path d="M7 3h7l4 4v14H7V3Z" />
+          <path d="M14 3v5h5" />
+          <path d="M10 13h5" />
+          <path d="M10 17h6" />
+        </svg>
+      );
+    case "search":
+      return (
+        <svg {...common}>
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+      );
+    case "snow":
+      return (
+        <svg {...common}>
+          <path d="M12 2v20" />
+          <path d="m4.9 4.9 14.2 14.2" />
+          <path d="M2 12h20" />
+          <path d="m4.9 19.1 14.2-14.2" />
+        </svg>
+      );
+    case "temperature":
+      return (
+        <svg {...common}>
+          <path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0Z" />
+          <path d="M12 9v7" />
+        </svg>
+      );
+    case "trend":
+      return (
+        <svg {...common}>
+          <path d="m3 17 6-6 4 4 8-8" />
+          <path d="M15 7h6v6" />
+        </svg>
+      );
+    case "up":
+      return (
+        <svg {...common}>
+          <path d="M12 19V5" />
+          <path d="m5 12 7-7 7 7" />
+        </svg>
+      );
+  }
 }
 
 function formatDateLabel(dateIso: string | null, language: Language): string {
@@ -1077,10 +1278,8 @@ function buildAnnualProjectionTrendOption({
   const projectionLineColor = dark ? "#f472b6" : "#db2777";
   const projectionBandFill = dark ? "rgba(244, 114, 182, 0.20)" : "rgba(236, 72, 153, 0.18)";
   const projectionBandStroke = dark ? "#f9a8d4" : "#be185d";
-  const historicalBarColor = dark ? "rgba(56, 189, 248, 0.72)" : "rgba(2, 132, 199, 0.78)";
-  const historicalBarBorder = dark ? "#7dd3fc" : "#0369a1";
   const intervalMarkerFill = dark ? "#fce7f3" : "#fff1f7";
-  const historicalBarData = points.map((point) => point.value);
+  const historicalLineData = points.map((point) => point.value);
   const projectedScatterData = points.map((point, index) => (index === projectionIndex ? projection.value : null));
   const projectedLowScatterData = points.map((point, index) => (index === projectionIndex ? projection.low : null));
   const projectedHighScatterData = points.map((point, index) => (index === projectionIndex ? projection.high : null));
@@ -1136,16 +1335,23 @@ function buildAnnualProjectionTrendOption({
     series: [
       {
         name: seriesName,
-        type: "bar" as const,
-        data: historicalBarData,
+        type: "line" as const,
+        data: historicalLineData,
         z: 2,
-        itemStyle: {
-          color: historicalBarColor,
-          borderColor: historicalBarBorder,
-          borderWidth: 1,
-          borderRadius: [3, 3, 0, 0],
+        smooth: 0.16,
+        showSymbol: false,
+        symbol: "circle",
+        symbolSize: compact ? 5 : 6,
+        lineStyle: {
+          color: dark ? "#0f766e" : "#0f9f8f",
+          width: 2.4,
         },
-        barMaxWidth: compact ? 20 : 28,
+        itemStyle: {
+          color: dark ? "#0f766e" : "#0f9f8f",
+        },
+        areaStyle: {
+          color: dark ? "rgba(20, 184, 166, 0.12)" : "rgba(20, 184, 166, 0.16)",
+        },
       },
       {
         name: rangeLabel,
@@ -1444,6 +1650,12 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
       return { min: 10, max: 18 };
     case "global_sea_surface_temperature":
       return { min: 19.5, max: 21.5 };
+    case "global_surface_temperature_anomaly":
+      return { min: -1, max: 2.5 };
+    case "global_sea_surface_temperature_anomaly":
+      return { min: -2, max: 2 };
+    case "daily_global_mean_temperature_anomaly":
+      return { min: -1, max: 2.5 };
     case "global_mean_sea_level":
       return { min: -40, max: 140 };
     case "ocean_heat_content":
@@ -1466,11 +1678,6 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
       return { min: -40, max: -8 };
     case "north_atlantic_sea_surface_temperature":
       return { min: 18, max: 26 };
-    case "global_surface_temperature_anomaly":
-    case "global_sea_surface_temperature_anomaly":
-      return { min: -2, max: 2 };
-    case "daily_global_mean_temperature_anomaly":
-      return { min: -2, max: 2 };
     case "global_sea_ice_extent":
       return { min: 10, max: 30 };
     case "arctic_sea_ice_extent":
@@ -1700,6 +1907,10 @@ export function App() {
   const [mapsSectionOpen, setMapsSectionOpen] = useState(true);
   const [forcingSectionOpen, setForcingSectionOpen] = useState(true);
   const [projectionsSectionOpen, setProjectionsSectionOpen] = useState(true);
+  const [activeView, setActiveView] = useState<DashboardView>(() => {
+    if (typeof window === "undefined") return "overview";
+    return dashboardViewFromHash(window.location.hash);
+  });
 
   const t = STRINGS[language];
   const ensoOutlook = dataSource.ensoOutlook ?? null;
@@ -1737,6 +1948,13 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleHashChange = () => setActiveView(dashboardViewFromHash(window.location.hash));
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  useEffect(() => {
     let active = true;
 
     loadRuntimeDataSource()
@@ -1756,6 +1974,10 @@ export function App() {
   }, []);
 
   const snapshot = useMemo(() => buildDashboardSnapshot(dataSource), [dataSource]);
+  const metricByKey = useMemo(
+    () => new Map([...snapshot.indicators, ...snapshot.forcing].map((metric) => [metric.key, metric])),
+    [snapshot.indicators, snapshot.forcing]
+  );
   const headlineMetrics = useMemo(
     () =>
       [...snapshot.indicators, ...snapshot.forcing]
@@ -2217,6 +2439,7 @@ export function App() {
     ? metricFreshnessBadge(earthEnergyImbalanceMetric, language, t)
     : null;
   const projectionFreshness = ensoOutlookFreshness ?? dailyGlobalMeanAnomalyFreshness;
+  const currentYear = new Date().getFullYear();
   const projectionNumberFormat = new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
     minimumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
     maximumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
@@ -2230,144 +2453,367 @@ export function App() {
     ? `${t.projectionSignalLabel}: ${formatEnsoTargetLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.targetLabel, language)} · ${formatEnsoConditionLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.condition, t)} · ${projectedAnnualGlobalMeanAnomaly.ensoWindow.probability ?? "-"}%`
     : null;
   const projectionSupportLabel = ensoOutlook?.sourceLabel ?? dailyGlobalMeanAnomalyMetric?.source.shortName ?? null;
-
+  const setDashboardView = (view: DashboardView) => {
+    setActiveView(view);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", `#${view}`);
+    }
+  };
+  const navItems: Array<{ view: DashboardView; label: string; icon: ToolkitIconName; available: boolean }> = [
+    { view: "overview", label: "Overview", icon: "home", available: true },
+    { view: "indicators", label: "Indicators", icon: "bars", available: true },
+    { view: "forcing", label: "Forcing", icon: "trend", available: true },
+    { view: "maps", label: t.mapsSectionTitle, icon: "map", available: true },
+    { view: "projections", label: t.projectionsTitle, icon: "trend", available: projectedAnnualGlobalMeanAnomaly != null },
+    { view: "sources", label: t.sourceCardsTitle, icon: "reports", available: true },
+  ];
+  const pageTitle =
+    activeView === "overview"
+      ? "Global Climate Overview"
+      : activeView === "indicators"
+        ? t.climateIndicatorsTitle
+        : activeView === "forcing"
+          ? t.forcingTitle
+          : activeView === "maps"
+            ? t.mapsSectionTitle
+            : activeView === "projections"
+              ? t.projectionsTitle
+              : t.sourceCardsTitle;
+  const pageSubtitle =
+    activeView === "overview"
+      ? "Key indicators and insights into our changing climate"
+      : activeView === "indicators"
+        ? t.climateIndicatorsNote
+        : activeView === "forcing"
+          ? t.forcingNote
+          : activeView === "maps"
+            ? t.mapsSectionNote
+            : activeView === "projections"
+              ? t.projectionsNote
+              : sourceModeLabel;
+  const formatMetricDelta = (metric: ClimateMetricSeries) => {
+    const latestIndex = metric.points.length - 1;
+    if (latestIndex <= 0) return null;
+    const latest = metric.points[latestIndex];
+    const previous = metric.points[latestIndex - 1];
+    const delta = latest.value - previous.value;
+    if (!Number.isFinite(delta) || Math.abs(delta) < Number.EPSILON) return null;
+    const sign = delta > 0 ? "+" : "";
+    return {
+      direction: delta > 0 ? "up" : "down",
+      label: `${sign}${formatNumericValue(delta, metric.decimals, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)} since previous`,
+    };
+  };
+  const overviewMetricCards = [
+    latestAnnualGlobalMeanAnomaly
+      ? {
+          key: "overview-annual-temperature",
+          title: "Global Mean Temperature",
+          subtitle: "vs. 1850-1900 average",
+          value: `${projectionNumberFormat.format(latestAnnualGlobalMeanAnomaly.value)} ${cardUnitLabel(
+            DAILY_GLOBAL_MEAN_ANOMALY_KEY,
+            dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+            language
+          )}`,
+          meta: formatAnnualAnomalyTopMeta(latestAnnualGlobalMeanAnomaly.year, language, annualGlobalMeanAnomalyIsYtd, t.ytdLabel),
+          delta: dailyGlobalMeanAnomalyFreshness?.label ?? null,
+          icon: "temperature" as ToolkitIconName,
+          tone: "temperature",
+        }
+      : null,
+    (() => {
+      const metric = metricByKey.get("atmospheric_co2");
+      if (!metric) return null;
+      const delta = formatMetricDelta(metric);
+      return {
+        key: "overview-co2",
+        title: "CO₂ Concentration",
+        subtitle: "Atmospheric",
+        value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
+        meta: `${t.chartLatest}: ${formatDateLabel(metric.latestDate, language)}`,
+        delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
+        icon: "leaf" as ToolkitIconName,
+        tone: "success",
+      };
+    })(),
+    (() => {
+      const metric = metricByKey.get("global_mean_sea_level");
+      if (!metric) return null;
+      const delta = formatMetricDelta(metric);
+      return {
+        key: "overview-sea-level",
+        title: "Sea Level Rise",
+        subtitle: "Global mean sea level",
+        value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
+        meta: `${t.chartLatest}: ${formatDateLabel(metric.latestDate, language)}`,
+        delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
+        icon: "ocean" as ToolkitIconName,
+        tone: "info",
+      };
+    })(),
+    (() => {
+      const metric = metricByKey.get("arctic_sea_ice_extent") ?? metricByKey.get("global_sea_ice_extent");
+      if (!metric) return null;
+      const delta = formatMetricDelta(metric);
+      return {
+        key: "overview-sea-ice",
+        title: metric.key === "arctic_sea_ice_extent" ? "Arctic Sea Ice Extent" : metricTitle(metric, language),
+        subtitle: "vs. 1991-2020 average",
+        value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
+        meta: `${t.chartLatest}: ${formatDateLabel(metric.latestDate, language)}`,
+        delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
+        icon: "snow" as ToolkitIconName,
+        tone: "purple",
+      };
+    })(),
+  ].filter((card): card is NonNullable<typeof card> => card != null);
+  const overviewMapCards = [
+    mapCards.find((card) => card.key === "map-2m-temperature-anomaly"),
+    mapCards.find((card) => card.key === "map-sst-anomaly"),
+  ].filter((card): card is (typeof mapCards)[number] => card != null);
+  const overviewHighlights = [
+    recordWarningCards[0]
+      ? {
+          key: "record-warning-highlight",
+          icon: "temperature" as ToolkitIconName,
+          tone: "temperature",
+          text: `${recordWarningTitle(recordWarningCards[0].metric.key, t)} reached ${formatNumericValue(
+            recordWarningCards[0].recordPoint.value,
+            recordWarningCards[0].metric.decimals,
+            language,
+            t.valueUnavailable
+          )} ${cardUnitLabel(recordWarningCards[0].metric.key, recordWarningCards[0].metric.unit, language)}.`,
+        }
+      : null,
+    projectedAnnualGlobalMeanAnomaly
+      ? {
+          key: "projection-highlight",
+          icon: "trend" as ToolkitIconName,
+          tone: "info",
+          text: `${t.projectedAnnualTemperatureAnomalyTitle}: ${projectionNumberFormat.format(
+            projectedAnnualGlobalMeanAnomaly.value
+          )} ${cardUnitLabel(DAILY_GLOBAL_MEAN_ANOMALY_KEY, dailyGlobalMeanAnomalyMetric?.unit ?? "deg C", language)}.`,
+        }
+      : null,
+    ensoOutlook?.nextSixMonths
+      ? {
+          key: "enso-highlight",
+          icon: "cloud" as ToolkitIconName,
+          tone: "success",
+          text: `${t.ensoOutlookTitle}: ${formatEnsoConditionLabel(ensoOutlook.nextSixMonths.condition, t)} for ${formatEnsoTargetLabel(
+            ensoOutlook.nextSixMonths.targetLabel,
+            language
+          )} (${ensoOutlook.nextSixMonths.probability ?? "-"}%).`,
+        }
+      : null,
+  ].filter((highlight): highlight is NonNullable<typeof highlight> => highlight != null);
+  const forcingDriverRows = snapshot.forcing.slice(0, 6).map((metric) => {
+    const delta = formatMetricDelta(metric);
+    return {
+      key: metric.key,
+      label: metricTitle(metric, language),
+      value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
+      direction: delta?.direction ?? "flat",
+    };
+  });
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="topbar-brand">
-          <img className="topbar-logo" src={EARTH_LOGO_URL} alt="" aria-hidden="true" />
-          <div>
-            <h1>{t.appTitle}</h1>
-            <p className="subtitle">{t.appSubtitle}</p>
-          </div>
+    <div className="app-frame">
+      <aside className="dashboard-sidebar" aria-label="Dashboard navigation">
+        <button type="button" className="sidebar-brand" onClick={() => setDashboardView("overview")} aria-label="ClimateWatch">
+          <img className="sidebar-logo" src={EARTH_LOGO_URL} alt="" aria-hidden="true" />
+          <span>
+            <strong>ClimateWatch</strong>
+            <small>Global Climate Dashboard</small>
+          </span>
+        </button>
+        <nav className="sidebar-nav">
+          {navItems
+            .filter((item) => item.available)
+            .map((item) => (
+              <button
+                type="button"
+                key={item.view}
+                className={activeView === item.view ? "active" : ""}
+                onClick={() => setDashboardView(item.view)}
+              >
+                <ToolkitIcon name={item.icon} className="nav-icon" />
+                {item.label}
+              </button>
+            ))}
+        </nav>
+        <div className="sidebar-meta">
+          <span>Data updated</span>
+          <strong>{formatDateLabel(extractIsoDate(snapshot.updatedAtIso), language)}</strong>
+          <small>{footerSources.slice(0, 4).map((source) => source.label.split(" · ").pop()).join(", ")}</small>
         </div>
+      </aside>
 
-        <div className="controls">
-          <div className="control-group">
-            <label htmlFor="lang-select">{t.language}</label>
-            <select id="lang-select" value={language} onChange={(event) => setLanguage(safeLanguage(event.target.value))}>
-              <option value="en">English</option>
-              <option value="hu">Magyar</option>
-            </select>
-          </div>
-
-          <div className="control-group">
-            <label htmlFor="theme-select">{t.theme}</label>
-            <select id="theme-select" value={themeMode} onChange={(event) => setThemeMode(safeTheme(event.target.value))}>
-              <option value="system">{t.themeSystem}</option>
-              <option value="light">{t.themeLight}</option>
-              <option value="dark">{t.themeDark}</option>
-            </select>
-          </div>
-
-        </div>
-      </header>
-
-      <section className={`ai-summary-panel ${aiDashboardSummary.tone}`} aria-label={t.aiSummaryAria}>
-        <div className="ai-summary-main">
-          <div className="ai-summary-copy">
-            <div className="ai-summary-label-row">
-              <span className="ai-generic-mark" aria-label="AI generated">
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M12 2.8 13.55 7.2 18 8.75l-4.45 1.55L12 14.8l-1.55-4.5L6 8.75l4.45-1.55L12 2.8Z" />
-                  <path d="M17.9 13.1 18.8 15.6l2.5.9-2.5.9-.9 2.5-.9-2.5-2.5-.9 2.5-.9.9-2.5Z" />
-                  <path d="M6.1 14.1 6.8 16l1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7.7-1.9Z" />
-                </svg>
-              </span>
-              <span className="alert-kicker">{t.aiSummaryKicker}</span>
+      <main className="app-shell">
+        <header className="topbar">
+          <div className="topbar-brand">
+            <div>
+              <h1>{pageTitle}</h1>
+              <p className="subtitle">{pageSubtitle}</p>
             </div>
-            {runtimeDataReady ? (
-              <p>{aiDashboardSummary.headline}</p>
-            ) : (
-              <div className="ai-summary-loading" role="status" aria-live="polite">
-                <span className="ai-summary-spinner" aria-hidden="true" />
-                <span>{t.aiSummaryLoading}</span>
-              </div>
-            )}
           </div>
-        </div>
-      </section>
 
-      {recordWarningCards.length ? (
-        <section className="record-warnings-grid" aria-label={t.recordWarningsAria}>
-          {recordWarningCards.map(({ metric, recordPoint }) => {
-            const freshness = metricFreshnessBadge(metric, language, t);
-            return (
-              <article className="alert-card record-warning-card" key={`${metric.key}-record-warning`}>
-                <span className="alert-kicker">{t.recordWarningKicker}</span>
-                <h2>{recordWarningTitle(metric.key, t)}</h2>
-                <p className="alert-emphasis">
-                  {formatNumericValue(recordPoint.value, metric.decimals, language, t.valueUnavailable)}{" "}
-                  {cardUnitLabel(metric.key, metric.unit, language)}
-                </p>
-                <div className="alert-meta">
-                  <span className="alert-meta-chip confidence-low">
-                    {t.recordWarningDateMeta}: {formatDateLabel(recordPoint.date, language)}
+          <div className="topbar-actions">
+            <div className="controls">
+              <div className="control-group">
+                <label htmlFor="lang-select">{t.language}</label>
+                <select id="lang-select" value={language} onChange={(event) => setLanguage(safeLanguage(event.target.value))}>
+                  <option value="en">English</option>
+                  <option value="hu">Magyar</option>
+                </select>
+              </div>
+
+              <div className="control-group">
+                <label htmlFor="theme-select">{t.theme}</label>
+                <select id="theme-select" value={themeMode} onChange={(event) => setThemeMode(safeTheme(event.target.value))}>
+                  <option value="system">{t.themeSystem}</option>
+                  <option value="light">{t.themeLight}</option>
+                  <option value="dark">{t.themeDark}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {activeView === "overview" ? (
+          <section className={`ai-summary-panel overview-ai-summary ${aiDashboardSummary.tone}`} aria-label={t.aiSummaryAria}>
+            <div className="ai-summary-main">
+              <div className="ai-summary-copy">
+                <div className="ai-summary-label-row">
+                  <span className="ai-generic-mark" aria-label="AI generated">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M12 2.8 13.55 7.2 18 8.75l-4.45 1.55L12 14.8l-1.55-4.5L6 8.75l4.45-1.55L12 2.8Z" />
+                      <path d="M17.9 13.1 18.8 15.6l2.5.9-2.5.9-.9 2.5-.9-2.5-2.5-.9 2.5-.9.9-2.5Z" />
+                      <path d="M6.1 14.1 6.8 16l1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7.7-1.9Z" />
+                    </svg>
                   </span>
-                  <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                  <span className="alert-kicker">{t.aiSummaryKicker}</span>
+                </div>
+                {runtimeDataReady ? (
+                  <p>{aiDashboardSummary.headline}</p>
+                ) : (
+                  <div className="ai-summary-loading" role="status" aria-live="polite">
+                    <span className="ai-summary-spinner" aria-hidden="true" />
+                    <span>{t.aiSummaryLoading}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {activeView === "overview" ? (
+          <div className="overview-page">
+            <section className="overview-metric-grid" aria-label={t.latestSignalsAria}>
+              {overviewMetricCards.map((card) => (
+                <article className={`overview-metric-card tone-${card.tone}`} key={card.key}>
+                  <span className="metric-icon" aria-hidden="true">
+                    <ToolkitIcon name={card.icon} />
+                  </span>
+                  <div className="overview-metric-copy">
+                    <h2>{card.title}</h2>
+                    <p className="metric-subtitle">{card.subtitle}</p>
+                    <strong>{card.value}</strong>
+                    <p className="metric-meta">{card.meta}</p>
+                    {card.delta ? <span className="metric-delta">{card.delta}</span> : null}
+                  </div>
+                </article>
+              ))}
+            </section>
+
+            <section className="overview-main-grid">
+              <article className="overview-card forcing-drivers-card">
+                <div className="overview-card-header">
+                  <h2>{t.forcingTitle}</h2>
+                  <ToolkitIcon name="info" className="info-icon" />
+                </div>
+                <div className="driver-list">
+                  {forcingDriverRows.map((row) => (
+                    <div className="driver-row" key={row.key}>
+                      <span>{row.label}</span>
+                      <strong>{row.value}</strong>
+                      <span className={`driver-direction ${row.direction}`} aria-hidden="true">
+                        {row.direction === "down" ? "↓" : row.direction === "up" ? "↑" : "−"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" className="text-link-button" onClick={() => setDashboardView("forcing")}>
+                  View all forcing →
+                </button>
+              </article>
+
+              <section className="overview-card overview-map-suite" aria-label={t.mapsSectionTitle}>
+                <div className="overview-map-pair">
+                  {overviewMapCards.map((mapCard) => (
+                    <MapPanel
+                      key={mapCard.key}
+                      title={mapCard.title}
+                      subtitle={mapCard.subtitle}
+                      imageUrl={mapCard.imageUrl}
+                      fallbackImageUrls={mapCard.fallbackImageUrls}
+                      imageAlt={mapCard.imageAlt}
+                      noImageLabel={t.mapUnavailable}
+                      expandLabel={t.chartFullscreenEnter}
+                      collapseLabel={t.chartFullscreenExit}
+                      freshnessLabel={mapCard.freshness?.label}
+                      freshnessTone={mapCard.freshness?.tone}
+                    />
+                  ))}
+                </div>
+                <button type="button" className="text-link-button" onClick={() => setDashboardView("maps")}>
+                  View all maps →
+                </button>
+              </section>
+
+              <article className="overview-card highlights-card">
+                <div className="overview-card-header">
+                  <h2>Recent Highlights</h2>
+                  <ToolkitIcon name="info" className="info-icon" />
+                </div>
+                <div className="highlight-list">
+                  {overviewHighlights.map((highlight) => (
+                    <div className={`highlight-row tone-${highlight.tone}`} key={highlight.key}>
+                      <span className="highlight-icon">
+                        <ToolkitIcon name={highlight.icon} />
+                      </span>
+                      <p>{highlight.text}</p>
+                    </div>
+                  ))}
                 </div>
               </article>
-            );
-          })}
-        </section>
-      ) : null}
+            </section>
 
-      <section className="alerts-grid" aria-label={t.latestSignalsAria}>
-        {latestAnnualGlobalMeanAnomaly ? (
-          <article className="alert-card summary summary-top topcat-anomaly" key="annual-global-temperature-anomaly-summary">
-            <h2>{t.annualGlobalTemperatureAnomalyTitle}</h2>
-            <p className="alert-emphasis">
-              {new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
-                minimumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
-                maximumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
-              }).format(latestAnnualGlobalMeanAnomaly.value)}{" "}
-              {cardUnitLabel(
-                DAILY_GLOBAL_MEAN_ANOMALY_KEY,
-                dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
-                language
-              )}
-            </p>
-            <p className="summary-meta">
-              {formatAnnualAnomalyTopMeta(latestAnnualGlobalMeanAnomaly.year, language, annualGlobalMeanAnomalyIsYtd, t.ytdLabel)}
-            </p>
-            {dailyGlobalMeanAnomalyFreshness ? (
-              <span className={`freshness-chip ${dailyGlobalMeanAnomalyFreshness.tone}`}>{dailyGlobalMeanAnomalyFreshness.label}</span>
-            ) : null}
-          </article>
-        ) : null}
-        {headlineMetrics.map((metric) => {
-          const freshness = metricFreshnessBadge(metric, language, t);
-          return (
-            <Fragment key={metric.key}>
-              {metric.key === "atmospheric_co2" && ensoOutlook?.nextSixMonths ? (
-                <article className="alert-card summary summary-top topcat-enso" key="enso-outlook-summary">
-                  <h2>{t.ensoOutlookTitle}</h2>
-                  <p className="alert-emphasis">{formatEnsoConditionLabel(ensoOutlook.nextSixMonths.condition, t)}</p>
-                  <p className="summary-meta">
-                    {t.ensoNextSixMonths} · {formatEnsoTargetLabel(ensoOutlook.nextSixMonths.targetLabel, language)} ·{" "}
-                    {ensoOutlook.nextSixMonths.probability ?? "-"}%
-                  </p>
-                  {ensoOutlookFreshness ? (
-                    <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span>
+            <section className="overview-bottom-grid">
+              <article className="overview-card overview-projection-card">
+                <div className="overview-card-header">
+                  <h2>Outlook {currentYear}</h2>
+                  <ToolkitIcon name="info" className="info-icon" />
+                </div>
+                <div className="projection-chart-cell overview-current-year-chart">
+                  {projectedAnnualGlobalMeanAnomalyChartOption ? (
+                    <EChartsPanel
+                      title={t.projectedAnnualTemperatureAnomalyChartTitle}
+                      subtitle={t.projectedAnnualTemperatureAnomalyChartSubtitle}
+                      expandLabel={t.chartFullscreenEnter}
+                      collapseLabel={t.chartFullscreenExit}
+                      freshnessLabel={projectionFreshness?.label}
+                      freshnessTone={projectionFreshness?.tone}
+                      option={projectedAnnualGlobalMeanAnomalyChartOption}
+                    />
                   ) : null}
-                </article>
-              ) : null}
-              <article className={`alert-card summary summary-top ${topSummaryCategoryClass(metric.key)}`}>
-                <h2>{metricTitle(metric, language)}</h2>
-                <p className="alert-emphasis">
-                  {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                </p>
-                <p className="summary-meta">
-                  {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                </p>
-                <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                </div>
               </article>
-            </Fragment>
-          );
-        })}
-      </section>
+            </section>
+          </div>
+        ) : null}
 
-      <section className="collapsible-section">
+      {activeView === "indicators" ? (
+      <section className="collapsible-section detail-page-section" id="indicators">
         <header className="section-header">
           <div className="section-header-main">
             <h2>{t.climateIndicatorsTitle}</h2>
@@ -2391,6 +2837,29 @@ export function App() {
                 <h3>{t.globalTemperaturesSectionTitle}</h3>
                 <p>{t.globalTemperaturesSectionNote}</p>
               </div>
+              <div className="summary-cards-section">
+                <div className="regional-summary-grid">
+                  {globalTemperatureLines.map(({ metric }) => {
+                    const freshness = metricFreshnessBadge(metric, language, t);
+                    return (
+                      <article className="alert-card summary" key={`${metric.key}-global-temperature-summary`}>
+                        <span className="alert-kicker">{t.latestLabel}</span>
+                        <h2>{metricTitle(metric, language)}</h2>
+                        <p className="alert-emphasis">
+                          {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
+                        </p>
+                        <p>
+                          {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                        </p>
+                        <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                        <div className="alert-meta">
+                          <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
               <div className="charts-grid climate-grid">
                 {globalTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
@@ -2402,6 +2871,29 @@ export function App() {
               <div className="climate-subsection-header">
                 <h3>{t.temperatureAnomalySectionTitle}</h3>
                 <p>{t.temperatureAnomalySectionNote}</p>
+              </div>
+              <div className="summary-cards-section">
+                <div className="regional-summary-grid">
+                  {anomalyTemperatureLines.map(({ metric }) => {
+                    const freshness = metricFreshnessBadge(metric, language, t);
+                    return (
+                      <article className="alert-card summary" key={`${metric.key}-temperature-anomaly-summary`}>
+                        <span className="alert-kicker">{t.latestLabel}</span>
+                        <h2>{metricTitle(metric, language)}</h2>
+                        <p className="alert-emphasis">
+                          {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
+                        </p>
+                        <p>
+                          {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                        </p>
+                        <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                        <div className="alert-meta">
+                          <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
               <div className="charts-grid climate-grid">
                 {anomalyTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
@@ -2665,8 +3157,10 @@ export function App() {
           </div>
         ) : null}
       </section>
+      ) : null}
 
-      <section className="collapsible-section">
+      {activeView === "maps" ? (
+      <section className="collapsible-section detail-page-section" id="maps">
         <header className="section-header">
           <div className="section-header-main">
             <h2>{t.mapsSectionTitle}</h2>
@@ -2705,8 +3199,10 @@ export function App() {
           </div>
         ) : null}
       </section>
+      ) : null}
 
-      <section className="collapsible-section">
+      {activeView === "forcing" ? (
+      <section className="collapsible-section detail-page-section" id="forcing">
         <header className="section-header">
           <div className="section-header-main">
             <h2>{t.forcingTitle}</h2>
@@ -2809,9 +3305,10 @@ export function App() {
           </div>
         ) : null}
       </section>
+      ) : null}
 
-      {projectedAnnualGlobalMeanAnomaly ? (
-        <section className="collapsible-section">
+      {activeView === "projections" && projectedAnnualGlobalMeanAnomaly ? (
+        <section className="collapsible-section detail-page-section" id="projections">
           <header className="section-header">
             <div className="section-header-main">
               <h2>{t.projectionsTitle}</h2>
@@ -2939,7 +3436,8 @@ export function App() {
         </section>
       ) : null}
 
-      <footer className="dashboard-footer">
+      {activeView === "sources" ? (
+      <footer className="dashboard-footer detail-page-section" id="sources">
         <div className="footer-strip">
           <span className={`footer-chip compact source ${snapshot.sourceMode === "live" ? "live" : "sample"}`}>
             {t.sourceTitle}: {sourceModeLabel}
@@ -2972,6 +3470,8 @@ export function App() {
         </div>
         <p className="footer-credit">{t.footerCredit}</p>
       </footer>
+      ) : null}
+      </main>
     </div>
   );
 }

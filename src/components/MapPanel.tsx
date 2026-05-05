@@ -136,7 +136,7 @@ export function MapPanel({
             className="map-panel-image"
             src={activeImageUrl}
             alt={imageAlt}
-            loading="lazy"
+            loading="eager"
             decoding="async"
             referrerPolicy="no-referrer"
             onError={() => {
