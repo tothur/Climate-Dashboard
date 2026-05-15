@@ -1517,7 +1517,6 @@ function buildAnnualProjectionBarOption({
   const observedBarColor = dark ? "#0f9f8f" : "#14b8a6";
   const observedBarFade = dark ? "rgba(15, 159, 143, 0.18)" : "rgba(20, 184, 166, 0.18)";
   const projectionBarColor = dark ? "#f472b6" : "#db2777";
-  const projectionBandFill = dark ? "rgba(244, 114, 182, 0.22)" : "rgba(219, 39, 119, 0.16)";
   const projectionBandStroke = dark ? "#f9a8d4" : "#be185d";
   const intervalMarkerFill = dark ? "#fce7f3" : "#fff1f7";
 
@@ -1640,70 +1639,6 @@ function buildAnnualProjectionBarOption({
         itemStyle: {
           borderRadius: [7, 7, 2, 2],
           color: projectionBarColor,
-        },
-      },
-      {
-        name: intervalLabel,
-        type: "custom" as const,
-        silent: true,
-        tooltip: { show: false },
-        z: 5,
-        data: [[String(projection.year), projection.low, projection.high]],
-        renderItem: (_params: unknown, api: any) => {
-          const xValue = String(api.value(0));
-          const lowValue = Number(api.value(1));
-          const highValue = Number(api.value(2));
-          const lowPoint = api.coord([xValue, lowValue]) as [number, number];
-          const highPoint = api.coord([xValue, highValue]) as [number, number];
-          const x = lowPoint[0];
-          const topY = highPoint[1];
-          const bottomY = lowPoint[1];
-          const capWidth = compact ? 14 : 16;
-          const bandWidth = compact ? 10 : 12;
-
-          return {
-            type: "group",
-            children: [
-              {
-                type: "rect",
-                shape: {
-                  x: x - bandWidth / 2,
-                  y: topY,
-                  width: bandWidth,
-                  height: Math.max(bottomY - topY, 1),
-                },
-                style: {
-                  fill: projectionBandFill,
-                  stroke: projectionBandStroke,
-                  lineWidth: 1,
-                },
-              },
-              {
-                type: "line",
-                shape: { x1: x, y1: topY, x2: x, y2: bottomY },
-                style: {
-                  stroke: projectionBandStroke,
-                  lineWidth: 2.2,
-                },
-              },
-              {
-                type: "line",
-                shape: { x1: x - capWidth, y1: topY, x2: x + capWidth, y2: topY },
-                style: {
-                  stroke: projectionBandStroke,
-                  lineWidth: 2.2,
-                },
-              },
-              {
-                type: "line",
-                shape: { x1: x - capWidth, y1: bottomY, x2: x + capWidth, y2: bottomY },
-                style: {
-                  stroke: projectionBandStroke,
-                  lineWidth: 2.2,
-                },
-              },
-            ],
-          };
         },
       },
       {

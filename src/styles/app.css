@@ -4374,6 +4374,20 @@ body {
   align-items: stretch;
 }
 
+.forcing-drivers-card,
+.highlights-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.forcing-drivers-card .text-link-button {
+  margin-top: auto;
+}
+
+.highlights-card .highlight-list {
+  align-content: start;
+}
+
 .overview-card {
   padding: 16px;
 }
@@ -4479,7 +4493,7 @@ body {
   box-shadow: none;
   height: 100%;
   display: grid;
-  grid-template-rows: 74px 210px auto;
+  grid-template-rows: 74px 320px auto;
 }
 
 .overview-map-pair .panel:hover {
@@ -4501,7 +4515,7 @@ body {
 }
 
 .overview-map-pair .map-panel-image-wrap {
-  height: 210px;
+  height: 320px;
   border: 0;
   background: #f8fafc;
 }
