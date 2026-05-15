@@ -1504,8 +1504,30 @@ function buildAnnualProjectionBarOption({
   if (!historicalPoints.length) return null;
 
   const categories = [...historicalPoints.map((point) => String(point.year)), String(projection.year)];
-  const observedData = [...historicalPoints.map((point) => point.value), null];
-  const projectedData = [...historicalPoints.map(() => null), projection.value];
+  const observedBarStyle = {
+    borderRadius: [7, 7, 2, 2],
+    color: {
+      type: "linear" as const,
+      x: 0,
+      y: 0,
+      x2: 0,
+      y2: 1,
+      colorStops: [
+        { offset: 0, color: dark ? "#0f9f8f" : "#14b8a6" },
+        { offset: 1, color: dark ? "rgba(15, 159, 143, 0.18)" : "rgba(20, 184, 166, 0.18)" },
+      ],
+    },
+  };
+  const barData = [
+    ...historicalPoints.map((point) => ({ value: point.value })),
+    {
+      value: projection.value,
+      itemStyle: {
+        borderRadius: [7, 7, 2, 2],
+        color: dark ? "#f472b6" : "#db2777",
+      },
+    },
+  ];
   const tooltipNumberFormat = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -1514,11 +1536,6 @@ function buildAnnualProjectionBarOption({
   const mutedTextColor = dark ? "#91a0b8" : "#66728a";
   const axisColor = dark ? "rgba(203, 214, 232, 0.22)" : "rgba(51, 65, 85, 0.16)";
   const splitLineColor = dark ? "rgba(203, 214, 232, 0.12)" : "rgba(51, 65, 85, 0.09)";
-  const observedBarColor = dark ? "#0f9f8f" : "#14b8a6";
-  const observedBarFade = dark ? "rgba(15, 159, 143, 0.18)" : "rgba(20, 184, 166, 0.18)";
-  const projectionBarColor = dark ? "#f472b6" : "#db2777";
-  const projectionBandStroke = dark ? "#f9a8d4" : "#be185d";
-  const intervalMarkerFill = dark ? "#fce7f3" : "#fff1f7";
 
   return {
     animationDuration: 420,
@@ -1540,27 +1557,27 @@ function buildAnnualProjectionBarOption({
         const firstRow = rows[0] as { axisValue?: string } | undefined;
         const axisYear = firstRow?.axisValue ?? "";
         const tooltipLines = [axisYear];
-        const observedRow = rows.find(
-          (row) =>
-            (row as { seriesName?: string; data?: number | null }).seriesName === observedSeriesName &&
-            typeof (row as { data?: number | null }).data === "number"
-        ) as { marker?: string; data?: number | null } | undefined;
-        const projectionRow = rows.find(
-          (row) =>
-            (row as { seriesName?: string; data?: number | null }).seriesName === projectionSeriesName &&
-            typeof (row as { data?: number | null }).data === "number"
-        ) as { marker?: string; data?: number | null } | undefined;
+        const barRow = rows.find(
+          (row) => (row as { seriesName?: string }).seriesName === observedSeriesName
+        ) as { marker?: string; data?: number | { value?: number }; value?: number } | undefined;
+        const barValue =
+          typeof barRow?.value === "number"
+            ? barRow.value
+            : typeof barRow?.data === "number"
+              ? barRow.data
+              : typeof barRow?.data === "object" && barRow.data != null && typeof barRow.data.value === "number"
+                ? barRow.data.value
+                : null;
 
-        if (typeof observedRow?.data === "number") {
-          tooltipLines.push(`${observedRow.marker ?? ""} ${observedSeriesName}: ${tooltipNumberFormat.format(observedRow.data)} ${unit}`);
-        }
-        if (typeof projectionRow?.data === "number") {
+        if (barValue != null && axisYear === String(projection.year)) {
           tooltipLines.push(
-            `${projectionRow.marker ?? ""} ${projectionSeriesName}: ${tooltipNumberFormat.format(projectionRow.data)} ${unit}`
+            `${barRow?.marker ?? ""} ${projectionSeriesName}: ${tooltipNumberFormat.format(barValue)} ${unit}`
           );
           tooltipLines.push(
             `${intervalLabel}: ${tooltipNumberFormat.format(projection.low)}-${tooltipNumberFormat.format(projection.high)} ${unit}`
           );
+        } else if (barValue != null) {
+          tooltipLines.push(`${barRow?.marker ?? ""} ${observedSeriesName}: ${tooltipNumberFormat.format(barValue)} ${unit}`);
         }
         return tooltipLines.join("<br/>");
       },
@@ -1601,22 +1618,9 @@ function buildAnnualProjectionBarOption({
       {
         name: observedSeriesName,
         type: "bar" as const,
-        data: observedData,
+        data: barData,
         barWidth: compact ? 22 : 28,
-        itemStyle: {
-          borderRadius: [7, 7, 2, 2],
-          color: {
-            type: "linear" as const,
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: observedBarColor },
-              { offset: 1, color: observedBarFade },
-            ],
-          },
-        },
+        itemStyle: observedBarStyle,
         markLine: {
           silent: true,
           symbol: "none",
@@ -1629,30 +1633,6 @@ function buildAnnualProjectionBarOption({
             { yAxis: 1.5, label: { formatter: "1.5°C" }, lineStyle: { color: dark ? "#fbbf24" : "#f59e0b" } },
             { yAxis: 2, label: { formatter: "2.0°C" }, lineStyle: { color: dark ? "#f87171" : "#dc2626" } },
           ],
-        },
-      },
-      {
-        name: projectionSeriesName,
-        type: "bar" as const,
-        data: projectedData,
-        barWidth: compact ? 22 : 28,
-        itemStyle: {
-          borderRadius: [7, 7, 2, 2],
-          color: projectionBarColor,
-        },
-      },
-      {
-        name: projectionSeriesName,
-        type: "scatter" as const,
-        data: [[String(projection.year), projection.value]],
-        tooltip: { show: false },
-        z: 6,
-        symbol: "diamond",
-        symbolSize: compact ? 11 : 13,
-        itemStyle: {
-          color: intervalMarkerFill,
-          borderColor: projectionBandStroke,
-          borderWidth: 1.8,
         },
       },
     ],
