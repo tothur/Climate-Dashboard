@@ -1249,8 +1249,41 @@ function parseCpcEnsoOutlook(html) {
   const alertStatus = alertStatusMatch ? alertStatusMatch[1].trim() : null;
 
   const clauses = synopsis ? synopsis.split(/\s*,\s+with\s+/i) : [];
-  const nextThreeMonths = clauses.length ? extractEnsoWindowFromClause(clauses[0]) : null;
-  const nextSixMonths = clauses.length > 1 ? extractEnsoWindowFromClause(clauses.slice(1).join(", with ")) : null;
+  let nextThreeMonths = clauses.length ? extractEnsoWindowFromClause(clauses[0]) : null;
+  let nextSixMonths = clauses.length > 1 ? extractEnsoWindowFromClause(clauses.slice(1).join(", with ")) : null;
+
+  // CPC periodically changes synopsis prose. Some editions describe multiple forecast
+  // windows in one sentence, e.g. "... (82% chance in May-July 2026) and continue ...
+  // (96% chance in December 2026-February 2027)." Preserve those windows even when
+  // there is no ", with " separator to split on.
+  if ((!nextThreeMonths || !nextSixMonths) && synopsis) {
+    const synopsisConditionMatches = [...synopsis.matchAll(/ENSO-neutral|El Nino|La Nina/gi)];
+    const inheritedCondition = normalizeEnsoCondition(
+      synopsisConditionMatches[synopsisConditionMatches.length - 1]?.[0] ?? ""
+    );
+    const chanceWindows = Array.from(
+      synopsis.matchAll(/\(\s*(\d{1,3})\s*%\s*chance\s+in\s+([^)]+?)\s*\)/gi),
+      (match) => ({
+        condition: inheritedCondition,
+        probability: Number(match[1]),
+        targetLabel: match[2].trim(),
+      })
+    ).filter(
+      (window) =>
+        window.condition != null &&
+        Number.isFinite(window.probability) &&
+        window.probability >= 0 &&
+        window.probability <= 100 &&
+        window.targetLabel.length > 0
+    );
+
+    if (!nextThreeMonths && chanceWindows.length > 0) {
+      nextThreeMonths = chanceWindows[0];
+    }
+    if (!nextSixMonths && chanceWindows.length > 1) {
+      nextSixMonths = chanceWindows[chanceWindows.length - 1];
+    }
+  }
 
   return {
     issuedDate,
