@@ -125,6 +125,28 @@ const STRINGS = {
   en: {
     appTitle: "Climate Dashboard",
     appSubtitle: "Global climate indicators and forcings",
+    dashboardNavigationAria: "Dashboard navigation",
+    brandSubtitle: "Global Climate Dashboard",
+    dataUpdatedLabel: "Data updated",
+    navOverview: "Overview",
+    navIndicators: "Indicators",
+    overviewTitle: "Global Climate Overview",
+    overviewSubtitle: "Key indicators and insights into our changing climate",
+    overviewGlobalMeanTemperatureTitle: "Global Mean Temperature",
+    overviewPreindustrialSubtitle: "vs. 1850-1900 average",
+    overviewCo2Title: "CO₂ Concentration",
+    overviewAtmosphericSubtitle: "Atmospheric",
+    overviewSeaLevelTitle: "Sea Level Rise",
+    overviewSeaLevelSubtitle: "Global mean sea level",
+    overviewArcticSeaIceTitle: "Arctic Sea Ice Extent",
+    overviewClimatologySubtitle: "vs. 1991-2020 average",
+    deltaSincePrevious: "since previous",
+    recordReachedText: "reached",
+    ensoTargetConnector: "for",
+    viewAllForcing: "View all forcing",
+    viewAllMaps: "View all maps",
+    recentHighlightsTitle: "Recent Highlights",
+    outlookTitle: "Outlook",
     ensoOutlookTitle: "ENSO Outlook",
     ensoNextThreeMonths: "Next 3 months",
     ensoNextSixMonths: "Next 6 months",
@@ -152,6 +174,7 @@ const STRINGS = {
     aiSummaryAria: "AI climate summary",
     aiSummaryTitle: "AI Summary",
     aiSummaryKicker: "AI-summary",
+    aiGeneratedAria: "AI generated",
     aiSummaryLoading: "Loading latest AI summary",
     aiSummaryRecordHigh: "latest value is at or above the same-date historical record",
     aiSummaryNearRecordHigh: "latest value is near the same-date historical record",
@@ -258,6 +281,28 @@ const STRINGS = {
   hu: {
     appTitle: "Klíma Dashboard",
     appSubtitle: "Globális klímaindikátorok és éghajlati kényszerek",
+    dashboardNavigationAria: "Irányítópult-navigáció",
+    brandSubtitle: "Globális éghajlati irányítópult",
+    dataUpdatedLabel: "Adatok frissítve",
+    navOverview: "Áttekintés",
+    navIndicators: "Indikátorok",
+    overviewTitle: "Globális éghajlati áttekintés",
+    overviewSubtitle: "Fő indikátorok és megállapítások a változó éghajlatról",
+    overviewGlobalMeanTemperatureTitle: "Globális átlaghőmérséklet",
+    overviewPreindustrialSubtitle: "az 1850-1900-as átlaghoz képest",
+    overviewCo2Title: "CO₂-koncentráció",
+    overviewAtmosphericSubtitle: "Légköri",
+    overviewSeaLevelTitle: "Tengerszint-emelkedés",
+    overviewSeaLevelSubtitle: "Globális átlagos tengerszint",
+    overviewArcticSeaIceTitle: "Arktiszi tengeri jégkiterjedés",
+    overviewClimatologySubtitle: "az 1991-2020-as átlaghoz képest",
+    deltaSincePrevious: "az előző értékhez képest",
+    recordReachedText: "elérte ezt az értéket:",
+    ensoTargetConnector: "időszakra:",
+    viewAllForcing: "Minden kényszer megtekintése",
+    viewAllMaps: "Minden térkép megtekintése",
+    recentHighlightsTitle: "Legfrissebb kiemelések",
+    outlookTitle: "Kilátások",
     ensoOutlookTitle: "ENSO kilátások",
     ensoNextThreeMonths: "Következő 3 hónap",
     ensoNextSixMonths: "Következő 6 hónap",
@@ -285,6 +330,7 @@ const STRINGS = {
     aiSummaryAria: "AI klímaösszefoglaló",
     aiSummaryTitle: "AI összefoglaló",
     aiSummaryKicker: "AI-összefoglaló",
+    aiGeneratedAria: "AI által készített",
     aiSummaryLoading: "A legfrissebb AI-összefoglaló betöltése",
     aiSummaryRecordHigh: "a legfrissebb érték eléri vagy meghaladja az azonos dátumú történeti rekordot",
     aiSummaryNearRecordHigh: "a legfrissebb érték közel van az azonos dátumú történeti rekordhoz",
@@ -723,12 +769,12 @@ function formatMapImageAlt(title: string, mapDateIso: string | null, language: L
 
 function formatAnnualAnomalyTopMeta(year: number, language: Language, isYtd: boolean, ytdLabel: string): string {
   const ytdSuffix = isYtd ? ` (${ytdLabel})` : "";
-  if (language === "hu") return `Év: ${year}${ytdSuffix} vs 1850-1900`;
+  if (language === "hu") return `Év: ${year}${ytdSuffix} · az 1850-1900-as referenciaidőszakhoz képest`;
   return `Year: ${year}${ytdSuffix} vs 1850-1900`;
 }
 
 function formatProjectionTopMeta(year: number, language: Language): string {
-  if (language === "hu") return `Év: ${year} becslés vs 1850-1900`;
+  if (language === "hu") return `Év: ${year} · becslés az 1850-1900-as referenciaidőszakhoz képest`;
   return `Year: ${year} projection vs 1850-1900`;
 }
 
@@ -885,6 +931,22 @@ function sameDateCheckReason(check: SameDateTemperatureCheck, t: (typeof STRINGS
   return t.aiSummaryBelowMean;
 }
 
+function localizeMetricMentions(text: string, metrics: ClimateMetricSeries[], language: Language): string {
+  if (language !== "hu") return text;
+  const replacements = metrics.flatMap((metric) => {
+    const titleWithoutQualifier = metric.titleEn.replace(/\s*\([^)]*\)\s*$/, "");
+    const localizedWithoutQualifier = metric.titleHu.replace(/\s*\([^)]*\)\s*$/, "");
+    return [
+      [metric.titleEn, metric.titleHu],
+      [titleWithoutQualifier, localizedWithoutQualifier],
+    ] as Array<[string, string]>;
+  });
+
+  return replacements
+    .sort(([left], [right]) => right.length - left.length)
+    .reduce((localized, [english, hungarian]) => localized.split(english).join(hungarian), text);
+}
+
 function buildAiDashboardSummary({
   snapshot,
   language,
@@ -909,7 +971,10 @@ function buildAiDashboardSummary({
   );
 
   const warningChecks = checks.filter((check) => check.tone !== "normal");
-  const generatedText = language === "hu" ? aiSummary?.textHu || aiSummary?.textEn : aiSummary?.textEn;
+  const sourceGeneratedText = language === "hu" ? aiSummary?.textHu : aiSummary?.textEn;
+  const generatedText = sourceGeneratedText
+    ? localizeMetricMentions(sourceGeneratedText, [...snapshot.indicators, ...snapshot.forcing], language)
+    : null;
   const headline = generatedText
     ? generatedText
     : warningChecks.length > 0
@@ -996,6 +1061,11 @@ function formatEnsoTargetLabel(targetLabel: string | null, language: Language): 
     /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/g,
     (match) => ENSO_TARGET_MONTH_LABELS[match]?.[language] ?? match
   );
+}
+
+function formatSourceShortName(shortName: string, language: Language): string {
+  if (language === "hu" && shortName === "WGMS annual estimates") return "WGMS éves becslések";
+  return shortName;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -2181,7 +2251,7 @@ export function App() {
     const sources = [...snapshot.indicators, ...snapshot.forcing].map((metric) => ({
       key: `${metric.key}-footer-source`,
       url: metric.source.url,
-      label: `${metricTitle(metric, language)} · ${metric.source.shortName}`,
+      label: `${metricTitle(metric, language)} · ${formatSourceShortName(metric.source.shortName, language)}`,
     }));
     if (ensoSource?.sourceUrl) {
       sources.push({
@@ -2449,8 +2519,8 @@ export function App() {
       };
     });
 
-    const surfaceSubtitle = `${surfaceMetric?.source.shortName ?? "Climate Reanalyzer"} · ${t.mapGlobalSubtitle}`;
-    const sstSubtitle = `${sstMetric?.source.shortName ?? "Climate Reanalyzer"} · ${t.mapGlobalSubtitle}`;
+    const surfaceSubtitle = `${formatSourceShortName(surfaceMetric?.source.shortName ?? "Climate Reanalyzer", language)} · ${t.mapGlobalSubtitle}`;
+    const sstSubtitle = `${formatSourceShortName(sstMetric?.source.shortName ?? "Climate Reanalyzer", language)} · ${t.mapGlobalSubtitle}`;
     const surfaceFreshness = mapFreshnessBadge(surfaceMapDateIso, language, t);
     const surfaceAnomalyFreshness = mapFreshnessBadge(surfaceAnomalyMapDateIso, language, t);
     const sstFreshness = mapFreshnessBadge(sstMapDateIso, language, t);
@@ -2544,7 +2614,7 @@ export function App() {
       <EChartsPanel
         key={metric.key}
         title={metricTitle(metric, language)}
-        subtitle={metric.source.shortName}
+        subtitle={formatSourceShortName(metric.source.shortName, language)}
         expandLabel={t.chartFullscreenEnter}
         collapseLabel={t.chartFullscreenExit}
         freshnessLabel={freshness.label}
@@ -2592,7 +2662,7 @@ export function App() {
       <EChartsPanel
         key={metric.key}
         title={metricTitle(metric, language)}
-        subtitle={metric.source.shortName}
+        subtitle={formatSourceShortName(metric.source.shortName, language)}
         expandLabel={t.chartFullscreenEnter}
         collapseLabel={t.chartFullscreenExit}
         freshnessLabel={freshness.label}
@@ -2657,7 +2727,8 @@ export function App() {
   const projectionSignalSummary = projectedAnnualGlobalMeanAnomaly?.ensoWindow
     ? `${t.projectionSignalLabel}: ${formatEnsoTargetLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.targetLabel, language)} · ${formatEnsoConditionLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.condition, t)} · ${projectedAnnualGlobalMeanAnomaly.ensoWindow.probability ?? "-"}%`
     : null;
-  const projectionSupportLabel = ensoOutlook?.sourceLabel ?? dailyGlobalMeanAnomalyMetric?.source.shortName ?? null;
+  const projectionSupportSource = ensoOutlook?.sourceLabel ?? dailyGlobalMeanAnomalyMetric?.source.shortName ?? null;
+  const projectionSupportLabel = projectionSupportSource ? formatSourceShortName(projectionSupportSource, language) : null;
   const projectionUnitLabel = cardUnitLabel(
     DAILY_GLOBAL_MEAN_ANOMALY_KEY,
     dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
@@ -2718,16 +2789,16 @@ export function App() {
     }
   };
   const navItems: Array<{ view: DashboardView; label: string; icon: ToolkitIconName; available: boolean }> = [
-    { view: "overview", label: "Overview", icon: "home", available: true },
-    { view: "indicators", label: "Indicators", icon: "bars", available: true },
-    { view: "forcing", label: "Forcing", icon: "trend", available: true },
+    { view: "overview", label: t.navOverview, icon: "home", available: true },
+    { view: "indicators", label: t.navIndicators, icon: "bars", available: true },
+    { view: "forcing", label: t.forcingTitle, icon: "trend", available: true },
     { view: "maps", label: t.mapsSectionTitle, icon: "map", available: true },
     { view: "projections", label: t.projectionsTitle, icon: "trend", available: projectedAnnualGlobalMeanAnomaly != null },
     { view: "sources", label: t.sourceCardsTitle, icon: "reports", available: true },
   ];
   const pageTitle =
     activeView === "overview"
-      ? "Global Climate Overview"
+      ? t.overviewTitle
       : activeView === "indicators"
         ? t.climateIndicatorsTitle
         : activeView === "forcing"
@@ -2739,7 +2810,7 @@ export function App() {
               : t.sourceCardsTitle;
   const pageSubtitle =
     activeView === "overview"
-      ? "Key indicators and insights into our changing climate"
+      ? t.overviewSubtitle
       : activeView === "indicators"
         ? t.climateIndicatorsNote
         : activeView === "forcing"
@@ -2759,15 +2830,15 @@ export function App() {
     const sign = delta > 0 ? "+" : "";
     return {
       direction: delta > 0 ? "up" : "down",
-      label: `${sign}${formatNumericValue(delta, metric.decimals, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)} since previous`,
+      label: `${sign}${formatNumericValue(delta, metric.decimals, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)} ${t.deltaSincePrevious}`,
     };
   };
   const overviewMetricCards = [
     latestAnnualGlobalMeanAnomaly
       ? {
           key: "overview-annual-temperature",
-          title: "Global Mean Temperature",
-          subtitle: "vs. 1850-1900 average",
+          title: t.overviewGlobalMeanTemperatureTitle,
+          subtitle: t.overviewPreindustrialSubtitle,
           value: `${projectionNumberFormat.format(latestAnnualGlobalMeanAnomaly.value)} ${cardUnitLabel(
             DAILY_GLOBAL_MEAN_ANOMALY_KEY,
             dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
@@ -2785,8 +2856,8 @@ export function App() {
       const delta = formatMetricDelta(metric);
       return {
         key: "overview-co2",
-        title: "CO₂ Concentration",
-        subtitle: "Atmospheric",
+        title: t.overviewCo2Title,
+        subtitle: t.overviewAtmosphericSubtitle,
         value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
         meta: `${t.chartLatest}: ${formatDateLabel(metric.latestDate, language)}`,
         delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
@@ -2800,8 +2871,8 @@ export function App() {
       const delta = formatMetricDelta(metric);
       return {
         key: "overview-sea-level",
-        title: "Sea Level Rise",
-        subtitle: "Global mean sea level",
+        title: t.overviewSeaLevelTitle,
+        subtitle: t.overviewSeaLevelSubtitle,
         value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
         meta: `${t.chartLatest}: ${formatDateLabel(metric.latestDate, language)}`,
         delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
@@ -2815,8 +2886,8 @@ export function App() {
       const delta = formatMetricDelta(metric);
       return {
         key: "overview-sea-ice",
-        title: metric.key === "arctic_sea_ice_extent" ? "Arctic Sea Ice Extent" : metricTitle(metric, language),
-        subtitle: "vs. 1991-2020 average",
+        title: metric.key === "arctic_sea_ice_extent" ? t.overviewArcticSeaIceTitle : metricTitle(metric, language),
+        subtitle: t.overviewClimatologySubtitle,
         value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
         meta: `${t.chartLatest}: ${formatDateLabel(metric.latestDate, language)}`,
         delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
@@ -2834,7 +2905,7 @@ export function App() {
           key: "record-warning-highlight",
           icon: "temperature" as ToolkitIconName,
           tone: "temperature",
-          text: `${recordWarningTitle(recordWarningCards[0].metric.key, t)} reached ${formatNumericValue(
+          text: `${recordWarningTitle(recordWarningCards[0].metric.key, t)} ${t.recordReachedText} ${formatNumericValue(
             recordWarningCards[0].recordPoint.value,
             recordWarningCards[0].metric.decimals,
             language,
@@ -2857,7 +2928,7 @@ export function App() {
           key: "enso-highlight",
           icon: "cloud" as ToolkitIconName,
           tone: "success",
-          text: `${t.ensoOutlookTitle}: ${formatEnsoConditionLabel(ensoOutlook.nextSixMonths.condition, t)} for ${formatEnsoTargetLabel(
+          text: `${t.ensoOutlookTitle}: ${formatEnsoConditionLabel(ensoOutlook.nextSixMonths.condition, t)} ${t.ensoTargetConnector} ${formatEnsoTargetLabel(
             ensoOutlook.nextSixMonths.targetLabel,
             language
           )} (${ensoOutlook.nextSixMonths.probability ?? "-"}%).`,
@@ -2875,12 +2946,12 @@ export function App() {
   });
   return (
     <div className="app-frame">
-      <aside className="dashboard-sidebar" aria-label="Dashboard navigation">
+      <aside className="dashboard-sidebar" aria-label={t.dashboardNavigationAria}>
         <button type="button" className="sidebar-brand" onClick={() => setDashboardView("overview")} aria-label="ClimateWatch">
           <img className="sidebar-logo" src={EARTH_LOGO_URL} alt="" aria-hidden="true" />
           <span>
             <strong>ClimateWatch</strong>
-            <small>Global Climate Dashboard</small>
+            <small>{t.brandSubtitle}</small>
           </span>
         </button>
         <nav className="sidebar-nav">
@@ -2899,7 +2970,7 @@ export function App() {
             ))}
         </nav>
         <div className="sidebar-meta">
-          <span>Data updated</span>
+          <span>{t.dataUpdatedLabel}</span>
           <strong>{formatDateLabel(extractIsoDate(snapshot.updatedAtIso), language)}</strong>
           <small>{footerSources.slice(0, 4).map((source) => source.label.split(" · ").pop()).join(", ")}</small>
         </div>
@@ -2941,7 +3012,7 @@ export function App() {
             <div className="ai-summary-main">
               <div className="ai-summary-copy">
                 <div className="ai-summary-label-row">
-                  <span className="ai-generic-mark" aria-label="AI generated">
+                  <span className="ai-generic-mark" aria-label={t.aiGeneratedAria}>
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <path d="M12 2.8 13.55 7.2 18 8.75l-4.45 1.55L12 14.8l-1.55-4.5L6 8.75l4.45-1.55L12 2.8Z" />
                       <path d="M17.9 13.1 18.8 15.6l2.5.9-2.5.9-.9 2.5-.9-2.5-2.5-.9 2.5-.9.9-2.5Z" />
@@ -3000,7 +3071,7 @@ export function App() {
                   ))}
                 </div>
                 <button type="button" className="text-link-button" onClick={() => setDashboardView("forcing")}>
-                  View all forcing →
+                  {t.viewAllForcing} →
                 </button>
               </article>
 
@@ -3023,13 +3094,13 @@ export function App() {
                   ))}
                 </div>
                 <button type="button" className="text-link-button" onClick={() => setDashboardView("maps")}>
-                  View all maps →
+                  {t.viewAllMaps} →
                 </button>
               </section>
 
               <article className="overview-card highlights-card">
                 <div className="overview-card-header">
-                  <h2>Recent Highlights</h2>
+                  <h2>{t.recentHighlightsTitle}</h2>
                   <ToolkitIcon name="info" className="info-icon" />
                 </div>
                 <div className="highlight-list">
@@ -3048,7 +3119,7 @@ export function App() {
             <section className="overview-bottom-grid">
               <article className="overview-card overview-projection-card">
                 <div className="overview-card-header">
-                  <h2>Outlook {currentYear}</h2>
+                  <h2>{t.outlookTitle} {currentYear}</h2>
                   <ToolkitIcon name="info" className="info-icon" />
                 </div>
                 {renderProjectionEstimate("overview")}
@@ -3111,7 +3182,7 @@ export function App() {
                         </p>
                         <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
                         <div className="alert-meta">
-                          <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
                         </div>
                       </article>
                     );
@@ -3146,7 +3217,7 @@ export function App() {
                         </p>
                         <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
                         <div className="alert-meta">
-                          <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
                         </div>
                       </article>
                     );
@@ -3259,7 +3330,7 @@ export function App() {
                         </p>
                         <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
                         <div className="alert-meta">
-                          <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
                         </div>
                       </article>
                     );
@@ -3293,7 +3364,7 @@ export function App() {
                         </p>
                         <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
                         <div className="alert-meta">
-                          <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
                         </div>
                       </article>
                     );
@@ -3369,7 +3440,7 @@ export function App() {
                         </p>
                         <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
                         <div className="alert-meta">
-                          <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
                         </div>
                       </article>
                     );
@@ -3495,7 +3566,7 @@ export function App() {
                       </p>
                       <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
                       <div className="alert-meta">
-                        <span className="alert-meta-chip confidence-medium">{metric.source.shortName}</span>
+                        <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
                       </div>
                     </article>
                   );
@@ -3550,7 +3621,7 @@ export function App() {
                   <EChartsPanel
                     key={metric.key}
                     title={title}
-                    subtitle={metric.source.shortName}
+                    subtitle={formatSourceShortName(metric.source.shortName, language)}
                     expandLabel={t.chartFullscreenEnter}
                     collapseLabel={t.chartFullscreenExit}
                     freshnessLabel={freshness.label}
