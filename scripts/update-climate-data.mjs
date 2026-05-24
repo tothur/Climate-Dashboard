@@ -368,6 +368,31 @@ async function loadPreviousMapSources() {
   }
 }
 
+async function loadPreviousSeries(key) {
+  if (!(await fileExists(OUTPUT_PATH))) return [];
+
+  try {
+    const payload = JSON.parse(await readFile(OUTPUT_PATH, "utf8"));
+    if (!isRecord(payload) || !isRecord(payload.series)) return [];
+    return Array.isArray(payload.series[key]) ? payload.series[key] : [];
+  } catch {
+    return [];
+  }
+}
+
+async function loadPreviousSourceUrl(key) {
+  if (!(await fileExists(OUTPUT_PATH))) return null;
+
+  try {
+    const payload = JSON.parse(await readFile(OUTPUT_PATH, "utf8"));
+    if (!isRecord(payload) || !isRecord(payload.sources)) return null;
+    const sourceUrl = payload.sources[key];
+    return typeof sourceUrl === "string" && sourceUrl.trim().length > 0 ? sourceUrl.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 async function loadPreviousAiSummary() {
   if (!(await fileExists(OUTPUT_PATH))) return null;
 
@@ -2068,6 +2093,7 @@ function printHelp() {
 }
 
 async function updateOnce() {
+  const dataWarnings = [];
   const [
     surfacePayload,
     sstPayload,
@@ -2108,7 +2134,11 @@ async function updateOnce() {
     fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
     fetchText(NOAA_AGGI_CSV_URL),
     fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
-    fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL),
+    fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`earth_energy_imbalance: CERES listing refresh failed (${reason}).`);
+      return null;
+    }),
     fetchText(WGMS_MASS_CHANGE_ESTIMATES_URL),
     fetchJson(NASA_ANTARCTICA_MASS_VARIATION_CHART_URL),
     fetchJson(NASA_GREENLAND_MASS_VARIATION_CHART_URL),
@@ -2206,13 +2236,28 @@ async function updateOnce() {
     maxValue: 3.5,
     maxAgeDays: 1000,
   });
-  const ceresFileName = extractLatestCeresEebafDatasetName(ceresContentsHtml);
-  const earthEnergyImbalanceAscii = ceresFileName ? await fetchText(buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName)) : "";
-  const earthEnergyImbalance = sanitizeSeries(parseCeresEarthEnergyImbalanceAscii(earthEnergyImbalanceAscii), {
+  const ceresFileName = ceresContentsHtml ? extractLatestCeresEebafDatasetName(ceresContentsHtml) : null;
+  let earthEnergyImbalanceAscii = "";
+  if (ceresFileName) {
+    try {
+      earthEnergyImbalanceAscii = await fetchText(buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`earth_energy_imbalance: CERES series refresh failed (${reason}).`);
+    }
+  }
+  let earthEnergyImbalance = sanitizeSeries(parseCeresEarthEnergyImbalanceAscii(earthEnergyImbalanceAscii), {
     minValue: -20,
     maxValue: 20,
     maxAgeDays: 220,
   });
+  const hasFreshEarthEnergyImbalance = earthEnergyImbalance.length > 0;
+  if (!hasFreshEarthEnergyImbalance) {
+    earthEnergyImbalance = await loadPreviousSeries("earth_energy_imbalance");
+    if (earthEnergyImbalance.length > 0) {
+      dataWarnings.push("earth_energy_imbalance: retaining the previous validated CERES series.");
+    }
+  }
   const wgmsAmceZipUrl = extractWgmsAmceZipUrl(wgmsAmceHtml);
   const wgmsAmceZipBytes = wgmsAmceZipUrl ? await fetchBinary(wgmsAmceZipUrl) : null;
   const wgmsGlobalCsv = wgmsAmceZipBytes ? extractZipEntryText(wgmsAmceZipBytes, WGMS_AMCE_GLOBAL_CSV_ENTRY) : "";
@@ -2370,9 +2415,9 @@ async function updateOnce() {
       global_sea_surface_temperature: OISST_GLOBAL_SST_URL,
       global_mean_sea_level: gmslSource.sourceUrl,
       ocean_heat_content: NOAA_OCEAN_HEAT_CONTENT_2000M_URL,
-      earth_energy_imbalance: ceresFileName
+      earth_energy_imbalance: hasFreshEarthEnergyImbalance && ceresFileName
         ? buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName)
-        : NASA_CERES_EBAF_PROJECT_URL,
+        : (await loadPreviousSourceUrl("earth_energy_imbalance")) ?? NASA_CERES_EBAF_PROJECT_URL,
       global_glacier_mass_balance: wgmsAmceZipUrl ?? WGMS_MASS_CHANGE_ESTIMATES_URL,
       antarctic_ice_sheet_mass_balance: NASA_ANTARCTICA_MASS_VARIATION_CHART_URL,
       greenland_ice_sheet_mass_balance: NASA_GREENLAND_MASS_VARIATION_CHART_URL,
@@ -2431,6 +2476,12 @@ async function updateOnce() {
   if (aiSummaryWarnings.length) {
     console.warn("AI summary warnings:");
     for (const warning of aiSummaryWarnings) {
+      console.warn(`- ${warning}`);
+    }
+  }
+  if (dataWarnings.length) {
+    console.warn("Data source warnings:");
+    for (const warning of dataWarnings) {
       console.warn(`- ${warning}`);
     }
   }
