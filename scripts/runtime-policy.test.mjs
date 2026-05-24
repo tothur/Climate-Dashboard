@@ -50,3 +50,15 @@ test("known year-specific labels and stale sea-level pins are absent", async () 
   assert.doesNotMatch(runtimeSource, /2025_rel1/);
   assert.doesNotMatch(adapterSource, /2025_rel1/);
 });
+
+test("optional CERES refresh fails fast and falls back to retained validated data", async () => {
+  const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
+
+  assert.match(updateScript, /const OPTIONAL_SOURCE_TIMEOUT_MS = 10_000/);
+  assert.match(updateScript, /const OPTIONAL_SOURCE_RETRY_ATTEMPTS = 1/);
+  assert.match(
+    updateScript,
+    /fetchText\(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL,\s*\{\s*timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,\s*attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS/
+  );
+  assert.match(updateScript, /earth_energy_imbalance: retaining the previous validated CERES series/);
+});

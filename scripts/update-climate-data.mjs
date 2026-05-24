@@ -51,6 +51,8 @@ const DEFAULT_INTERVAL_MINUTES = 360;
 const FETCH_TIMEOUT_MS = 30_000;
 const FETCH_RETRY_ATTEMPTS = 3;
 const FETCH_RETRY_BASE_DELAY_MS = 1_500;
+const OPTIONAL_SOURCE_TIMEOUT_MS = 10_000;
+const OPTIONAL_SOURCE_RETRY_ATTEMPTS = 1;
 const REQUEST_HEADERS = {
   "User-Agent": "Mozilla/5.0",
   Accept: "application/json,text/csv,*/*",
@@ -634,12 +636,16 @@ function sanitizeSeries(points, limits) {
   return normalized;
 }
 
-async function fetchWithRetry(url, responseType) {
+async function fetchWithRetry(
+  url,
+  responseType,
+  { timeoutMs = FETCH_TIMEOUT_MS, attempts = FETCH_RETRY_ATTEMPTS } = {}
+) {
   let lastError = null;
 
-  for (let attempt = 1; attempt <= FETCH_RETRY_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(url, {
@@ -657,7 +663,7 @@ async function fetchWithRetry(url, responseType) {
       return await response.text();
     } catch (error) {
       lastError = error;
-      if (attempt < FETCH_RETRY_ATTEMPTS) {
+      if (attempt < attempts) {
         const waitMs = FETCH_RETRY_BASE_DELAY_MS * attempt;
         await sleep(waitMs);
       }
@@ -667,19 +673,19 @@ async function fetchWithRetry(url, responseType) {
   }
 
   const reason = lastError instanceof Error ? lastError.message : String(lastError);
-  throw new Error(`Failed to fetch ${url} after ${FETCH_RETRY_ATTEMPTS} attempts: ${reason}`);
+  throw new Error(`Failed to fetch ${url} after ${attempts} attempts: ${reason}`);
 }
 
-async function fetchJson(url) {
-  return await fetchWithRetry(url, "json");
+async function fetchJson(url, options) {
+  return await fetchWithRetry(url, "json", options);
 }
 
-async function fetchText(url) {
-  return await fetchWithRetry(url, "text");
+async function fetchText(url, options) {
+  return await fetchWithRetry(url, "text", options);
 }
 
-async function fetchBinary(url) {
-  return await fetchWithRetry(url, "arrayBuffer");
+async function fetchBinary(url, options) {
+  return await fetchWithRetry(url, "arrayBuffer", options);
 }
 
 function parseReanalyzerDailyJson(payload) {
@@ -2149,7 +2155,10 @@ async function updateOnce() {
     fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
     fetchText(NOAA_AGGI_CSV_URL),
     fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
-    fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL).catch((error) => {
+    fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL, {
+      timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
+      attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
+    }).catch((error) => {
       const reason = error instanceof Error ? error.message : String(error);
       dataWarnings.push(`earth_energy_imbalance: CERES listing refresh failed (${reason}).`);
       return null;
@@ -2255,7 +2264,10 @@ async function updateOnce() {
   let earthEnergyImbalanceAscii = "";
   if (ceresFileName) {
     try {
-      earthEnergyImbalanceAscii = await fetchText(buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName));
+      earthEnergyImbalanceAscii = await fetchText(buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName), {
+        timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
+        attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
+      });
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       dataWarnings.push(`earth_energy_imbalance: CERES series refresh failed (${reason}).`);
