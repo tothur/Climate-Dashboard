@@ -90,6 +90,7 @@ const DEFAULT_OPENAI_SUMMARY_MODEL = "gpt-5.4-mini";
 const OPENAI_SUMMARY_ALLOWED_MODELS = new Set([DEFAULT_OPENAI_SUMMARY_MODEL]);
 const OPENAI_SUMMARY_MAX_OUTPUT_TOKENS = 600;
 const OPENAI_SUMMARY_TIMEOUT_MS = 20_000;
+const AI_SUMMARY_PROMPT_VERSION = 2;
 const AI_SUMMARY_FINGERPRINT_KEYS = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
@@ -1656,6 +1657,7 @@ function buildAiSummaryAnomalySignals(series) {
 
 function buildAiSummaryFingerprint(summary, ensoOutlook) {
   const compact = {
+    promptVersion: AI_SUMMARY_PROMPT_VERSION,
     series: Object.fromEntries(
       AI_SUMMARY_FINGERPRINT_KEYS.map((key) => [
         key,
@@ -1673,7 +1675,7 @@ function buildAiSummaryFingerprint(summary, ensoOutlook) {
         }
       : null,
   };
-  return Buffer.from(JSON.stringify(compact)).toString("base64url").slice(0, 64);
+  return `${AI_SUMMARY_PROMPT_VERSION}.${Buffer.from(JSON.stringify(compact)).toString("base64url").slice(0, 62)}`;
 }
 
 function aiSummaryModel(warnings) {
@@ -1771,6 +1773,7 @@ function buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks, a
 function shouldReusePreviousAiSummary(previousAiSummary, fingerprint, now = new Date()) {
   if (!previousAiSummary) return false;
   if (previousAiSummary.fingerprint === fingerprint) return true;
+  if (!previousAiSummary.fingerprint.startsWith(`${AI_SUMMARY_PROMPT_VERSION}.`)) return false;
 
   const generated = new Date(previousAiSummary.generatedAtIso);
   if (!Number.isFinite(generated.getTime())) return false;
@@ -1837,6 +1840,9 @@ function buildAllowedContextSignals(summary, ensoOutlook) {
   const dailyAnomaly = summary.daily_global_mean_temperature_anomaly;
   const co2 = summary.atmospheric_co2;
   const seaIce = summary.global_sea_ice_extent;
+  const seaLevel = summary.global_mean_sea_level;
+  const oceanHeatContent = summary.ocean_heat_content;
+  const energyImbalance = summary.earth_energy_imbalance;
 
   if (dailyAnomaly?.latestDate && Number.isFinite(dailyAnomaly.latestValue)) {
     signals.push(
@@ -1849,18 +1855,27 @@ function buildAllowedContextSignals(summary, ensoOutlook) {
   if (seaIce?.latestDate && Number.isFinite(seaIce.latestValue)) {
     signals.push(`Global sea ice extent is ${seaIce.latestValue} million square kilometers as of ${seaIce.latestDate}.`);
   }
+  if (seaLevel?.latestDate && Number.isFinite(seaLevel.latestValue)) {
+    signals.push(`Global mean sea level is ${seaLevel.latestValue} millimeters as of ${seaLevel.latestDate}.`);
+  }
+  if (oceanHeatContent?.latestDate && Number.isFinite(oceanHeatContent.latestValue)) {
+    signals.push(`Ocean heat content is ${oceanHeatContent.latestValue} zettajoules as of ${oceanHeatContent.latestDate}.`);
+  }
+  if (energyImbalance?.latestDate && Number.isFinite(energyImbalance.latestValue)) {
+    signals.push(`Earth energy imbalance is ${energyImbalance.latestValue} watts per square meter as of ${energyImbalance.latestDate}.`);
+  }
   if (ensoOutlook?.targetLabel && ensoOutlook.condition && Number.isFinite(ensoOutlook.probability)) {
     signals.push(
       `ENSO outlook shows ${ensoOutlook.probability}% probability of ${ensoOutlook.condition.replaceAll("_", " ")} for ${ensoOutlook.targetLabel}.`
     );
   }
 
-  return signals.slice(0, 4);
+  return signals.slice(0, 7);
 }
 
 function buildAiSummaryContextSignals(summary, ensoOutlook, anomalySignals) {
-  const anomalyContext = anomalySignals.map((signal) => `${anomalySignalPhrase(signal)} as of ${signal.latestDate}.`);
-  return [...anomalyContext, ...buildAllowedContextSignals(summary, ensoOutlook)].slice(0, 6);
+  const anomalyContext = anomalySignals.slice(0, 3).map((signal) => `${anomalySignalPhrase(signal)} as of ${signal.latestDate}.`);
+  return [...anomalyContext, ...buildAllowedContextSignals(summary, ensoOutlook)].slice(0, 8);
 }
 
 function validateOpenAiSummaryText(openAiSummary, localSummary, temperatureChecks, anomalySignals = []) {
@@ -1920,9 +1935,9 @@ async function requestOpenAiSummary(summaryInput, model) {
       },
       signal: controller.signal,
       body: JSON.stringify({
-    model,
-    instructions:
-          "You write a compact climate dashboard briefing in 2 or 3 sentences. Use only the supplied JSON facts and the required temperature language. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.",
+        model,
+        instructions:
+          "Write an executive climate indicator briefing in 2 or 3 concise sentences. Lead with the authoritative temperature status, then prioritize the most exceptional supplied anomaly signals across oceans, ice, energy balance, and greenhouse forcing. Use a final sentence only when it adds a useful anchor reading or ENSO outlook from allowedContextSignals. Name indicators explicitly and include a value or rank when supplied; do not merely say indicators are important. Use only supplied JSON facts and required temperature language. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.",
         input: JSON.stringify(summaryInput),
         text: {
           format: {
@@ -2014,7 +2029,7 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
     anomalySignals,
     allowedContextSignals: buildAiSummaryContextSignals(summary, ensoOutlook?.nextSixMonths ?? null, anomalySignals),
     requiredBehavior:
-      "Temperature status is authoritative. Do not reinterpret the temperature checks. Write 2 or 3 sentences total. Mention temperature status first. If anomalySignals is not empty, include at least one of the first three anomalySignals by label before general context. If you add context, use only anomalySignals or allowedContextSignals items and keep the output compact.",
+      "Temperature status is authoritative. Do not reinterpret the temperature checks. Write 2 or 3 sentences total. Mention temperature status first. If anomalySignals is not empty, sentence two must highlight one or two of the first three anomalySignals by label, prioritizing critical signals and different indicator categories. If there are no anomalySignals, use sentence two to report the most decision-useful core indicator reading. Use sentence three only for a complementary core reading or the ENSO outlook. Use only anomalySignals or allowedContextSignals facts and keep the output compact.",
   };
 
   try {
