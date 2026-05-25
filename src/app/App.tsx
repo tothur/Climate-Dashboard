@@ -33,7 +33,6 @@ const REFERENCE_LEAP_YEAR = 2024;
 const REFERENCE_LEAP_YEAR_START_UTC = Date.UTC(REFERENCE_LEAP_YEAR, 0, 1);
 const CLIMATOLOGY_BASELINE_START_YEAR = 1991;
 const CLIMATOLOGY_BASELINE_END_YEAR = 2020;
-const MAP_CLIMATOLOGY_PERIOD = "1991-2020";
 const EARTH_LOGO_URL = `${import.meta.env.BASE_URL}earthicon.png`;
 const LOCAL_MAP_ASSET_BASE_URL = `${import.meta.env.BASE_URL}data/maps`;
 const LOCAL_MAP_FILENAMES: Record<ClimateMapKey, string> = {
@@ -41,6 +40,12 @@ const LOCAL_MAP_FILENAMES: Record<ClimateMapKey, string> = {
   global_2m_temperature_anomaly: "global-2m-temperature-anomaly.png",
   global_sst: "global-sst.png",
   global_sst_anomaly: "global-sst-anomaly.png",
+};
+const CURRENT_MAP_REMOTE_URLS: Record<ClimateMapKey, string> = {
+  global_2m_temperature: "https://climatereanalyzer.org/wx/todays-weather/maps/gfs_world-wt_t2_d1.png",
+  global_2m_temperature_anomaly: "https://climatereanalyzer.org/wx/todays-weather/maps/gfs_world-wt_t2anom_d1.png",
+  global_sst: "https://climatereanalyzer.org/wx/todays-weather/maps/gfs_world-wt_sst_d1.png",
+  global_sst_anomaly: "https://climatereanalyzer.org/wx/todays-weather/maps/gfs_world-wt_sstanom_d1.png",
 };
 type DashboardView = "overview" | "indicators" | "forcing" | "maps" | "projections" | "sources";
 type ToolkitIconName =
@@ -242,12 +247,13 @@ const STRINGS = {
       "Annual global glacier mass balance from WGMS, plus cumulative Antarctic and Greenland ice-sheet mass loss since 2002 derived from NASA GRACE/GRACE-FO mass variation.",
     mapsSectionTitle: "Maps",
     mapsSectionNote:
-      "Global Climate Reanalyzer map snapshots for 2m temperature, 2m anomaly, sea-surface temperature, and sea-surface temperature anomaly.",
+      "Latest available Climate Reanalyzer Today’s Weather maps. Temperature fields use GFS; SST uses preliminary NOAA OISST. Baselines are shown within anomaly maps.",
     map2mTemperatureTitle: "Surface Temperature (2m)",
     map2mTemperatureAnomalyTitle: "Surface Temperature Anomaly (2m)",
     mapSstTitle: "Sea Surface Temperature",
     mapSstAnomalyTitle: "Sea Surface Temperature Anomaly",
-    mapGlobalSubtitle: "Global map · Climate Reanalyzer",
+    mapGlobalSubtitle: "Current-day map · Climate Reanalyzer Today’s Weather",
+    mapSstSubtitle: "Latest available map · Climate Reanalyzer Today’s Weather",
     mapUnavailable: "Map unavailable",
     forcingTitle: "Forcing",
     forcingNote: "Atmospheric forcing signals from Mauna Loa CO2, global CH4 observations, and the NOAA Annual Greenhouse Gas Index.",
@@ -398,12 +404,13 @@ const STRINGS = {
       "A WGMS éves globális gleccser-tömegmérlege, valamint a NASA GRACE/GRACE-FO tömegváltozási adataiból származtatott kumulatív antarktiszi és grönlandi jégtakaró-tömegveszteség 2002 óta.",
     mapsSectionTitle: "Térképek",
     mapsSectionNote:
-      "Globális Climate Reanalyzer térképkivonatok a 2 m hőmérsékletről, 2 m anomáliáról, tengerfelszíni hőmérsékletről és SST-anomáliáról.",
+      "A legfrissebb elérhető Climate Reanalyzer Today’s Weather térképek. A hőmérsékleti mezők GFS-, az SST-térképek előzetes NOAA OISST-adatokat használnak. Az anomáliabázisok a térképeken láthatók.",
     map2mTemperatureTitle: "Felszíni hőmérséklet (2m)",
     map2mTemperatureAnomalyTitle: "Felszíni hőmérsékleti anomália (2m)",
     mapSstTitle: "Tengerfelszíni hőmérséklet",
     mapSstAnomalyTitle: "Tengerfelszíni hőmérsékleti anomália",
-    mapGlobalSubtitle: "Globális térkép · Climate Reanalyzer",
+    mapGlobalSubtitle: "Aktuális napi térkép · Climate Reanalyzer Today’s Weather",
+    mapSstSubtitle: "Legfrissebb elérhető térkép · Climate Reanalyzer Today’s Weather",
     mapUnavailable: "A térkép nem érhető el",
     forcingTitle: "Éghajlati kényszerek",
     forcingNote: "Légköri kényszerek a Mauna Loa CO2, a globális CH4 megfigyelések és a NOAA éves üvegházhatásúgáz-index alapján.",
@@ -664,56 +671,6 @@ function extractIsoDate(isoDateTime: string | null | undefined): string | null {
   const parsed = Date.parse(isoDateTime);
   if (!Number.isFinite(parsed)) return null;
   return new Date(parsed).toISOString().slice(0, 10);
-}
-
-interface MapDateParts {
-  year: number;
-  dayOfYear: number;
-}
-
-function padDayOfYear(dayOfYear: number): string {
-  return String(Math.max(1, Math.min(366, dayOfYear))).padStart(3, "0");
-}
-
-function buildMapDateParts(dateIso: string | null): MapDateParts {
-  const parsed = typeof dateIso === "string" ? Date.parse(`${dateIso}T00:00:00Z`) : Number.NaN;
-  const date = Number.isFinite(parsed) ? new Date(parsed) : new Date();
-  const year = date.getUTCFullYear();
-  const dayOfYear = Math.floor((Date.UTC(year, date.getUTCMonth(), date.getUTCDate()) - Date.UTC(year, 0, 1)) / 86_400_000) + 1;
-  return {
-    year,
-    dayOfYear,
-  };
-}
-
-function buildMapDateCandidates(baseDate: MapDateParts): MapDateParts[] {
-  const clampedDay = Math.max(1, Math.min(366, baseDate.dayOfYear));
-  const baseTimestamp = Date.UTC(baseDate.year, 0, 1) + (clampedDay - 1) * 86_400_000;
-  const recentCandidates: MapDateParts[] = [];
-  for (let backDays = 0; backDays <= 14; backDays += 1) {
-    const date = new Date(baseTimestamp - backDays * 86_400_000);
-    const year = date.getUTCFullYear();
-    const dayOfYear = Math.floor((Date.UTC(year, date.getUTCMonth(), date.getUTCDate()) - Date.UTC(year, 0, 1)) / 86_400_000) + 1;
-    recentCandidates.push({
-      year,
-      dayOfYear,
-    });
-  }
-  const previousYearSameDay = {
-    year: baseDate.year - 1,
-    dayOfYear: Math.max(1, Math.min(365, clampedDay)),
-  };
-  const previousYearPreviousDay = {
-    year: baseDate.year - 1,
-    dayOfYear: Math.max(1, Math.min(365, clampedDay - 1)),
-  };
-  const unique = new Map<string, MapDateParts>();
-  for (const candidate of [...recentCandidates, previousYearSameDay, previousYearPreviousDay]) {
-    if (candidate.year < 1900) continue;
-    const key = `${candidate.year}-${candidate.dayOfYear}`;
-    unique.set(key, candidate);
-  }
-  return Array.from(unique.values());
 }
 
 function uniqueNonEmptyStrings(values: Array<string | null | undefined>): string[] {
@@ -2483,44 +2440,21 @@ export function App() {
     [snapshot.indicators]
   );
   const mapCards = useMemo(() => {
-    const metricByKey = new Map(snapshot.indicators.map((metric) => [metric.key, metric]));
-    const surfaceMetric = metricByKey.get("global_surface_temperature") ?? null;
-    const sstMetric = metricByKey.get("global_sea_surface_temperature") ?? null;
     const mapAssets = dataSource.maps ?? {};
     const mapVersion = encodeURIComponent(snapshot.updatedAtIso);
-    const generatedDateIso = extractIsoDate(snapshot.updatedAtIso);
 
     const surfaceMapDateIso = mapAssets.global_2m_temperature?.date ?? null;
     const surfaceAnomalyMapDateIso = mapAssets.global_2m_temperature_anomaly?.date ?? null;
     const sstMapDateIso = mapAssets.global_sst?.date ?? null;
     const sstAnomalyMapDateIso = mapAssets.global_sst_anomaly?.date ?? null;
 
-    const surfaceMapCandidateDateIso = surfaceMapDateIso ?? surfaceMetric?.latestDate ?? generatedDateIso ?? null;
-    const sstMapCandidateDateIso = sstMapDateIso ?? sstMetric?.latestDate ?? generatedDateIso ?? null;
     const surfaceMapDisplayDateIso = surfaceMapDateIso ?? null;
     const surfaceAnomalyMapDisplayDateIso = surfaceAnomalyMapDateIso ?? null;
     const sstMapDisplayDateIso = sstMapDateIso ?? null;
     const sstAnomalyMapDisplayDateIso = sstAnomalyMapDateIso ?? null;
 
-    const t2DateCandidates = buildMapDateCandidates(buildMapDateParts(surfaceMapCandidateDateIso));
-    const sstDateCandidates = buildMapDateCandidates(buildMapDateParts(sstMapCandidateDateIso));
-    const t2MapUrls = t2DateCandidates.map((candidate) => {
-      const doy = padDayOfYear(candidate.dayOfYear);
-      return {
-        t2: `https://cr.acg.maine.edu/clim/t2_daily/maps/t2/world-wt/${candidate.year}/t2_world-wt_${candidate.year}_d${doy}.png`,
-        t2Anomaly: `https://cr.acg.maine.edu/clim/t2_daily/maps/t2anom_${MAP_CLIMATOLOGY_PERIOD}/world-wt/${candidate.year}/t2anom_world-wt_${candidate.year}_d${doy}.png`,
-      };
-    });
-    const sstMapUrls = sstDateCandidates.map((candidate) => {
-      const doy = padDayOfYear(candidate.dayOfYear);
-      return {
-        sst: `https://cr.acg.maine.edu/clim/sst_daily/maps/sst/world-wt3/${candidate.year}/sst_world-wt3_${candidate.year}_d${doy}.png`,
-        sstAnomaly: `https://cr.acg.maine.edu/clim/sst_daily/maps/sstanom_${MAP_CLIMATOLOGY_PERIOD}/world-wt3/${candidate.year}/sstanom_world-wt3_${candidate.year}_d${doy}.png`,
-      };
-    });
-
-    const surfaceSubtitle = `${formatSourceShortName(surfaceMetric?.source.shortName ?? "Climate Reanalyzer", language)} · ${t.mapGlobalSubtitle}`;
-    const sstSubtitle = `${formatSourceShortName(sstMetric?.source.shortName ?? "Climate Reanalyzer", language)} · ${t.mapGlobalSubtitle}`;
+    const surfaceSubtitle = t.mapGlobalSubtitle;
+    const sstSubtitle = t.mapSstSubtitle;
     const surfaceFreshness = mapFreshnessBadge(surfaceMapDateIso, language, t);
     const surfaceAnomalyFreshness = mapFreshnessBadge(surfaceAnomalyMapDateIso, language, t);
     const sstFreshness = mapFreshnessBadge(sstMapDateIso, language, t);
@@ -2529,34 +2463,28 @@ export function App() {
       path: mapAssets.global_2m_temperature?.path,
       fallbackFileName: LOCAL_MAP_FILENAMES.global_2m_temperature,
       versionToken: mapVersion,
-      remoteUrls: [mapAssets.global_2m_temperature?.sourceUrl, ...t2MapUrls.map((entry) => entry.t2)],
+      remoteUrls: [mapAssets.global_2m_temperature?.sourceUrl, CURRENT_MAP_REMOTE_URLS.global_2m_temperature],
       preferGeneratedMap: surfaceFreshness?.tone !== "stale",
     });
     const surfaceAnomalyImageCandidates = buildMapImageCandidates({
       path: mapAssets.global_2m_temperature_anomaly?.path,
       fallbackFileName: LOCAL_MAP_FILENAMES.global_2m_temperature_anomaly,
       versionToken: mapVersion,
-      remoteUrls: [
-        mapAssets.global_2m_temperature_anomaly?.sourceUrl,
-        ...t2MapUrls.map((entry) => entry.t2Anomaly),
-      ],
+      remoteUrls: [mapAssets.global_2m_temperature_anomaly?.sourceUrl, CURRENT_MAP_REMOTE_URLS.global_2m_temperature_anomaly],
       preferGeneratedMap: surfaceAnomalyFreshness?.tone !== "stale",
     });
     const sstImageCandidates = buildMapImageCandidates({
       path: mapAssets.global_sst?.path,
       fallbackFileName: LOCAL_MAP_FILENAMES.global_sst,
       versionToken: mapVersion,
-      remoteUrls: [mapAssets.global_sst?.sourceUrl, ...sstMapUrls.map((entry) => entry.sst)],
+      remoteUrls: [mapAssets.global_sst?.sourceUrl, CURRENT_MAP_REMOTE_URLS.global_sst],
       preferGeneratedMap: sstFreshness?.tone !== "stale",
     });
     const sstAnomalyImageCandidates = buildMapImageCandidates({
       path: mapAssets.global_sst_anomaly?.path,
       fallbackFileName: LOCAL_MAP_FILENAMES.global_sst_anomaly,
       versionToken: mapVersion,
-      remoteUrls: [
-        mapAssets.global_sst_anomaly?.sourceUrl,
-        ...sstMapUrls.map((entry) => entry.sstAnomaly),
-      ],
+      remoteUrls: [mapAssets.global_sst_anomaly?.sourceUrl, CURRENT_MAP_REMOTE_URLS.global_sst_anomaly],
       preferGeneratedMap: sstAnomalyFreshness?.tone !== "stale",
     });
 
@@ -2598,7 +2526,7 @@ export function App() {
         freshness: sstAnomalyFreshness,
       },
     ];
-  }, [snapshot.indicators, snapshot.updatedAtIso, dataSource.maps, language, t]);
+  }, [snapshot.updatedAtIso, dataSource.maps, language, t]);
 
   const renderIndicatorPanel = (
     metric: ClimateMetricSeries,
