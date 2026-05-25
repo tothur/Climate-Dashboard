@@ -52,6 +52,7 @@ Axis constraints:
 Generated dataset file:
 
 - `public/data/climate-realtime.json`
+- `public/data/climate-latest.json` - compact read-only snapshot for a ChatGPT Action
 
 ## Runtime Loading Strategy
 
@@ -83,6 +84,12 @@ npm run data:update:raw
 
 ```bash
 npm run data:verify
+```
+
+- Rebuild only the compact ChatGPT snapshot:
+
+```bash
+npm run data:chatgpt
 ```
 
 - Continuous updater (default every 6 hours):
@@ -136,6 +143,42 @@ For GitHub Actions, add `OPENAI_API_KEY` as a repository secret. Without that se
 
 Verification fails with non-zero exit code on hard errors.
 
+## ChatGPT Questions Over Current Data
+
+The project publishes a compact read-only endpoint for a custom GPT Action:
+
+- Dataset: `https://tothur.github.io/Climate-Dashboard/data/climate-latest.json`
+- OpenAPI schema: `https://tothur.github.io/Climate-Dashboard/chatgpt/climate-action.openapi.yaml`
+- Privacy policy: `https://tothur.github.io/Climate-Dashboard/chatgpt/privacy-policy.html`
+
+The endpoint exposes latest values, observation dates, units, data-source links, structured ENSO outlook fields, and
+validated temperature-status flags. It deliberately omits full historical time series, AI token usage, and write
+capabilities. It is suitable for questions about the latest published dashboard state; it cannot answer arbitrary
+historical trend calculations without a later, narrowly scoped historical endpoint.
+
+### Custom GPT Setup
+
+1. Create or edit a GPT in ChatGPT and add an Action.
+2. Import the OpenAPI schema URL above, or paste `public/chatgpt/climate-action.openapi.yaml`.
+3. Set authentication to `None`, because the endpoint is intentionally public and read-only.
+4. Use the privacy-policy URL above if the GPT will be shared by link or published.
+5. Add instructions such as:
+
+```text
+Use getLatestClimateDashboardObservations for questions about current Climate Dashboard data.
+Always give the observation date with reported values and state that different indicators can have different dates.
+Do not claim a record unless temperatureStatus explicitly supports it.
+Do not calculate or assert historical trends when the returned snapshot does not contain the required history.
+```
+
+### Security Boundary
+
+- The endpoint contains public climate observations only; no `OPENAI_API_KEY` or other secret is sent to the browser or
+  ChatGPT Action.
+- It supports `GET` only through static GitHub Pages hosting, so the Action cannot alter dashboard data.
+- Adding API-key authentication would not make this file private while it is also served as a public dashboard asset.
+  Private data or user-specific queries require a server-side endpoint with authentication.
+
 ## GitHub Actions Daily Update
 
 Workflow file:
@@ -152,7 +195,7 @@ Pipeline:
 1. `npm ci`
 2. `npm run data:update`
 3. `npm run data:verify`
-4. Commit and push only if `public/data/climate-realtime.json` changed
+4. Commit and push only if published data or maps changed
 
 ## Development
 

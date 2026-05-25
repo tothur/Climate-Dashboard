@@ -1,0 +1,80 @@
+openapi: 3.1.0
+info:
+  title: Climate Dashboard Latest Observations API
+  version: 1.0.0
+  description: >
+    Retrieves a read-only compact snapshot of the latest published Climate Dashboard
+    observations. Use this data for questions about current values, latest dates,
+    structured ENSO outlook, and explicit temperature-status flags only.
+servers:
+  - url: https://tothur.github.io/Climate-Dashboard
+paths:
+  /data/climate-latest.json:
+    get:
+      operationId: getLatestClimateDashboardObservations
+      summary: Retrieve the latest climate dashboard observations
+      description: >
+        Returns the current published values and dates for dashboard indicators.
+        The response does not contain full time series and should not be used to
+        calculate historical trends that are not included in the returned data.
+      responses:
+        "200":
+          description: Current read-only climate observation snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LatestSnapshot"
+components:
+  schemas:
+    LatestSnapshot:
+      type: object
+      required: [schemaVersion, generatedAtIso, scope, interpretationRules, metrics, temperatureStatus]
+      properties:
+        schemaVersion:
+          type: integer
+        generatedAtIso:
+          type: string
+          format: date-time
+        scope:
+          type: string
+        interpretationRules:
+          type: array
+          items:
+            type: string
+        metrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metric"
+        temperatureStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/TemperatureStatus"
+        ensoOutlook:
+          type: [object, "null"]
+          additionalProperties: true
+    Metric:
+      type: object
+      required: [key, label, latestDate, latestValue, unit]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        latestDate:
+          type: string
+          format: date
+        latestValue:
+          type: number
+        unit:
+          type: string
+        source:
+          type: [string, "null"]
+    TemperatureStatus:
+      type: object
+      required: [key, tone]
+      properties:
+        key:
+          type: string
+        tone:
+          type: string
+          enum: [normal, watch, critical]
