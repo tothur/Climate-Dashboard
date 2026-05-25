@@ -54,4 +54,18 @@ jobs:
             git add public/data/maps/*.png 2>/dev/null || true
           fi
           git commit -m "chore(data): daily climate dataset refresh"
-          git push
+
+          for attempt in 1 2 3 4; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 4 ]; then
+              echo "Failed to publish refreshed climate dataset after ${attempt} attempts."
+              exit 1
+            fi
+
+            delay=$((attempt * 10))
+            echo "Push attempt ${attempt} failed; retrying in ${delay} seconds."
+            sleep "$delay"
+          done

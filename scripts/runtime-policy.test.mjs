@@ -62,3 +62,12 @@ test("optional CERES refresh fails fast and falls back to retained validated dat
   );
   assert.match(updateScript, /earth_energy_imbalance: retaining the previous validated CERES series/);
 });
+
+test("daily dataset publication retries transient push failures", async () => {
+  const workflow = await readProjectFile(".github/workflows/daily-climate-data.yml");
+
+  assert.match(workflow, /for attempt in 1 2 3 4; do/);
+  assert.match(workflow, /git push origin HEAD:main/);
+  assert.match(workflow, /Push attempt \$\{attempt\} failed; retrying/);
+  assert.match(workflow, /Failed to publish refreshed climate dataset after/);
+});
