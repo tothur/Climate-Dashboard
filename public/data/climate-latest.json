@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAtIso": "2026-05-25T12:33:57.940Z",
+  "generatedAtIso": "2026-05-26T08:44:47.623Z",
   "scope": "Read-only compact snapshot of the latest published Climate Dashboard observations. It excludes full historical series; answer historical trend questions only when data for them is present.",
   "interpretationRules": [
     "State the observation date alongside each reported latest value.",
@@ -11,16 +11,16 @@
     {
       "key": "global_surface_temperature",
       "label": "Global Surface Temperature",
-      "latestDate": "2026-05-19",
-      "latestValue": 15.854,
+      "latestDate": "2026-05-20",
+      "latestValue": 15.802,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_world_t2_day.json"
     },
     {
       "key": "global_sea_surface_temperature",
       "label": "Global Sea Surface Temperature",
-      "latestDate": "2026-05-09",
-      "latestValue": 21.027,
+      "latestDate": "2026-05-10",
+      "latestValue": 21.023,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json"
     },
@@ -75,55 +75,55 @@
     {
       "key": "northern_hemisphere_surface_temperature",
       "label": "Northern Hemisphere Surface Temperature",
-      "latestDate": "2026-05-19",
-      "latestValue": 18.536,
+      "latestDate": "2026-05-20",
+      "latestValue": 18.573,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_nh_t2_day.json"
     },
     {
       "key": "southern_hemisphere_surface_temperature",
       "label": "Southern Hemisphere Surface Temperature",
-      "latestDate": "2026-05-19",
-      "latestValue": 13.222,
+      "latestDate": "2026-05-20",
+      "latestValue": 13.08,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_sh_t2_day.json"
     },
     {
       "key": "arctic_surface_temperature",
       "label": "Arctic Surface Temperature",
-      "latestDate": "2026-05-19",
-      "latestValue": -3.461,
+      "latestDate": "2026-05-20",
+      "latestValue": -3.556,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_arctic_t2_day.json"
     },
     {
       "key": "antarctic_surface_temperature",
       "label": "Antarctic Surface Temperature",
-      "latestDate": "2026-05-19",
-      "latestValue": -29.83,
+      "latestDate": "2026-05-20",
+      "latestValue": -30.165,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_antarctic_t2_day.json"
     },
     {
       "key": "north_atlantic_sea_surface_temperature",
       "label": "North Atlantic Sea Surface Temperature",
-      "latestDate": "2026-05-09",
-      "latestValue": 20.816,
+      "latestDate": "2026-05-10",
+      "latestValue": 20.837,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json"
     },
     {
       "key": "global_surface_temperature_anomaly",
       "label": "Global Surface Temperature Anomaly",
-      "latestDate": "2026-05-19",
-      "latestValue": 0.535,
+      "latestDate": "2026-05-20",
+      "latestValue": 0.462,
       "unit": "deg C",
       "source": "Derived from ERA5 daily global surface temperature minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "global_sea_surface_temperature_anomaly",
       "label": "Global Sea Surface Temperature Anomaly",
-      "latestDate": "2026-05-09",
+      "latestDate": "2026-05-10",
       "latestValue": 0.594,
       "unit": "deg C",
       "source": "Derived from OISST v2.1 daily global SST minus 1991-2020 daily climatology from the same feed."
@@ -131,32 +131,32 @@
     {
       "key": "daily_global_mean_temperature_anomaly",
       "label": "Daily Global Mean Temperature Anomaly",
-      "latestDate": "2026-05-23",
-      "latestValue": 1.337,
+      "latestDate": "2026-05-24",
+      "latestValue": 1.369,
       "unit": "deg C",
       "source": "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv (ano_91-20 adjusted by +0.88C to approximate 1850-1900 preindustrial baseline)"
     },
     {
       "key": "global_sea_ice_extent",
       "label": "Global Sea Ice Extent",
-      "latestDate": "2026-05-23",
-      "latestValue": 21.829,
+      "latestDate": "2026-05-24",
+      "latestValue": 21.817999999999998,
       "unit": "million sq km",
       "source": "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files."
     },
     {
       "key": "arctic_sea_ice_extent",
       "label": "Arctic Sea Ice Extent",
-      "latestDate": "2026-05-23",
-      "latestValue": 11.79,
+      "latestDate": "2026-05-24",
+      "latestValue": 11.703,
       "unit": "million sq km",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv"
     },
     {
       "key": "antarctic_sea_ice_extent",
       "label": "Antarctic Sea Ice Extent",
-      "latestDate": "2026-05-23",
-      "latestValue": 10.039,
+      "latestDate": "2026-05-24",
+      "latestValue": 10.115,
       "unit": "million sq km",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv"
     },
@@ -188,7 +188,7 @@
   "temperatureStatus": [
     {
       "key": "global_surface_temperature",
-      "tone": "watch"
+      "tone": "normal"
     },
     {
       "key": "global_sea_surface_temperature",
