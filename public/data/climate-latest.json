@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAtIso": "2026-05-26T08:44:47.623Z",
+  "generatedAtIso": "2026-05-27T08:49:28.608Z",
   "scope": "Read-only compact snapshot of the latest published Climate Dashboard observations. It excludes full historical series; answer historical trend questions only when data for them is present.",
   "interpretationRules": [
     "State the observation date alongside each reported latest value.",
@@ -11,8 +11,8 @@
     {
       "key": "global_surface_temperature",
       "label": "Global Surface Temperature",
-      "latestDate": "2026-05-20",
-      "latestValue": 15.802,
+      "latestDate": "2026-05-21",
+      "latestValue": 15.792,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_world_t2_day.json"
     },
@@ -75,32 +75,32 @@
     {
       "key": "northern_hemisphere_surface_temperature",
       "label": "Northern Hemisphere Surface Temperature",
-      "latestDate": "2026-05-20",
-      "latestValue": 18.573,
+      "latestDate": "2026-05-21",
+      "latestValue": 18.599,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_nh_t2_day.json"
     },
     {
       "key": "southern_hemisphere_surface_temperature",
       "label": "Southern Hemisphere Surface Temperature",
-      "latestDate": "2026-05-20",
-      "latestValue": 13.08,
+      "latestDate": "2026-05-21",
+      "latestValue": 13.034,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_sh_t2_day.json"
     },
     {
       "key": "arctic_surface_temperature",
       "label": "Arctic Surface Temperature",
-      "latestDate": "2026-05-20",
-      "latestValue": -3.556,
+      "latestDate": "2026-05-21",
+      "latestValue": -3.395,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_arctic_t2_day.json"
     },
     {
       "key": "antarctic_surface_temperature",
       "label": "Antarctic Surface Temperature",
-      "latestDate": "2026-05-20",
-      "latestValue": -30.165,
+      "latestDate": "2026-05-21",
+      "latestValue": -30.079,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_antarctic_t2_day.json"
     },
@@ -115,8 +115,8 @@
     {
       "key": "global_surface_temperature_anomaly",
       "label": "Global Surface Temperature Anomaly",
-      "latestDate": "2026-05-20",
-      "latestValue": 0.462,
+      "latestDate": "2026-05-21",
+      "latestValue": 0.425,
       "unit": "deg C",
       "source": "Derived from ERA5 daily global surface temperature minus 1991-2020 daily climatology from the same feed."
     },
@@ -131,32 +131,32 @@
     {
       "key": "daily_global_mean_temperature_anomaly",
       "label": "Daily Global Mean Temperature Anomaly",
-      "latestDate": "2026-05-24",
-      "latestValue": 1.369,
+      "latestDate": "2026-05-25",
+      "latestValue": 1.416,
       "unit": "deg C",
       "source": "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv (ano_91-20 adjusted by +0.88C to approximate 1850-1900 preindustrial baseline)"
     },
     {
       "key": "global_sea_ice_extent",
       "label": "Global Sea Ice Extent",
-      "latestDate": "2026-05-24",
-      "latestValue": 21.817999999999998,
+      "latestDate": "2026-05-25",
+      "latestValue": 21.966,
       "unit": "million sq km",
       "source": "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files."
     },
     {
       "key": "arctic_sea_ice_extent",
       "label": "Arctic Sea Ice Extent",
-      "latestDate": "2026-05-24",
-      "latestValue": 11.703,
+      "latestDate": "2026-05-25",
+      "latestValue": 11.72,
       "unit": "million sq km",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv"
     },
     {
       "key": "antarctic_sea_ice_extent",
       "label": "Antarctic Sea Ice Extent",
-      "latestDate": "2026-05-24",
-      "latestValue": 10.115,
+      "latestDate": "2026-05-25",
+      "latestValue": 10.246,
       "unit": "million sq km",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv"
     },
