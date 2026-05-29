@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAtIso": "2026-05-28T08:54:24.084Z",
+  "generatedAtIso": "2026-05-29T08:52:53.542Z",
   "scope": "Read-only compact snapshot of the latest published Climate Dashboard observations. It excludes full historical series; answer historical trend questions only when data for them is present.",
   "interpretationRules": [
     "State the observation date alongside each reported latest value.",
@@ -19,8 +19,8 @@
     {
       "key": "global_sea_surface_temperature",
       "label": "Global Sea Surface Temperature",
-      "latestDate": "2026-05-12",
-      "latestValue": 21.016,
+      "latestDate": "2026-05-13",
+      "latestValue": 21.005,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json"
     },
@@ -107,8 +107,8 @@
     {
       "key": "north_atlantic_sea_surface_temperature",
       "label": "North Atlantic Sea Surface Temperature",
-      "latestDate": "2026-05-12",
-      "latestValue": 20.879,
+      "latestDate": "2026-05-13",
+      "latestValue": 20.894,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json"
     },
@@ -123,40 +123,40 @@
     {
       "key": "global_sea_surface_temperature_anomaly",
       "label": "Global Sea Surface Temperature Anomaly",
-      "latestDate": "2026-05-12",
-      "latestValue": 0.593,
+      "latestDate": "2026-05-13",
+      "latestValue": 0.584,
       "unit": "deg C",
       "source": "Derived from OISST v2.1 daily global SST minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "daily_global_mean_temperature_anomaly",
       "label": "Daily Global Mean Temperature Anomaly",
-      "latestDate": "2026-05-26",
-      "latestValue": 1.393,
+      "latestDate": "2026-05-27",
+      "latestValue": 1.3820000000000001,
       "unit": "deg C",
       "source": "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv (ano_91-20 adjusted by +0.88C to approximate 1850-1900 preindustrial baseline)"
     },
     {
       "key": "global_sea_ice_extent",
       "label": "Global Sea Ice Extent",
-      "latestDate": "2026-05-26",
-      "latestValue": 22.093,
+      "latestDate": "2026-05-27",
+      "latestValue": 22.069,
       "unit": "million sq km",
       "source": "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files."
     },
     {
       "key": "arctic_sea_ice_extent",
       "label": "Arctic Sea Ice Extent",
-      "latestDate": "2026-05-26",
-      "latestValue": 11.77,
+      "latestDate": "2026-05-27",
+      "latestValue": 11.638,
       "unit": "million sq km",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv"
     },
     {
       "key": "antarctic_sea_ice_extent",
       "label": "Antarctic Sea Ice Extent",
-      "latestDate": "2026-05-26",
-      "latestValue": 10.323,
+      "latestDate": "2026-05-27",
+      "latestValue": 10.431,
       "unit": "million sq km",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv"
     },
