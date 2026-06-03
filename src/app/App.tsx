@@ -139,6 +139,7 @@ const STRINGS = {
     overviewSubtitle: "Key indicators and insights into our changing climate",
     overviewDailyGlobalTemperatureAnomalyTitle: "Daily Global Temperature Anomaly",
     overviewPreindustrialSubtitle: "vs. 1850-1900 average",
+    overviewSurfaceAnomalyTitle: "Surface Temperature Anomaly",
     overviewSstAnomalyTitle: "Sea Surface Temperature Anomaly",
     overviewCo2Title: "CO₂ Concentration",
     overviewAtmosphericSubtitle: "Atmospheric",
@@ -295,6 +296,7 @@ const STRINGS = {
     overviewSubtitle: "Fő indikátorok és megállapítások a változó éghajlatról",
     overviewDailyGlobalTemperatureAnomalyTitle: "Napi globális hőmérsékleti anomália",
     overviewPreindustrialSubtitle: "az 1850-1900-as átlaghoz képest",
+    overviewSurfaceAnomalyTitle: "Felszíni hőmérsékleti anomália",
     overviewSstAnomalyTitle: "Tengerfelszíni hőmérsékleti anomália",
     overviewCo2Title: "CO₂-koncentráció",
     overviewAtmosphericSubtitle: "Légköri",
@@ -747,17 +749,6 @@ function formatMetricValue(metric: ClimateMetricSeries, language: Language, unav
 
 function metricTitle(metric: ClimateMetricSeries, language: Language): string {
   return language === "hu" ? metric.titleHu : metric.titleEn;
-}
-
-function recordWarningTitle(metricKey: ClimateMetricSeries["key"], t: (typeof STRINGS)[Language]): string {
-  switch (metricKey) {
-    case "global_surface_temperature_anomaly":
-      return t.highestEverGlobalSurfaceTemperatureAnomalyTitle;
-    case "global_sea_surface_temperature_anomaly":
-      return t.highestEverGlobalSeaSurfaceTemperatureAnomalyTitle;
-    default:
-      return "";
-  }
 }
 
 function latestRecordHighPoint(metric: ClimateMetricSeries): DailyPoint | null {
@@ -2780,6 +2771,21 @@ export function App() {
         })()
       : null,
     (() => {
+      const metric = metricByKey.get("global_surface_temperature_anomaly");
+      if (!metric) return null;
+      const delta = formatMetricDelta(metric);
+      return {
+        key: "overview-surface-anomaly",
+        title: t.overviewSurfaceAnomalyTitle,
+        subtitle: t.overviewClimatologySubtitle,
+        value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
+        meta: `${t.chartLatest}: ${formatDateLabel(metric.latestDate, language)}`,
+        delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
+        icon: "temperature" as ToolkitIconName,
+        tone: "temperature",
+      };
+    })(),
+    (() => {
       const metric = metricByKey.get("global_sea_surface_temperature_anomaly");
       if (!metric) return null;
       const delta = formatMetricDelta(metric);
@@ -2829,54 +2835,22 @@ export function App() {
     mapCards.find((card) => card.key === "map-2m-temperature-anomaly"),
     mapCards.find((card) => card.key === "map-sst-anomaly"),
   ].filter((card): card is (typeof mapCards)[number] => card != null);
-  const overviewHighlights = [
-    recordWarningCards[0]
+  const ensoOverviewRows = [
+    ensoOutlook?.nextThreeMonths
       ? {
-          key: "record-warning-highlight",
-          icon: "temperature" as ToolkitIconName,
-          tone: "temperature",
-          text: `${recordWarningTitle(recordWarningCards[0].metric.key, t)} ${t.recordReachedText} ${formatNumericValue(
-            recordWarningCards[0].recordPoint.value,
-            recordWarningCards[0].metric.decimals,
-            language,
-            t.valueUnavailable
-          )} ${cardUnitLabel(recordWarningCards[0].metric.key, recordWarningCards[0].metric.unit, language)}.`,
-        }
-      : null,
-    projectedAnnualGlobalMeanAnomaly
-      ? {
-          key: "projection-highlight",
-          icon: "trend" as ToolkitIconName,
-          tone: "info",
-          text: `${t.projectedAnnualTemperatureAnomalyTitle}: ${projectionNumberFormat.format(
-            projectedAnnualGlobalMeanAnomaly.value
-          )} ${cardUnitLabel(DAILY_GLOBAL_MEAN_ANOMALY_KEY, dailyGlobalMeanAnomalyMetric?.unit ?? "deg C", language)}.`,
+          key: "next-three-months",
+          horizon: t.ensoNextThreeMonths,
+          window: ensoOutlook.nextThreeMonths,
         }
       : null,
     ensoOutlook?.nextSixMonths
       ? {
-          key: "enso-highlight",
-          icon: "cloud" as ToolkitIconName,
-          tone: "success",
-          text: `${t.ensoOutlookTitle}: ${formatEnsoConditionLabel(ensoOutlook.nextSixMonths.condition, t)} ${t.ensoTargetConnector} ${formatEnsoTargetLabel(
-            ensoOutlook.nextSixMonths.targetLabel,
-            language
-          )} (${ensoOutlook.nextSixMonths.probability ?? "-"}%).`,
+          key: "next-six-months",
+          horizon: t.ensoNextSixMonths,
+          window: ensoOutlook.nextSixMonths,
         }
       : null,
-  ].filter((highlight): highlight is NonNullable<typeof highlight> => highlight != null);
-  const forcingDriverRows = snapshot.forcing
-    .filter((metric) => metric.key !== "atmospheric_co2")
-    .slice(0, 6)
-    .map((metric) => {
-      const delta = formatMetricDelta(metric);
-      return {
-        key: metric.key,
-        label: metricTitle(metric, language),
-        value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
-        direction: delta?.direction ?? "flat",
-      };
-    });
+  ].filter((row): row is NonNullable<typeof row> => row != null);
   return (
     <div className="app-frame">
       <aside className="dashboard-sidebar" aria-label={t.dashboardNavigationAria}>
@@ -2987,27 +2961,6 @@ export function App() {
             </section>
 
             <section className="overview-main-grid">
-              <article className="overview-card forcing-drivers-card">
-                <div className="overview-card-header">
-                  <h2>{t.forcingTitle}</h2>
-                  <ToolkitIcon name="info" className="info-icon" />
-                </div>
-                <div className="driver-list">
-                  {forcingDriverRows.map((row) => (
-                    <div className="driver-row" key={row.key}>
-                      <span>{row.label}</span>
-                      <strong>{row.value}</strong>
-                      <span className={`driver-direction ${row.direction}`} aria-hidden="true">
-                        {row.direction === "down" ? "↓" : row.direction === "up" ? "↑" : "−"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <button type="button" className="text-link-button" onClick={() => setDashboardView("forcing")}>
-                  {t.viewAllForcing} →
-                </button>
-              </article>
-
               <section className="overview-card overview-map-suite" aria-label={t.mapsSectionTitle}>
                 <div className="overview-map-pair">
                   {overviewMapCards.map((mapCard) => (
@@ -3031,20 +2984,34 @@ export function App() {
                 </button>
               </section>
 
-              <article className="overview-card highlights-card">
+              <article className="overview-card enso-outlook-card">
                 <div className="overview-card-header">
-                  <h2>{t.recentHighlightsTitle}</h2>
+                  <h2>{t.ensoOutlookTitle}</h2>
                   <ToolkitIcon name="info" className="info-icon" />
                 </div>
-                <div className="highlight-list">
-                  {overviewHighlights.map((highlight) => (
-                    <div className={`highlight-row tone-${highlight.tone}`} key={highlight.key}>
-                      <span className="highlight-icon">
-                        <ToolkitIcon name={highlight.icon} />
-                      </span>
-                      <p>{highlight.text}</p>
+                <div className="enso-overview-status">
+                  <span>{t.ensoStatusLabel}</span>
+                  <strong>{formatEnsoAlertStatusLabel(ensoOutlook?.alertStatus ?? null, language, t)}</strong>
+                </div>
+                {ensoOutlook?.synopsis ? <p className="enso-overview-synopsis">{ensoOutlook.synopsis}</p> : null}
+                <div className="enso-overview-window-list">
+                  {ensoOverviewRows.map((row) => (
+                    <div className="enso-overview-window" key={row.key}>
+                      <span>{row.horizon}</span>
+                      <strong>{formatEnsoConditionLabel(row.window.condition, t)}</strong>
+                      <small>
+                        {row.window.probability ?? "-"}% · {formatEnsoTargetLabel(row.window.targetLabel, language)}
+                      </small>
                     </div>
                   ))}
+                </div>
+                <div className="enso-overview-meta">
+                  {ensoOutlookFreshness ? <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span> : null}
+                  {ensoOutlook?.sourceUrl ? (
+                    <a className="text-link-button" href={ensoOutlook.sourceUrl} target="_blank" rel="noreferrer">
+                      {ensoOutlook.sourceLabel || "NOAA CPC"} →
+                    </a>
+                  ) : null}
                 </div>
               </article>
             </section>
