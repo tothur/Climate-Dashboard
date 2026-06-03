@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAtIso": "2026-06-02T09:18:38.875Z",
+  "generatedAtIso": "2026-06-03T08:11:09.004Z",
   "scope": "Read-only compact snapshot of the latest published Climate Dashboard observations. It excludes full historical series; answer historical trend questions only when data for them is present.",
   "interpretationRules": [
     "State the observation date alongside each reported latest value.",
@@ -11,16 +11,16 @@
     {
       "key": "global_surface_temperature",
       "label": "Global Surface Temperature",
-      "latestDate": "2026-05-27",
-      "latestValue": 16.071,
+      "latestDate": "2026-05-28",
+      "latestValue": 16.111,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_world_t2_day.json"
     },
     {
       "key": "global_sea_surface_temperature",
       "label": "Global Sea Surface Temperature",
-      "latestDate": "2026-05-17",
-      "latestValue": 20.955,
+      "latestDate": "2026-05-18",
+      "latestValue": 20.956,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json"
     },
@@ -43,10 +43,10 @@
     {
       "key": "earth_energy_imbalance",
       "label": "Earth Energy Imbalance",
-      "latestDate": "2026-02-01",
-      "latestValue": 10.4116,
+      "latestDate": "2026-03-01",
+      "latestValue": 7.5765,
       "unit": "W/m2",
-      "source": "https://opendap.larc.nasa.gov/opendap/CERES/EBAF/TOA_Edition4.2.1/CERES_EBAF-TOA_Edition4.2.1_200003-202602.nc.ascii?time,gtoa_net_all_mon"
+      "source": "https://opendap.larc.nasa.gov/opendap/CERES/EBAF/TOA_Edition4.2.1/CERES_EBAF-TOA_Edition4.2.1_200003-202603.nc.ascii?time,gtoa_net_all_mon"
     },
     {
       "key": "global_glacier_mass_balance",
@@ -75,88 +75,88 @@
     {
       "key": "northern_hemisphere_surface_temperature",
       "label": "Northern Hemisphere Surface Temperature",
-      "latestDate": "2026-05-27",
-      "latestValue": 19.212,
+      "latestDate": "2026-05-28",
+      "latestValue": 19.329,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_nh_t2_day.json"
     },
     {
       "key": "southern_hemisphere_surface_temperature",
       "label": "Southern Hemisphere Surface Temperature",
-      "latestDate": "2026-05-27",
-      "latestValue": 12.978,
+      "latestDate": "2026-05-28",
+      "latestValue": 12.94,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_sh_t2_day.json"
     },
     {
       "key": "arctic_surface_temperature",
       "label": "Arctic Surface Temperature",
-      "latestDate": "2026-05-27",
-      "latestValue": -2.635,
+      "latestDate": "2026-05-28",
+      "latestValue": -1.937,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_arctic_t2_day.json"
     },
     {
       "key": "antarctic_surface_temperature",
       "label": "Antarctic Surface Temperature",
-      "latestDate": "2026-05-27",
-      "latestValue": -29.969,
+      "latestDate": "2026-05-28",
+      "latestValue": -30.257,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_antarctic_t2_day.json"
     },
     {
       "key": "north_atlantic_sea_surface_temperature",
       "label": "North Atlantic Sea Surface Temperature",
-      "latestDate": "2026-05-17",
-      "latestValue": 20.973,
+      "latestDate": "2026-05-18",
+      "latestValue": 21.011,
       "unit": "deg C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json"
     },
     {
       "key": "global_surface_temperature_anomaly",
       "label": "Global Surface Temperature Anomaly",
-      "latestDate": "2026-05-27",
-      "latestValue": 0.508,
+      "latestDate": "2026-05-28",
+      "latestValue": 0.519,
       "unit": "deg C",
       "source": "Derived from ERA5 daily global surface temperature minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "global_sea_surface_temperature_anomaly",
       "label": "Global Sea Surface Temperature Anomaly",
-      "latestDate": "2026-05-17",
-      "latestValue": 0.544,
+      "latestDate": "2026-05-18",
+      "latestValue": 0.548,
       "unit": "deg C",
       "source": "Derived from OISST v2.1 daily global SST minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "daily_global_mean_temperature_anomaly",
       "label": "Daily Global Mean Temperature Anomaly",
-      "latestDate": "2026-05-31",
-      "latestValue": 1.365,
+      "latestDate": "2026-06-01",
+      "latestValue": 1.405,
       "unit": "deg C",
       "source": "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv (ano_91-20 adjusted by +0.88C to approximate 1850-1900 preindustrial baseline)"
     },
     {
       "key": "global_sea_ice_extent",
       "label": "Global Sea Ice Extent",
-      "latestDate": "2026-05-31",
-      "latestValue": 22.296,
+      "latestDate": "2026-06-01",
+      "latestValue": 22.283,
       "unit": "million sq km",
       "source": "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files."
     },
     {
       "key": "arctic_sea_ice_extent",
       "label": "Arctic Sea Ice Extent",
-      "latestDate": "2026-05-31",
-      "latestValue": 11.439,
+      "latestDate": "2026-06-01",
+      "latestValue": 11.359,
       "unit": "million sq km",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv"
     },
     {
       "key": "antarctic_sea_ice_extent",
       "label": "Antarctic Sea Ice Extent",
-      "latestDate": "2026-05-31",
-      "latestValue": 10.857,
+      "latestDate": "2026-06-01",
+      "latestValue": 10.924,
       "unit": "million sq km",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv"
     },
@@ -188,7 +188,7 @@
   "temperatureStatus": [
     {
       "key": "global_surface_temperature",
-      "tone": "normal"
+      "tone": "watch"
     },
     {
       "key": "global_sea_surface_temperature",
