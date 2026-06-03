@@ -2851,6 +2851,38 @@ export function App() {
         }
       : null,
   ].filter((row): row is NonNullable<typeof row> => row != null);
+  const renderEnsoOutlookCard = (options?: { showSourceLink?: boolean }) => (
+    <article className="overview-card enso-outlook-card">
+      <div className="overview-card-header">
+        <h2>{t.ensoOutlookTitle}</h2>
+        <ToolkitIcon name="info" className="info-icon" />
+      </div>
+      <div className="enso-overview-status">
+        <span>{t.ensoStatusLabel}</span>
+        <strong>{formatEnsoAlertStatusLabel(ensoOutlook?.alertStatus ?? null, language, t)}</strong>
+      </div>
+      {ensoOutlook?.synopsis ? <p className="enso-overview-synopsis">{ensoOutlook.synopsis}</p> : null}
+      <div className="enso-overview-window-list">
+        {ensoOverviewRows.map((row) => (
+          <div className="enso-overview-window" key={row.key}>
+            <span>{row.horizon}</span>
+            <strong>{formatEnsoConditionLabel(row.window.condition, t)}</strong>
+            <small>
+              {row.window.probability ?? "-"}% · {formatEnsoTargetLabel(row.window.targetLabel, language)}
+            </small>
+          </div>
+        ))}
+      </div>
+      <div className="enso-overview-meta">
+        {ensoOutlookFreshness ? <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span> : null}
+        {options?.showSourceLink && ensoOutlook?.sourceUrl ? (
+          <a className="text-link-button" href={ensoOutlook.sourceUrl} target="_blank" rel="noreferrer">
+            {ensoOutlook.sourceLabel || "NOAA CPC"} →
+          </a>
+        ) : null}
+      </div>
+    </article>
+  );
   return (
     <div className="app-frame">
       <aside className="dashboard-sidebar" aria-label={t.dashboardNavigationAria}>
@@ -2984,36 +3016,7 @@ export function App() {
                 </button>
               </section>
 
-              <article className="overview-card enso-outlook-card">
-                <div className="overview-card-header">
-                  <h2>{t.ensoOutlookTitle}</h2>
-                  <ToolkitIcon name="info" className="info-icon" />
-                </div>
-                <div className="enso-overview-status">
-                  <span>{t.ensoStatusLabel}</span>
-                  <strong>{formatEnsoAlertStatusLabel(ensoOutlook?.alertStatus ?? null, language, t)}</strong>
-                </div>
-                {ensoOutlook?.synopsis ? <p className="enso-overview-synopsis">{ensoOutlook.synopsis}</p> : null}
-                <div className="enso-overview-window-list">
-                  {ensoOverviewRows.map((row) => (
-                    <div className="enso-overview-window" key={row.key}>
-                      <span>{row.horizon}</span>
-                      <strong>{formatEnsoConditionLabel(row.window.condition, t)}</strong>
-                      <small>
-                        {row.window.probability ?? "-"}% · {formatEnsoTargetLabel(row.window.targetLabel, language)}
-                      </small>
-                    </div>
-                  ))}
-                </div>
-                <div className="enso-overview-meta">
-                  {ensoOutlookFreshness ? <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span> : null}
-                  {ensoOutlook?.sourceUrl ? (
-                    <a className="text-link-button" href={ensoOutlook.sourceUrl} target="_blank" rel="noreferrer">
-                      {ensoOutlook.sourceLabel || "NOAA CPC"} →
-                    </a>
-                  ) : null}
-                </div>
-              </article>
+              {renderEnsoOutlookCard({ showSourceLink: false })}
             </section>
 
             <section className="overview-bottom-grid">
@@ -3556,6 +3559,7 @@ export function App() {
 
           {projectionsSectionOpen ? (
             <div className="section-content">
+              <div className="projection-enso-card-row">{renderEnsoOutlookCard({ showSourceLink: true })}</div>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid projection-summary-grid">
                   <article className="alert-card summary projection-summary-card projection-estimate-summary-card">

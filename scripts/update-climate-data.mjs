@@ -2168,7 +2168,7 @@ async function updateOnce() {
     maxValue: 10,
     maxAgeDays: 20,
   });
-  const ensoOutlook = parseIriEnsoOutlook(iriEnsoHtml) ?? parseCpcEnsoOutlook(ensoDiscussionHtml);
+  const ensoOutlook = parseCpcEnsoOutlook(ensoDiscussionHtml) ?? parseIriEnsoOutlook(iriEnsoHtml);
 
   const todayIso = formatIsoDate(new Date());
   const sstMapDateIso = dateIsoFromLegacyLatestMapPayload(sstMapDatePayload) ?? todayIso;

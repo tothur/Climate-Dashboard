@@ -4479,6 +4479,10 @@ body {
   margin-top: 0;
 }
 
+.projection-enso-card-row {
+  margin-bottom: 16px;
+}
+
 .text-link-button {
   display: inline-flex;
   align-items: center;

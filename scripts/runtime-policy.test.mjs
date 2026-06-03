@@ -71,3 +71,10 @@ test("daily dataset publication retries transient push failures", async () => {
   assert.match(workflow, /Push attempt \$\{attempt\} failed; retrying/);
   assert.match(workflow, /Failed to publish refreshed climate dataset after/);
 });
+
+test("ENSO outlook prefers NOAA CPC diagnostic updates when available", async () => {
+  const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
+
+  assert.match(updateScript, /fetchText\(NOAA_CPC_ENSO_DISCUSSION_URL\)/);
+  assert.match(updateScript, /const ensoOutlook = parseCpcEnsoOutlook\(ensoDiscussionHtml\) \?\? parseIriEnsoOutlook\(iriEnsoHtml\)/);
+});
