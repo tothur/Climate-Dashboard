@@ -97,7 +97,7 @@ const DEFAULT_OPENAI_SUMMARY_MODEL = "gpt-5.4-mini";
 const OPENAI_SUMMARY_ALLOWED_MODELS = new Set([DEFAULT_OPENAI_SUMMARY_MODEL]);
 const OPENAI_SUMMARY_MAX_OUTPUT_TOKENS = 600;
 const OPENAI_SUMMARY_TIMEOUT_MS = 20_000;
-const AI_SUMMARY_PROMPT_VERSION = 2;
+const AI_SUMMARY_PROMPT_VERSION = 3;
 const AI_SUMMARY_FINGERPRINT_KEYS = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
@@ -1477,18 +1477,37 @@ function historicalRankSignal(key, series, { direction = "high", watchRank = 3, 
 }
 
 function signalPriority(signal) {
+  const keyPriority = {
+    global_sea_ice_extent: 8,
+    arctic_sea_ice_extent: 8,
+    antarctic_sea_ice_extent: 8,
+    north_atlantic_sea_surface_temperature: 7,
+    northern_hemisphere_surface_temperature: 6,
+    southern_hemisphere_surface_temperature: 6,
+    arctic_surface_temperature: 6,
+    antarctic_surface_temperature: 6,
+    global_glacier_mass_balance: 4,
+    antarctic_ice_sheet_mass_balance: 4,
+    greenland_ice_sheet_mass_balance: 4,
+    earth_energy_imbalance: 3,
+    ocean_heat_content: 2,
+    global_mean_sea_level: 1,
+    atmospheric_co2: 1,
+    atmospheric_ch4: 1,
+    atmospheric_aggi: 1,
+  };
   const categoryPriority = {
-    regional: 4,
-    oceanic: 4,
+    "sea ice": 8,
+    regional: 6,
+    oceanic: 5,
     cryosphere: 4,
-    "energy imbalance": 4,
-    "sea ice": 4,
-    forcing: 3,
+    "energy imbalance": 3,
+    forcing: 1,
     climate: 2,
   };
   return (
     (signal.tone === "critical" ? 100 : 50) +
-    (categoryPriority[signal.category] ?? 1) * 5 +
+    (keyPriority[signal.key] ?? categoryPriority[signal.category] ?? 1) * 6 +
     Math.max(0, 8 - signal.rank)
   );
 }
@@ -1704,8 +1723,8 @@ function sentenceCount(text) {
 function buildAllowedContextSignals(summary, ensoOutlook) {
   const signals = [];
   const dailyAnomaly = summary.daily_global_mean_temperature_anomaly;
-  const co2 = summary.atmospheric_co2;
   const seaIce = summary.global_sea_ice_extent;
+  const co2 = summary.atmospheric_co2;
   const seaLevel = summary.global_mean_sea_level;
   const oceanHeatContent = summary.ocean_heat_content;
   const energyImbalance = summary.earth_energy_imbalance;
@@ -1715,25 +1734,25 @@ function buildAllowedContextSignals(summary, ensoOutlook) {
       `Daily global mean temperature anomaly is ${dailyAnomaly.latestValue}C versus the approximate 1850-1900 baseline as of ${dailyAnomaly.latestDate}.`
     );
   }
-  if (co2?.latestDate && Number.isFinite(co2.latestValue)) {
-    signals.push(`Atmospheric CO2 is ${co2.latestValue} ppm as of ${co2.latestDate}.`);
-  }
   if (seaIce?.latestDate && Number.isFinite(seaIce.latestValue)) {
     signals.push(`Global sea ice extent is ${seaIce.latestValue} million square kilometers as of ${seaIce.latestDate}.`);
-  }
-  if (seaLevel?.latestDate && Number.isFinite(seaLevel.latestValue)) {
-    signals.push(`Global mean sea level is ${seaLevel.latestValue} millimeters as of ${seaLevel.latestDate}.`);
-  }
-  if (oceanHeatContent?.latestDate && Number.isFinite(oceanHeatContent.latestValue)) {
-    signals.push(`Ocean heat content is ${oceanHeatContent.latestValue} zettajoules as of ${oceanHeatContent.latestDate}.`);
-  }
-  if (energyImbalance?.latestDate && Number.isFinite(energyImbalance.latestValue)) {
-    signals.push(`Earth energy imbalance is ${energyImbalance.latestValue} watts per square meter as of ${energyImbalance.latestDate}.`);
   }
   if (ensoOutlook?.targetLabel && ensoOutlook.condition && Number.isFinite(ensoOutlook.probability)) {
     signals.push(
       `ENSO outlook shows ${ensoOutlook.probability}% probability of ${ensoOutlook.condition.replaceAll("_", " ")} for ${ensoOutlook.targetLabel}.`
     );
+  }
+  if (energyImbalance?.latestDate && Number.isFinite(energyImbalance.latestValue)) {
+    signals.push(`Earth energy imbalance is ${energyImbalance.latestValue} watts per square meter as of ${energyImbalance.latestDate}.`);
+  }
+  if (oceanHeatContent?.latestDate && Number.isFinite(oceanHeatContent.latestValue)) {
+    signals.push(`Ocean heat content is ${oceanHeatContent.latestValue} zettajoules as of ${oceanHeatContent.latestDate}.`);
+  }
+  if (co2?.latestDate && Number.isFinite(co2.latestValue)) {
+    signals.push(`Atmospheric CO2 is ${co2.latestValue} ppm as of ${co2.latestDate}.`);
+  }
+  if (seaLevel?.latestDate && Number.isFinite(seaLevel.latestValue)) {
+    signals.push(`Global mean sea level is ${seaLevel.latestValue} millimeters as of ${seaLevel.latestDate}.`);
   }
 
   return signals.slice(0, 7);
@@ -1803,7 +1822,7 @@ async function requestOpenAiSummary(summaryInput, model) {
       body: JSON.stringify({
         model,
         instructions:
-          "Write an executive climate indicator briefing in 2 or 3 concise sentences. Lead with the authoritative temperature status, then prioritize the most exceptional supplied anomaly signals across oceans, ice, energy balance, and greenhouse forcing. Use a final sentence only when it adds a useful anchor reading or ENSO outlook from allowedContextSignals. Name indicators explicitly and include a value or rank when supplied; do not merely say indicators are important. Use only supplied JSON facts and required temperature language. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.",
+          "Write a compact daily climate-watch briefing, not a long-term climate-status recap. Use 2 or 3 concise sentences. Start with the supplied authoritative temperature status exactly as constrained by temperatureBrief. Then highlight what is most newsworthy today: record or near-record heat, especially sea-surface or regional temperature records, and record-low or near-record-low sea-ice extent. Treat greenhouse gas, AGGI, sea-level, and ocean-heat-content records as background context; mention them only if no temperature or sea-ice record signal is available, or if there is room for a short final context sentence after the daily record signals. Prefer same-date records over slow full-record background indicators. Use only supplied JSON facts, name indicators explicitly, and include supplied values, ranks, dates, or probabilities when useful. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.",
         input: JSON.stringify(summaryInput),
         text: {
           format: {
@@ -1895,7 +1914,7 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
     anomalySignals,
     allowedContextSignals: buildAiSummaryContextSignals(summary, ensoOutlook?.nextSixMonths ?? null, anomalySignals),
     requiredBehavior:
-      "Temperature status is authoritative. Do not reinterpret the temperature checks. Write 2 or 3 sentences total. Mention temperature status first. If anomalySignals is not empty, sentence two must highlight one or two of the first three anomalySignals by label, prioritizing critical signals and different indicator categories. If there are no anomalySignals, use sentence two to report the most decision-useful core indicator reading. Use sentence three only for a complementary core reading or the ENSO outlook. Use only anomalySignals or allowedContextSignals facts and keep the output compact.",
+      "Temperature status is authoritative. Do not reinterpret the temperature checks. Write 2 or 3 sentences total. Sentence one must carry the required temperature status. If anomalySignals contains temperature, sea-surface-temperature, or sea-ice record signals, sentence two must focus on one or two of those signals and include their labels. Use long-term background indicators such as atmospheric CO2, CH4, AGGI, global mean sea level, and ocean heat content only as a fallback when no temperature or sea-ice record signal is available, or as a short final context sentence. Prefer critical signals over watch signals and same-date records over full-record background ranks. Use sentence three only for ENSO or one compact background context item. Use only anomalySignals or allowedContextSignals facts and keep the output compact.",
   };
 
   try {
