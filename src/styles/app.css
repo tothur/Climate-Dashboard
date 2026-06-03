@@ -123,6 +123,111 @@ h3 {
   }
 }
 
+@keyframes value-loading-shimmer {
+  from {
+    transform: translateX(-115%);
+  }
+  to {
+    transform: translateX(115%);
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.value-loading-skeleton {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  width: 10ch;
+  max-width: 100%;
+  height: 1em;
+  min-height: 18px;
+  border-radius: 999px;
+  vertical-align: middle;
+  background:
+    linear-gradient(90deg, rgba(11, 105, 255, 0.11), rgba(11, 105, 255, 0.2), rgba(11, 105, 255, 0.11)),
+    rgba(11, 105, 255, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(11, 105, 255, 0.1);
+}
+
+.value-loading-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.66), transparent);
+  animation: value-loading-shimmer 1.35s ease-in-out infinite;
+}
+
+.overview-value-loading {
+  width: 8.5ch;
+  min-height: 26px;
+}
+
+.metric-meta-loading {
+  width: 14ch;
+  min-height: 13px;
+}
+
+.detail-value-loading {
+  width: 11ch;
+  min-height: 28px;
+}
+
+.enso-status-loading {
+  width: 12ch;
+  min-height: 30px;
+}
+
+.enso-window-loading {
+  width: 8.5ch;
+  min-height: 22px;
+}
+
+.enso-window-meta-loading {
+  width: 13ch;
+  min-height: 14px;
+}
+
+.projection-value-loading {
+  width: 9ch;
+  min-height: 30px;
+}
+
+.projection-interval-loading {
+  width: 12ch;
+  min-height: 18px;
+}
+
+.projection-track-loading {
+  display: grid;
+  align-items: center;
+  min-height: 32px;
+}
+
+.projection-track-loading-bar {
+  width: 100%;
+  min-height: 14px;
+}
+
+.sidebar-date-loading {
+  width: 9ch;
+  min-height: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .value-loading-skeleton::after {
+    animation: none;
+  }
+}
+
 .topbar {
   position: relative;
   overflow: hidden;
@@ -5111,6 +5216,17 @@ body {
 
 [data-theme="dark"] .projection-interval-heading strong {
   color: #7db0ff;
+}
+
+[data-theme="dark"] .value-loading-skeleton {
+  background:
+    linear-gradient(90deg, rgba(125, 176, 255, 0.12), rgba(125, 176, 255, 0.24), rgba(125, 176, 255, 0.12)),
+    rgba(125, 176, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(125, 176, 255, 0.16);
+}
+
+[data-theme="dark"] .value-loading-skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
 }
 
 [data-theme="dark"] .overview-ai-summary .ai-summary-main p,

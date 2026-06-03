@@ -279,6 +279,7 @@ const STRINGS = {
     ytdLabel: "YTD",
     chartLatest: "Latest",
     noData: "No data",
+    valuesLoading: "Loading latest values",
     valueUnavailable: "No value",
     footerMode: "Mode",
     footerUpdated: "Updated",
@@ -436,6 +437,7 @@ const STRINGS = {
     ytdLabel: "évközi",
     chartLatest: "Legfrissebb",
     noData: "Nincs adat",
+    valuesLoading: "A legfrissebb értékek betöltése",
     valueUnavailable: "Nincs érték",
     footerMode: "Mód",
     footerUpdated: "Frissítve",
@@ -2670,32 +2672,49 @@ export function App() {
         <div className="projection-estimate-copy">
           <span>{t.projectionEstimateLabel}</span>
           <strong>
-            {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.value)} {projectionUnitLabel}
+            {renderPrimaryValue(
+              `${projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.value)} ${projectionUnitLabel}`,
+              "value-loading-skeleton projection-value-loading"
+            )}
           </strong>
-          <small>{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</small>
+          {runtimeDataReady ? <small>{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</small> : null}
         </div>
         <div className="projection-interval-card">
           <div className="projection-interval-heading">
             <span>{t.projectionIntervalLabel}</span>
             <strong>
-              {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
-              {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)} {projectionUnitLabel}
+              {renderPrimaryValue(
+                `${projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-${projectionNumberFormat.format(
+                  projectedAnnualGlobalMeanAnomaly.high
+                )} ${projectionUnitLabel}`,
+                "value-loading-skeleton projection-interval-loading"
+              )}
             </strong>
           </div>
-          <div className="projection-interval-track" aria-hidden="true">
-            <span className="projection-threshold threshold-one-point-five" />
-            <span className="projection-threshold threshold-two" />
-            <span
-              className="projection-interval-range"
-              style={{ left: `${projectionIntervalTrack.start}%`, width: `${projectionIntervalTrack.width}%` }}
-            />
-            <span className="projection-interval-marker" style={{ left: `${projectionIntervalTrack.marker}%` }} />
-          </div>
-          <div className="projection-interval-axis" aria-hidden="true">
-            <span>{PROJECTION_OVERVIEW_Y_MIN.toFixed(1)}</span>
-            <span>1.5</span>
-            <span>{PROJECTION_OVERVIEW_Y_MAX.toFixed(1)} {projectionUnitLabel}</span>
-          </div>
+          {runtimeDataReady ? (
+            <>
+              <div className="projection-interval-track" aria-hidden="true">
+                <span className="projection-threshold threshold-one-point-five" />
+                <span className="projection-threshold threshold-two" />
+                <span
+                  className="projection-interval-range"
+                  style={{ left: `${projectionIntervalTrack.start}%`, width: `${projectionIntervalTrack.width}%` }}
+                />
+                <span className="projection-interval-marker" style={{ left: `${projectionIntervalTrack.marker}%` }} />
+              </div>
+              <div className="projection-interval-axis" aria-hidden="true">
+                <span>{PROJECTION_OVERVIEW_Y_MIN.toFixed(1)}</span>
+                <span>1.5</span>
+                <span>
+                  {PROJECTION_OVERVIEW_Y_MAX.toFixed(1)} {projectionUnitLabel}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="projection-track-loading" aria-hidden="true">
+              {renderLoadingValue("value-loading-skeleton projection-track-loading-bar")}
+            </div>
+          )}
         </div>
       </div>
     ) : null;
@@ -2750,6 +2769,18 @@ export function App() {
       label: `${sign}${formatNumericValue(delta, metric.decimals, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)} ${t.deltaSincePrevious}`,
     };
   };
+  const renderLoadingValue = (className = "value-loading-skeleton") => (
+    <span className={className} role="status" aria-live="polite">
+      <span className="visually-hidden">{t.valuesLoading}</span>
+    </span>
+  );
+  const renderPrimaryValue = (value: string, className?: string) =>
+    runtimeDataReady ? value : renderLoadingValue(className);
+  const renderMetricValue = (metric: ClimateMetricSeries, className?: string) =>
+    renderPrimaryValue(
+      `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
+      className
+    );
   const overviewMetricCards = [
     dailyGlobalMeanAnomalyMetric
       ? (() => {
@@ -2859,22 +2890,38 @@ export function App() {
       </div>
       <div className="enso-overview-status">
         <span>{t.ensoStatusLabel}</span>
-        <strong>{formatEnsoAlertStatusLabel(ensoOutlook?.alertStatus ?? null, language, t)}</strong>
+        <strong>
+          {renderPrimaryValue(
+            formatEnsoAlertStatusLabel(ensoOutlook?.alertStatus ?? null, language, t),
+            "value-loading-skeleton enso-status-loading"
+          )}
+        </strong>
       </div>
-      {ensoOutlook?.synopsis ? <p className="enso-overview-synopsis">{ensoOutlook.synopsis}</p> : null}
+      {runtimeDataReady && ensoOutlook?.synopsis ? <p className="enso-overview-synopsis">{ensoOutlook.synopsis}</p> : null}
       <div className="enso-overview-window-list">
         {ensoOverviewRows.map((row) => (
           <div className="enso-overview-window" key={row.key}>
             <span>{row.horizon}</span>
-            <strong>{formatEnsoConditionLabel(row.window.condition, t)}</strong>
-            <small>
-              {row.window.probability ?? "-"}% · {formatEnsoTargetLabel(row.window.targetLabel, language)}
-            </small>
+            <strong>
+              {renderPrimaryValue(
+                formatEnsoConditionLabel(row.window.condition, t),
+                "value-loading-skeleton enso-window-loading"
+              )}
+            </strong>
+            {runtimeDataReady ? (
+              <small>
+                {row.window.probability ?? "-"}% · {formatEnsoTargetLabel(row.window.targetLabel, language)}
+              </small>
+            ) : (
+              <small>{renderLoadingValue("value-loading-skeleton enso-window-meta-loading")}</small>
+            )}
           </div>
         ))}
       </div>
       <div className="enso-overview-meta">
-        {ensoOutlookFreshness ? <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span> : null}
+        {runtimeDataReady && ensoOutlookFreshness ? (
+          <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span>
+        ) : null}
         {options?.showSourceLink && ensoOutlook?.sourceUrl ? (
           <a className="text-link-button" href={ensoOutlook.sourceUrl} target="_blank" rel="noreferrer">
             {ensoOutlook.sourceLabel || "NOAA CPC"} →
@@ -2910,8 +2957,13 @@ export function App() {
         </nav>
         <div className="sidebar-meta">
           <span>{t.dataUpdatedLabel}</span>
-          <strong>{formatDateLabel(extractIsoDate(snapshot.updatedAtIso), language)}</strong>
-          <small>{footerSources.slice(0, 4).map((source) => source.label.split(" · ").pop()).join(", ")}</small>
+          <strong>
+            {renderPrimaryValue(
+              formatDateLabel(extractIsoDate(snapshot.updatedAtIso), language),
+              "value-loading-skeleton sidebar-date-loading"
+            )}
+          </strong>
+          {runtimeDataReady ? <small>{footerSources.slice(0, 4).map((source) => source.label.split(" · ").pop()).join(", ")}</small> : null}
         </div>
       </aside>
 
@@ -2984,9 +3036,13 @@ export function App() {
                   <div className="overview-metric-copy">
                     <h2>{card.title}</h2>
                     <p className="metric-subtitle">{card.subtitle}</p>
-                    <strong>{card.value}</strong>
-                    <p className="metric-meta">{card.meta}</p>
-                    {card.delta ? <span className="metric-delta">{card.delta}</span> : null}
+                    <strong>{renderPrimaryValue(card.value, "value-loading-skeleton overview-value-loading")}</strong>
+                    {runtimeDataReady ? (
+                      <p className="metric-meta">{card.meta}</p>
+                    ) : (
+                      <p className="metric-meta">{renderLoadingValue("value-loading-skeleton metric-meta-loading")}</p>
+                    )}
+                    {runtimeDataReady && card.delta ? <span className="metric-delta">{card.delta}</span> : null}
                   </div>
                 </article>
               ))}
@@ -3077,13 +3133,13 @@ export function App() {
                       <article className="alert-card summary" key={`${metric.key}-global-temperature-summary`}>
                         <span className="alert-kicker">{t.latestLabel}</span>
                         <h2>{metricTitle(metric, language)}</h2>
-                        <p className="alert-emphasis">
-                          {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                        </p>
-                        <p>
-                          {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                        </p>
-                        <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
+                        {runtimeDataReady ? (
+                          <p>
+                            {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                          </p>
+                        ) : null}
+                        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
                         <div className="alert-meta">
                           <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
                         </div>
@@ -3112,13 +3168,13 @@ export function App() {
                       <article className="alert-card summary" key={`${metric.key}-temperature-anomaly-summary`}>
                         <span className="alert-kicker">{t.latestLabel}</span>
                         <h2>{metricTitle(metric, language)}</h2>
-                        <p className="alert-emphasis">
-                          {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                        </p>
-                        <p>
-                          {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                        </p>
-                        <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
+                        {runtimeDataReady ? (
+                          <p>
+                            {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                          </p>
+                        ) : null}
+                        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
                         <div className="alert-meta">
                           <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
                         </div>
@@ -3225,13 +3281,13 @@ export function App() {
                       <article className="alert-card summary" key={`${metric.key}-regional-summary`}>
                         <span className="alert-kicker">{t.latestLabel}</span>
                         <h2>{metricTitle(metric, language)}</h2>
-                        <p className="alert-emphasis">
-                          {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                        </p>
-                        <p>
-                          {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                        </p>
-                        <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
+                        {runtimeDataReady ? (
+                          <p>
+                            {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                          </p>
+                        ) : null}
+                        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
                         <div className="alert-meta">
                           <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
                         </div>
@@ -3259,13 +3315,13 @@ export function App() {
                     return (
                       <article className="alert-card summary" key={`${metric.key}-ocean-summary`}>
                         <h2>{metricTitle(metric, language)}</h2>
-                        <p className="alert-emphasis">
-                          {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                        </p>
-                        <p>
-                          {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                        </p>
-                        <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
+                        {runtimeDataReady ? (
+                          <p>
+                            {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                          </p>
+                        ) : null}
+                        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
                         <div className="alert-meta">
                           <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
                         </div>
@@ -3335,13 +3391,13 @@ export function App() {
                       <article className="alert-card summary" key={`${metric.key}-sea-ice-summary`}>
                         <span className="alert-kicker">{t.latestLabel}</span>
                         <h2>{metricTitle(metric, language)}</h2>
-                        <p className="alert-emphasis">
-                          {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                        </p>
-                        <p>
-                          {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                        </p>
-                        <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
+                        {runtimeDataReady ? (
+                          <p>
+                            {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                          </p>
+                        ) : null}
+                        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
                         <div className="alert-meta">
                           <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
                         </div>
@@ -3461,13 +3517,13 @@ export function App() {
                     <article className="alert-card summary" key={`${metric.key}-forcing-summary`}>
                       <span className="alert-kicker">{t.latestLabel}</span>
                       <h2>{metricTitle(metric, language)}</h2>
-                      <p className="alert-emphasis">
-                        {formatMetricValue(metric, language, t.valueUnavailable)} {cardUnitLabel(metric.key, metric.unit, language)}
-                      </p>
-                      <p>
-                        {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                      </p>
-                      <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span>
+                      <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
+                      {runtimeDataReady ? (
+                        <p>
+                          {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                        </p>
+                      ) : null}
+                      {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
                       <div className="alert-meta">
                         <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
                       </div>
@@ -3568,8 +3624,8 @@ export function App() {
                       <h2>{t.projectedAnnualTemperatureAnomalyTitle}</h2>
                     </div>
                     {renderProjectionEstimate("summary")}
-                    <p>{projectionSignalSummary ?? t.projectionMethodLabel}</p>
-                    {projectionFreshness ? (
+                    {runtimeDataReady ? <p>{projectionSignalSummary ?? t.projectionMethodLabel}</p> : null}
+                    {runtimeDataReady && projectionFreshness ? (
                       <span className={`freshness-chip ${projectionFreshness.tone}`}>{projectionFreshness.label}</span>
                     ) : null}
                     <div className="alert-meta">
@@ -3583,20 +3639,25 @@ export function App() {
                     <span className="alert-kicker">{t.projectionExperimentalLabel}</span>
                     <h2>{t.projectionProbabilityAboveOnePointFiveTitle}</h2>
                     <p className="alert-emphasis">
-                      {projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive)}
-                    </p>
-                    <p>{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p>
-                    <p>
-                      {t.projectionRangeLabel}: {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
-                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)}{" "}
-                      {cardUnitLabel(
-                        DAILY_GLOBAL_MEAN_ANOMALY_KEY,
-                        dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
-                        language
+                      {renderPrimaryValue(
+                        projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive),
+                        "value-loading-skeleton detail-value-loading"
                       )}
                     </p>
-                    <p>{projectionSignalSummary ?? t.projectionMethodLabel}</p>
-                    {projectionFreshness ? (
+                    {runtimeDataReady ? <p>{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p> : null}
+                    {runtimeDataReady ? (
+                      <p>
+                        {t.projectionRangeLabel}: {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
+                        {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)}{" "}
+                        {cardUnitLabel(
+                          DAILY_GLOBAL_MEAN_ANOMALY_KEY,
+                          dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+                          language
+                        )}
+                      </p>
+                    ) : null}
+                    {runtimeDataReady ? <p>{projectionSignalSummary ?? t.projectionMethodLabel}</p> : null}
+                    {runtimeDataReady && projectionFreshness ? (
                       <span className={`freshness-chip ${projectionFreshness.tone}`}>{projectionFreshness.label}</span>
                     ) : null}
                     <div className="alert-meta">
@@ -3610,20 +3671,25 @@ export function App() {
                     <span className="alert-kicker">{t.projectionExperimentalLabel}</span>
                     <h2>{t.projectionProbabilityWarmestRecordTitle}</h2>
                     <p className="alert-emphasis">
-                      {projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord)}
-                    </p>
-                    <p>{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p>
-                    <p>
-                      {t.projectionRecordThresholdLabel}:{" "}
-                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.recordThreshold)}{" "}
-                      {cardUnitLabel(
-                        DAILY_GLOBAL_MEAN_ANOMALY_KEY,
-                        dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
-                        language
+                      {renderPrimaryValue(
+                        projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord),
+                        "value-loading-skeleton detail-value-loading"
                       )}
                     </p>
-                    <p>{projectionSignalSummary ?? t.projectionMethodLabel}</p>
-                    {projectionFreshness ? (
+                    {runtimeDataReady ? <p>{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p> : null}
+                    {runtimeDataReady ? (
+                      <p>
+                        {t.projectionRecordThresholdLabel}:{" "}
+                        {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.recordThreshold)}{" "}
+                        {cardUnitLabel(
+                          DAILY_GLOBAL_MEAN_ANOMALY_KEY,
+                          dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+                          language
+                        )}
+                      </p>
+                    ) : null}
+                    {runtimeDataReady ? <p>{projectionSignalSummary ?? t.projectionMethodLabel}</p> : null}
+                    {runtimeDataReady && projectionFreshness ? (
                       <span className={`freshness-chip ${projectionFreshness.tone}`}>{projectionFreshness.label}</span>
                     ) : null}
                     <div className="alert-meta">
