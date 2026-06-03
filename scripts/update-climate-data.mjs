@@ -167,6 +167,14 @@ const AI_SUMMARY_SIGNAL_CATEGORIES = {
   atmospheric_ch4: "forcing",
   atmospheric_aggi: "forcing",
 };
+const AI_SUMMARY_BACKGROUND_SIGNAL_KEYS = new Set([
+  "global_mean_sea_level",
+  "ocean_heat_content",
+  "earth_energy_imbalance",
+  "atmospheric_co2",
+  "atmospheric_ch4",
+  "atmospheric_aggi",
+]);
 
 function toFiniteNumber(value) {
   const numeric = typeof value === "number" ? value : Number(value);
@@ -1512,6 +1520,12 @@ function signalPriority(signal) {
   );
 }
 
+function isDailyRecordLeadSignal(signal) {
+  if (!signal || AI_SUMMARY_BACKGROUND_SIGNAL_KEYS.has(signal.key)) return false;
+  if (signal.category === "sea ice") return true;
+  return signal.basis === "same-date historical rank";
+}
+
 function buildAiSummaryAnomalySignals(series) {
   const signalBuilders = [
     () => sameDateRankSignal("northern_hemisphere_surface_temperature", series.northern_hemisphere_surface_temperature, { nearRecordMargin: 0.12 }),
@@ -1601,10 +1615,12 @@ function buildTemperatureSummaryTextEn(temperatureChecks, anomalySignals = []) {
         normalChecks.length === 1 ? "is" : "are"
       } not unusually high versus the same-date historical record.`
     : "Other temperature checks are shown below.";
-  const selectedAnomalies = anomalySignals.slice(0, 2);
+  const selectedAnomalies = anomalySignals.filter(isDailyRecordLeadSignal).slice(0, 2);
   const anomalyText = selectedAnomalies.length
     ? `Broader notable signal${selectedAnomalies.length === 1 ? "" : "s"}: ${selectedAnomalies.map(anomalySignalPhrase).join("; ")}.`
-    : "Key climate indicators below show the latest available readings.";
+    : warningChecks.length
+      ? "No sea-ice or regional temperature record signal is currently more notable than the temperature status above."
+      : "Key climate indicators below show the latest available readings.";
 
   return warningChecks.length
     ? `${warningChecks.map((check) => `${names[check.key]} ${reasons[check.tone]}`).join("; ")}. ${
@@ -1632,9 +1648,12 @@ function buildTemperatureSummaryTextHu(temperatureChecks, anomalySignals = []) {
   const normalText = normalChecks.length
     ? `${normalChecks.map((check) => names[check.key]).join(" és ")} nem szokatlanul magas az azonos dátumú történeti rekordhoz képest.`
     : "A további hőmérsékleti ellenőrzések lent láthatók.";
-  const anomalyText = anomalySignals.length
-    ? `További fontos jelzés: ${anomalySignals.slice(0, 2).map(anomalySignalPhraseHu).join("; ")}.`
-    : "A lenti fő indikátorok a legfrissebb elérhető adatokat mutatják.";
+  const selectedAnomalies = anomalySignals.filter(isDailyRecordLeadSignal).slice(0, 2);
+  const anomalyText = selectedAnomalies.length
+    ? `További fontos jelzés: ${selectedAnomalies.map(anomalySignalPhraseHu).join("; ")}.`
+    : warningChecks.length
+      ? "Jelenleg nincs a fenti hőmérsékleti státusznál fontosabb tengeri jég- vagy regionális hőmérsékleti rekordjelzés."
+      : "A lenti fő indikátorok a legfrissebb elérhető adatokat mutatják.";
 
   return warningChecks.length
     ? `${warningChecks.map((check) => `${names[check.key]} ${reasons[check.tone]}`).join("; ")}. ${
@@ -1793,8 +1812,9 @@ function validateOpenAiSummaryText(openAiSummary, localSummary, temperatureCheck
     return null;
   }
 
-  if (anomalySignals.length) {
-    const requiredAnomalyLabels = anomalySignals.slice(0, 3).map((signal) => signal.label.toLowerCase());
+  const dailyRecordSignals = anomalySignals.filter(isDailyRecordLeadSignal);
+  if (dailyRecordSignals.length) {
+    const requiredAnomalyLabels = dailyRecordSignals.slice(0, 3).map((signal) => signal.label.toLowerCase());
     const normalizedText = textEn.toLowerCase();
     if (!requiredAnomalyLabels.some((label) => normalizedText.includes(label))) return null;
   }
@@ -1822,7 +1842,7 @@ async function requestOpenAiSummary(summaryInput, model) {
       body: JSON.stringify({
         model,
         instructions:
-          "Write a compact daily climate-watch briefing, not a long-term climate-status recap. Use 2 or 3 concise sentences. Start with the supplied authoritative temperature status exactly as constrained by temperatureBrief. Then highlight what is most newsworthy today: record or near-record heat, especially sea-surface or regional temperature records, and record-low or near-record-low sea-ice extent. Treat greenhouse gas, AGGI, sea-level, and ocean-heat-content records as background context; mention them only if no temperature or sea-ice record signal is available, or if there is room for a short final context sentence after the daily record signals. Prefer same-date records over slow full-record background indicators. Use only supplied JSON facts, name indicators explicitly, and include supplied values, ranks, dates, or probabilities when useful. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.",
+          "Write a compact daily climate-watch briefing, not a long-term climate-status recap. Use 2 or 3 concise sentences. If temperatureBrief.hasWarning is true, copy the first sentence of temperatureBrief.requiredSentenceEn verbatim as sentence one; otherwise, sentence one must clearly say both global surface temperature and global sea surface temperature are not unusually high versus same-date historical records. Then highlight what is most newsworthy today: record or near-record heat, especially sea-surface or regional temperature records, and record-low or near-record-low sea-ice extent. Treat greenhouse gas, AGGI, sea-level, and ocean-heat-content records as background context; mention them only if no temperature or sea-ice record signal is available, or if there is room for a short final context sentence after the daily record signals. Prefer same-date records over slow full-record background indicators. Use only supplied JSON facts, name indicators explicitly, and include supplied values, ranks, dates, or probabilities when useful. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.",
         input: JSON.stringify(summaryInput),
         text: {
           format: {
@@ -1914,7 +1934,7 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
     anomalySignals,
     allowedContextSignals: buildAiSummaryContextSignals(summary, ensoOutlook?.nextSixMonths ?? null, anomalySignals),
     requiredBehavior:
-      "Temperature status is authoritative. Do not reinterpret the temperature checks. Write 2 or 3 sentences total. Sentence one must carry the required temperature status. If anomalySignals contains temperature, sea-surface-temperature, or sea-ice record signals, sentence two must focus on one or two of those signals and include their labels. Use long-term background indicators such as atmospheric CO2, CH4, AGGI, global mean sea level, and ocean heat content only as a fallback when no temperature or sea-ice record signal is available, or as a short final context sentence. Prefer critical signals over watch signals and same-date records over full-record background ranks. Use sentence three only for ENSO or one compact background context item. Use only anomalySignals or allowedContextSignals facts and keep the output compact.",
+      "Temperature status is authoritative. Do not reinterpret the temperature checks. Write 2 or 3 sentences total. If temperatureBrief.hasWarning is true, sentence one must copy the first sentence of temperatureBrief.requiredSentenceEn verbatim. If anomalySignals contains non-background temperature, sea-surface-temperature, or sea-ice record signals, sentence two must focus on one or two of those signals and include their labels. Use long-term background indicators such as atmospheric CO2, CH4, AGGI, global mean sea level, and ocean heat content only as a fallback when no temperature or sea-ice record signal is available, or as a short final context sentence. Prefer critical signals over watch signals and same-date records over full-record background ranks. Use sentence three only for ENSO or one compact background context item. Use only anomalySignals or allowedContextSignals facts and keep the output compact.",
   };
 
   try {

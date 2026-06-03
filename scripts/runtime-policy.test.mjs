@@ -93,9 +93,12 @@ test("AI summary prompt prioritizes daily records over slow background indicator
 
   assert.match(updateScript, /const AI_SUMMARY_PROMPT_VERSION = 3/);
   assert.match(updateScript, /Write a compact daily climate-watch briefing, not a long-term climate-status recap/);
+  assert.match(updateScript, /copy the first sentence of temperatureBrief\.requiredSentenceEn verbatim/);
   assert.match(updateScript, /record-low or near-record-low sea-ice extent/);
   assert.match(updateScript, /Treat greenhouse gas, AGGI, sea-level, and ocean-heat-content records as background context/);
   assert.match(updateScript, /Use long-term background indicators such as atmospheric CO2, CH4, AGGI, global mean sea level, and ocean heat content only as a fallback/);
+  assert.match(updateScript, /const dailyRecordSignals = anomalySignals\.filter\(isDailyRecordLeadSignal\)/);
+  assert.match(updateScript, /const AI_SUMMARY_BACKGROUND_SIGNAL_KEYS = new Set/);
   assert.match(updateScript, /global_sea_ice_extent: 8/);
   assert.match(updateScript, /atmospheric_co2: 1/);
 });
