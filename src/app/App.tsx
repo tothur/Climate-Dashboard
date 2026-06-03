@@ -137,12 +137,11 @@ const STRINGS = {
     navIndicators: "Indicators",
     overviewTitle: "Global Climate Overview",
     overviewSubtitle: "Key indicators and insights into our changing climate",
-    overviewGlobalMeanTemperatureTitle: "Global Mean Temperature",
+    overviewDailyGlobalTemperatureAnomalyTitle: "Daily Global Temperature Anomaly",
     overviewPreindustrialSubtitle: "vs. 1850-1900 average",
+    overviewSstAnomalyTitle: "Sea Surface Temperature Anomaly",
     overviewCo2Title: "CO₂ Concentration",
     overviewAtmosphericSubtitle: "Atmospheric",
-    overviewSeaLevelTitle: "Sea Level Rise",
-    overviewSeaLevelSubtitle: "Global mean sea level",
     overviewArcticSeaIceTitle: "Arctic Sea Ice Extent",
     overviewClimatologySubtitle: "vs. 1991-2020 average",
     deltaSincePrevious: "since previous",
@@ -294,12 +293,11 @@ const STRINGS = {
     navIndicators: "Indikátorok",
     overviewTitle: "Globális éghajlati áttekintés",
     overviewSubtitle: "Fő indikátorok és megállapítások a változó éghajlatról",
-    overviewGlobalMeanTemperatureTitle: "Globális átlaghőmérséklet",
+    overviewDailyGlobalTemperatureAnomalyTitle: "Napi globális hőmérsékleti anomália",
     overviewPreindustrialSubtitle: "az 1850-1900-as átlaghoz képest",
+    overviewSstAnomalyTitle: "Tengerfelszíni hőmérsékleti anomália",
     overviewCo2Title: "CO₂-koncentráció",
     overviewAtmosphericSubtitle: "Légköri",
-    overviewSeaLevelTitle: "Tengerszint-emelkedés",
-    overviewSeaLevelSubtitle: "Globális átlagos tengerszint",
     overviewArcticSeaIceTitle: "Arktiszi tengeri jégkiterjedés",
     overviewClimatologySubtitle: "az 1991-2020-as átlaghoz képest",
     deltaSincePrevious: "az előző értékhez képest",
@@ -2762,45 +2760,33 @@ export function App() {
     };
   };
   const overviewMetricCards = [
-    latestAnnualGlobalMeanAnomaly
-      ? {
-          key: "overview-annual-temperature",
-          title: t.overviewGlobalMeanTemperatureTitle,
-          subtitle: t.overviewPreindustrialSubtitle,
-          value: `${projectionNumberFormat.format(latestAnnualGlobalMeanAnomaly.value)} ${cardUnitLabel(
-            DAILY_GLOBAL_MEAN_ANOMALY_KEY,
-            dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
-            language
-          )}`,
-          meta: formatAnnualAnomalyTopMeta(latestAnnualGlobalMeanAnomaly.year, language, annualGlobalMeanAnomalyIsYtd, t.ytdLabel),
-          delta: dailyGlobalMeanAnomalyFreshness?.label ?? null,
-          icon: "temperature" as ToolkitIconName,
-          tone: "temperature",
-        }
+    dailyGlobalMeanAnomalyMetric
+      ? (() => {
+          const delta = formatMetricDelta(dailyGlobalMeanAnomalyMetric);
+          return {
+            key: "overview-daily-temperature-anomaly",
+            title: t.overviewDailyGlobalTemperatureAnomalyTitle,
+            subtitle: t.overviewPreindustrialSubtitle,
+            value: `${formatMetricValue(dailyGlobalMeanAnomalyMetric, language, t.valueUnavailable)} ${cardUnitLabel(
+              dailyGlobalMeanAnomalyMetric.key,
+              dailyGlobalMeanAnomalyMetric.unit,
+              language
+            )}`,
+            meta: `${t.chartLatest}: ${formatDateLabel(dailyGlobalMeanAnomalyMetric.latestDate, language)}`,
+            delta: delta?.label ?? dailyGlobalMeanAnomalyFreshness?.label ?? null,
+            icon: "temperature" as ToolkitIconName,
+            tone: "temperature",
+          };
+        })()
       : null,
     (() => {
-      const metric = metricByKey.get("atmospheric_co2");
+      const metric = metricByKey.get("global_sea_surface_temperature_anomaly");
       if (!metric) return null;
       const delta = formatMetricDelta(metric);
       return {
-        key: "overview-co2",
-        title: t.overviewCo2Title,
-        subtitle: t.overviewAtmosphericSubtitle,
-        value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
-        meta: `${t.chartLatest}: ${formatDateLabel(metric.latestDate, language)}`,
-        delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
-        icon: "leaf" as ToolkitIconName,
-        tone: "success",
-      };
-    })(),
-    (() => {
-      const metric = metricByKey.get("global_mean_sea_level");
-      if (!metric) return null;
-      const delta = formatMetricDelta(metric);
-      return {
-        key: "overview-sea-level",
-        title: t.overviewSeaLevelTitle,
-        subtitle: t.overviewSeaLevelSubtitle,
+        key: "overview-sst-anomaly",
+        title: t.overviewSstAnomalyTitle,
+        subtitle: t.overviewClimatologySubtitle,
         value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
         meta: `${t.chartLatest}: ${formatDateLabel(metric.latestDate, language)}`,
         delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
@@ -2823,9 +2809,25 @@ export function App() {
         tone: "purple",
       };
     })(),
+    (() => {
+      const metric = metricByKey.get("atmospheric_co2");
+      if (!metric) return null;
+      const delta = formatMetricDelta(metric);
+      return {
+        key: "overview-co2",
+        title: t.overviewCo2Title,
+        subtitle: t.overviewAtmosphericSubtitle,
+        value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
+        meta: `${t.chartLatest}: ${formatDateLabel(metric.latestDate, language)}`,
+        delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
+        icon: "leaf" as ToolkitIconName,
+        tone: "success",
+      };
+    })(),
   ].filter((card): card is NonNullable<typeof card> => card != null);
   const overviewMapCards = [
     mapCards.find((card) => card.key === "map-2m-temperature-anomaly"),
+    mapCards.find((card) => card.key === "map-sst-anomaly"),
   ].filter((card): card is (typeof mapCards)[number] => card != null);
   const overviewHighlights = [
     recordWarningCards[0]
@@ -2863,15 +2865,18 @@ export function App() {
         }
       : null,
   ].filter((highlight): highlight is NonNullable<typeof highlight> => highlight != null);
-  const forcingDriverRows = snapshot.forcing.slice(0, 6).map((metric) => {
-    const delta = formatMetricDelta(metric);
-    return {
-      key: metric.key,
-      label: metricTitle(metric, language),
-      value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
-      direction: delta?.direction ?? "flat",
-    };
-  });
+  const forcingDriverRows = snapshot.forcing
+    .filter((metric) => metric.key !== "atmospheric_co2")
+    .slice(0, 6)
+    .map((metric) => {
+      const delta = formatMetricDelta(metric);
+      return {
+        key: metric.key,
+        label: metricTitle(metric, language),
+        value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
+        direction: delta?.direction ?? "flat",
+      };
+    });
   return (
     <div className="app-frame">
       <aside className="dashboard-sidebar" aria-label={t.dashboardNavigationAria}>
