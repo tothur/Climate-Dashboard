@@ -2042,8 +2042,16 @@ async function updateOnce() {
       return null;
     }),
     fetchText(WGMS_MASS_CHANGE_ESTIMATES_URL),
-    fetchJson(NASA_ANTARCTICA_MASS_VARIATION_CHART_URL),
-    fetchJson(NASA_GREENLAND_MASS_VARIATION_CHART_URL),
+    fetchJson(NASA_ANTARCTICA_MASS_VARIATION_CHART_URL).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`antarctic_ice_sheet_mass_balance: NASA chart refresh failed (${reason}).`);
+      return null;
+    }),
+    fetchJson(NASA_GREENLAND_MASS_VARIATION_CHART_URL).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`greenland_ice_sheet_mass_balance: NASA chart refresh failed (${reason}).`);
+      return null;
+    }),
     fetchText(IRI_ENSO_CURRENT_URL),
     fetchText(NOAA_CPC_ENSO_DISCUSSION_URL),
     fetchJson(CR_SST_LATEST_MAP_DATE_URL),
@@ -2171,17 +2179,29 @@ async function updateOnce() {
     maxAgeDays: 1600,
   });
   const antarcticMassVariation = parseNasaMassVariationChartJson(antarcticaMassVariationPayload);
-  const antarcticIceSheetMassBalance = sanitizeSeries(buildCumulativeLossSeries(antarcticMassVariation), {
+  let antarcticIceSheetMassBalance = sanitizeSeries(buildCumulativeLossSeries(antarcticMassVariation), {
     minValue: 0,
     maxValue: 4000,
     maxAgeDays: 430,
   });
+  if (!antarcticIceSheetMassBalance.length) {
+    antarcticIceSheetMassBalance = await loadPreviousSeries("antarctic_ice_sheet_mass_balance");
+    if (antarcticIceSheetMassBalance.length > 0) {
+      dataWarnings.push("antarctic_ice_sheet_mass_balance: retaining the previous validated NASA GRACE/GRACE-FO series.");
+    }
+  }
   const greenlandMassVariation = parseNasaMassVariationChartJson(greenlandMassVariationPayload);
-  const greenlandIceSheetMassBalance = sanitizeSeries(buildCumulativeLossSeries(greenlandMassVariation), {
+  let greenlandIceSheetMassBalance = sanitizeSeries(buildCumulativeLossSeries(greenlandMassVariation), {
     minValue: 0,
     maxValue: 7000,
     maxAgeDays: 430,
   });
+  if (!greenlandIceSheetMassBalance.length) {
+    greenlandIceSheetMassBalance = await loadPreviousSeries("greenland_ice_sheet_mass_balance");
+    if (greenlandIceSheetMassBalance.length > 0) {
+      dataWarnings.push("greenland_ice_sheet_mass_balance: retaining the previous validated NASA GRACE/GRACE-FO series.");
+    }
+  }
   const dailyGlobalMeanTemperatureAnomaly = sanitizeSeries(parseEcmwfClimatePulseGlobal2tDailyCsv(dailyGlobalMeanAnomalyCsv), {
     minValue: -10,
     maxValue: 10,

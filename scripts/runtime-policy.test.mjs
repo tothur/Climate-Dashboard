@@ -63,6 +63,15 @@ test("optional CERES refresh fails fast and falls back to retained validated dat
   assert.match(updateScript, /earth_energy_imbalance: retaining the previous validated CERES series/);
 });
 
+test("NASA ice-sheet chart refreshes fall back to retained validated data", async () => {
+  const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
+
+  assert.match(updateScript, /fetchJson\(NASA_ANTARCTICA_MASS_VARIATION_CHART_URL\)\.catch/);
+  assert.match(updateScript, /fetchJson\(NASA_GREENLAND_MASS_VARIATION_CHART_URL\)\.catch/);
+  assert.match(updateScript, /antarctic_ice_sheet_mass_balance: retaining the previous validated NASA GRACE\/GRACE-FO series/);
+  assert.match(updateScript, /greenland_ice_sheet_mass_balance: retaining the previous validated NASA GRACE\/GRACE-FO series/);
+});
+
 test("daily dataset publication retries transient push failures", async () => {
   const workflow = await readProjectFile(".github/workflows/daily-climate-data.yml");
 
