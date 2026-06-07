@@ -108,6 +108,11 @@ const AI_SUMMARY_FINGERPRINT_KEYS = [
   "north_atlantic_sea_surface_temperature",
   "global_surface_temperature_anomaly",
   "global_sea_surface_temperature_anomaly",
+  "northern_hemisphere_surface_temperature_anomaly",
+  "southern_hemisphere_surface_temperature_anomaly",
+  "arctic_surface_temperature_anomaly",
+  "antarctic_surface_temperature_anomaly",
+  "north_atlantic_sea_surface_temperature_anomaly",
   "daily_global_mean_temperature_anomaly",
   "global_mean_sea_level",
   "ocean_heat_content",
@@ -134,6 +139,11 @@ const AI_SUMMARY_SIGNAL_LABELS = {
   north_atlantic_sea_surface_temperature: "North Atlantic Sea Surface Temperature",
   global_surface_temperature_anomaly: "Global Surface Temperature Anomaly",
   global_sea_surface_temperature_anomaly: "Global Sea Surface Temperature Anomaly",
+  northern_hemisphere_surface_temperature_anomaly: "Northern Hemisphere Surface Temperature Anomaly",
+  southern_hemisphere_surface_temperature_anomaly: "Southern Hemisphere Surface Temperature Anomaly",
+  arctic_surface_temperature_anomaly: "Arctic Surface Temperature Anomaly",
+  antarctic_surface_temperature_anomaly: "Antarctic Surface Temperature Anomaly",
+  north_atlantic_sea_surface_temperature_anomaly: "North Atlantic Sea Surface Temperature Anomaly",
   daily_global_mean_temperature_anomaly: "Daily Global Mean Temperature Anomaly",
   global_mean_sea_level: "Global Mean Sea Level",
   ocean_heat_content: "Ocean Heat Content",
@@ -154,6 +164,11 @@ const AI_SUMMARY_SIGNAL_CATEGORIES = {
   arctic_surface_temperature: "regional",
   antarctic_surface_temperature: "regional",
   north_atlantic_sea_surface_temperature: "oceanic",
+  northern_hemisphere_surface_temperature_anomaly: "regional anomaly",
+  southern_hemisphere_surface_temperature_anomaly: "regional anomaly",
+  arctic_surface_temperature_anomaly: "regional anomaly",
+  antarctic_surface_temperature_anomaly: "regional anomaly",
+  north_atlantic_sea_surface_temperature_anomaly: "oceanic anomaly",
   global_mean_sea_level: "oceanic",
   ocean_heat_content: "oceanic",
   earth_energy_imbalance: "energy imbalance",
@@ -478,6 +493,11 @@ function normalizePoints(points) {
   return Array.from(map.entries())
     .sort((a, b) => Date.parse(`${a[0]}T00:00:00Z`) - Date.parse(`${b[0]}T00:00:00Z`))
     .map(([date, value]) => ({ date, value }));
+}
+
+function filterSeriesToReferenceDates(points, referencePoints) {
+  const referenceDates = new Set(referencePoints.map((point) => point.date));
+  return normalizePoints(points.filter((point) => referenceDates.has(point.date)));
 }
 
 function sanitizeSeries(points, limits) {
@@ -2082,21 +2102,27 @@ async function updateOnce() {
     maxValue: 40,
     maxAgeDays: 20,
   });
-  const globalSurfaceTemperatureAnomaly = sanitizeSeries(parseReanalyzerDailyAnomalyJson(surfacePayload, "1991-2020"), {
-    minValue: -10,
-    maxValue: 10,
-    maxAgeDays: 20,
-  });
+  const globalSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
+    sanitizeSeries(parseReanalyzerDailyAnomalyJson(surfacePayload, "1991-2020"), {
+      minValue: -10,
+      maxValue: 10,
+      maxAgeDays: 20,
+    }),
+    globalSurfaceTemperature
+  );
   const globalSeaSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(sstPayload), {
     minValue: 10,
     maxValue: 40,
     maxAgeDays: 45,
   });
-  const globalSeaSurfaceTemperatureAnomaly = sanitizeSeries(parseReanalyzerDailyAnomalyJson(sstPayload, "1991-2020"), {
-    minValue: -10,
-    maxValue: 10,
-    maxAgeDays: 45,
-  });
+  const globalSeaSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
+    sanitizeSeries(parseReanalyzerDailyAnomalyJson(sstPayload, "1991-2020"), {
+      minValue: -10,
+      maxValue: 10,
+      maxAgeDays: 45,
+    }),
+    globalSeaSurfaceTemperature
+  );
   const globalMeanSeaLevel = sanitizeSeries(parseGlobalMeanSeaLevelText(gmslSource.text), {
     minValue: -200,
     maxValue: 300,
@@ -2112,26 +2138,66 @@ async function updateOnce() {
     maxValue: 40,
     maxAgeDays: 20,
   });
+  const northernHemisphereSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
+    sanitizeSeries(parseReanalyzerDailyAnomalyJson(nhPayload, "1991-2020"), {
+      minValue: -10,
+      maxValue: 10,
+      maxAgeDays: 20,
+    }),
+    northernHemisphereSurfaceTemperature
+  );
   const southernHemisphereSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(shPayload), {
     minValue: -20,
     maxValue: 35,
     maxAgeDays: 20,
   });
+  const southernHemisphereSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
+    sanitizeSeries(parseReanalyzerDailyAnomalyJson(shPayload, "1991-2020"), {
+      minValue: -10,
+      maxValue: 10,
+      maxAgeDays: 20,
+    }),
+    southernHemisphereSurfaceTemperature
+  );
   const arcticSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(arcticPayload), {
     minValue: -70,
     maxValue: 25,
     maxAgeDays: 20,
   });
+  const arcticSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
+    sanitizeSeries(parseReanalyzerDailyAnomalyJson(arcticPayload, "1991-2020"), {
+      minValue: -10,
+      maxValue: 10,
+      maxAgeDays: 20,
+    }),
+    arcticSurfaceTemperature
+  );
   const antarcticSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(antarcticPayload), {
     minValue: -80,
     maxValue: 25,
     maxAgeDays: 20,
   });
+  const antarcticSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
+    sanitizeSeries(parseReanalyzerDailyAnomalyJson(antarcticPayload, "1991-2020"), {
+      minValue: -10,
+      maxValue: 10,
+      maxAgeDays: 20,
+    }),
+    antarcticSurfaceTemperature
+  );
   const northAtlanticSeaSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(northAtlanticSstPayload), {
     minValue: -5,
     maxValue: 40,
     maxAgeDays: 45,
   });
+  const northAtlanticSeaSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
+    sanitizeSeries(parseReanalyzerDailyAnomalyJson(northAtlanticSstPayload, "1991-2020"), {
+      minValue: -10,
+      maxValue: 10,
+      maxAgeDays: 45,
+    }),
+    northAtlanticSeaSurfaceTemperature
+  );
   const arcticSeaIceExtent = sanitizeSeries(parseNsidcDailyExtentCsv(northCsv), {
     minValue: 0,
     maxValue: 30,
@@ -2332,6 +2398,11 @@ async function updateOnce() {
     north_atlantic_sea_surface_temperature: northAtlanticSeaSurfaceTemperature,
     global_surface_temperature_anomaly: globalSurfaceTemperatureAnomaly,
     global_sea_surface_temperature_anomaly: globalSeaSurfaceTemperatureAnomaly,
+    northern_hemisphere_surface_temperature_anomaly: northernHemisphereSurfaceTemperatureAnomaly,
+    southern_hemisphere_surface_temperature_anomaly: southernHemisphereSurfaceTemperatureAnomaly,
+    arctic_surface_temperature_anomaly: arcticSurfaceTemperatureAnomaly,
+    antarctic_surface_temperature_anomaly: antarcticSurfaceTemperatureAnomaly,
+    north_atlantic_sea_surface_temperature_anomaly: northAtlanticSeaSurfaceTemperatureAnomaly,
     daily_global_mean_temperature_anomaly: dailyGlobalMeanTemperatureAnomaly,
     global_sea_ice_extent: globalSeaIceExtent,
     arctic_sea_ice_extent: arcticSeaIceExtent,
@@ -2373,6 +2444,16 @@ async function updateOnce() {
         "Derived from ERA5 daily global surface temperature minus 1991-2020 daily climatology from the same feed.",
       global_sea_surface_temperature_anomaly:
         "Derived from OISST v2.1 daily global SST minus 1991-2020 daily climatology from the same feed.",
+      northern_hemisphere_surface_temperature_anomaly:
+        "Derived from ERA5 daily Northern Hemisphere surface temperature minus 1991-2020 daily climatology from the same feed.",
+      southern_hemisphere_surface_temperature_anomaly:
+        "Derived from ERA5 daily Southern Hemisphere surface temperature minus 1991-2020 daily climatology from the same feed.",
+      arctic_surface_temperature_anomaly:
+        "Derived from ERA5 daily Arctic surface temperature minus 1991-2020 daily climatology from the same feed.",
+      antarctic_surface_temperature_anomaly:
+        "Derived from ERA5 daily Antarctic surface temperature minus 1991-2020 daily climatology from the same feed.",
+      north_atlantic_sea_surface_temperature_anomaly:
+        "Derived from OISST v2.1 daily North Atlantic SST minus 1991-2020 daily climatology from the same feed.",
       daily_global_mean_temperature_anomaly: `${ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL} (ano_91-20 adjusted by +${ECMWF_PREINDUSTRIAL_OFFSET_C}C to approximate 1850-1900 preindustrial baseline)`,
       global_sea_ice_extent: "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files.",
       arctic_sea_ice_extent: NSIDC_NORTH_DAILY_EXTENT_URL,

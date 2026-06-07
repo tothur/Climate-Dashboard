@@ -138,6 +138,41 @@ const SERIES_RULES = {
     minPoints: 8_000,
     minPointsLastYear: 250,
   },
+  northern_hemisphere_surface_temperature_anomaly: {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 20,
+    minPoints: 20_000,
+    minPointsLastYear: 300,
+  },
+  southern_hemisphere_surface_temperature_anomaly: {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 20,
+    minPoints: 20_000,
+    minPointsLastYear: 300,
+  },
+  arctic_surface_temperature_anomaly: {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 20,
+    minPoints: 20_000,
+    minPointsLastYear: 300,
+  },
+  antarctic_surface_temperature_anomaly: {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 20,
+    minPoints: 20_000,
+    minPointsLastYear: 300,
+  },
+  north_atlantic_sea_surface_temperature_anomaly: {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 45,
+    minPoints: 8_000,
+    minPointsLastYear: 250,
+  },
   daily_global_mean_temperature_anomaly: {
     minValue: -10,
     maxValue: 10,
@@ -367,6 +402,11 @@ function verifyTemperatureAnomalyAlignment(series, errors, warnings) {
   const pairs = [
     ["global_surface_temperature", "global_surface_temperature_anomaly"],
     ["global_sea_surface_temperature", "global_sea_surface_temperature_anomaly"],
+    ["northern_hemisphere_surface_temperature", "northern_hemisphere_surface_temperature_anomaly"],
+    ["southern_hemisphere_surface_temperature", "southern_hemisphere_surface_temperature_anomaly"],
+    ["arctic_surface_temperature", "arctic_surface_temperature_anomaly"],
+    ["antarctic_surface_temperature", "antarctic_surface_temperature_anomaly"],
+    ["north_atlantic_sea_surface_temperature", "north_atlantic_sea_surface_temperature_anomaly"],
   ];
 
   for (const [absoluteKey, anomalyKey] of pairs) {

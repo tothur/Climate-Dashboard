@@ -32,6 +32,11 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "antarctic_surface_temperature",
   "global_surface_temperature_anomaly",
   "global_sea_surface_temperature_anomaly",
+  "northern_hemisphere_surface_temperature_anomaly",
+  "arctic_surface_temperature_anomaly",
+  "north_atlantic_sea_surface_temperature_anomaly",
+  "southern_hemisphere_surface_temperature_anomaly",
+  "antarctic_surface_temperature_anomaly",
   "daily_global_mean_temperature_anomaly",
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
@@ -238,6 +243,76 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
         "Daily global SST anomaly derived from NOAA OISST v2.1 daily values relative to the 1991-2020 climatology in the same feed.",
       descriptionHu:
         "Napi globális tengerfelszíni hőmérséklet-anomália a NOAA OISST v2.1 napi értékei és az ugyanebben az adatforrásban szereplő 1991-2020-as klimatológia különbségeként.",
+      url: "https://climatereanalyzer.org/clim/sst_daily/",
+    },
+  },
+  northern_hemisphere_surface_temperature_anomaly: {
+    titleEn: "Northern Hemisphere Surface Temperature Anomaly",
+    titleHu: "Északi félteke felszíni hőmérsékleti anomáliája",
+    unit: "deg C",
+    decimals: 2,
+    source: {
+      shortName: "Climate Reanalyzer (ERA5, 1991-2020 baseline)",
+      descriptionEn:
+        "Daily Northern Hemisphere surface-air temperature anomaly derived from ERA5 daily values relative to the 1991-2020 climatology in the same feed.",
+      descriptionHu:
+        "Napi északi félteki felszíni levegőhőmérséklet-anomália az ERA5 napi értékei és az ugyanebben az adatforrásban szereplő 1991-2020-as klimatológia különbségeként.",
+      url: "https://climatereanalyzer.org/clim/t2_daily/",
+    },
+  },
+  southern_hemisphere_surface_temperature_anomaly: {
+    titleEn: "Southern Hemisphere Surface Temperature Anomaly",
+    titleHu: "Déli félteke felszíni hőmérsékleti anomáliája",
+    unit: "deg C",
+    decimals: 2,
+    source: {
+      shortName: "Climate Reanalyzer (ERA5, 1991-2020 baseline)",
+      descriptionEn:
+        "Daily Southern Hemisphere surface-air temperature anomaly derived from ERA5 daily values relative to the 1991-2020 climatology in the same feed.",
+      descriptionHu:
+        "Napi déli félteki felszíni levegőhőmérséklet-anomália az ERA5 napi értékei és az ugyanebben az adatforrásban szereplő 1991-2020-as klimatológia különbségeként.",
+      url: "https://climatereanalyzer.org/clim/t2_daily/",
+    },
+  },
+  arctic_surface_temperature_anomaly: {
+    titleEn: "Arctic Surface Temperature Anomaly",
+    titleHu: "Arktiszi felszíni hőmérsékleti anomália",
+    unit: "deg C",
+    decimals: 2,
+    source: {
+      shortName: "Climate Reanalyzer (ERA5, 1991-2020 baseline)",
+      descriptionEn:
+        "Daily Arctic surface-air temperature anomaly derived from ERA5 daily values relative to the 1991-2020 climatology in the same feed.",
+      descriptionHu:
+        "Napi arktiszi felszíni levegőhőmérséklet-anomália az ERA5 napi értékei és az ugyanebben az adatforrásban szereplő 1991-2020-as klimatológia különbségeként.",
+      url: "https://climatereanalyzer.org/clim/t2_daily/",
+    },
+  },
+  antarctic_surface_temperature_anomaly: {
+    titleEn: "Antarctic Surface Temperature Anomaly",
+    titleHu: "Antarktiszi felszíni hőmérsékleti anomália",
+    unit: "deg C",
+    decimals: 2,
+    source: {
+      shortName: "Climate Reanalyzer (ERA5, 1991-2020 baseline)",
+      descriptionEn:
+        "Daily Antarctic surface-air temperature anomaly derived from ERA5 daily values relative to the 1991-2020 climatology in the same feed.",
+      descriptionHu:
+        "Napi antarktiszi felszíni levegőhőmérséklet-anomália az ERA5 napi értékei és az ugyanebben az adatforrásban szereplő 1991-2020-as klimatológia különbségeként.",
+      url: "https://climatereanalyzer.org/clim/t2_daily/",
+    },
+  },
+  north_atlantic_sea_surface_temperature_anomaly: {
+    titleEn: "North Atlantic Sea Surface Temperature Anomaly",
+    titleHu: "Észak-atlanti tengerfelszíni hőmérsékleti anomália",
+    unit: "deg C",
+    decimals: 2,
+    source: {
+      shortName: "Climate Reanalyzer (OISST v2.1, 1991-2020 baseline)",
+      descriptionEn:
+        "Daily North Atlantic SST anomaly derived from NOAA OISST v2.1 daily values relative to the 1991-2020 climatology in the same feed.",
+      descriptionHu:
+        "Napi észak-atlanti tengerfelszíni hőmérséklet-anomália a NOAA OISST v2.1 napi értékei és az ugyanebben az adatforrásban szereplő 1991-2020-as klimatológia különbségeként.",
       url: "https://climatereanalyzer.org/clim/sst_daily/",
     },
   },

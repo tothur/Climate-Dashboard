@@ -194,8 +194,27 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
   const northAtlanticSeaSurfaceTemperature = generateSeries("1982-01-01", endDateIso, 21.2, 0.0006, 2.45, 365.25, 0.06);
   const globalSurfaceTempClimatology = climatologyByDayOfYear(globalSurfaceTemperature, 1991, 2020);
   const globalSeaSurfaceTempClimatology = climatologyByDayOfYear(globalSeaSurfaceTemperature, 1991, 2020);
+  const northernHemisphereSurfaceTempClimatology = climatologyByDayOfYear(northernHemisphereSurfaceTemperature, 1991, 2020);
+  const southernHemisphereSurfaceTempClimatology = climatologyByDayOfYear(southernHemisphereSurfaceTemperature, 1991, 2020);
+  const arcticSurfaceTempClimatology = climatologyByDayOfYear(arcticSurfaceTemperature, 1991, 2020);
+  const antarcticSurfaceTempClimatology = climatologyByDayOfYear(antarcticSurfaceTemperature, 1991, 2020);
+  const northAtlanticSeaSurfaceTempClimatology = climatologyByDayOfYear(northAtlanticSeaSurfaceTemperature, 1991, 2020);
   const globalSurfaceTemperatureAnomaly = deriveAnomalySeries(globalSurfaceTemperature, globalSurfaceTempClimatology);
   const globalSeaSurfaceTemperatureAnomaly = deriveAnomalySeries(globalSeaSurfaceTemperature, globalSeaSurfaceTempClimatology);
+  const northernHemisphereSurfaceTemperatureAnomaly = deriveAnomalySeries(
+    northernHemisphereSurfaceTemperature,
+    northernHemisphereSurfaceTempClimatology
+  );
+  const southernHemisphereSurfaceTemperatureAnomaly = deriveAnomalySeries(
+    southernHemisphereSurfaceTemperature,
+    southernHemisphereSurfaceTempClimatology
+  );
+  const arcticSurfaceTemperatureAnomaly = deriveAnomalySeries(arcticSurfaceTemperature, arcticSurfaceTempClimatology);
+  const antarcticSurfaceTemperatureAnomaly = deriveAnomalySeries(antarcticSurfaceTemperature, antarcticSurfaceTempClimatology);
+  const northAtlanticSeaSurfaceTemperatureAnomaly = deriveAnomalySeries(
+    northAtlanticSeaSurfaceTemperature,
+    northAtlanticSeaSurfaceTempClimatology
+  );
   const dailyGlobalMeanTemperatureAnomaly = generateSeries("1940-01-01", endDateIso, -0.65, 0.00005, 0.42, 365.25, 0.05).map(
     (point) => ({
       date: point.date,
@@ -224,6 +243,11 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
     north_atlantic_sea_surface_temperature: northAtlanticSeaSurfaceTemperature,
     global_surface_temperature_anomaly: globalSurfaceTemperatureAnomaly,
     global_sea_surface_temperature_anomaly: globalSeaSurfaceTemperatureAnomaly,
+    northern_hemisphere_surface_temperature_anomaly: northernHemisphereSurfaceTemperatureAnomaly,
+    southern_hemisphere_surface_temperature_anomaly: southernHemisphereSurfaceTemperatureAnomaly,
+    arctic_surface_temperature_anomaly: arcticSurfaceTemperatureAnomaly,
+    antarctic_surface_temperature_anomaly: antarcticSurfaceTemperatureAnomaly,
+    north_atlantic_sea_surface_temperature_anomaly: northAtlanticSeaSurfaceTemperatureAnomaly,
     daily_global_mean_temperature_anomaly: dailyGlobalMeanTemperatureAnomaly,
     global_sea_ice_extent: globalSeaIce,
     arctic_sea_ice_extent: arcticSeaIce,
@@ -254,6 +278,11 @@ export const CLIMATE_METRIC_KEYS: ClimateMetricKey[] = [
   "antarctic_surface_temperature",
   "global_surface_temperature_anomaly",
   "global_sea_surface_temperature_anomaly",
+  "northern_hemisphere_surface_temperature_anomaly",
+  "southern_hemisphere_surface_temperature_anomaly",
+  "arctic_surface_temperature_anomaly",
+  "antarctic_surface_temperature_anomaly",
+  "north_atlantic_sea_surface_temperature_anomaly",
   "daily_global_mean_temperature_anomaly",
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",

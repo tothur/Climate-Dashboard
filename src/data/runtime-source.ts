@@ -61,6 +61,11 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "north_atlantic_sea_surface_temperature",
   "global_surface_temperature_anomaly",
   "global_sea_surface_temperature_anomaly",
+  "northern_hemisphere_surface_temperature_anomaly",
+  "southern_hemisphere_surface_temperature_anomaly",
+  "arctic_surface_temperature_anomaly",
+  "antarctic_surface_temperature_anomaly",
+  "north_atlantic_sea_surface_temperature_anomaly",
   "daily_global_mean_temperature_anomaly",
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
@@ -91,6 +96,11 @@ const LOCAL_GENERATED_SERIES_MAX_AGE_DAYS: Record<keyof ClimateSeriesBundle, num
   north_atlantic_sea_surface_temperature: 45,
   global_surface_temperature_anomaly: 20,
   global_sea_surface_temperature_anomaly: 45,
+  northern_hemisphere_surface_temperature_anomaly: 20,
+  southern_hemisphere_surface_temperature_anomaly: 20,
+  arctic_surface_temperature_anomaly: 20,
+  antarctic_surface_temperature_anomaly: 20,
+  north_atlantic_sea_surface_temperature_anomaly: 45,
   daily_global_mean_temperature_anomaly: 20,
   global_sea_ice_extent: 20,
   arctic_sea_ice_extent: 20,
@@ -200,6 +210,11 @@ function normalizePoints(points: DailyPoint[]): DailyPoint[] {
   return Array.from(map.entries())
     .sort((a, b) => Date.parse(`${a[0]}T00:00:00Z`) - Date.parse(`${b[0]}T00:00:00Z`))
     .map(([date, value]) => ({ date, value }));
+}
+
+function filterSeriesToReferenceDates(points: DailyPoint[], referencePoints: DailyPoint[]): DailyPoint[] {
+  const referenceDates = new Set(referencePoints.map((point) => point.date));
+  return normalizePoints(points.filter((point) => referenceDates.has(point.date)));
 }
 
 function parseIsoDateToUtc(dateIso: string): number | null {
@@ -1053,11 +1068,14 @@ async function loadSurfaceTempSeriesBundle(): Promise<TemperatureSeriesBundle> {
     maxValue: 40,
     maxAgeDays: 20,
   });
-  const anomaly = sanitizeSeries(parseReanalyzerDailyAnomalyJson(payload, "1991-2020"), {
-    minValue: -10,
-    maxValue: 10,
-    maxAgeDays: 20,
-  });
+  const anomaly = filterSeriesToReferenceDates(
+    sanitizeSeries(parseReanalyzerDailyAnomalyJson(payload, "1991-2020"), {
+      minValue: -10,
+      maxValue: 10,
+      maxAgeDays: 20,
+    }),
+    absolute
+  );
   return {
     absolute: absolute.length ? absolute : null,
     anomaly: anomaly.length ? anomaly : null,
@@ -1072,11 +1090,14 @@ async function loadSeaSurfaceTempSeriesBundle(): Promise<TemperatureSeriesBundle
     maxValue: 40,
     maxAgeDays: 45,
   });
-  const anomaly = sanitizeSeries(parseReanalyzerDailyAnomalyJson(payload, "1991-2020"), {
-    minValue: -10,
-    maxValue: 10,
-    maxAgeDays: 45,
-  });
+  const anomaly = filterSeriesToReferenceDates(
+    sanitizeSeries(parseReanalyzerDailyAnomalyJson(payload, "1991-2020"), {
+      minValue: -10,
+      maxValue: 10,
+      maxAgeDays: 45,
+    }),
+    absolute
+  );
   return {
     absolute: absolute.length ? absolute : null,
     anomaly: anomaly.length ? anomaly : null,
@@ -1089,6 +1110,11 @@ interface RegionalTemperatureSeriesBundle {
   arctic: DailyPoint[] | null;
   antarctic: DailyPoint[] | null;
   northAtlanticSst: DailyPoint[] | null;
+  northernHemisphereAnomaly: DailyPoint[] | null;
+  southernHemisphereAnomaly: DailyPoint[] | null;
+  arcticAnomaly: DailyPoint[] | null;
+  antarcticAnomaly: DailyPoint[] | null;
+  northAtlanticSstAnomaly: DailyPoint[] | null;
 }
 
 async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatureSeriesBundle> {
@@ -1107,6 +1133,16 @@ async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatur
         maxAgeDays: 20,
       })
     : [];
+  const northernHemisphereAnomaly = nhPayload
+    ? filterSeriesToReferenceDates(
+        sanitizeSeries(parseReanalyzerDailyAnomalyJson(nhPayload, "1991-2020"), {
+          minValue: -10,
+          maxValue: 10,
+          maxAgeDays: 20,
+        }),
+        northernHemisphere
+      )
+    : [];
 
   const southernHemisphere = shPayload
     ? sanitizeSeries(parseReanalyzerDailyJson(shPayload), {
@@ -1114,6 +1150,16 @@ async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatur
         maxValue: 35,
         maxAgeDays: 20,
       })
+    : [];
+  const southernHemisphereAnomaly = shPayload
+    ? filterSeriesToReferenceDates(
+        sanitizeSeries(parseReanalyzerDailyAnomalyJson(shPayload, "1991-2020"), {
+          minValue: -10,
+          maxValue: 10,
+          maxAgeDays: 20,
+        }),
+        southernHemisphere
+      )
     : [];
 
   const arctic = arcticPayload
@@ -1123,6 +1169,16 @@ async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatur
         maxAgeDays: 20,
       })
     : [];
+  const arcticAnomaly = arcticPayload
+    ? filterSeriesToReferenceDates(
+        sanitizeSeries(parseReanalyzerDailyAnomalyJson(arcticPayload, "1991-2020"), {
+          minValue: -10,
+          maxValue: 10,
+          maxAgeDays: 20,
+        }),
+        arctic
+      )
+    : [];
 
   const antarctic = antarcticPayload
     ? sanitizeSeries(parseReanalyzerDailyJson(antarcticPayload), {
@@ -1130,6 +1186,16 @@ async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatur
         maxValue: 25,
         maxAgeDays: 20,
       })
+    : [];
+  const antarcticAnomaly = antarcticPayload
+    ? filterSeriesToReferenceDates(
+        sanitizeSeries(parseReanalyzerDailyAnomalyJson(antarcticPayload, "1991-2020"), {
+          minValue: -10,
+          maxValue: 10,
+          maxAgeDays: 20,
+        }),
+        antarctic
+      )
     : [];
 
   const northAtlanticSst = northAtlanticSstPayload
@@ -1139,6 +1205,16 @@ async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatur
         maxAgeDays: 45,
       })
     : [];
+  const northAtlanticSstAnomaly = northAtlanticSstPayload
+    ? filterSeriesToReferenceDates(
+        sanitizeSeries(parseReanalyzerDailyAnomalyJson(northAtlanticSstPayload, "1991-2020"), {
+          minValue: -10,
+          maxValue: 10,
+          maxAgeDays: 45,
+        }),
+        northAtlanticSst
+      )
+    : [];
 
   return {
     northernHemisphere: northernHemisphere.length ? northernHemisphere : null,
@@ -1146,6 +1222,11 @@ async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatur
     arctic: arctic.length ? arctic : null,
     antarctic: antarctic.length ? antarctic : null,
     northAtlanticSst: northAtlanticSst.length ? northAtlanticSst : null,
+    northernHemisphereAnomaly: northernHemisphereAnomaly.length ? northernHemisphereAnomaly : null,
+    southernHemisphereAnomaly: southernHemisphereAnomaly.length ? southernHemisphereAnomaly : null,
+    arcticAnomaly: arcticAnomaly.length ? arcticAnomaly : null,
+    antarcticAnomaly: antarcticAnomaly.length ? antarcticAnomaly : null,
+    northAtlanticSstAnomaly: northAtlanticSstAnomaly.length ? northAtlanticSstAnomaly : null,
   };
 }
 
@@ -1437,12 +1518,47 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     } else {
       warnings.push("Live North Atlantic Sea Surface Temperature feed was unavailable or stale; using bundled fallback.");
     }
+
+    if (regionalResult.value.northernHemisphereAnomaly?.length) {
+      liveSeries.northern_hemisphere_surface_temperature_anomaly = regionalResult.value.northernHemisphereAnomaly;
+    } else {
+      warnings.push("Live Northern Hemisphere Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (regionalResult.value.southernHemisphereAnomaly?.length) {
+      liveSeries.southern_hemisphere_surface_temperature_anomaly = regionalResult.value.southernHemisphereAnomaly;
+    } else {
+      warnings.push("Live Southern Hemisphere Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (regionalResult.value.arcticAnomaly?.length) {
+      liveSeries.arctic_surface_temperature_anomaly = regionalResult.value.arcticAnomaly;
+    } else {
+      warnings.push("Live Arctic Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (regionalResult.value.antarcticAnomaly?.length) {
+      liveSeries.antarctic_surface_temperature_anomaly = regionalResult.value.antarcticAnomaly;
+    } else {
+      warnings.push("Live Antarctic Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (regionalResult.value.northAtlanticSstAnomaly?.length) {
+      liveSeries.north_atlantic_sea_surface_temperature_anomaly = regionalResult.value.northAtlanticSstAnomaly;
+    } else {
+      warnings.push("Live North Atlantic Sea Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+    }
   } else {
     warnings.push("Live Northern Hemisphere Surface Temperature feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live Southern Hemisphere Surface Temperature feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live Arctic Surface Temperature feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live Antarctic Surface Temperature feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live North Atlantic Sea Surface Temperature feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Northern Hemisphere Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Southern Hemisphere Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Arctic Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Antarctic Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live North Atlantic Sea Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
   }
 
   if (seaIceResult.status === "fulfilled") {
