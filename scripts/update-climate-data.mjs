@@ -97,7 +97,7 @@ const DEFAULT_OPENAI_SUMMARY_MODEL = "gpt-5.4-mini";
 const OPENAI_SUMMARY_ALLOWED_MODELS = new Set([DEFAULT_OPENAI_SUMMARY_MODEL]);
 const OPENAI_SUMMARY_MAX_OUTPUT_TOKENS = 600;
 const OPENAI_SUMMARY_TIMEOUT_MS = 20_000;
-const AI_SUMMARY_PROMPT_VERSION = 3;
+const AI_SUMMARY_PROMPT_VERSION = 4;
 const AI_SUMMARY_FINGERPRINT_KEYS = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
@@ -1654,6 +1654,27 @@ function anomalySignalPhraseHu(signal) {
   return `${signal.label} ${recordText}`;
 }
 
+function splitSummarySentences(text) {
+  return String(text ?? "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g)
+    ?.map((sentence) => sentence.trim())
+    .filter(Boolean) ?? [];
+}
+
+function stripBulletMarkers(text) {
+  return String(text ?? "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .trim();
+}
+
+function formatSummaryBullets(text) {
+  return splitSummarySentences(text)
+    .slice(0, 3)
+    .map((sentence) => `- ${sentence}`)
+    .join("\n");
+}
+
 function buildTemperatureSummaryTextHu(temperatureChecks, anomalySignals = []) {
   const warningChecks = temperatureChecks.filter((check) => check.tone !== "normal");
   const normalChecks = temperatureChecks.filter((check) => check.tone === "normal");
@@ -1684,8 +1705,8 @@ function buildTemperatureSummaryTextHu(temperatureChecks, anomalySignals = []) {
 
 function buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks, anomalySignals }) {
   return {
-    textEn: buildTemperatureSummaryTextEn(temperatureChecks, anomalySignals),
-    textHu: buildTemperatureSummaryTextHu(temperatureChecks, anomalySignals),
+    textEn: formatSummaryBullets(buildTemperatureSummaryTextEn(temperatureChecks, anomalySignals)),
+    textHu: formatSummaryBullets(buildTemperatureSummaryTextHu(temperatureChecks, anomalySignals)),
     generatedAtIso,
     model: "local-rules",
     source: "local",
@@ -1753,7 +1774,7 @@ function parseAiSummaryJson(rawText) {
 }
 
 function sentenceCount(text) {
-  return String(text ?? "")
+  return stripBulletMarkers(text)
     .split(/[.!?]+(?:\s|$)/)
     .map((sentence) => sentence.trim())
     .filter(Boolean).length;
@@ -1805,6 +1826,8 @@ function buildAiSummaryContextSignals(summary, ensoOutlook, anomalySignals) {
 function validateOpenAiSummaryText(openAiSummary, localSummary, temperatureChecks, anomalySignals = []) {
   const textEn = openAiSummary.textEn.trim();
   const textHu = openAiSummary.textHu?.trim() || localSummary.textHu;
+  const normalizedTextEn = stripBulletMarkers(textEn);
+  const normalizedTextHu = stripBulletMarkers(textHu);
   const textEnSentenceCount = sentenceCount(textEn);
   if (
     !textEn ||
@@ -1819,24 +1842,23 @@ function validateOpenAiSummaryText(openAiSummary, localSummary, temperatureCheck
 
   const hasTemperatureWarning = temperatureChecks.some((check) => check.tone !== "normal");
   if (hasTemperatureWarning) {
-    const requiredPrefixEn = localSummary.textEn.replace(/\.$/, "");
-    const requiredPrefixHu = localSummary.textHu.replace(/\.$/, "");
-    if (!textEn.startsWith(requiredPrefixEn.split(".")[0])) return null;
-    if (!textHu.startsWith(requiredPrefixHu.split(".")[0])) {
+    const requiredPrefixEn = stripBulletMarkers(localSummary.textEn).replace(/\.$/, "");
+    const requiredPrefixHu = stripBulletMarkers(localSummary.textHu).replace(/\.$/, "");
+    if (!normalizedTextEn.startsWith(requiredPrefixEn.split(".")[0])) return null;
+    if (!normalizedTextHu.startsWith(requiredPrefixHu.split(".")[0])) {
       return {
         textEn,
         textHu: localSummary.textHu,
       };
     }
-  } else if (!/not unusually high/i.test(textEn)) {
+  } else if (!/not unusually high/i.test(normalizedTextEn)) {
     return null;
   }
 
   const dailyRecordSignals = anomalySignals.filter(isDailyRecordLeadSignal);
   if (dailyRecordSignals.length) {
     const requiredAnomalyLabels = dailyRecordSignals.slice(0, 3).map((signal) => signal.label.toLowerCase());
-    const normalizedText = textEn.toLowerCase();
-    if (!requiredAnomalyLabels.some((label) => normalizedText.includes(label))) return null;
+    if (!requiredAnomalyLabels.some((label) => normalizedTextEn.toLowerCase().includes(label))) return null;
   }
 
   return {
@@ -1862,7 +1884,7 @@ async function requestOpenAiSummary(summaryInput, model) {
       body: JSON.stringify({
         model,
         instructions:
-          "Write a compact daily climate-watch briefing, not a long-term climate-status recap. Use 2 or 3 concise sentences. If temperatureBrief.hasWarning is true, copy the first sentence of temperatureBrief.requiredSentenceEn verbatim as sentence one; otherwise, sentence one must clearly say both global surface temperature and global sea surface temperature are not unusually high versus same-date historical records. Then highlight what is most newsworthy today: record or near-record heat, especially sea-surface or regional temperature records, and record-low or near-record-low sea-ice extent. Treat greenhouse gas, AGGI, sea-level, and ocean-heat-content records as background context; mention them only if no temperature or sea-ice record signal is available, or if there is room for a short final context sentence after the daily record signals. Prefer same-date records over slow full-record background indicators. Use only supplied JSON facts, name indicators explicitly, and include supplied values, ranks, dates, or probabilities when useful. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.",
+          'Write a compact daily climate-watch briefing as bullet points, not a long-term climate-status recap. Use 2 or 3 concise bullet points, with one complete sentence per bullet. In textEn and textHu, start each bullet line with "- " and separate bullet lines with newline characters. If temperatureBrief.hasWarning is true, the first bullet must copy the first sentence of temperatureBrief.requiredSentenceEn verbatim after the "- " marker; otherwise, the first bullet must clearly say both global surface temperature and global sea surface temperature are not unusually high versus same-date historical records. Then highlight what is most newsworthy today: record or near-record heat, especially sea-surface or regional temperature records, and record-low or near-record-low sea-ice extent. Treat greenhouse gas, AGGI, sea-level, and ocean-heat-content records as background context; mention them only if no temperature or sea-ice record signal is available, or if there is room for a short final bullet after the daily record signals. Prefer same-date records over slow full-record background indicators. Use only supplied JSON facts, name indicators explicitly, and include supplied values, ranks, dates, or probabilities when useful. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.',
         input: JSON.stringify(summaryInput),
         text: {
           format: {
@@ -1875,11 +1897,13 @@ async function requestOpenAiSummary(summaryInput, model) {
               properties: {
                 textEn: {
                   type: "string",
-                  description: "Two or three concise English sentences. It must follow the supplied temperatureBrief rules.",
+                  description:
+                    'Two or three concise English bullet lines. Each line must start with "- " and contain one sentence. It must follow the supplied temperatureBrief rules.',
                 },
                 textHu: {
                   type: ["string", "null"],
-                  description: "Hungarian equivalent of textEn, or null if a faithful translation is not possible.",
+                  description:
+                    'Hungarian equivalent of textEn with each bullet line starting "- ", or null if a faithful translation is not possible.',
                 },
               },
               required: ["textEn", "textHu"],
@@ -1947,14 +1971,14 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
       requiredSentenceEn: localSummary.textEn,
       requiredSentenceHu: localSummary.textHu,
       rules: hasTemperatureWarning
-        ? "textEn must start with the first sentence of requiredSentenceEn. textHu must start with the first sentence of requiredSentenceHu. Do not mention normal temperature checks unless they are already in requiredSentenceEn."
-        : "textEn must clearly say both global surface temperature and global sea surface temperature are not unusually high versus same-date historical records.",
+        ? 'textEn first bullet must start with the first sentence of requiredSentenceEn after the "- " marker. textHu first bullet must start with the first sentence of requiredSentenceHu after the "- " marker. Do not mention normal temperature checks unless they are already in requiredSentenceEn.'
+        : "textEn first bullet must clearly say both global surface temperature and global sea surface temperature are not unusually high versus same-date historical records.",
       checks: temperatureChecks,
     },
     anomalySignals,
     allowedContextSignals: buildAiSummaryContextSignals(summary, ensoOutlook?.nextSixMonths ?? null, anomalySignals),
     requiredBehavior:
-      "Temperature status is authoritative. Do not reinterpret the temperature checks. Write 2 or 3 sentences total. If temperatureBrief.hasWarning is true, sentence one must copy the first sentence of temperatureBrief.requiredSentenceEn verbatim. If anomalySignals contains non-background temperature, sea-surface-temperature, or sea-ice record signals, sentence two must focus on one or two of those signals and include their labels. Use long-term background indicators such as atmospheric CO2, CH4, AGGI, global mean sea level, and ocean heat content only as a fallback when no temperature or sea-ice record signal is available, or as a short final context sentence. Prefer critical signals over watch signals and same-date records over full-record background ranks. Use sentence three only for ENSO or one compact background context item. Use only anomalySignals or allowedContextSignals facts and keep the output compact.",
+      'Temperature status is authoritative. Do not reinterpret the temperature checks. Write 2 or 3 bullet points total, one sentence per bullet, each line starting with "- ". If temperatureBrief.hasWarning is true, bullet one must copy the first sentence of temperatureBrief.requiredSentenceEn verbatim after the "- " marker. If anomalySignals contains non-background temperature, sea-surface-temperature, or sea-ice record signals, bullet two must focus on one or two of those signals and include their labels. Use long-term background indicators such as atmospheric CO2, CH4, AGGI, global mean sea level, and ocean heat content only as a fallback when no temperature or sea-ice record signal is available, or as a short final context bullet. Prefer critical signals over watch signals and same-date records over full-record background ranks. Use bullet three only for ENSO or one compact background context item. Use only anomalySignals or allowedContextSignals facts and keep the output compact.',
   };
 
   try {

@@ -461,6 +461,30 @@ h3 {
   hyphens: manual;
 }
 
+.ai-summary-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 1.05rem;
+  width: 100%;
+  max-width: none;
+  color: #102033;
+  font-size: 0.86rem;
+  line-height: 1.32;
+  font-weight: 620;
+  overflow-wrap: break-word;
+  hyphens: manual;
+}
+
+.ai-summary-list li {
+  padding-left: 2px;
+}
+
+.ai-summary-list li::marker {
+  color: #0f766e;
+  font-size: 0.86em;
+}
+
 .ai-summary-loading {
   display: inline-flex;
   align-items: center;

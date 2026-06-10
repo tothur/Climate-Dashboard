@@ -819,6 +819,7 @@ interface SameDateTemperatureCheck {
 interface AiDashboardSummary {
   tone: AiSummaryTone;
   headline: string;
+  bulletItems: string[];
   checks: SameDateTemperatureCheck[];
 }
 
@@ -924,6 +925,26 @@ function localizeMetricMentions(text: string, metrics: ClimateMetricSeries[], la
     .reduce((localized, [english, hungarian]) => localized.split(english).join(hungarian), text);
 }
 
+function splitAiSummaryBulletItems(text: string): string[] {
+  const normalized = text.trim();
+  if (!normalized) return [];
+
+  const lineItems = normalized
+    .split(/\n+/)
+    .map((line) => line.replace(/^\s*[-*]\s+/, "").trim())
+    .filter(Boolean);
+  if (lineItems.length > 1) return lineItems.slice(0, 3);
+
+  return (
+    normalized
+      .replace(/^\s*[-*]\s+/, "")
+      .match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g)
+      ?.map((sentence) => sentence.trim())
+      .filter(Boolean)
+      .slice(0, 3) ?? [normalized.replace(/^\s*[-*]\s+/, "")]
+  );
+}
+
 function buildAiDashboardSummary({
   snapshot,
   language,
@@ -961,6 +982,7 @@ function buildAiDashboardSummary({
   return {
     tone,
     headline,
+    bulletItems: splitAiSummaryBulletItems(headline),
     checks,
   };
 }
@@ -3209,7 +3231,15 @@ export function App() {
                   <span className="alert-kicker">{t.aiSummaryKicker}</span>
                 </div>
                 {runtimeDataReady ? (
-                  <p>{aiDashboardSummary.headline}</p>
+                  aiDashboardSummary.bulletItems.length > 0 ? (
+                    <ul className="ai-summary-list">
+                      {aiDashboardSummary.bulletItems.map((item, index) => (
+                        <li key={`${index}-${item}`}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>{aiDashboardSummary.headline}</p>
+                  )
                 ) : (
                   <div className="ai-summary-loading" role="status" aria-live="polite">
                     <span className="ai-summary-spinner" aria-hidden="true" />

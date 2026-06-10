@@ -501,6 +501,7 @@ function buildTemperatureSummaryTextEn(temperatureChecks) {
 
 function sentenceCount(text) {
   return String(text ?? "")
+    .replace(/^\s*[-*]\s+/gm, "")
     .split(/[.!?]+(?:\s|$)/)
     .map((sentence) => sentence.trim())
     .filter(Boolean).length;
@@ -514,6 +515,7 @@ function verifyAiSummary(payload, series, nowMidnight, errors) {
   }
 
   const textEn = typeof aiSummary.textEn === "string" ? aiSummary.textEn.trim() : "";
+  const normalizedTextEn = textEn.replace(/^\s*[-*]\s+/gm, "").trim();
   if (!textEn || textEn.length > 650) {
     errors.push("aiSummary.textEn is missing or too long");
   }
@@ -564,10 +566,10 @@ function verifyAiSummary(payload, series, nowMidnight, errors) {
 
   const hasTemperatureWarning = expectedChecks.some((check) => check.tone !== "normal");
   const expectedText = buildTemperatureSummaryTextEn(expectedChecks);
-  if (hasTemperatureWarning && !textEn.startsWith(expectedText.split(".")[0])) {
+  if (hasTemperatureWarning && !normalizedTextEn.startsWith(expectedText.split(".")[0])) {
     errors.push("aiSummary.textEn does not begin with the computed temperature warning");
   }
-  if (!hasTemperatureWarning && !/not unusually high/i.test(textEn)) {
+  if (!hasTemperatureWarning && !/not unusually high/i.test(normalizedTextEn)) {
     errors.push("aiSummary.textEn does not include the computed normal temperature status");
   }
 }
