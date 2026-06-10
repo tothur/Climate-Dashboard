@@ -11,6 +11,7 @@ interface BuildForcingTrendOptionArgs {
   xAxisStartYear?: number;
   compact: boolean;
   dark?: boolean;
+  color?: string;
   decimals?: number;
   labels?: {
     noData: string;
@@ -110,6 +111,7 @@ export function buildForcingTrendOption({
   xAxisStartYear,
   compact,
   dark = false,
+  color,
   decimals = 2,
   labels,
 }: BuildForcingTrendOptionArgs): EChartsOption {
@@ -142,6 +144,7 @@ export function buildForcingTrendOption({
   const hasData = monthly.length > 0;
   const noDataText = labels?.noData ?? "No data";
   const yAxisName = yAxisUnitLabel?.trim() || undefined;
+  const lineColor = color ?? (dark ? "#34d399" : "#16a34a");
 
   const minYear = hasData ? monthly[0].year : new Date().getUTCFullYear() - 10;
   const maxYear = hasData ? monthly[monthly.length - 1].year : new Date().getUTCFullYear();
@@ -228,18 +231,18 @@ export function buildForcingTrendOption({
         symbol: "circle",
         symbolSize: compact ? 3 : 3.5,
         lineStyle: {
-          color: dark ? "#fb923c" : "#f97316",
+          color: lineColor,
           width: 2,
         },
         itemStyle: {
-          color: dark ? "#fb923c" : "#f97316",
+          color: lineColor,
         },
         markLine:
           latestX != null
             ? {
                 symbol: ["none", "none"],
                 silent: true,
-                lineStyle: { color: palette.currentLine, width: 1.1, type: "dashed" },
+                lineStyle: { color: lineColor, width: 1.1, type: "dashed", opacity: 0.58 },
                 label: { show: false },
                 data: [{ xAxis: latestX }],
               }

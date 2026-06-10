@@ -51,6 +51,23 @@ function formatterFor(decimals: number): Intl.NumberFormat {
   return formatter;
 }
 
+function alphaColor(color: string, alpha: number): string {
+  const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim());
+  if (!hexMatch) return color;
+  const hex = hexMatch[1];
+  const expanded =
+    hex.length === 3
+      ? hex
+          .split("")
+          .map((char) => `${char}${char}`)
+          .join("")
+      : hex;
+  const red = Number.parseInt(expanded.slice(0, 2), 16);
+  const green = Number.parseInt(expanded.slice(2, 4), 16);
+  const blue = Number.parseInt(expanded.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
 function buildCompactDataZoom(
   labels: string[],
   compact: boolean,
@@ -456,8 +473,8 @@ export function buildClimateTrendOption({
       };
 
   const lineColor = color ?? (dark ? "#60a5fa" : "#2563eb");
-  const areaTopColor = dark ? "rgba(96, 165, 250, 0.34)" : "rgba(59, 130, 246, 0.26)";
-  const areaBottomColor = dark ? "rgba(96, 165, 250, 0.06)" : "rgba(59, 130, 246, 0.04)";
+  const areaTopColor = alphaColor(lineColor, dark ? 0.26 : 0.2);
+  const areaBottomColor = alphaColor(lineColor, dark ? 0.05 : 0.035);
   const noDataText = labels?.noData ?? "No data";
 
   const xLabels = points.map((point) => point.date);

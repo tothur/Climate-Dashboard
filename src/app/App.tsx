@@ -1320,10 +1320,12 @@ function buildAnnualProjectionTrendOption({
   const projectionIndex = points.findIndex((point) => point.date === projectionDate);
   if (projectionIndex < 0) return option;
 
-  const projectionLineColor = dark ? "#f472b6" : "#db2777";
-  const projectionBandFill = dark ? "rgba(244, 114, 182, 0.20)" : "rgba(236, 72, 153, 0.18)";
-  const projectionBandStroke = dark ? "#f9a8d4" : "#be185d";
-  const intervalMarkerFill = dark ? "#fce7f3" : "#fff1f7";
+  const historicalLineColor = topicChartColor(DAILY_GLOBAL_MEAN_ANOMALY_KEY, dark);
+  const historicalAreaColor = dark ? "rgba(251, 113, 133, 0.12)" : "rgba(225, 29, 47, 0.12)";
+  const projectionLineColor = dark ? "#fda4af" : "#be123c";
+  const projectionBandFill = dark ? "rgba(251, 113, 133, 0.20)" : "rgba(225, 29, 47, 0.16)";
+  const projectionBandStroke = dark ? "#fda4af" : "#be123c";
+  const intervalMarkerFill = dark ? "#fff1f2" : "#fff1f2";
   const historicalLineData = points.map((point) => point.value);
   const projectedScatterData = points.map((point, index) => (index === projectionIndex ? projection.value : null));
   const projectedLowScatterData = points.map((point, index) => (index === projectionIndex ? projection.low : null));
@@ -1388,14 +1390,14 @@ function buildAnnualProjectionTrendOption({
         symbol: "circle",
         symbolSize: compact ? 5 : 6,
         lineStyle: {
-          color: dark ? "#0f766e" : "#0f9f8f",
+          color: historicalLineColor,
           width: 2.4,
         },
         itemStyle: {
-          color: dark ? "#0f766e" : "#0f9f8f",
+          color: historicalLineColor,
         },
         areaStyle: {
-          color: dark ? "rgba(20, 184, 166, 0.12)" : "rgba(20, 184, 166, 0.16)",
+          color: historicalAreaColor,
         },
       },
       {
@@ -1543,6 +1545,9 @@ function buildAnnualProjectionBarOption({
   if (!historicalPoints.length) return null;
 
   const categories = [...historicalPoints.map((point) => String(point.year)), String(projection.year)];
+  const historicalBarTopColor = topicChartColor(DAILY_GLOBAL_MEAN_ANOMALY_KEY, dark);
+  const historicalBarBottomColor = dark ? "rgba(251, 113, 133, 0.16)" : "rgba(225, 29, 47, 0.14)";
+  const projectedBarColor = dark ? "#fda4af" : "#be123c";
   const observedBarStyle = {
     borderRadius: [7, 7, 2, 2],
     color: {
@@ -1552,8 +1557,8 @@ function buildAnnualProjectionBarOption({
       x2: 0,
       y2: 1,
       colorStops: [
-        { offset: 0, color: dark ? "#0f9f8f" : "#14b8a6" },
-        { offset: 1, color: dark ? "rgba(15, 159, 143, 0.18)" : "rgba(20, 184, 166, 0.18)" },
+        { offset: 0, color: historicalBarTopColor },
+        { offset: 1, color: historicalBarBottomColor },
       ],
     },
   };
@@ -1563,7 +1568,7 @@ function buildAnnualProjectionBarOption({
       value: projection.value,
       itemStyle: {
         borderRadius: [7, 7, 2, 2],
-        color: dark ? "#f472b6" : "#db2777",
+        color: projectedBarColor,
       },
     },
   ];
@@ -1707,10 +1712,46 @@ function pickYearsForMetric(metricKey: ClimateMetricSeries["key"], points: Daily
   return pickComparisonYears(points);
 }
 
-function buildIndicatorYearColors(currentYear: number, dark: boolean): Record<number, string> {
-  const previousYearGradient = dark ? ["#60a5fa", "#7e9cbc", "#94a3b8"] : ["#2563eb", "#4f76a4", "#94a3b8"];
+function topicChartColor(metricKey: ClimateMetricSeries["key"], dark: boolean): string {
+  const category = topSummaryCategoryClass(metricKey);
+  switch (category) {
+    case "topcat-temperature":
+    case "topcat-anomaly":
+      return dark ? "#fb7185" : "#e11d2f";
+    case "topcat-sea-ice":
+      return dark ? "#a78bfa" : "#7c3aed";
+    case "topcat-forcing":
+    case "topcat-enso":
+      return dark ? "#34d399" : "#16a34a";
+    case "topcat-ocean":
+    case "topcat-neutral":
+    default:
+      return dark ? "#7db0ff" : "#0b69ff";
+  }
+}
+
+function topicChartSoftColor(metricKey: ClimateMetricSeries["key"], dark: boolean): string {
+  const category = topSummaryCategoryClass(metricKey);
+  switch (category) {
+    case "topcat-temperature":
+    case "topcat-anomaly":
+      return dark ? "rgba(251, 113, 133, 0.42)" : "rgba(225, 29, 47, 0.34)";
+    case "topcat-sea-ice":
+      return dark ? "rgba(167, 139, 250, 0.42)" : "rgba(124, 58, 237, 0.34)";
+    case "topcat-forcing":
+    case "topcat-enso":
+      return dark ? "rgba(52, 211, 153, 0.42)" : "rgba(22, 163, 74, 0.34)";
+    case "topcat-ocean":
+    case "topcat-neutral":
+    default:
+      return dark ? "rgba(125, 176, 255, 0.42)" : "rgba(11, 105, 255, 0.34)";
+  }
+}
+
+function buildIndicatorYearColors(currentYear: number, metricKey: ClimateMetricSeries["key"], dark: boolean): Record<number, string> {
+  const previousYearGradient = dark ? ["#7e9cbc", "#94a3b8", "#64748b"] : ["#64748b", "#94a3b8", "#cbd5e1"];
   return {
-    [currentYear]: dark ? "#fb923c" : "#f97316",
+    [currentYear]: topicChartColor(metricKey, dark),
     [currentYear - 1]: previousYearGradient[0],
     [currentYear - 2]: previousYearGradient[1],
     [currentYear - 3]: previousYearGradient[2],
@@ -2406,7 +2447,7 @@ export function App() {
       showLegend: false,
       compact,
       dark: resolvedTheme === "dark",
-      color: resolvedTheme === "dark" ? "#38bdf8" : "#0284c7",
+      color: topicChartColor(dailyGlobalMeanAnomalyMetric.key, resolvedTheme === "dark"),
       referenceLines: [
         { value: 1.5, label: "1.5°C", color: resolvedTheme === "dark" ? "#fbbf24" : "#f59e0b" },
         { value: 2, label: "2.0°C", color: resolvedTheme === "dark" ? "#f87171" : "#dc2626" },
@@ -2623,7 +2664,7 @@ export function App() {
             : undefined,
           compact,
           dark: resolvedTheme === "dark",
-          yearColors: buildIndicatorYearColors(currentYear, resolvedTheme === "dark"),
+          yearColors: buildIndicatorYearColors(currentYear, metric.key, resolvedTheme === "dark"),
           labels: {
             noData: t.noData,
           },
@@ -2671,7 +2712,7 @@ export function App() {
           showLegend: false,
           compact,
           dark: resolvedTheme === "dark",
-          color: options?.color ?? (resolvedTheme === "dark" ? "#38bdf8" : "#0284c7"),
+          color: options?.color ?? topicChartColor(metric.key, resolvedTheme === "dark"),
           showArea: options?.showArea ?? true,
           labels: {
             noData: t.noData,
@@ -3279,13 +3320,13 @@ export function App() {
                       showLegend: false,
                       compact,
                       dark: resolvedTheme === "dark",
-                      color: resolvedTheme === "dark" ? "rgba(125, 211, 252, 0.58)" : "rgba(147, 197, 253, 0.68)",
+                      color: topicChartSoftColor(dailyGlobalMeanAnomalyMetric.key, resolvedTheme === "dark"),
                       showArea: false,
                       overlaySeries: [
                         {
                           points: dailyGlobalMeanAnomaly365DayPoints,
                           seriesName: t.dailyGlobalTemperatureAnomaly365DayAverage,
-                          color: resolvedTheme === "dark" ? "#38bdf8" : "#2563eb",
+                          color: topicChartColor(dailyGlobalMeanAnomalyMetric.key, resolvedTheme === "dark"),
                           lineWidth: 3.6,
                         },
                       ],
@@ -3322,7 +3363,7 @@ export function App() {
                       showLegend: false,
                       compact,
                       dark: resolvedTheme === "dark",
-                      color: resolvedTheme === "dark" ? "#38bdf8" : "#0284c7",
+                      color: topicChartColor(dailyGlobalMeanAnomalyMetric.key, resolvedTheme === "dark"),
                       referenceLines: [
                         { value: 1.5, label: "1.5°C", color: resolvedTheme === "dark" ? "#fbbf24" : "#f59e0b" },
                         { value: 2, label: "2.0°C", color: resolvedTheme === "dark" ? "#f87171" : "#dc2626" },
@@ -3468,7 +3509,7 @@ export function App() {
                       showLegend: false,
                       compact,
                       dark: resolvedTheme === "dark",
-                      color: resolvedTheme === "dark" ? "#fbbf24" : "#d97706",
+                      color: topicChartColor(earthEnergyImbalanceMetric.key, resolvedTheme === "dark"),
                       referenceLines: [
                         { value: 0, label: "0 W/m²", color: resolvedTheme === "dark" ? "#fef3c7" : "#92400e" },
                       ],
@@ -3529,18 +3570,7 @@ export function App() {
                       xAxisYearLabelStep: 5,
                       showArea: false,
                       yAxisInverse: ICE_SHEET_LOSS_KEYS.has(metric.key),
-                      color:
-                        metric.key === "global_glacier_mass_balance"
-                          ? resolvedTheme === "dark"
-                            ? "#60a5fa"
-                            : "#2563eb"
-                          : metric.key === "antarctic_ice_sheet_mass_balance"
-                            ? resolvedTheme === "dark"
-                              ? "#2dd4bf"
-                              : "#0f766e"
-                            : resolvedTheme === "dark"
-                              ? "#c084fc"
-                              : "#8b5cf6",
+                      color: topicChartColor(metric.key, resolvedTheme === "dark"),
                     })
                   )}
                 </div>
@@ -3658,7 +3688,7 @@ export function App() {
                         showLegend: false,
                         compact,
                         dark: resolvedTheme === "dark",
-                        color: resolvedTheme === "dark" ? "#fb923c" : "#f97316",
+                        color: topicChartColor(metric.key, resolvedTheme === "dark"),
                         labels: {
                           noData: t.noData,
                           latest: t.chartLatest,
@@ -3675,6 +3705,7 @@ export function App() {
                         decimals: metric.decimals,
                         compact,
                         dark: resolvedTheme === "dark",
+                        color: topicChartColor(metric.key, resolvedTheme === "dark"),
                         labels: {
                           noData: t.noData,
                           latest: t.chartLatest,
