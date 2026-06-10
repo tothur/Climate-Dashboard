@@ -283,6 +283,10 @@ const STRINGS = {
     sourceMixedNote: "One or more live feeds failed; fallback data fills gaps.",
     sourceBundledNote: "All live feeds failed; bundled fallback drives every chart.",
     sourceWarningsTitle: "Data warnings",
+    sourceStatusTitle: "Dataset status",
+    sourceUpdatedTitle: "Last refresh",
+    sourceListTitle: "Source links",
+    sourceListNote: "Authoritative upstream feeds used to build the dashboard dataset.",
     sourceCardsTitle: "Data",
     sourceLabel: "Source",
     chartFullscreenEnter: "Full screen",
@@ -444,6 +448,10 @@ const STRINGS = {
     sourceMixedNote: "Egy vagy több élő adatforrás nem elérhető; a hiányt tartalék adatok pótolják.",
     sourceBundledNote: "Minden élő adatforrás nem elérhető; minden grafikon tartalék adatokat használ.",
     sourceWarningsTitle: "Adatfigyelmeztetések",
+    sourceStatusTitle: "Adatkészlet státusza",
+    sourceUpdatedTitle: "Utolsó frissítés",
+    sourceListTitle: "Forráshivatkozások",
+    sourceListNote: "A dashboard adatkészletének összeállításához használt elsődleges adatforrások.",
     sourceCardsTitle: "Adatok",
     sourceLabel: "Forrás",
     chartFullscreenEnter: "Teljes képernyő",
@@ -2073,11 +2081,44 @@ function topSummaryCategoryClass(metricKey: ClimateMetricSeries["key"]): string 
 
 type FreshnessTone = "fresh" | "warning" | "stale";
 type FreshnessCadence = "daily" | "monthly" | "quarterly" | "annual";
+type DataSourceSection = "temperature" | "ocean" | "ice" | "forcing" | "maps" | "outlook";
 
 interface FreshnessPolicy {
   cadence: FreshnessCadence;
   warningDays: number;
   staleDays: number;
+}
+
+function sourceSectionForMetric(metricKey: ClimateMetricSeries["key"]): DataSourceSection {
+  if (
+    GLOBAL_TEMPERATURE_KEYS.has(metricKey) ||
+    TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
+    REGIONAL_TEMPERATURE_KEYS.has(metricKey) ||
+    REGIONAL_TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
+    metricKey === DAILY_GLOBAL_MEAN_ANOMALY_KEY
+  ) {
+    return "temperature";
+  }
+  if (OCEAN_KEYS.has(metricKey) || metricKey === EARTH_ENERGY_IMBALANCE_KEY) return "ocean";
+  if (SEA_ICE_KEYS.has(metricKey) || ICE_SHEET_AND_GLACIER_KEYS.has(metricKey)) return "ice";
+  return "forcing";
+}
+
+function dataSourceSectionTitle(section: DataSourceSection, t: (typeof STRINGS)[Language]): string {
+  switch (section) {
+    case "temperature":
+      return t.globalTemperaturesSectionTitle;
+    case "ocean":
+      return t.oceansSectionTitle;
+    case "ice":
+      return t.iceSheetsAndGlaciersSectionTitle;
+    case "forcing":
+      return t.forcingTitle;
+    case "maps":
+      return t.mapsSectionTitle;
+    case "outlook":
+      return t.ensoOutlookTitle;
+  }
 }
 
 function freshnessPolicyForMetric(metricKey: ClimateMetricSeries["key"]): FreshnessPolicy {
@@ -2287,17 +2328,41 @@ export function App() {
     const sources = [...snapshot.indicators, ...snapshot.forcing].map((metric) => ({
       key: `${metric.key}-footer-source`,
       url: metric.source.url,
+      title: metricTitle(metric, language),
+      provider: formatSourceShortName(metric.source.shortName, language),
+      section: sourceSectionForMetric(metric.key),
       label: `${metricTitle(metric, language)} · ${formatSourceShortName(metric.source.shortName, language)}`,
     }));
     if (ensoSource?.sourceUrl) {
       sources.push({
         key: "enso-outlook-footer-source",
         url: ensoSource.sourceUrl,
+        title: t.ensoOutlookTitle,
+        provider: ensoSource.sourceLabel || "NOAA CPC",
+        section: "outlook",
         label: `${t.ensoOutlookTitle} · ${ensoSource.sourceLabel || "NOAA CPC"}`,
       });
     }
+    const mapSourceTitles: Record<ClimateMapKey, string> = {
+      global_2m_temperature: t.map2mTemperatureTitle,
+      global_2m_temperature_anomaly: t.map2mTemperatureAnomalyTitle,
+      global_sst: t.mapSstTitle,
+      global_sst_anomaly: t.mapSstAnomalyTitle,
+    };
+    for (const [mapKey, map] of Object.entries(dataSource.maps ?? {}) as Array<[ClimateMapKey, NonNullable<DashboardDataSource["maps"]>[ClimateMapKey]]>) {
+      if (!map?.sourceUrl) continue;
+      const title = mapSourceTitles[mapKey];
+      sources.push({
+        key: `${mapKey}-footer-source`,
+        url: map.sourceUrl,
+        title,
+        provider: "Climate Reanalyzer",
+        section: "maps",
+        label: `${title} · Climate Reanalyzer`,
+      });
+    }
     return sources;
-  }, [snapshot.indicators, snapshot.forcing, language, dataSource.ensoOutlook, t]);
+  }, [snapshot.indicators, snapshot.forcing, language, dataSource.ensoOutlook, dataSource.maps, t]);
   const monthlyLabels = useMemo(() => buildMonthLabels(language), [language]);
   const indicatorLines = useMemo(
     () =>
@@ -2731,10 +2796,31 @@ export function App() {
       : snapshot.sourceMode === "mixed"
         ? t.sourceMixed
         : t.sourceBundled;
+  const sourceModeNote =
+    snapshot.sourceMode === "live"
+      ? t.sourceLiveNote
+      : snapshot.sourceMode === "mixed"
+        ? t.sourceMixedNote
+        : t.sourceBundledNote;
   const footerWarnings = useMemo(
     () => uniqueNonEmptyStrings([...snapshot.warnings, ...(dataSource.mapWarnings ?? [])]),
     [snapshot.warnings, dataSource.mapWarnings]
   );
+  const groupedFooterSources = useMemo(() => {
+    const grouped = new Map<DataSourceSection, typeof footerSources>();
+    const seenUrls = new Set<string>();
+    for (const source of footerSources) {
+      if (!source.url || seenUrls.has(source.url)) continue;
+      seenUrls.add(source.url);
+      const entries = grouped.get(source.section) ?? [];
+      entries.push(source);
+      grouped.set(source.section, entries);
+    }
+    const order: DataSourceSection[] = ["temperature", "ocean", "ice", "forcing", "maps", "outlook"];
+    return order
+      .map((section) => ({ section, sources: grouped.get(section) ?? [] }))
+      .filter((group) => group.sources.length > 0);
+  }, [footerSources]);
   const ensoOutlookFreshness = ensoFreshnessBadge(ensoOutlook, language, t);
   const dailyGlobalMeanAnomalyFreshness = dailyGlobalMeanAnomalyMetric
     ? metricFreshnessBadge(dailyGlobalMeanAnomalyMetric, language, t)
@@ -3853,13 +3939,17 @@ export function App() {
 
       {activeView === "sources" ? (
       <footer className="dashboard-footer detail-page-section" id="sources">
-        <div className="footer-strip">
-          <span className={`footer-chip compact source ${snapshot.sourceMode === "live" ? "live" : "sample"}`}>
-            {t.sourceTitle}: {sourceModeLabel}
-          </span>
-          <span className="footer-chip">
-            {t.footerUpdated}: {formatDateTimeLabel(snapshot.updatedAtIso, language)}
-          </span>
+        <div className="data-page-status-grid">
+          <article className={`data-status-card source ${snapshot.sourceMode === "live" ? "live" : "sample"}`}>
+            <span>{t.sourceStatusTitle}</span>
+            <strong>{sourceModeLabel}</strong>
+            <p>{sourceModeNote}</p>
+          </article>
+          <article className="data-status-card">
+            <span>{t.sourceUpdatedTitle}</span>
+            <strong>{formatDateTimeLabel(snapshot.updatedAtIso, language)}</strong>
+            <p>{t.sourceListNote}</p>
+          </article>
         </div>
         {footerWarnings.length ? (
           <details className="footer-warnings">
@@ -3874,14 +3964,27 @@ export function App() {
           </details>
         ) : null}
         <div className="footer-sources">
-          <strong className="footer-sources-title">{t.sourceCardsTitle}</strong>
-          <div className="footer-sources-links">
-            {footerSources.map((source) => (
-              <a key={source.key} href={source.url} target="_blank" rel="noreferrer">
-                {source.label}
-              </a>
-            ))}
+          <div className="footer-sources-header">
+            <strong className="footer-sources-title">{t.sourceListTitle}</strong>
+            <p>{t.sourceListNote}</p>
           </div>
+          {groupedFooterSources.map((group) => (
+            <section className="source-link-section" key={group.section}>
+              <h2>{dataSourceSectionTitle(group.section, t)}</h2>
+              <ul className="source-link-list">
+                {group.sources.map((source) => (
+                  <li key={source.key}>
+                    <a href={source.url} target="_blank" rel="noreferrer">
+                      {source.title}
+                    </a>
+                    <span>
+                      {t.sourceLabel}: {source.provider}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
         </div>
         <p className="footer-credit">{t.footerCredit}</p>
       </footer>
