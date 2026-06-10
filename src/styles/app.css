@@ -1580,9 +1580,9 @@ h3 {
 
 .section-header-main h2 {
   margin: 0;
-  font-size: var(--type-section-title-size);
+  font-size: clamp(1.22rem, 1.75vw, 1.42rem);
   font-weight: var(--type-section-title-weight);
-  letter-spacing: 0;
+  letter-spacing: -0.02em;
 }
 
 .section-header-main p {
@@ -1633,9 +1633,9 @@ h3 {
 
 .climate-subsection-header h3 {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 720;
-  letter-spacing: 0;
+  font-size: clamp(1.08rem, 1.35vw, 1.22rem);
+  font-weight: 780;
+  letter-spacing: -0.015em;
 }
 
 .climate-subsection-header p {
@@ -3797,8 +3797,9 @@ body {
 }
 
 .section-header-main h2 {
-  font-size: 1.08rem;
-  font-weight: 740;
+  font-size: clamp(1.24rem, 1.75vw, 1.44rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .section-header-main p {
@@ -3835,7 +3836,10 @@ body {
 
 .climate-subsection-header h3 {
   color: var(--text);
-  font-size: 0.96rem;
+  font-size: clamp(1.1rem, 1.35vw, 1.24rem);
+  line-height: 1.18;
+  font-weight: 800;
+  letter-spacing: -0.015em;
 }
 
 .climate-subsection-header p {
@@ -3887,13 +3891,15 @@ body {
 }
 
 .panel-header {
-  min-height: 54px;
+  min-height: 58px;
 }
 
 .panel-header h2 {
   color: var(--text);
-  font-size: 0.98rem;
-  font-weight: 720;
+  font-size: clamp(1.04rem, 1.2vw, 1.16rem);
+  line-height: 1.18;
+  font-weight: 780;
+  letter-spacing: -0.012em;
 }
 
 .panel-header p {
@@ -4547,9 +4553,10 @@ body {
 .overview-card-header h2 {
   margin: 0;
   color: #081630;
-  font-size: 1.02rem;
-  line-height: 1.25;
-  font-weight: 740;
+  font-size: clamp(1.08rem, 1.35vw, 1.2rem);
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.015em;
 }
 
 .info-icon {
@@ -4685,7 +4692,9 @@ body {
 }
 
 .overview-map-pair .panel-header h2 {
-  font-size: 0.96rem;
+  font-size: clamp(1.02rem, 1.16vw, 1.12rem);
+  line-height: 1.16;
+  font-weight: 780;
 }
 
 .overview-map-pair .panel-header p {
