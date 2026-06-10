@@ -1774,7 +1774,7 @@ function buildAllowedContextSignals(summary, ensoOutlook) {
     );
   }
   if (seaIce?.latestDate && Number.isFinite(seaIce.latestValue)) {
-    signals.push(`Global sea ice extent is ${seaIce.latestValue} million square kilometers as of ${seaIce.latestDate}.`);
+    signals.push(`Global sea ice extent is ${seaIce.latestValue} million km² as of ${seaIce.latestDate}.`);
   }
   if (ensoOutlook?.targetLabel && ensoOutlook.condition && Number.isFinite(ensoOutlook.probability)) {
     signals.push(

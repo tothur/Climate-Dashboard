@@ -181,7 +181,7 @@
       "label": "Global Sea Ice Extent",
       "latestDate": "2026-06-08",
       "latestValue": 22.39,
-      "unit": "million sq km",
+      "unit": "million km²",
       "source": "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files."
     },
     {
@@ -189,7 +189,7 @@
       "label": "Arctic Sea Ice Extent",
       "latestDate": "2026-06-08",
       "latestValue": 10.97,
-      "unit": "million sq km",
+      "unit": "million km²",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv"
     },
     {
@@ -197,7 +197,7 @@
       "label": "Antarctic Sea Ice Extent",
       "latestDate": "2026-06-08",
       "latestValue": 11.42,
-      "unit": "million sq km",
+      "unit": "million km²",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv"
     },
     {

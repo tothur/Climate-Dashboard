@@ -2037,7 +2037,7 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
     return "°C";
   }
   if (language !== "hu") return unit;
-  if (SEA_ICE_KEYS.has(metricKey)) return "millió km2";
+  if (SEA_ICE_KEYS.has(metricKey)) return "millió km²";
   if (metricKey === "global_mean_sea_level") return "mm";
   if (metricKey === "ocean_heat_content") return "10^22 J";
   if (metricKey === EARTH_ENERGY_IMBALANCE_KEY) return "W/m²";

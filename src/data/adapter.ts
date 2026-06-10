@@ -333,7 +333,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   global_sea_ice_extent: {
     titleEn: "Global Sea Ice Extent",
     titleHu: "Globális tengeri jégkiterjedés",
-    unit: "million sq km",
+    unit: "million km²",
     decimals: 2,
     source: {
       shortName: "NSIDC Sea Ice Index v4",
@@ -345,7 +345,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   arctic_sea_ice_extent: {
     titleEn: "Arctic Sea Ice Extent",
     titleHu: "Arktiszi tengeri jégkiterjedés",
-    unit: "million sq km",
+    unit: "million km²",
     decimals: 2,
     source: {
       shortName: "NSIDC Sea Ice Index v4 (North)",
@@ -357,7 +357,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   antarctic_sea_ice_extent: {
     titleEn: "Antarctic Sea Ice Extent",
     titleHu: "Antarktiszi tengeri jégkiterjedés",
-    unit: "million sq km",
+    unit: "million km²",
     decimals: 2,
     source: {
       shortName: "NSIDC Sea Ice Index v4 (South)",
