@@ -3755,7 +3755,6 @@ export function App() {
                 <div className="regional-summary-grid projection-summary-grid">
                   <article className="alert-card summary topcat-anomaly projection-summary-card projection-estimate-summary-card">
                     <div className="projection-summary-heading">
-                      <span className="alert-kicker">{t.projectionExperimentalLabel}</span>
                       <h2>{t.projectedAnnualTemperatureAnomalyTitle}</h2>
                     </div>
                     {renderProjectionEstimate("summary")}
@@ -3771,7 +3770,6 @@ export function App() {
                     </div>
                   </article>
                   <article className="alert-card summary topcat-anomaly projection-summary-card">
-                    <span className="alert-kicker">{t.projectionExperimentalLabel}</span>
                     <h2>{t.projectionProbabilityAboveOnePointFiveTitle}</h2>
                     <p className="alert-emphasis">
                       {renderPrimaryValue(
@@ -3803,7 +3801,6 @@ export function App() {
                     </div>
                   </article>
                   <article className="alert-card summary topcat-anomaly projection-summary-card">
-                    <span className="alert-kicker">{t.projectionExperimentalLabel}</span>
                     <h2>{t.projectionProbabilityWarmestRecordTitle}</h2>
                     <p className="alert-emphasis">
                       {renderPrimaryValue(
