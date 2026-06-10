@@ -695,12 +695,13 @@ h3 {
 }
 
 .alert-card.summary h2 {
-  font-size: 0.78rem;
-  line-height: 1.24;
-  margin-bottom: 5px;
+  color: color-mix(in srgb, var(--text) 90%, var(--summary-value-color) 10%);
+  font-size: clamp(0.96rem, 1.15vw, 1.08rem);
+  line-height: 1.18;
+  margin-bottom: 6px;
   text-transform: none;
-  letter-spacing: 0;
-  font-weight: 670;
+  letter-spacing: -0.01em;
+  font-weight: 760;
 }
 
 .alert-card.summary .alert-emphasis {
@@ -3856,6 +3857,12 @@ body {
 .alert-card.summary:not(.summary-top) {
   min-height: 128px;
   padding: 16px;
+}
+
+.alert-card.summary:not(.summary-top) h2 {
+  font-size: clamp(1rem, 1.25vw, 1.16rem);
+  line-height: 1.18;
+  font-weight: 780;
 }
 
 .alert-card.summary:not(.summary-top) .alert-emphasis {
