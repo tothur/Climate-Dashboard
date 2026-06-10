@@ -2000,7 +2000,11 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
 }
 
 function topSummaryCategoryClass(metricKey: ClimateMetricSeries["key"]): string {
-  if (metricKey === "global_surface_temperature" || metricKey === "global_sea_surface_temperature") {
+  if (
+    metricKey === "global_surface_temperature" ||
+    metricKey === "global_sea_surface_temperature" ||
+    REGIONAL_TEMPERATURE_KEYS.has(metricKey)
+  ) {
     return "topcat-temperature";
   }
   if (
@@ -2016,6 +2020,12 @@ function topSummaryCategoryClass(metricKey: ClimateMetricSeries["key"]): string 
   }
   if (metricKey === "atmospheric_co2" || metricKey === "atmospheric_ch4" || metricKey === "atmospheric_aggi") {
     return "topcat-forcing";
+  }
+  if (OCEAN_KEYS.has(metricKey) || metricKey === EARTH_ENERGY_IMBALANCE_KEY) {
+    return "topcat-ocean";
+  }
+  if (ICE_SHEET_AND_GLACIER_KEYS.has(metricKey)) {
+    return "topcat-sea-ice";
   }
   return "topcat-neutral";
 }
@@ -3189,7 +3199,7 @@ export function App() {
                   {globalTemperatureLines.map(({ metric }) => {
                     const freshness = metricFreshnessBadge(metric, language, t);
                     return (
-                      <article className="alert-card summary" key={`${metric.key}-global-temperature-summary`}>
+                      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-global-temperature-summary`}>
                         <span className="alert-kicker">{t.latestLabel}</span>
                         <h2>{metricTitle(metric, language)}</h2>
                         <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
@@ -3224,7 +3234,7 @@ export function App() {
                   {anomalyTemperatureLines.map(({ metric }) => {
                     const freshness = metricFreshnessBadge(metric, language, t);
                     return (
-                      <article className="alert-card summary" key={`${metric.key}-temperature-anomaly-summary`}>
+                      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-temperature-anomaly-summary`}>
                         <span className="alert-kicker">{t.latestLabel}</span>
                         <h2>{metricTitle(metric, language)}</h2>
                         <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
@@ -3337,7 +3347,7 @@ export function App() {
                   {regionalSummaryMetrics.map((metric) => {
                     const freshness = metricFreshnessBadge(metric, language, t);
                     return (
-                      <article className="alert-card summary" key={`${metric.key}-regional-summary`}>
+                      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-regional-summary`}>
                         <span className="alert-kicker">{t.latestLabel}</span>
                         <h2>{metricTitle(metric, language)}</h2>
                         <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
@@ -3372,7 +3382,7 @@ export function App() {
                   {regionalTemperatureAnomalySummaryMetrics.map((metric) => {
                     const freshness = metricFreshnessBadge(metric, language, t);
                     return (
-                      <article className="alert-card summary" key={`${metric.key}-regional-anomaly-summary`}>
+                      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-regional-anomaly-summary`}>
                         <span className="alert-kicker">{t.latestLabel}</span>
                         <h2>{metricTitle(metric, language)}</h2>
                         <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
@@ -3407,7 +3417,7 @@ export function App() {
                   {oceanMetrics.map((metric) => {
                     const freshness = metricFreshnessBadge(metric, language, t);
                     return (
-                      <article className="alert-card summary" key={`${metric.key}-ocean-summary`}>
+                      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-ocean-summary`}>
                         <h2>{metricTitle(metric, language)}</h2>
                         <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
                         {runtimeDataReady ? (
@@ -3482,7 +3492,7 @@ export function App() {
                   {seaIceSummaryMetrics.map((metric) => {
                     const freshness = metricFreshnessBadge(metric, language, t);
                     return (
-                      <article className="alert-card summary" key={`${metric.key}-sea-ice-summary`}>
+                      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-sea-ice-summary`}>
                         <span className="alert-kicker">{t.latestLabel}</span>
                         <h2>{metricTitle(metric, language)}</h2>
                         <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
@@ -3608,7 +3618,7 @@ export function App() {
                 {snapshot.forcing.map((metric) => {
                   const freshness = metricFreshnessBadge(metric, language, t);
                   return (
-                    <article className="alert-card summary" key={`${metric.key}-forcing-summary`}>
+                    <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-forcing-summary`}>
                       <span className="alert-kicker">{t.latestLabel}</span>
                       <h2>{metricTitle(metric, language)}</h2>
                       <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
@@ -3712,7 +3722,7 @@ export function App() {
               <div className="projection-enso-card-row">{renderEnsoOutlookCard({ showSourceLink: true })}</div>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid projection-summary-grid">
-                  <article className="alert-card summary projection-summary-card projection-estimate-summary-card">
+                  <article className="alert-card summary topcat-anomaly projection-summary-card projection-estimate-summary-card">
                     <div className="projection-summary-heading">
                       <span className="alert-kicker">{t.projectionExperimentalLabel}</span>
                       <h2>{t.projectedAnnualTemperatureAnomalyTitle}</h2>
@@ -3729,7 +3739,7 @@ export function App() {
                       ) : null}
                     </div>
                   </article>
-                  <article className="alert-card summary projection-summary-card">
+                  <article className="alert-card summary topcat-anomaly projection-summary-card">
                     <span className="alert-kicker">{t.projectionExperimentalLabel}</span>
                     <h2>{t.projectionProbabilityAboveOnePointFiveTitle}</h2>
                     <p className="alert-emphasis">
@@ -3761,7 +3771,7 @@ export function App() {
                       </span>
                     </div>
                   </article>
-                  <article className="alert-card summary projection-summary-card">
+                  <article className="alert-card summary topcat-anomaly projection-summary-card">
                     <span className="alert-kicker">{t.projectionExperimentalLabel}</span>
                     <h2>{t.projectionProbabilityWarmestRecordTitle}</h2>
                     <p className="alert-emphasis">

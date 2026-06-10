@@ -153,9 +153,9 @@ h3 {
   border-radius: 999px;
   vertical-align: middle;
   background:
-    linear-gradient(90deg, rgba(11, 105, 255, 0.11), rgba(11, 105, 255, 0.2), rgba(11, 105, 255, 0.11)),
-    rgba(11, 105, 255, 0.09);
-  box-shadow: inset 0 0 0 1px rgba(11, 105, 255, 0.1);
+    linear-gradient(90deg, rgba(83, 97, 123, 0.1), rgba(83, 97, 123, 0.18), rgba(83, 97, 123, 0.1)),
+    rgba(83, 97, 123, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(83, 97, 123, 0.09);
 }
 
 .value-loading-skeleton::after {
@@ -690,6 +690,7 @@ h3 {
 }
 
 .alert-card.summary {
+  --summary-value-color: #0b69ff;
   padding-top: 14px;
 }
 
@@ -703,20 +704,19 @@ h3 {
 }
 
 .alert-card.summary .alert-emphasis {
-  display: inline-flex;
-  align-items: baseline;
+  display: block;
   width: fit-content;
   max-width: 100%;
-  margin-top: 4px;
-  padding: 7px 10px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--pathogen-soft, rgba(11, 105, 255, 0.1)) 82%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pathogen-accent, #0b69ff) 12%, transparent);
+  margin-top: 8px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   font-size: clamp(1.45rem, 2.05vw, 1.95rem);
   line-height: 1.05;
-  letter-spacing: 0;
+  letter-spacing: -0.02em;
   font-weight: 800;
-  color: var(--pathogen-emphasis, var(--accent));
+  color: var(--summary-value-color);
 }
 
 .alert-emphasis-row {
@@ -811,6 +811,28 @@ h3 {
 .alert-card.summary.summary-top.topcat-neutral {
   --top-card-accent: #2563eb;
   --top-card-soft: rgba(37, 99, 235, 0.14);
+}
+
+.alert-card.summary.topcat-temperature,
+.alert-card.summary.topcat-anomaly {
+  --summary-value-color: #e11d2f;
+}
+
+.alert-card.summary.topcat-sea-ice {
+  --summary-value-color: #7c3aed;
+}
+
+.alert-card.summary.topcat-forcing,
+.alert-card.summary.topcat-enso {
+  --summary-value-color: #16a34a;
+}
+
+.alert-card.summary.topcat-ocean {
+  --summary-value-color: #0284c7;
+}
+
+.alert-card.summary.topcat-neutral {
+  --summary-value-color: #0b69ff;
 }
 
 .alert-card.summary.summary-top h2 {
@@ -3676,6 +3698,10 @@ body {
   color: var(--purple);
 }
 
+.alert-card.summary.summary-top.topcat-ocean {
+  color: var(--info);
+}
+
 .alert-card.summary.summary-top.topcat-sea-ice::before {
   background:
     linear-gradient(currentColor 0 0) 50% 50% / 23px 3px no-repeat,
@@ -3833,12 +3859,12 @@ body {
 }
 
 .alert-card.summary:not(.summary-top) .alert-emphasis {
-  margin-top: 6px;
-  padding: 8px 11px;
-  border-radius: 11px;
-  background: rgba(11, 105, 255, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(11, 105, 255, 0.11);
-  color: var(--accent);
+  margin-top: 8px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--summary-value-color);
   font-size: clamp(1.45rem, 2.05vw, 1.95rem);
   font-weight: 800;
 }
@@ -4576,7 +4602,7 @@ body {
 }
 
 .enso-overview-window strong {
-  color: #081630;
+  color: #166534;
   font-size: clamp(1.18rem, 1.45vw, 1.4rem);
   line-height: 1.08;
   font-weight: 780;
@@ -4745,11 +4771,10 @@ body {
 .projection-estimate-copy strong {
   width: fit-content;
   max-width: 100%;
-  border-radius: 10px;
-  padding: 6px 10px;
-  background: rgba(11, 105, 255, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(11, 105, 255, 0.11);
-  color: #0b69ff;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #e11d2f;
   font-size: clamp(1.55rem, 2.15vw, 2rem);
   line-height: 1.05;
   font-weight: 800;
@@ -4777,7 +4802,7 @@ body {
 }
 
 .projection-interval-heading strong {
-  color: #0b69ff;
+  color: #e11d2f;
   font-size: 1rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -5207,15 +5232,28 @@ body {
     #0d1b31;
 }
 
-[data-theme="dark"] .alert-card.summary:not(.summary-top) .alert-emphasis,
-[data-theme="dark"] .projection-estimate-copy strong {
-  background: rgba(125, 176, 255, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(125, 176, 255, 0.18);
-  color: #7db0ff;
+[data-theme="dark"] .alert-card.summary.topcat-temperature,
+[data-theme="dark"] .alert-card.summary.topcat-anomaly {
+  --summary-value-color: #fb7185;
 }
 
+[data-theme="dark"] .alert-card.summary.topcat-sea-ice {
+  --summary-value-color: #a78bfa;
+}
+
+[data-theme="dark"] .alert-card.summary.topcat-forcing,
+[data-theme="dark"] .alert-card.summary.topcat-enso {
+  --summary-value-color: #34d399;
+}
+
+[data-theme="dark"] .alert-card.summary.topcat-ocean,
+[data-theme="dark"] .alert-card.summary.topcat-neutral {
+  --summary-value-color: #7db0ff;
+}
+
+[data-theme="dark"] .projection-estimate-copy strong,
 [data-theme="dark"] .projection-interval-heading strong {
-  color: #7db0ff;
+  color: #fb7185;
 }
 
 [data-theme="dark"] .value-loading-skeleton {
