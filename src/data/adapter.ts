@@ -57,7 +57,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   global_surface_temperature: {
     titleEn: "Global Surface Temperature",
     titleHu: "Globális felszíni hőmérséklet",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (ERA5)",
@@ -69,7 +69,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   global_sea_surface_temperature: {
     titleEn: "Global Sea Surface Temperature",
     titleHu: "Globális tengerfelszíni hőmérséklet",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (NOAA OISST v2.1)",
@@ -161,7 +161,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   northern_hemisphere_surface_temperature: {
     titleEn: "Northern Hemisphere Surface Temperature",
     titleHu: "Északi félteke felszíni hőmérséklete",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (ERA5)",
@@ -173,7 +173,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   southern_hemisphere_surface_temperature: {
     titleEn: "Southern Hemisphere Surface Temperature",
     titleHu: "Déli félteke felszíni hőmérséklete",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (ERA5)",
@@ -185,7 +185,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   arctic_surface_temperature: {
     titleEn: "Arctic Surface Temperature",
     titleHu: "Arktiszi felszíni hőmérséklet",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (ERA5)",
@@ -197,7 +197,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   antarctic_surface_temperature: {
     titleEn: "Antarctic Surface Temperature",
     titleHu: "Antarktiszi felszíni hőmérséklet",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (ERA5)",
@@ -209,7 +209,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   north_atlantic_sea_surface_temperature: {
     titleEn: "North Atlantic Sea Surface Temperature",
     titleHu: "Észak-atlanti tengerfelszíni hőmérséklet",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (NOAA OISST v2.1)",
@@ -221,7 +221,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   global_surface_temperature_anomaly: {
     titleEn: "Global Surface Temperature Anomaly",
     titleHu: "Globális felszíni hőmérsékleti anomália",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (ERA5, 1991-2020 baseline)",
@@ -235,7 +235,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   global_sea_surface_temperature_anomaly: {
     titleEn: "Global Sea Surface Temperature Anomaly",
     titleHu: "Globális tengerfelszíni hőmérsékleti anomália",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (OISST v2.1, 1991-2020 baseline)",
@@ -249,7 +249,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   northern_hemisphere_surface_temperature_anomaly: {
     titleEn: "Northern Hemisphere Surface Temperature Anomaly",
     titleHu: "Északi félteke felszíni hőmérsékleti anomáliája",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (ERA5, 1991-2020 baseline)",
@@ -263,7 +263,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   southern_hemisphere_surface_temperature_anomaly: {
     titleEn: "Southern Hemisphere Surface Temperature Anomaly",
     titleHu: "Déli félteke felszíni hőmérsékleti anomáliája",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (ERA5, 1991-2020 baseline)",
@@ -277,7 +277,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   arctic_surface_temperature_anomaly: {
     titleEn: "Arctic Surface Temperature Anomaly",
     titleHu: "Arktiszi felszíni hőmérsékleti anomália",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (ERA5, 1991-2020 baseline)",
@@ -291,7 +291,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   antarctic_surface_temperature_anomaly: {
     titleEn: "Antarctic Surface Temperature Anomaly",
     titleHu: "Antarktiszi felszíni hőmérsékleti anomália",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (ERA5, 1991-2020 baseline)",
@@ -305,7 +305,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   north_atlantic_sea_surface_temperature_anomaly: {
     titleEn: "North Atlantic Sea Surface Temperature Anomaly",
     titleHu: "Észak-atlanti tengerfelszíni hőmérsékleti anomália",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "Climate Reanalyzer (OISST v2.1, 1991-2020 baseline)",
@@ -319,7 +319,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   daily_global_mean_temperature_anomaly: {
     titleEn: "Daily Global Mean Temperature Anomaly",
     titleHu: "Napi globális átlaghőmérséklet-anomália",
-    unit: "deg C",
+    unit: "°C",
     decimals: 2,
     source: {
       shortName: "ECMWF ERA5 Climate Pulse (preindustrial estimate)",

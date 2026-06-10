@@ -1979,7 +1979,7 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
     case "antarctic_surface_temperature_anomaly":
     case "north_atlantic_sea_surface_temperature_anomaly":
     case "daily_global_mean_temperature_anomaly":
-      return language === "hu" ? "Celsius-fok" : "degrees °C";
+      return "°C";
     case "global_mean_sea_level":
       return language === "hu" ? "milliméter (mm)" : "millimeters (mm)";
     case "ocean_heat_content":
@@ -2027,6 +2027,15 @@ function forcingAxisBounds(metricKey: ClimateMetricSeries["key"]): { yMin?: numb
 }
 
 function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, language: Language): string {
+  if (
+    GLOBAL_TEMPERATURE_KEYS.has(metricKey) ||
+    REGIONAL_TEMPERATURE_KEYS.has(metricKey) ||
+    TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
+    REGIONAL_TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
+    metricKey === DAILY_GLOBAL_MEAN_ANOMALY_KEY
+  ) {
+    return "°C";
+  }
   if (language !== "hu") return unit;
   if (SEA_ICE_KEYS.has(metricKey)) return "millió km2";
   if (metricKey === "global_mean_sea_level") return "mm";
@@ -2036,15 +2045,6 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
   if (metricKey === "antarctic_ice_sheet_mass_balance") return "Gt";
   if (metricKey === "greenland_ice_sheet_mass_balance") return "Gt";
   if (metricKey === "atmospheric_aggi") return "index";
-  if (
-    GLOBAL_TEMPERATURE_KEYS.has(metricKey) ||
-    REGIONAL_TEMPERATURE_KEYS.has(metricKey) ||
-    TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
-    REGIONAL_TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
-    metricKey === DAILY_GLOBAL_MEAN_ANOMALY_KEY
-  ) {
-    return "Celsius-fok";
-  }
   return unit;
 }
 
@@ -2473,7 +2473,7 @@ export function App() {
       observedSeriesName: t.annualGlobalTemperatureAnomalyTitle,
       projectionSeriesName: t.projectedAnnualTemperatureAnomalyTitle,
       intervalLabel: t.projectionIntervalLabel,
-      unit: dailyGlobalMeanAnomalyMetric.unit,
+      unit: cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language),
       decimals: dailyGlobalMeanAnomalyMetric.decimals,
       yAxisMin: PROJECTION_OVERVIEW_Y_MIN,
       yAxisMax: PROJECTION_OVERVIEW_Y_MAX,
@@ -2501,7 +2501,7 @@ export function App() {
       seriesName: t.annualGlobalTemperatureAnomalyTitle,
       projectionSeriesName: t.projectedAnnualTemperatureAnomalyTitle,
       rangeLabel: t.projectionRangeLabel,
-      unit: dailyGlobalMeanAnomalyMetric.unit,
+      unit: cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language),
       decimals: dailyGlobalMeanAnomalyMetric.decimals,
       yAxisMin: 1,
       yAxisMax: 2,
@@ -2716,7 +2716,7 @@ export function App() {
         option={buildClimateMonthlyComparisonOption({
           monthLabels: monthlyLabels,
           lines,
-          unit: metric.unit,
+          unit: cardUnitLabel(metric.key, metric.unit, language),
           decimals: metric.decimals,
           yAxisMin: bounds.min,
           yAxisMax: bounds.max,
@@ -2764,7 +2764,7 @@ export function App() {
         option={buildClimateTrendOption({
           points: metric.points,
           seriesName: metricTitle(metric, language),
-          unit: metric.unit,
+          unit: cardUnitLabel(metric.key, metric.unit, language),
           decimals: metric.decimals,
           lineWidth: options?.lineWidth ?? 2.1,
           yAxisMin: bounds.min,
@@ -2846,7 +2846,7 @@ export function App() {
   const projectionSupportLabel = projectionSupportSource ? formatSourceShortName(projectionSupportSource, language) : null;
   const projectionUnitLabel = cardUnitLabel(
     DAILY_GLOBAL_MEAN_ANOMALY_KEY,
-    dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+    dailyGlobalMeanAnomalyMetric?.unit ?? "°C",
     language
   );
   const projectionIntervalTrack = projectedAnnualGlobalMeanAnomaly
@@ -3394,7 +3394,7 @@ export function App() {
                     option={buildClimateTrendOption({
                       points: dailyGlobalMeanAnomalyMetric.points,
                       seriesName: t.dailyGlobalTemperatureAnomalyTitle,
-                      unit: dailyGlobalMeanAnomalyMetric.unit,
+                      unit: cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language),
                       decimals: dailyGlobalMeanAnomalyMetric.decimals,
                       lineWidth: 1.15,
                       yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
@@ -3438,7 +3438,7 @@ export function App() {
                     option={buildClimateTrendOption({
                       points: annualGlobalMeanAnomalyPoints,
                       seriesName: t.annualGlobalTemperatureAnomalyTitle,
-                      unit: dailyGlobalMeanAnomalyMetric.unit,
+                      unit: cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language),
                       decimals: dailyGlobalMeanAnomalyMetric.decimals,
                       yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
                       yAxisMax: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).max,
@@ -3583,7 +3583,7 @@ export function App() {
                     option={buildClimateTrendOption({
                       points: earthEnergyImbalanceTrendPoints,
                       seriesName: t.earthEnergyImbalanceTitle,
-                      unit: earthEnergyImbalanceMetric.unit,
+                      unit: cardUnitLabel(earthEnergyImbalanceMetric.key, earthEnergyImbalanceMetric.unit, language),
                       decimals: earthEnergyImbalanceMetric.decimals,
                       lineWidth: 2.2,
                       yAxisMin: indicatorYAxisBounds(earthEnergyImbalanceMetric.key).min,
@@ -3870,7 +3870,7 @@ export function App() {
                         {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)}{" "}
                         {cardUnitLabel(
                           DAILY_GLOBAL_MEAN_ANOMALY_KEY,
-                          dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+                          dailyGlobalMeanAnomalyMetric?.unit ?? "°C",
                           language
                         )}
                       </p>
@@ -3901,7 +3901,7 @@ export function App() {
                         {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.recordThreshold)}{" "}
                         {cardUnitLabel(
                           DAILY_GLOBAL_MEAN_ANOMALY_KEY,
-                          dailyGlobalMeanAnomalyMetric?.unit ?? "deg C",
+                          dailyGlobalMeanAnomalyMetric?.unit ?? "°C",
                           language
                         )}
                       </p>
