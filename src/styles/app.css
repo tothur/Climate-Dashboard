@@ -5929,6 +5929,16 @@ body {
   background: #181c31;
 }
 
+[data-theme="dark"] .overview-ai-summary .ai-summary-list,
+[data-theme="dark"] .ai-summary-panel .ai-summary-list {
+  color: #f1f5fb;
+}
+
+[data-theme="dark"] .overview-ai-summary .ai-summary-list li::marker,
+[data-theme="dark"] .ai-summary-panel .ai-summary-list li::marker {
+  color: #7dd3fc;
+}
+
 [data-theme="dark"] .summary-cards-section {
   background: transparent;
 }
