@@ -5149,6 +5149,80 @@ body {
   min-height: 0;
 }
 
+.overview-long-range-section {
+  display: grid;
+  min-width: 0;
+}
+
+.overview-temperature-trend-card {
+  display: grid;
+  gap: 14px;
+}
+
+.overview-temperature-trend-card .overview-card-header {
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.overview-temperature-trend-card .overview-card-header p {
+  margin: 5px 0 0;
+  max-width: 78ch;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  font-weight: 560;
+}
+
+.long-range-temperature-chart .panel {
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.long-range-temperature-chart .panel-header,
+.long-range-temperature-chart .panel-chart-footer {
+  display: none;
+}
+
+.long-range-temperature-chart .panel-chart-wrap {
+  height: clamp(320px, 34vw, 430px);
+}
+
+.scenario-2100-values {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.scenario-2100-chip {
+  --scenario-color: #0b69ff;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 11px 12px;
+  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--scenario-color) 24%, rgba(8, 22, 48, 0.1));
+  background: color-mix(in srgb, var(--scenario-color) 9%, #ffffff);
+}
+
+.scenario-2100-chip span,
+.scenario-2100-chip small {
+  color: color-mix(in srgb, var(--text) 62%, var(--muted));
+  font-size: 0.74rem;
+  line-height: 1.15;
+  font-weight: 720;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.scenario-2100-chip strong {
+  color: var(--scenario-color);
+  font-size: clamp(1.18rem, 2vw, 1.48rem);
+  line-height: 1;
+  font-weight: 860;
+  letter-spacing: -0.045em;
+}
+
 .what-this-means {
   display: grid;
   align-content: center;
@@ -5815,6 +5889,10 @@ body {
   .projection-layout {
     grid-template-columns: 1fr;
   }
+
+  .scenario-2100-values {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @container dashboard-content (max-width: 740px) {
@@ -5888,6 +5966,10 @@ body {
     height: clamp(240px, 64vw, 285px);
   }
 
+  .scenario-2100-values {
+    grid-template-columns: 1fr;
+  }
+
   .detail-page-section .maps-grid .map-panel-image-wrap {
     height: clamp(300px, 82vw, 430px);
   }
@@ -5955,6 +6037,17 @@ body {
   border-color: rgba(204, 215, 232, 0.12);
   background: #101f38;
   box-shadow: none;
+}
+
+[data-theme="dark"] .scenario-2100-chip {
+  border-color: color-mix(in srgb, var(--scenario-color) 36%, rgba(204, 215, 232, 0.14));
+  background: color-mix(in srgb, var(--scenario-color) 14%, #101f38);
+}
+
+[data-theme="dark"] .scenario-2100-chip span,
+[data-theme="dark"] .scenario-2100-chip small,
+[data-theme="dark"] .overview-temperature-trend-card .overview-card-header p {
+  color: #cbd5e1;
 }
 
 [data-theme="dark"] .panel:hover,
