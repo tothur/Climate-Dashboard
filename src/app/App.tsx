@@ -61,7 +61,19 @@ interface LongRangeScenarioDefinition {
   colorDark: string;
 }
 
+interface TippingPointDefinition {
+  key: string;
+  labelEn: string;
+  labelHu: string;
+  categoryEn: string;
+  categoryHu: string;
+  centralThreshold: number;
+  minThreshold: number;
+  maxThreshold: number;
+}
+
 const CMIP7_SCENARIOMIP_TEMPERATURE_SOURCE_URL = "https://gmd.copernicus.org/articles/19/2627/2026/";
+const MCKAY_TIPPING_POINTS_SOURCE_URL = "https://www.science.org/doi/10.1126/science.abn7950";
 const CMIP7_SCENARIOMIP_SCENARIOS: LongRangeScenarioDefinition[] = [
   {
     key: "high",
@@ -138,6 +150,169 @@ const CMIP7_SCENARIOMIP_SCENARIOS: LongRangeScenarioDefinition[] = [
     ],
     colorLight: "#008b81",
     colorDark: "#34d399",
+  },
+];
+
+const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
+  {
+    key: "greenland-ice-sheet",
+    labelEn: "Greenland Ice Sheet collapse",
+    labelHu: "Grönlandi jégtakaró összeomlása",
+    categoryEn: "Ice sheet",
+    categoryHu: "Jégtakaró",
+    centralThreshold: 1.5,
+    minThreshold: 0.8,
+    maxThreshold: 3,
+  },
+  {
+    key: "west-antarctic-ice-sheet",
+    labelEn: "West Antarctic Ice Sheet collapse",
+    labelHu: "Nyugat-antarktiszi jégtakaró összeomlása",
+    categoryEn: "Ice sheet",
+    categoryHu: "Jégtakaró",
+    centralThreshold: 1.5,
+    minThreshold: 1,
+    maxThreshold: 3,
+  },
+  {
+    key: "coral-reefs",
+    labelEn: "Low-latitude coral reef die-off",
+    labelHu: "Alacsony szélességi korallzátonyok pusztulása",
+    categoryEn: "Ecosystem",
+    categoryHu: "Ökoszisztéma",
+    centralThreshold: 1.5,
+    minThreshold: 1,
+    maxThreshold: 2,
+  },
+  {
+    key: "abrupt-permafrost-thaw",
+    labelEn: "Boreal permafrost abrupt thaw",
+    labelHu: "Boreális permafroszt hirtelen olvadása",
+    categoryEn: "Permafrost",
+    categoryHu: "Permafroszt",
+    centralThreshold: 1.5,
+    minThreshold: 1,
+    maxThreshold: 2.3,
+  },
+  {
+    key: "barents-sea-ice",
+    labelEn: "Barents Sea ice abrupt loss",
+    labelHu: "Barents-tengeri jég hirtelen elvesztése",
+    categoryEn: "Sea ice",
+    categoryHu: "Tengeri jég",
+    centralThreshold: 1.6,
+    minThreshold: 1.5,
+    maxThreshold: 1.7,
+  },
+  {
+    key: "labrador-irminger-convection",
+    labelEn: "Labrador-Irminger Seas convection collapse",
+    labelHu: "Labrador-Irminger tengeri konvekció összeomlása",
+    categoryEn: "Ocean circulation",
+    categoryHu: "Óceáni cirkuláció",
+    centralThreshold: 1.8,
+    minThreshold: 1.1,
+    maxThreshold: 3.8,
+  },
+  {
+    key: "mountain-glaciers",
+    labelEn: "Mountain glacier loss",
+    labelHu: "Hegyi gleccserek elvesztése",
+    categoryEn: "Glaciers",
+    categoryHu: "Gleccserek",
+    centralThreshold: 2,
+    minThreshold: 1.5,
+    maxThreshold: 3,
+  },
+  {
+    key: "sahel-greening",
+    labelEn: "Sahel and West African monsoon greening",
+    labelHu: "Száhel és nyugat-afrikai monszun zöldülése",
+    categoryEn: "Monsoon",
+    categoryHu: "Monszun",
+    centralThreshold: 2.8,
+    minThreshold: 2,
+    maxThreshold: 3.5,
+  },
+  {
+    key: "east-antarctic-subglacial-basins",
+    labelEn: "East Antarctic subglacial basins collapse",
+    labelHu: "Kelet-antarktiszi szubglaciális medencék összeomlása",
+    categoryEn: "Ice sheet",
+    categoryHu: "Jégtakaró",
+    centralThreshold: 3,
+    minThreshold: 2,
+    maxThreshold: 6,
+  },
+  {
+    key: "amazon-rainforest",
+    labelEn: "Amazon rainforest dieback",
+    labelHu: "Amazóniai esőerdő visszaszorulása",
+    categoryEn: "Ecosystem",
+    categoryHu: "Ökoszisztéma",
+    centralThreshold: 3.5,
+    minThreshold: 2,
+    maxThreshold: 6,
+  },
+  {
+    key: "boreal-permafrost-collapse",
+    labelEn: "Boreal permafrost collapse",
+    labelHu: "Boreális permafroszt összeomlása",
+    categoryEn: "Permafrost",
+    categoryHu: "Permafroszt",
+    centralThreshold: 4,
+    minThreshold: 3,
+    maxThreshold: 6,
+  },
+  {
+    key: "amoc",
+    labelEn: "Atlantic Meridional Overturning Circulation collapse",
+    labelHu: "Atlanti meridionális áramlási rendszer összeomlása",
+    categoryEn: "Ocean circulation",
+    categoryHu: "Óceáni cirkuláció",
+    centralThreshold: 4,
+    minThreshold: 1.4,
+    maxThreshold: 8,
+  },
+  {
+    key: "boreal-forest-south",
+    labelEn: "Boreal forest southern dieback",
+    labelHu: "Boreális erdők déli visszaszorulása",
+    categoryEn: "Ecosystem",
+    categoryHu: "Ökoszisztéma",
+    centralThreshold: 4,
+    minThreshold: 1.4,
+    maxThreshold: 5,
+  },
+  {
+    key: "boreal-forest-north",
+    labelEn: "Boreal forest northern expansion",
+    labelHu: "Boreális erdők északi terjeszkedése",
+    categoryEn: "Ecosystem",
+    categoryHu: "Ökoszisztéma",
+    centralThreshold: 4,
+    minThreshold: 1.5,
+    maxThreshold: 7.2,
+  },
+  {
+    key: "arctic-winter-sea-ice",
+    labelEn: "Arctic winter sea ice collapse",
+    labelHu: "Arktiszi téli tengeri jég összeomlása",
+    categoryEn: "Sea ice",
+    categoryHu: "Tengeri jég",
+    centralThreshold: 6.3,
+    minThreshold: 4.5,
+    maxThreshold: 8.7,
+  },
+  {
+    key: "east-antarctic-ice-sheet",
+    labelEn: "East Antarctic Ice Sheet collapse",
+    labelHu: "Kelet-antarktiszi jégtakaró összeomlása",
+    categoryEn: "Ice sheet",
+    categoryHu: "Jégtakaró",
+    centralThreshold: 7.5,
+    minThreshold: 5,
+    maxThreshold: 10,
   },
 ];
 type DashboardView = "overview" | "indicators" | "forcing" | "maps" | "projections" | "sources";
@@ -339,6 +514,16 @@ const STRINGS = {
     scenarioMediumLabel: "Medium",
     scenarioMediumLowLabel: "Medium-Low",
     scenarioLowLabel: "Low",
+    tippingPointsTitle: "Earth System Tipping Points",
+    tippingPointsSubtitle:
+      "Central global-warming thresholds from Armstrong McKay et al. (2022), colored by proximity to the dashboard's current annual warming estimate.",
+    tippingPointsSourceLabel: "McKay et al. 2022",
+    tippingCurrentWarmingLabel: "Current warming estimate",
+    tippingCentralThresholdLabel: "central threshold",
+    tippingRangeLabel: "assessed range",
+    tippingStateLikely: "Above central threshold",
+    tippingStatePossible: "Inside uncertainty range",
+    tippingStateBelow: "Below assessed range",
     projectionExperimentalLabel: "Experimental",
     projectionEstimateLabel: "Projected mean",
     projectionIntervalLabel: "15th-85th percentile interval",
@@ -515,6 +700,16 @@ const STRINGS = {
     scenarioMediumLabel: "Közepes",
     scenarioMediumLowLabel: "Közepes-alacsony",
     scenarioLowLabel: "Alacsony",
+    tippingPointsTitle: "Földrendszer billenőpontjai",
+    tippingPointsSubtitle:
+      "Armstrong McKay et al. (2022) központi globális melegedési küszöbei, a dashboard aktuális éves melegedési becsléséhez viszonyítva színezve.",
+    tippingPointsSourceLabel: "McKay et al. 2022",
+    tippingCurrentWarmingLabel: "Aktuális melegedési becslés",
+    tippingCentralThresholdLabel: "központi küszöb",
+    tippingRangeLabel: "becsült tartomány",
+    tippingStateLikely: "A központi küszöb felett",
+    tippingStatePossible: "A bizonytalansági tartományban",
+    tippingStateBelow: "A becsült tartomány alatt",
     projectionExperimentalLabel: "Kísérleti",
     projectionEstimateLabel: "Becsült átlag",
     projectionIntervalLabel: "15-85. percentilis tartomány",
@@ -1394,6 +1589,35 @@ function buildAnnualProjectionEstimate(
 
 function scenarioDisplayLabel(scenario: LongRangeScenarioDefinition, language: Language): string {
   return language === "hu" ? scenario.labelHu : scenario.labelEn;
+}
+
+function tippingPointLabel(tippingPoint: TippingPointDefinition, language: Language): string {
+  return language === "hu" ? tippingPoint.labelHu : tippingPoint.labelEn;
+}
+
+function tippingPointCategory(tippingPoint: TippingPointDefinition, language: Language): string {
+  return language === "hu" ? tippingPoint.categoryHu : tippingPoint.categoryEn;
+}
+
+function tippingPointAccent(currentWarming: number | null, threshold: number): string {
+  if (currentWarming == null || !Number.isFinite(currentWarming) || !Number.isFinite(threshold) || threshold <= 0) {
+    return "#7db0ff";
+  }
+  const progress = clamp(currentWarming / threshold, 0, 1);
+  const hue = Math.round(210 - progress * 210);
+  const lightness = Math.round(48 + progress * 4);
+  return `hsl(${hue} 78% ${lightness}%)`;
+}
+
+function tippingPointState(
+  tippingPoint: TippingPointDefinition,
+  currentWarming: number | null,
+  t: (typeof STRINGS)[Language]
+): string {
+  if (currentWarming == null || !Number.isFinite(currentWarming)) return t.tippingStateBelow;
+  if (currentWarming >= tippingPoint.centralThreshold) return t.tippingStateLikely;
+  if (currentWarming >= tippingPoint.minThreshold) return t.tippingStatePossible;
+  return t.tippingStateBelow;
 }
 
 function interpolateScenarioValue(anchors: Array<[number, number]>, year: number): number | null {
@@ -2929,6 +3153,21 @@ export function App() {
       })),
     [language, resolvedTheme]
   );
+  const currentTippingWarming = latestAnnualGlobalMeanAnomaly?.value ?? null;
+  const tippingPointCards = useMemo(
+    () =>
+      MCKAY_TIPPING_POINTS.map((tippingPoint) => ({
+        key: tippingPoint.key,
+        label: tippingPointLabel(tippingPoint, language),
+        category: tippingPointCategory(tippingPoint, language),
+        centralThreshold: tippingPoint.centralThreshold,
+        minThreshold: tippingPoint.minThreshold,
+        maxThreshold: tippingPoint.maxThreshold,
+        state: tippingPointState(tippingPoint, currentTippingWarming, t),
+        accent: tippingPointAccent(currentTippingWarming, tippingPoint.centralThreshold),
+      })),
+    [currentTippingWarming, language, t]
+  );
   const regionalTemperatureLines = useMemo(
     () =>
       indicatorLines
@@ -3740,6 +3979,63 @@ export function App() {
                 </article>
               </section>
             ) : null}
+
+            <section className="overview-tipping-section">
+              <article className="overview-card overview-tipping-card">
+                <div className="overview-card-header">
+                  <div>
+                    <h2>{t.tippingPointsTitle}</h2>
+                    <p>{t.tippingPointsSubtitle}</p>
+                  </div>
+                  <a className="text-link-button" href={MCKAY_TIPPING_POINTS_SOURCE_URL} target="_blank" rel="noreferrer">
+                    {t.tippingPointsSourceLabel} →
+                  </a>
+                </div>
+                <div className="tipping-current-pill">
+                  <span>{t.tippingCurrentWarmingLabel}</span>
+                  <strong>
+                    {currentTippingWarming == null ? "-" : projectionNumberFormat.format(currentTippingWarming)} {projectionUnitLabel}
+                  </strong>
+                  {annualGlobalMeanAnomalyIsYtd ? <small>{t.ytdLabel}</small> : null}
+                </div>
+                <div className="tipping-card-grid">
+                  {tippingPointCards.map((card) => (
+                    <article className="tipping-point-card" key={card.key} style={{ "--tipping-accent": card.accent } as CSSProperties}>
+                      <div className="tipping-card-topline">
+                        <span>{card.category}</span>
+                        <strong>{card.state}</strong>
+                      </div>
+                      <h3>{card.label}</h3>
+                      <div className="tipping-threshold-row">
+                        <span>{t.tippingCentralThresholdLabel}</span>
+                        <strong>
+                          {projectionNumberFormat.format(card.centralThreshold)} {projectionUnitLabel}
+                        </strong>
+                      </div>
+                      <div className="tipping-range-track" aria-hidden="true">
+                        <span
+                          className="tipping-current-marker"
+                          style={{
+                            left:
+                              currentTippingWarming == null
+                                ? "0%"
+                                : `${clamp((currentTippingWarming / card.maxThreshold) * 100, 0, 100)}%`,
+                          }}
+                        />
+                        <span
+                          className="tipping-central-marker"
+                          style={{ left: `${clamp((card.centralThreshold / card.maxThreshold) * 100, 0, 100)}%` }}
+                        />
+                      </div>
+                      <p>
+                        {t.tippingRangeLabel}: {projectionNumberFormat.format(card.minThreshold)}-
+                        {projectionNumberFormat.format(card.maxThreshold)} {projectionUnitLabel}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              </article>
+            </section>
           </div>
         ) : null}
 
