@@ -1485,9 +1485,13 @@ function buildLongRangeTemperatureTrendOption({
   const scenarioPoints = CMIP7_SCENARIOMIP_SCENARIOS.map((scenario) => ({
     scenario,
     label: scenarioDisplayLabel(scenario, language),
+    value2100: scenario.anchors.find(([year]) => year === LONG_RANGE_SCENARIO_END_YEAR)?.[1] ?? null,
     color: dark ? scenario.colorDark : scenario.colorLight,
     points: buildScenarioAnnualPoints(scenario),
   }));
+  const scenarioValueByLabel = new Map(
+    scenarioPoints.map(({ label, value2100 }) => [label, value2100] as const)
+  );
 
   return {
     animation: false,
@@ -1532,6 +1536,11 @@ function buildLongRangeTemperatureTrendOption({
       borderWidth: 1,
       borderRadius: 10,
       textStyle: { color: palette.text, fontWeight: 650, fontSize: compact ? 10 : 12, lineHeight: 16 },
+      formatter: (name: string) => {
+        const value2100 = scenarioValueByLabel.get(name);
+        if (value2100 == null) return name;
+        return `${name} · 2100: ${formatter.format(value2100)}${unit}`;
+      },
     },
     xAxis: {
       type: "category",
@@ -1578,7 +1587,7 @@ function buildLongRangeTemperatureTrendOption({
           silent: true,
           symbol: "none",
           lineStyle: { type: "dashed", width: 1.2 },
-          label: { show: true, color: palette.text, fontWeight: 700 },
+          label: { show: false },
           data: [
             { yAxis: 1.5, label: { formatter: "1.5°C" }, lineStyle: { color: dark ? "#fbbf24" : "#f59e0b" } },
             { yAxis: 2, label: { formatter: "2.0°C" }, lineStyle: { color: dark ? "#f87171" : "#dc2626" } },
@@ -1598,10 +1607,9 @@ function buildLongRangeTemperatureTrendOption({
           lineStyle: { color, width: compact ? 2.1 : 2.6, cap: "round" as const },
         };
       }),
-      ...scenarioPoints.map(({ label, color, scenario }) => {
-        const value2100 = scenario.anchors.find(([year]) => year === LONG_RANGE_SCENARIO_END_YEAR)?.[1] ?? null;
+      ...scenarioPoints.map(({ label, color, scenario, value2100 }) => {
         return {
-          name: `${label} 2100`,
+          name: label,
           type: "scatter" as const,
           data: value2100 == null ? [] : [[String(LONG_RANGE_SCENARIO_END_YEAR), value2100]],
           symbolSize: compact ? 6 : 8,
