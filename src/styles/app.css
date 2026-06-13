@@ -5230,7 +5230,7 @@ body {
 
 .overview-tipping-card {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .overview-tipping-card .overview-card-header {
@@ -5277,32 +5277,35 @@ body {
 
 .tipping-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 12px;
 }
 
 .tipping-point-card {
   --tipping-accent: #7db0ff;
   display: grid;
-  gap: 10px;
+  grid-template-rows: auto minmax(3.15rem, auto) auto auto auto;
+  align-content: start;
+  gap: 12px;
   min-width: 0;
-  padding: 13px;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--tipping-accent) 30%, rgba(8, 22, 48, 0.1));
+  min-height: 218px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--tipping-accent) 28%, rgba(8, 22, 48, 0.1));
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--tipping-accent) 10%, transparent), transparent 72%),
-    color-mix(in srgb, var(--tipping-accent) 6%, #ffffff);
+    radial-gradient(circle at top right, color-mix(in srgb, var(--tipping-accent) 14%, transparent), transparent 46%),
+    linear-gradient(180deg, color-mix(in srgb, var(--tipping-accent) 7%, transparent), transparent 76%),
+    color-mix(in srgb, var(--tipping-accent) 4%, #ffffff);
+  box-shadow: 0 10px 24px rgba(8, 22, 48, 0.045);
 }
 
 .tipping-card-topline {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: flex-start;
 }
 
 .tipping-card-topline span,
-.tipping-card-topline strong,
 .tipping-threshold-row span,
 .tipping-point-card p {
   color: color-mix(in srgb, var(--text) 62%, var(--muted));
@@ -5313,38 +5316,53 @@ body {
   letter-spacing: 0.045em;
 }
 
-.tipping-card-topline strong {
-  color: var(--tipping-accent);
-  text-align: right;
+.tipping-card-topline span {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 25px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--tipping-accent) 30%, rgba(8, 22, 48, 0.08));
+  background: color-mix(in srgb, var(--tipping-accent) 9%, rgba(255, 255, 255, 0.8));
+  color: color-mix(in srgb, var(--text) 74%, var(--tipping-accent));
 }
 
 .tipping-point-card h3 {
   margin: 0;
   color: var(--text);
-  font-size: clamp(1rem, 1.35vw, 1.15rem);
+  font-size: clamp(1.02rem, 1.28vw, 1.2rem);
   line-height: 1.12;
-  font-weight: 820;
-  letter-spacing: -0.035em;
+  font-weight: 850;
+  letter-spacing: -0.04em;
 }
 
 .tipping-threshold-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+  margin-top: 2px;
+  padding-top: 2px;
 }
 
 .tipping-threshold-row strong {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
   color: var(--tipping-accent);
-  font-size: clamp(1.25rem, 2vw, 1.6rem);
+  font-size: clamp(1.78rem, 2.55vw, 2.25rem);
   line-height: 1;
   font-weight: 880;
-  letter-spacing: -0.055em;
+  letter-spacing: -0.065em;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .tipping-range-track {
   position: relative;
-  height: 8px;
+  height: 9px;
+  margin-top: 1px;
   overflow: hidden;
   border-radius: 999px;
   background: linear-gradient(90deg, #7db0ff, #fbbf24 55%, #ef4444);
@@ -5354,9 +5372,9 @@ body {
 .tipping-current-marker,
 .tipping-central-marker {
   position: absolute;
-  top: -3px;
+  top: -4px;
   width: 3px;
-  height: 14px;
+  height: 17px;
   border-radius: 999px;
   transform: translateX(-50%);
 }
@@ -5374,7 +5392,8 @@ body {
   margin: 0;
   text-transform: none;
   letter-spacing: 0;
-  font-weight: 680;
+  font-size: 0.78rem;
+  font-weight: 720;
 }
 
 .what-this-means {

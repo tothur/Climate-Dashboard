@@ -4000,10 +4000,14 @@ export function App() {
                 </div>
                 <div className="tipping-card-grid">
                   {tippingPointCards.map((card) => (
-                    <article className="tipping-point-card" key={card.key} style={{ "--tipping-accent": card.accent } as CSSProperties}>
+                    <article
+                      className="tipping-point-card"
+                      key={card.key}
+                      style={{ "--tipping-accent": card.accent } as CSSProperties}
+                      aria-label={`${card.label}: ${card.state}`}
+                    >
                       <div className="tipping-card-topline">
                         <span>{card.category}</span>
-                        <strong>{card.state}</strong>
                       </div>
                       <h3>{card.label}</h3>
                       <div className="tipping-threshold-row">
