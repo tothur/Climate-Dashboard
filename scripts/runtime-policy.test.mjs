@@ -63,6 +63,17 @@ test("optional CERES refresh fails fast and falls back to retained validated dat
   assert.match(updateScript, /earth_energy_imbalance: retaining the previous validated CERES series/);
 });
 
+test("optional WGMS refresh cannot block daily data and map publication", async () => {
+  const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
+
+  assert.match(
+    updateScript,
+    /fetchText\(WGMS_MASS_CHANGE_ESTIMATES_URL,\s*\{\s*timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,\s*attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS/
+  );
+  assert.match(updateScript, /global_glacier_mass_balance: WGMS archive refresh failed/);
+  assert.match(updateScript, /global_glacier_mass_balance: retaining the previous validated WGMS series/);
+});
+
 test("NASA ice-sheet chart refreshes fall back to retained validated data", async () => {
   const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
 
@@ -85,7 +96,8 @@ test("ENSO outlook prefers NOAA CPC diagnostic updates when available", async ()
   const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
 
   assert.match(updateScript, /fetchText\(NOAA_CPC_ENSO_DISCUSSION_URL\)/);
-  assert.match(updateScript, /const ensoOutlook = parseCpcEnsoOutlook\(ensoDiscussionHtml\) \?\? parseIriEnsoOutlook\(iriEnsoHtml\)/);
+  assert.match(updateScript, /isCompleteEnsoOutlook\(parsedCpcEnsoOutlook\)/);
+  assert.match(updateScript, /enso_outlook: retaining the previous validated ENSO forecast windows/);
 });
 
 test("AI summary prompt prioritizes daily records over slow background indicators", async () => {

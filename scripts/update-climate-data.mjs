@@ -466,6 +466,29 @@ async function loadPreviousAiSummary() {
   }
 }
 
+function isCompleteEnsoOutlook(value) {
+  if (!isRecord(value)) return false;
+  for (const key of ["nextThreeMonths", "nextSixMonths"]) {
+    const window = value[key];
+    if (!isRecord(window)) return false;
+    if (!["la_nina", "neutral", "el_nino"].includes(window.condition)) return false;
+    if (!Number.isFinite(Number(window.probability))) return false;
+    if (typeof window.targetLabel !== "string" || !window.targetLabel.trim()) return false;
+  }
+  return typeof value.sourceLabel === "string" && value.sourceLabel.trim().length > 0 &&
+    typeof value.sourceUrl === "string" && value.sourceUrl.trim().length > 0;
+}
+
+async function loadPreviousEnsoOutlook() {
+  try {
+    const raw = await readFile(OUTPUT_PATH, "utf8");
+    const payload = JSON.parse(raw);
+    return isCompleteEnsoOutlook(payload?.ensoOutlook) ? payload.ensoOutlook : null;
+  } catch {
+    return null;
+  }
+}
+
 async function downloadCurrentMap(dateIso, url) {
   if (!dateIso) throw new Error("Missing map date.");
   const bytes = await fetchBinary(url);
@@ -2105,7 +2128,14 @@ async function updateOnce() {
       dataWarnings.push(`earth_energy_imbalance: CERES listing refresh failed (${reason}).`);
       return null;
     }),
-    fetchText(WGMS_MASS_CHANGE_ESTIMATES_URL),
+    fetchText(WGMS_MASS_CHANGE_ESTIMATES_URL, {
+      timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
+      attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
+    }).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`global_glacier_mass_balance: WGMS listing refresh failed (${reason}).`);
+      return null;
+    }),
     fetchJson(NASA_ANTARCTICA_MASS_VARIATION_CHART_URL).catch((error) => {
       const reason = error instanceof Error ? error.message : String(error);
       dataWarnings.push(`antarctic_ice_sheet_mass_balance: NASA chart refresh failed (${reason}).`);
@@ -2116,8 +2146,16 @@ async function updateOnce() {
       dataWarnings.push(`greenland_ice_sheet_mass_balance: NASA chart refresh failed (${reason}).`);
       return null;
     }),
-    fetchText(IRI_ENSO_CURRENT_URL),
-    fetchText(NOAA_CPC_ENSO_DISCUSSION_URL),
+    fetchText(IRI_ENSO_CURRENT_URL).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`enso_outlook: IRI refresh failed (${reason}).`);
+      return null;
+    }),
+    fetchText(NOAA_CPC_ENSO_DISCUSSION_URL).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`enso_outlook: NOAA CPC refresh failed (${reason}).`);
+      return null;
+    }),
     fetchJson(CR_SST_LATEST_MAP_DATE_URL),
   ]);
 
@@ -2281,13 +2319,27 @@ async function updateOnce() {
     }
   }
   const wgmsAmceZipUrl = extractWgmsAmceZipUrl(wgmsAmceHtml);
-  const wgmsAmceZipBytes = wgmsAmceZipUrl ? await fetchBinary(wgmsAmceZipUrl) : null;
+  let wgmsAmceZipBytes = null;
+  if (wgmsAmceZipUrl) {
+    try {
+      wgmsAmceZipBytes = await fetchBinary(wgmsAmceZipUrl);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`global_glacier_mass_balance: WGMS archive refresh failed (${reason}).`);
+    }
+  }
   const wgmsGlobalCsv = wgmsAmceZipBytes ? extractZipEntryText(wgmsAmceZipBytes, WGMS_AMCE_GLOBAL_CSV_ENTRY) : "";
-  const globalGlacierMassBalance = sanitizeSeries(parseWgmsGlobalGlacierCsv(wgmsGlobalCsv), {
+  let globalGlacierMassBalance = sanitizeSeries(parseWgmsGlobalGlacierCsv(wgmsGlobalCsv), {
     minValue: -1200,
     maxValue: 250,
     maxAgeDays: 1600,
   });
+  if (!globalGlacierMassBalance.length) {
+    globalGlacierMassBalance = await loadPreviousSeries("global_glacier_mass_balance");
+    if (globalGlacierMassBalance.length > 0) {
+      dataWarnings.push("global_glacier_mass_balance: retaining the previous validated WGMS series.");
+    }
+  }
   const antarcticMassVariation = parseNasaMassVariationChartJson(antarcticaMassVariationPayload);
   let antarcticIceSheetMassBalance = sanitizeSeries(buildCumulativeLossSeries(antarcticMassVariation), {
     minValue: 0,
@@ -2317,7 +2369,19 @@ async function updateOnce() {
     maxValue: 10,
     maxAgeDays: 20,
   });
-  const ensoOutlook = parseCpcEnsoOutlook(ensoDiscussionHtml) ?? parseIriEnsoOutlook(iriEnsoHtml);
+  const parsedCpcEnsoOutlook = parseCpcEnsoOutlook(ensoDiscussionHtml);
+  const parsedIriEnsoOutlook = parseIriEnsoOutlook(iriEnsoHtml);
+  let ensoOutlook = isCompleteEnsoOutlook(parsedCpcEnsoOutlook)
+    ? parsedCpcEnsoOutlook
+    : isCompleteEnsoOutlook(parsedIriEnsoOutlook)
+      ? parsedIriEnsoOutlook
+      : null;
+  if (!ensoOutlook) {
+    ensoOutlook = await loadPreviousEnsoOutlook();
+    if (ensoOutlook) {
+      dataWarnings.push("enso_outlook: retaining the previous validated ENSO forecast windows.");
+    }
+  }
 
   const todayIso = formatIsoDate(new Date());
   const sstMapDateIso = dateIsoFromLegacyLatestMapPayload(sstMapDatePayload) ?? todayIso;
