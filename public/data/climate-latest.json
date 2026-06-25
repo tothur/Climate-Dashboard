@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAtIso": "2026-06-25T07:12:43.243Z",
+  "generatedAtIso": "2026-06-25T08:32:06.545Z",
   "scope": "Read-only compact snapshot of the latest published Climate Dashboard observations. It excludes full historical series; answer historical trend questions only when data for them is present.",
   "interpretationRules": [
     "State the observation date alongside each reported latest value.",
