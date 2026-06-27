@@ -341,10 +341,16 @@ const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", 
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
 const ICE_SHEET_AND_GLACIER_KEYS = new Set([
   "global_glacier_mass_balance",
+  "mountain_glacier_mass_balance",
   "antarctic_ice_sheet_mass_balance",
+  "west_antarctic_ice_sheet_mass_balance",
   "greenland_ice_sheet_mass_balance",
 ]);
-const ICE_SHEET_LOSS_KEYS = new Set(["antarctic_ice_sheet_mass_balance", "greenland_ice_sheet_mass_balance"]);
+const ICE_SHEET_LOSS_KEYS = new Set([
+  "antarctic_ice_sheet_mass_balance",
+  "west_antarctic_ice_sheet_mass_balance",
+  "greenland_ice_sheet_mass_balance",
+]);
 const EARTH_ENERGY_IMBALANCE_KEY: ClimateMetricSeries["key"] = "earth_energy_imbalance";
 const TEMPERATURE_ANOMALY_KEYS = new Set(["global_surface_temperature_anomaly", "global_sea_surface_temperature_anomaly"]);
 const DAILY_GLOBAL_MEAN_ANOMALY_KEY: ClimateMetricSeries["key"] = "daily_global_mean_temperature_anomaly";
@@ -384,10 +390,38 @@ const OCEAN_ORDER: ClimateMetricSeries["key"][] = ["global_mean_sea_level", "oce
 const OCEAN_RANK = new Map(OCEAN_ORDER.map((key, index) => [key, index]));
 const ICE_SHEET_AND_GLACIER_ORDER: ClimateMetricSeries["key"][] = [
   "global_glacier_mass_balance",
+  "mountain_glacier_mass_balance",
   "antarctic_ice_sheet_mass_balance",
+  "west_antarctic_ice_sheet_mass_balance",
   "greenland_ice_sheet_mass_balance",
 ];
 const ICE_SHEET_AND_GLACIER_RANK = new Map(ICE_SHEET_AND_GLACIER_ORDER.map((key, index) => [key, index]));
+const ICE_SHEET_SEA_LEVEL_EQUIVALENTS = [
+  {
+    key: "eais",
+    acronym: "EAIS",
+    nameEn: "East Antarctic Ice Sheet",
+    nameHu: "Kelet-antarktiszi jégtakaró",
+    valueMeters: 52.2,
+    source: "Fretwell et al. 2013 / BEDMAP2",
+  },
+  {
+    key: "wais",
+    acronym: "WAIS",
+    nameEn: "West Antarctic Ice Sheet",
+    nameHu: "Nyugat-antarktiszi jégtakaró",
+    valueMeters: 5.3,
+    source: "Fretwell et al. 2013 / BEDMAP2",
+  },
+  {
+    key: "gris",
+    acronym: "GrIS",
+    nameEn: "Greenland Ice Sheet",
+    nameHu: "Grönlandi jégtakaró",
+    valueMeters: 7.4,
+    source: "Morlighem et al. 2017 / BedMachine",
+  },
+];
 const TOP_SUMMARY_ORDER: ClimateMetricSeries["key"][] = [
   "global_surface_temperature",
   "global_surface_temperature_anomaly",
@@ -551,7 +585,11 @@ const STRINGS = {
       "Global, Arctic, and Antarctic extent shown with daily points in a Jan-Dec comparison view.",
     iceSheetsAndGlaciersSectionTitle: "Ice Sheets and Glaciers",
     iceSheetsAndGlaciersSectionNote:
-      "Annual global glacier mass balance from WGMS, plus cumulative Antarctic and Greenland ice-sheet mass loss since 2002 derived from NASA GRACE/GRACE-FO mass variation.",
+      "WGMS global glacier mass change and reference-glacier mass balance, plus cumulative Antarctic and Greenland ice-sheet mass loss since 2002 derived from NASA GRACE/GRACE-FO mass variation.",
+    seaLevelEquivalentKicker: "Sea-level equivalent",
+    seaLevelEquivalentSubtitle: "Potential global mean sea-level rise from complete ice-sheet loss.",
+    nino34IndexTitle: "Historical Niño 3.4 Index",
+    nino34IndexSubtitle: "NOAA CPC Oceanic Niño Index · centered 3-month Niño 3.4 SST anomaly",
     mapsSectionTitle: "Maps",
     mapsSectionNote:
       "Latest available Climate Reanalyzer Today’s Weather maps. Temperature fields use GFS; SST uses preliminary NOAA OISST. Baselines are shown within anomaly maps.",
@@ -563,7 +601,7 @@ const STRINGS = {
     mapSstSubtitle: "Latest available map · Climate Reanalyzer Today’s Weather",
     mapUnavailable: "Map unavailable",
     forcingTitle: "Forcing",
-    forcingNote: "Atmospheric forcing signals from Mauna Loa CO2, global CH4 observations, and the NOAA Annual Greenhouse Gas Index.",
+    forcingNote: "Forcing signals from Mauna Loa CO2, global CH4 observations, the NOAA Annual Greenhouse Gas Index, and TSIS-1 total solar irradiance.",
     sourceTitle: "Data source mode",
     sourceLive: "Live feeds",
     sourceMixed: "Mixed live + fallback",
@@ -737,7 +775,11 @@ const STRINGS = {
       "Globális, arktiszi és antarktiszi jégkiterjedés napi adatokkal, január-decemberi összehasonlító nézetben.",
     iceSheetsAndGlaciersSectionTitle: "Jégtakarók és gleccserek",
     iceSheetsAndGlaciersSectionNote:
-      "A WGMS éves globális gleccser-tömegmérlege, valamint a NASA GRACE/GRACE-FO tömegváltozási adataiból származtatott kumulatív antarktiszi és grönlandi jégtakaró-tömegveszteség 2002 óta.",
+      "A WGMS globális gleccser-tömegváltozása és referencia-gleccser tömegmérlege, valamint a NASA GRACE/GRACE-FO tömegváltozási adataiból származtatott kumulatív antarktiszi és grönlandi jégtakaró-tömegveszteség 2002 óta.",
+    seaLevelEquivalentKicker: "Tengerszint-egyenérték",
+    seaLevelEquivalentSubtitle: "A teljes jégtakaró-veszteségből adódó lehetséges globális átlagos tengerszint-emelkedés.",
+    nino34IndexTitle: "Történeti Niño 3.4 index",
+    nino34IndexSubtitle: "NOAA CPC Óceáni Niño Index · középre igazított 3 havi Niño 3.4 SST-anomália",
     mapsSectionTitle: "Térképek",
     mapsSectionNote:
       "A legfrissebb elérhető Climate Reanalyzer Today’s Weather térképek. A hőmérsékleti mezők GFS-, az SST-térképek előzetes NOAA OISST-adatokat használnak. Az anomáliabázisok a térképeken láthatók.",
@@ -749,7 +791,7 @@ const STRINGS = {
     mapSstSubtitle: "Legfrissebb elérhető térkép · Climate Reanalyzer Today’s Weather",
     mapUnavailable: "A térkép nem érhető el",
     forcingTitle: "Éghajlati kényszerek",
-    forcingNote: "Légköri kényszerek a Mauna Loa CO2, a globális CH4 megfigyelések és a NOAA éves üvegházhatásúgáz-index alapján.",
+    forcingNote: "Éghajlati kényszerek a Mauna Loa CO2, a globális CH4 megfigyelések, a NOAA éves üvegházhatásúgáz-index és a TSIS-1 teljes napsugárzás alapján.",
     sourceTitle: "Adatforrás mód",
     sourceLive: "Élő adatforrások",
     sourceMixed: "Vegyes (élő + tartalék)",
@@ -2537,6 +2579,8 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
       return { min: -700, max: 100 };
     case "antarctic_ice_sheet_mass_balance":
       return { min: 0, max: 3200 };
+    case "west_antarctic_ice_sheet_mass_balance":
+      return { min: 0, max: 2600 };
     case "greenland_ice_sheet_mass_balance":
       return { min: 0, max: 6200 };
     case "northern_hemisphere_surface_temperature":
@@ -2583,10 +2627,14 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
     case "ocean_heat_content":
       return language === "hu" ? "10^22 joule" : "10^22 joules";
     case "earth_energy_imbalance":
+    case "incoming_solar_energy":
       return language === "hu" ? "watt per négyzetméter (W/m²)" : "watts per square meter (W/m²)";
+    case "mountain_glacier_mass_balance":
+      return language === "hu" ? "méter vízegyenérték (m v.e.)" : "meters water equivalent (m w.e.)";
     case "global_glacier_mass_balance":
     case "greenland_ice_sheet_mass_balance":
       return language === "hu" ? "gigatonna (Gt)" : "gigatons (Gt)";
+    case "west_antarctic_ice_sheet_mass_balance":
     case "antarctic_ice_sheet_mass_balance":
       return language === "hu" ? "gigatonna (Gt)" : "gigatons (Gt)";
     case "global_sea_ice_extent":
@@ -2606,6 +2654,8 @@ function forcingYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language: 
       return language === "hu" ? "CH4 ppb" : "CH4 parts per billion (ppb)";
     case "atmospheric_aggi":
       return language === "hu" ? "AGGI index (1990=1)" : "AGGI index (1990=1)";
+    case "incoming_solar_energy":
+      return language === "hu" ? "teljes napsugárzás (W/m²)" : "total solar irradiance (W/m²)";
     default:
       return undefined;
   }
@@ -2619,6 +2669,8 @@ function forcingAxisBounds(metricKey: ClimateMetricSeries["key"]): { yMin?: numb
       return { yMin: 1500, yMax: 2050, minYear: 1983 };
     case "atmospheric_aggi":
       return { yMin: 0.7, yMax: 1.8, minYear: 1979 };
+    case "incoming_solar_energy":
+      return { yMin: 1360, yMax: 1363, minYear: 2018 };
     default:
       return {};
   }
@@ -2630,7 +2682,8 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
     REGIONAL_TEMPERATURE_KEYS.has(metricKey) ||
     TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
     REGIONAL_TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
-    metricKey === DAILY_GLOBAL_MEAN_ANOMALY_KEY
+    metricKey === DAILY_GLOBAL_MEAN_ANOMALY_KEY ||
+    metricKey === "nino34_index"
   ) {
     return "°C";
   }
@@ -2638,9 +2691,11 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
   if (SEA_ICE_KEYS.has(metricKey)) return "millió km²";
   if (metricKey === "global_mean_sea_level") return "mm";
   if (metricKey === "ocean_heat_content") return "10^22 J";
-  if (metricKey === EARTH_ENERGY_IMBALANCE_KEY) return "W/m²";
+  if (metricKey === EARTH_ENERGY_IMBALANCE_KEY || metricKey === "incoming_solar_energy") return "W/m²";
   if (metricKey === "global_glacier_mass_balance") return "Gt";
+  if (metricKey === "mountain_glacier_mass_balance") return "m w.e.";
   if (metricKey === "antarctic_ice_sheet_mass_balance") return "Gt";
+  if (metricKey === "west_antarctic_ice_sheet_mass_balance") return "Gt";
   if (metricKey === "greenland_ice_sheet_mass_balance") return "Gt";
   if (metricKey === "atmospheric_aggi") return "index";
   return unit;
@@ -2665,9 +2720,15 @@ function topSummaryCategoryClass(metricKey: ClimateMetricSeries["key"]): string 
   if (metricKey === "global_sea_ice_extent" || metricKey === "arctic_sea_ice_extent" || metricKey === "antarctic_sea_ice_extent") {
     return "topcat-sea-ice";
   }
-  if (metricKey === "atmospheric_co2" || metricKey === "atmospheric_ch4" || metricKey === "atmospheric_aggi") {
+  if (
+    metricKey === "atmospheric_co2" ||
+    metricKey === "atmospheric_ch4" ||
+    metricKey === "atmospheric_aggi" ||
+    metricKey === "incoming_solar_energy"
+  ) {
     return "topcat-forcing";
   }
+  if (metricKey === "nino34_index") return "topcat-enso";
   if (OCEAN_KEYS.has(metricKey) || metricKey === EARTH_ENERGY_IMBALANCE_KEY) {
     return "topcat-ocean";
   }
@@ -2697,6 +2758,7 @@ function sourceSectionForMetric(metricKey: ClimateMetricSeries["key"]): DataSour
   ) {
     return "temperature";
   }
+  if (metricKey === "nino34_index") return "outlook";
   if (OCEAN_KEYS.has(metricKey) || metricKey === EARTH_ENERGY_IMBALANCE_KEY) return "ocean";
   if (SEA_ICE_KEYS.has(metricKey) || ICE_SHEET_AND_GLACIER_KEYS.has(metricKey)) return "ice";
   return "forcing";
@@ -2735,15 +2797,21 @@ function freshnessPolicyForMetric(metricKey: ClimateMetricSeries["key"]): Freshn
     case "ocean_heat_content":
       return { cadence: "quarterly", warningDays: 180, staleDays: 360 };
     case "earth_energy_imbalance":
+    case "incoming_solar_energy":
       return { cadence: "monthly", warningDays: 120, staleDays: 220 };
     case "global_glacier_mass_balance":
+    case "mountain_glacier_mass_balance":
       return { cadence: "annual", warningDays: 650, staleDays: 1400 };
     case "antarctic_ice_sheet_mass_balance":
       return { cadence: "monthly", warningDays: 220, staleDays: 430 };
+    case "west_antarctic_ice_sheet_mass_balance":
+      return { cadence: "annual", warningDays: 2400, staleDays: 3200 };
     case "greenland_ice_sheet_mass_balance":
       return { cadence: "monthly", warningDays: 220, staleDays: 430 };
     case "atmospheric_aggi":
       return { cadence: "annual", warningDays: 550, staleDays: 900 };
+    case "nino34_index":
+      return { cadence: "monthly", warningDays: 120, staleDays: 220 };
     default:
       return { cadence: "daily", warningDays: 10, staleDays: 20 };
   }
@@ -2997,6 +3065,7 @@ export function App() {
     () => snapshot.indicators.find((metric) => metric.key === EARTH_ENERGY_IMBALANCE_KEY) ?? null,
     [snapshot.indicators]
   );
+  const nino34IndexMetric = useMemo(() => metricByKey.get("nino34_index") ?? null, [metricByKey]);
   const globalTemperatureLines = useMemo(
     () => indicatorLines.filter(({ metric }) => GLOBAL_TEMPERATURE_KEYS.has(metric.key)),
     [indicatorLines]
@@ -3058,6 +3127,26 @@ export function App() {
     () => (earthEnergyImbalanceMetric ? buildTrailingMeanSeries(earthEnergyImbalanceMetric.points, 12) : []),
     [earthEnergyImbalanceMetric]
   );
+  const nino34IndexChartOption = useMemo(() => {
+    if (!nino34IndexMetric?.points.length) return null;
+    return buildForcingTrendOption({
+      points: nino34IndexMetric.points,
+      title: metricTitle(nino34IndexMetric, language),
+      unit: cardUnitLabel(nino34IndexMetric.key, nino34IndexMetric.unit, language),
+      decimals: nino34IndexMetric.decimals,
+      yAxisMin: -3,
+      yAxisMax: 3,
+      yAxisUnitLabel: "°C",
+      xAxisStartYear: 1950,
+      compact,
+      dark: resolvedTheme === "dark",
+      color: topicChartColor(nino34IndexMetric.key, resolvedTheme === "dark"),
+      labels: {
+        noData: t.noData,
+        latest: t.chartLatest,
+      },
+    });
+  }, [compact, language, nino34IndexMetric, resolvedTheme, t]);
   const projectedAnnualChartPoints = useMemo(
     () => annualGlobalMeanAnomalyPoints.filter((point) => (parseYearFromDateIso(point.date) ?? 0) >= 2020),
     [annualGlobalMeanAnomalyPoints]
@@ -4397,6 +4486,29 @@ export function App() {
                   <h3>{t.iceSheetsAndGlaciersSectionTitle}</h3>
                   <p>{t.iceSheetsAndGlaciersSectionNote}</p>
                 </div>
+                <div className="summary-cards-section">
+                  <div className="regional-summary-grid">
+                    {ICE_SHEET_SEA_LEVEL_EQUIVALENTS.map((estimate) => (
+                      <article className="alert-card summary topcat-sea-ice" key={estimate.key}>
+                        <span className="alert-kicker">{t.seaLevelEquivalentKicker}</span>
+                        <h2>
+                          {estimate.acronym} · {language === "hu" ? estimate.nameHu : estimate.nameEn}
+                        </h2>
+                        <p className="alert-emphasis">
+                          {estimate.valueMeters.toLocaleString(language === "hu" ? "hu-HU" : "en-US", {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 1,
+                          })}{" "}
+                          m
+                        </p>
+                        <p>{t.seaLevelEquivalentSubtitle}</p>
+                        <div className="alert-meta">
+                          <span className="alert-meta-chip confidence-medium">{estimate.source}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
                 <div className="charts-grid climate-grid">
                   {iceSheetAndGlacierMetrics.map((metric) =>
                     renderTrendPanel(metric, {
@@ -4584,6 +4696,19 @@ export function App() {
           {projectionsSectionOpen ? (
             <div className="section-content">
               <div className="projection-enso-card-row">{renderEnsoOutlookCard({ showSourceLink: true })}</div>
+              {nino34IndexMetric && nino34IndexChartOption ? (
+                <div className="charts-grid climate-grid">
+                  <EChartsPanel
+                    title={t.nino34IndexTitle}
+                    subtitle={t.nino34IndexSubtitle}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
+                    freshnessLabel={metricFreshnessBadge(nino34IndexMetric, language, t)?.label}
+                    freshnessTone={metricFreshnessBadge(nino34IndexMetric, language, t)?.tone}
+                    option={nino34IndexChartOption}
+                  />
+                </div>
+              ) : null}
               <div className="summary-cards-section">
                 <div className="regional-summary-grid projection-summary-grid">
                   <article className="alert-card summary topcat-anomaly projection-summary-card projection-estimate-summary-card">

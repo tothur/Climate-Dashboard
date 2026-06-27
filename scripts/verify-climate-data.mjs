@@ -68,9 +68,23 @@ const SERIES_RULES = {
     minPoints: 250,
     minPointsLastYear: 6,
   },
+  incoming_solar_energy: {
+    minValue: 1358,
+    maxValue: 1364,
+    maxAgeDays: 220,
+    minPoints: 250,
+    minPointsLastYear: 6,
+  },
   global_glacier_mass_balance: {
     minValue: -1200,
     maxValue: 250,
+    maxAgeDays: 1600,
+    minPoints: 30,
+    minPointsLastYear: 0,
+  },
+  mountain_glacier_mass_balance: {
+    minValue: -4,
+    maxValue: 2,
     maxAgeDays: 1600,
     minPoints: 30,
     minPointsLastYear: 0,
@@ -81,6 +95,13 @@ const SERIES_RULES = {
     maxAgeDays: 430,
     minPoints: 200,
     minPointsLastYear: 8,
+  },
+  west_antarctic_ice_sheet_mass_balance: {
+    minValue: 0,
+    maxValue: 4000,
+    maxAgeDays: 3200,
+    minPoints: 200,
+    minPointsLastYear: 0,
   },
   greenland_ice_sheet_mass_balance: {
     minValue: 0,
@@ -221,6 +242,13 @@ const SERIES_RULES = {
     maxAgeDays: 1000,
     minPoints: 30,
     minPointsLastYear: 0,
+  },
+  nino34_index: {
+    minValue: -4,
+    maxValue: 4,
+    maxAgeDays: 220,
+    minPoints: 800,
+    minPointsLastYear: 6,
   },
 };
 

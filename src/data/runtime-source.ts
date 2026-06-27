@@ -29,8 +29,12 @@ const NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL = `${NASA_CERES_EBAF_OPENDAP_BASE_UR
 const NASA_CERES_EBAF_FILE_PATTERN = /CERES_EBAF-TOA_Edition4\.2\.1_\d{6}-\d{6}\.nc/g;
 const NASA_CERES_EBAF_TIME_BASE_UTC = Date.UTC(2000, 2, 1);
 const WGMS_MASS_CHANGE_ESTIMATES_URL = "https://wgms.ch/mass_change_estimates/";
+const WGMS_REFERENCE_GLACIERS_MASS_BALANCE_URL = "https://wgms.ch/data/faq/mb_ref.csv";
 const WGMS_AMCE_ZIP_PATTERN = /(?:https:\/\/wgms\.ch)?\/downloads\/wgms-amce-\d{4}-\d{2}-\d{2}\.zip/g;
 const WGMS_AMCE_GLOBAL_CSV_ENTRY = "global.csv";
+const LASP_TSIS_TSI_DAILY_URL = "https://lasp.colorado.edu/lisird/latis/dap/tsis_tsi_24hr.csv?time,tsi_1au";
+const IMBIE_WEST_ANTARCTICA_MASS_BALANCE_CSV_URL =
+  "https://ramadda.data.bas.ac.uk/repository/entry/get/imbie_west_antarctica_2021_Gt.csv?entryid=synth:77b64c55-7166-4a06-9def-2e400398e452:L2ltYmllX3dlc3RfYW50YXJjdGljYV8yMDIxX0d0LmNzdg==";
 const NASA_ANTARCTICA_MASS_VARIATION_CHART_URL =
   "https://assets.science.nasa.gov/content/dam/science/microapps/vital-signs/data/charts/ice-sheets-antarctica.json";
 const NASA_GREENLAND_MASS_VARIATION_CHART_URL =
@@ -42,6 +46,7 @@ const NSIDC_SOUTH_DAILY_EXTENT_URL =
 const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv";
 const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
 const NOAA_AGGI_CSV_URL = "https://gml.noaa.gov/aggi/AGGI_Table.csv";
+const NOAA_CPC_ONI_URL = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt";
 const LOCAL_GENERATED_DATA_URL = "./data/climate-realtime.json";
 const DAY_MS = 86_400_000;
 const FUTURE_TOLERANCE_DAYS = 0;
@@ -51,8 +56,11 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "global_mean_sea_level",
   "ocean_heat_content",
   "earth_energy_imbalance",
+  "incoming_solar_energy",
   "global_glacier_mass_balance",
+  "mountain_glacier_mass_balance",
   "antarctic_ice_sheet_mass_balance",
+  "west_antarctic_ice_sheet_mass_balance",
   "greenland_ice_sheet_mass_balance",
   "northern_hemisphere_surface_temperature",
   "southern_hemisphere_surface_temperature",
@@ -73,6 +81,7 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "atmospheric_co2",
   "atmospheric_ch4",
   "atmospheric_aggi",
+  "nino34_index",
 ];
 const MAP_KEYS: ClimateMapKey[] = [
   "global_2m_temperature",
@@ -86,8 +95,11 @@ const LOCAL_GENERATED_SERIES_MAX_AGE_DAYS: Record<keyof ClimateSeriesBundle, num
   global_mean_sea_level: 450,
   ocean_heat_content: 900,
   earth_energy_imbalance: 220,
+  incoming_solar_energy: 220,
   global_glacier_mass_balance: 1600,
+  mountain_glacier_mass_balance: 1600,
   antarctic_ice_sheet_mass_balance: 430,
+  west_antarctic_ice_sheet_mass_balance: 3200,
   greenland_ice_sheet_mass_balance: 430,
   northern_hemisphere_surface_temperature: 20,
   southern_hemisphere_surface_temperature: 20,
@@ -108,6 +120,7 @@ const LOCAL_GENERATED_SERIES_MAX_AGE_DAYS: Record<keyof ClimateSeriesBundle, num
   atmospheric_co2: 120,
   atmospheric_ch4: 220,
   atmospheric_aggi: 1000,
+  nino34_index: 220,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -164,6 +177,11 @@ function monthDateFromUtcTimestamp(timestamp: number): string | null {
   if (!Number.isFinite(timestamp)) return null;
   const date = new Date(timestamp);
   return formatDateFromParts(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
+}
+
+function dateFromJulianDate(julianDate: number): string | null {
+  if (!Number.isFinite(julianDate)) return null;
+  return formatIsoDate(new Date((julianDate - 2440587.5) * DAY_MS));
 }
 
 function extractLatestGlobalMeanSeaLevelUrl(homepageHtml: string | null | undefined): string | null {
@@ -699,6 +717,41 @@ function parseNoaaAggiCsv(rawCsv: string): DailyPoint[] {
   return normalizePoints(points);
 }
 
+function parseLaspTsisTsiDailyCsv(rawCsv: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
+  let timeColumn = -1;
+  let valueColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const columns = line.split(",").map((col) => col.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((col) => col.toLowerCase());
+      timeColumn = header.findIndex((col) => col.startsWith("time"));
+      valueColumn = header.findIndex((col) => col.startsWith("tsi_1au"));
+      hasHeader = true;
+      continue;
+    }
+
+    if (timeColumn < 0 || valueColumn < 0) continue;
+    if (columns.length <= timeColumn || columns.length <= valueColumn) continue;
+
+    const julianDate = toFiniteNumber(columns[timeColumn]);
+    const value = toFiniteNumber(columns[valueColumn]);
+    if (julianDate == null || value == null || value <= 0) continue;
+
+    const date = dateFromJulianDate(julianDate);
+    if (!date) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
 function parseLooseDateToken(token: string): string | null {
   const value = token.trim();
   if (!value) return null;
@@ -1005,6 +1058,121 @@ function parseWgmsGlobalGlacierCsv(rawCsv: string): DailyPoint[] {
   return normalizePoints(points);
 }
 
+function parseWgmsReferenceGlacierMassBalanceCsv(rawCsv: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
+  let yearColumn = -1;
+  let valueColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const columns = line.split(",").map((column) => column.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((column) => column.replace(/^\uFEFF/, "").toLowerCase());
+      yearColumn = header.findIndex((column) => column === "year");
+      valueColumn = header.findIndex((column) => column === "ref_regionavg" || column.includes("regionavg"));
+      hasHeader = true;
+      continue;
+    }
+
+    if (yearColumn < 0 || valueColumn < 0) continue;
+    if (columns.length <= yearColumn || columns.length <= valueColumn) continue;
+
+    const year = Number(columns[yearColumn]);
+    const millimetersWaterEquivalent = toFiniteNumber(columns[valueColumn]);
+    if (!Number.isFinite(year) || year < 1900 || year > 2200 || millimetersWaterEquivalent == null) continue;
+
+    const date = formatDateFromParts(year, 1, 1);
+    if (!date) continue;
+    points.push({ date, value: Math.round((millimetersWaterEquivalent / 1000) * 1000) / 1000 });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseNoaaCpcOniText(rawText: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  const centerMonthBySeason: Record<string, number> = {
+    DJF: 1,
+    JFM: 2,
+    FMA: 3,
+    MAM: 4,
+    AMJ: 5,
+    MJJ: 6,
+    JJA: 7,
+    JAS: 8,
+    ASO: 9,
+    SON: 10,
+    OND: 11,
+    NDJ: 12,
+  };
+
+  for (const rawLine of String(rawText ?? "").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || /^seas\b/i.test(line)) continue;
+
+    const columns = line.split(/\s+/);
+    if (columns.length < 4) continue;
+
+    const season = columns[0];
+    const year = Number(columns[1]);
+    const anomaly = toFiniteNumber(columns[3]);
+    const centerMonth = centerMonthBySeason[season];
+    if (!Number.isFinite(year) || !Number.isFinite(centerMonth) || anomaly == null) continue;
+
+    const date = formatDateFromParts(year, centerMonth, 1);
+    if (!date) continue;
+    points.push({ date, value: anomaly });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseImbieCumulativeMassLossCsv(rawCsv: string): DailyPoint[] {
+  const rows: Array<{ date: string; cumulativeMassBalance: number }> = [];
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
+  let yearColumn = -1;
+  let cumulativeColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const columns = line.split(",").map((column) => column.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((column) => column.replace(/^\uFEFF/, "").toLowerCase());
+      yearColumn = header.indexOf("year");
+      cumulativeColumn = header.findIndex((column) => column === "cumulative mass balance (gt)");
+      hasHeader = true;
+      continue;
+    }
+
+    if (yearColumn < 0 || cumulativeColumn < 0) continue;
+    if (columns.length <= yearColumn || columns.length <= cumulativeColumn) continue;
+
+    const decimalYear = toFiniteNumber(columns[yearColumn]);
+    const cumulativeMassBalance = toFiniteNumber(columns[cumulativeColumn]);
+    if (decimalYear == null || cumulativeMassBalance == null) continue;
+
+    const date = dateFromDecimalYear(decimalYear);
+    if (!date) continue;
+    rows.push({ date, cumulativeMassBalance });
+  }
+
+  if (!rows.length) return [];
+  const baseline = rows[0].cumulativeMassBalance;
+  return normalizePoints(
+    rows.map((row) => ({
+      date: row.date,
+      value: Math.round((baseline - row.cumulativeMassBalance) * 1000) / 1000,
+    }))
+  );
+}
+
 function parseNasaMassVariationChartJson(payload: unknown): DailyPoint[] {
   if (!isRecord(payload) || !Array.isArray(payload.items)) return [];
 
@@ -1303,6 +1471,28 @@ async function loadAggiSeries(): Promise<DailyPoint[] | null> {
   return points.length ? points : null;
 }
 
+async function loadIncomingSolarEnergySeries(): Promise<DailyPoint[] | null> {
+  const csv = await fetchText(LASP_TSIS_TSI_DAILY_URL);
+  if (!csv) return null;
+  const points = sanitizeSeries(parseLaspTsisTsiDailyCsv(csv), {
+    minValue: 1358,
+    maxValue: 1364,
+    maxAgeDays: 220,
+  });
+  return points.length ? points : null;
+}
+
+async function loadNino34IndexSeries(): Promise<DailyPoint[] | null> {
+  const text = await fetchText(NOAA_CPC_ONI_URL);
+  if (!text) return null;
+  const points = sanitizeSeries(parseNoaaCpcOniText(text), {
+    minValue: -4,
+    maxValue: 4,
+    maxAgeDays: 220,
+  });
+  return points.length ? points : null;
+}
+
 interface OceanSeriesBundle {
   globalMeanSeaLevel: DailyPoint[] | null;
   oceanHeatContent: DailyPoint[] | null;
@@ -1379,6 +1569,30 @@ async function loadGlobalGlacierMassBalanceSeries(): Promise<DailyPoint[] | null
   return points.length ? points : null;
 }
 
+async function loadMountainGlacierMassBalanceSeries(): Promise<DailyPoint[] | null> {
+  const csv = await fetchText(WGMS_REFERENCE_GLACIERS_MASS_BALANCE_URL);
+  if (!csv) return null;
+
+  const points = sanitizeSeries(parseWgmsReferenceGlacierMassBalanceCsv(csv), {
+    minValue: -4,
+    maxValue: 2,
+    maxAgeDays: 1600,
+  });
+  return points.length ? points : null;
+}
+
+async function loadWestAntarcticIceSheetMassBalanceSeries(): Promise<DailyPoint[] | null> {
+  const csv = await fetchText(IMBIE_WEST_ANTARCTICA_MASS_BALANCE_CSV_URL);
+  if (!csv) return null;
+
+  const points = sanitizeSeries(parseImbieCumulativeMassLossCsv(csv), {
+    minValue: 0,
+    maxValue: 4000,
+    maxAgeDays: 3200,
+  });
+  return points.length ? points : null;
+}
+
 async function loadIceSheetMassLossSeries(url: string, maxValue: number): Promise<DailyPoint[] | null> {
   const payload = await fetchJson(url);
   const points = sanitizeSeries(buildCumulativeLossSeries(parseNasaMassVariationChartJson(payload)), {
@@ -1391,20 +1605,26 @@ async function loadIceSheetMassLossSeries(url: string, maxValue: number): Promis
 
 interface IceSheetAndGlacierSeriesBundle {
   globalGlacierMassBalance: DailyPoint[] | null;
+  mountainGlacierMassBalance: DailyPoint[] | null;
   antarcticIceSheetMassBalance: DailyPoint[] | null;
+  westAntarcticIceSheetMassBalance: DailyPoint[] | null;
   greenlandIceSheetMassBalance: DailyPoint[] | null;
 }
 
 async function loadIceSheetAndGlacierSeriesBundle(): Promise<IceSheetAndGlacierSeriesBundle> {
-  const [glacierResult, antarcticResult, greenlandResult] = await Promise.allSettled([
+  const [glacierResult, mountainGlacierResult, antarcticResult, westAntarcticResult, greenlandResult] = await Promise.allSettled([
     loadGlobalGlacierMassBalanceSeries(),
+    loadMountainGlacierMassBalanceSeries(),
     loadIceSheetMassLossSeries(NASA_ANTARCTICA_MASS_VARIATION_CHART_URL, 4000),
+    loadWestAntarcticIceSheetMassBalanceSeries(),
     loadIceSheetMassLossSeries(NASA_GREENLAND_MASS_VARIATION_CHART_URL, 7000),
   ]);
 
   return {
     globalGlacierMassBalance: glacierResult.status === "fulfilled" ? glacierResult.value : null,
+    mountainGlacierMassBalance: mountainGlacierResult.status === "fulfilled" ? mountainGlacierResult.value : null,
     antarcticIceSheetMassBalance: antarcticResult.status === "fulfilled" ? antarcticResult.value : null,
+    westAntarcticIceSheetMassBalance: westAntarcticResult.status === "fulfilled" ? westAntarcticResult.value : null,
     greenlandIceSheetMassBalance: greenlandResult.status === "fulfilled" ? greenlandResult.value : null,
   };
 }
@@ -1425,8 +1645,10 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     co2Result,
     ch4Result,
     aggiResult,
+    incomingSolarEnergyResult,
     dailyGlobalMeanAnomalyResult,
     iceSheetAndGlacierResult,
+    nino34IndexResult,
   ] = await Promise.allSettled([
     loadSurfaceTempSeriesBundle(),
     loadSeaSurfaceTempSeriesBundle(),
@@ -1436,8 +1658,10 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     loadCo2Series(),
     loadCh4Series(),
     loadAggiSeries(),
+    loadIncomingSolarEnergySeries(),
     loadDailyGlobalMeanTemperatureAnomalySeries(),
     loadIceSheetAndGlacierSeriesBundle(),
+    loadNino34IndexSeries(),
   ]);
 
   if (surfaceResult.status === "fulfilled" && surfaceResult.value.absolute?.length) {
@@ -1603,6 +1827,12 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     warnings.push("Live NOAA AGGI feed was unavailable or stale; using bundled fallback.");
   }
 
+  if (incomingSolarEnergyResult.status === "fulfilled" && incomingSolarEnergyResult.value?.length) {
+    liveSeries.incoming_solar_energy = incomingSolarEnergyResult.value;
+  } else {
+    warnings.push("Live incoming solar energy feed was unavailable or stale; using bundled fallback.");
+  }
+
   if (dailyGlobalMeanAnomalyResult.status === "fulfilled" && dailyGlobalMeanAnomalyResult.value?.length) {
     liveSeries.daily_global_mean_temperature_anomaly = dailyGlobalMeanAnomalyResult.value;
   } else {
@@ -1616,10 +1846,22 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
       warnings.push("Live Global Glacier Mass Balance feed was unavailable or stale; using bundled fallback.");
     }
 
+    if (iceSheetAndGlacierResult.value.mountainGlacierMassBalance?.length) {
+      liveSeries.mountain_glacier_mass_balance = iceSheetAndGlacierResult.value.mountainGlacierMassBalance;
+    } else {
+      warnings.push("Live Mountain Glacier Mass Balance feed was unavailable or stale; using bundled fallback.");
+    }
+
     if (iceSheetAndGlacierResult.value.antarcticIceSheetMassBalance?.length) {
       liveSeries.antarctic_ice_sheet_mass_balance = iceSheetAndGlacierResult.value.antarcticIceSheetMassBalance;
     } else {
       warnings.push("Live Antarctic Ice Sheet Mass Loss feed was unavailable or stale; using bundled fallback.");
+    }
+
+    if (iceSheetAndGlacierResult.value.westAntarcticIceSheetMassBalance?.length) {
+      liveSeries.west_antarctic_ice_sheet_mass_balance = iceSheetAndGlacierResult.value.westAntarcticIceSheetMassBalance;
+    } else {
+      warnings.push("Live West Antarctic Ice Sheet Mass Loss feed was unavailable or stale; using bundled fallback.");
     }
 
     if (iceSheetAndGlacierResult.value.greenlandIceSheetMassBalance?.length) {
@@ -1629,8 +1871,16 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     }
   } else {
     warnings.push("Live Global Glacier Mass Balance feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Mountain Glacier Mass Balance feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live Antarctic Ice Sheet Mass Loss feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live West Antarctic Ice Sheet Mass Loss feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live Greenland Ice Sheet Mass Loss feed was unavailable or stale; using bundled fallback.");
+  }
+
+  if (nino34IndexResult.status === "fulfilled" && nino34IndexResult.value?.length) {
+    liveSeries.nino34_index = nino34IndexResult.value;
+  } else {
+    warnings.push("Live Oceanic Nino Index feed was unavailable or stale; using bundled fallback.");
   }
 
   return createDataSourceFromSeries({

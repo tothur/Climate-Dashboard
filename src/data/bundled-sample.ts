@@ -186,6 +186,7 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
   const earthEnergyImbalance = generateMonthlySeries(2000, 3, endDateIso, 0.42, 0.0044, 0.16, 0.05, 2);
   const globalGlacierMassBalance = generateAnnualSeries(1976, endDateIso, 28, -12.4, 44);
   const antarcticIceSheetMassBalance = generateMonthlySeries(2002, 4, endDateIso, 0, 8.9, 36, 12, 3);
+  const westAntarcticIceSheetMassBalance = generateMonthlySeries(1992, 1, "2020-12-01", 0, 6.9, 18, 12, 3);
   const greenlandIceSheetMassBalance = generateMonthlySeries(2002, 4, endDateIso, 0, 18.5, 72, 24, 1);
   const northernHemisphereSurfaceTemperature = generateSeries("1979-01-01", endDateIso, 14.2, 0.0015, 6.2, 365.25, 0.14);
   const southernHemisphereSurfaceTemperature = generateSeries("1979-01-01", endDateIso, 13.5, 0.0011, 2.2, 365.25, 0.1, 182.625);
@@ -225,6 +226,9 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
   const antarcticSeaIce = generateSeries("1979-01-01", endDateIso, 10.4, -0.0003, 4.3, 365.25, 0.14, 182.625);
   const globalSeaIce = mergeSeriesByDate(arcticSeaIce, antarcticSeaIce);
   const atmosphericAggi = generateAnnualSeries(1979, endDateIso, 0.78, 0.017, 0.018);
+  const incomingSolarEnergy = generateSeries("2018-01-11", endDateIso, 1361.4, 0.000006, 0.45, 365.25 * 11, 0.02);
+  const mountainGlacierMassBalance = generateAnnualSeries(1950, endDateIso, -1.1, -0.025, 0.18);
+  const nino34Index = generateSeries("1950-01-01", endDateIso, 0, 0, 1.0, 365.25 * 3.4, 0.18);
 
   return {
     // Multi-decade fallback windows so year selection remains useful when live feeds fail.
@@ -233,8 +237,11 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
     global_mean_sea_level: globalMeanSeaLevel,
     ocean_heat_content: oceanHeatContent,
     earth_energy_imbalance: earthEnergyImbalance,
+    incoming_solar_energy: incomingSolarEnergy,
     global_glacier_mass_balance: globalGlacierMassBalance,
+    mountain_glacier_mass_balance: mountainGlacierMassBalance,
     antarctic_ice_sheet_mass_balance: antarcticIceSheetMassBalance,
+    west_antarctic_ice_sheet_mass_balance: westAntarcticIceSheetMassBalance,
     greenland_ice_sheet_mass_balance: greenlandIceSheetMassBalance,
     northern_hemisphere_surface_temperature: northernHemisphereSurfaceTemperature,
     southern_hemisphere_surface_temperature: southernHemisphereSurfaceTemperature,
@@ -255,6 +262,7 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
     atmospheric_co2: generateSeries("1958-03-29", endDateIso, 315.7, 0.0078, 6.1, 365.25, 0.32),
     atmospheric_ch4: generateSeries("1983-07-01", endDateIso, 1630, 0.0017, 14.5, 365.25, 0.55),
     atmospheric_aggi: atmosphericAggi,
+    nino34_index: nino34Index,
   };
 }
 
@@ -268,8 +276,11 @@ export const CLIMATE_METRIC_KEYS: ClimateMetricKey[] = [
   "global_mean_sea_level",
   "ocean_heat_content",
   "earth_energy_imbalance",
+  "incoming_solar_energy",
   "global_glacier_mass_balance",
+  "mountain_glacier_mass_balance",
   "antarctic_ice_sheet_mass_balance",
+  "west_antarctic_ice_sheet_mass_balance",
   "greenland_ice_sheet_mass_balance",
   "northern_hemisphere_surface_temperature",
   "arctic_surface_temperature",
@@ -290,4 +301,5 @@ export const CLIMATE_METRIC_KEYS: ClimateMetricKey[] = [
   "atmospheric_co2",
   "atmospheric_ch4",
   "atmospheric_aggi",
+  "nino34_index",
 ];

@@ -8,8 +8,11 @@ export type ClimateMetricKey =
   | "global_mean_sea_level"
   | "ocean_heat_content"
   | "earth_energy_imbalance"
+  | "incoming_solar_energy"
   | "global_glacier_mass_balance"
+  | "mountain_glacier_mass_balance"
   | "antarctic_ice_sheet_mass_balance"
+  | "west_antarctic_ice_sheet_mass_balance"
   | "greenland_ice_sheet_mass_balance"
   | "northern_hemisphere_surface_temperature"
   | "southern_hemisphere_surface_temperature"
@@ -29,7 +32,8 @@ export type ClimateMetricKey =
   | "antarctic_sea_ice_extent"
   | "atmospheric_co2"
   | "atmospheric_ch4"
-  | "atmospheric_aggi";
+  | "atmospheric_aggi"
+  | "nino34_index";
 
 export interface DailyPoint {
   date: string;

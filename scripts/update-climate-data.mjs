@@ -26,8 +26,12 @@ const NASA_CERES_EBAF_PROJECT_URL = "https://asdc.larc.nasa.gov/project/CERES/CE
 const NASA_CERES_EBAF_FILE_PATTERN = /CERES_EBAF-TOA_Edition4\.2\.1_\d{6}-\d{6}\.nc/g;
 const NASA_CERES_EBAF_TIME_BASE_UTC = Date.UTC(2000, 2, 1);
 const WGMS_MASS_CHANGE_ESTIMATES_URL = "https://wgms.ch/mass_change_estimates/";
+const WGMS_REFERENCE_GLACIERS_MASS_BALANCE_URL = "https://wgms.ch/data/faq/mb_ref.csv";
 const WGMS_AMCE_ZIP_PATTERN = /(?:https:\/\/wgms\.ch)?\/downloads\/wgms-amce-\d{4}-\d{2}-\d{2}\.zip/g;
 const WGMS_AMCE_GLOBAL_CSV_ENTRY = "global.csv";
+const LASP_TSIS_TSI_DAILY_URL = "https://lasp.colorado.edu/lisird/latis/dap/tsis_tsi_24hr.csv?time,tsi_1au";
+const IMBIE_WEST_ANTARCTICA_MASS_BALANCE_CSV_URL =
+  "https://ramadda.data.bas.ac.uk/repository/entry/get/imbie_west_antarctica_2021_Gt.csv?entryid=synth:77b64c55-7166-4a06-9def-2e400398e452:L2ltYmllX3dlc3RfYW50YXJjdGljYV8yMDIxX0d0LmNzdg==";
 const NASA_ANTARCTICA_MASS_VARIATION_CHART_URL =
   "https://assets.science.nasa.gov/content/dam/science/microapps/vital-signs/data/charts/ice-sheets-antarctica.json";
 const NASA_GREENLAND_MASS_VARIATION_CHART_URL =
@@ -39,6 +43,7 @@ const NSIDC_SOUTH_DAILY_EXTENT_URL =
 const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv";
 const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
 const NOAA_AGGI_CSV_URL = "https://gml.noaa.gov/aggi/AGGI_Table.csv";
+const NOAA_CPC_ONI_URL = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt";
 const IRI_ENSO_CURRENT_URL = "https://iri.columbia.edu/our-expertise/climate/forecasts/enso/current/";
 const NOAA_CPC_ENSO_DISCUSSION_URL = "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml";
 const CR_TODAYS_WEATHER_PAGE_URL = "https://climatereanalyzer.org/wx/todays-weather/";
@@ -117,8 +122,11 @@ const AI_SUMMARY_FINGERPRINT_KEYS = [
   "global_mean_sea_level",
   "ocean_heat_content",
   "earth_energy_imbalance",
+  "incoming_solar_energy",
   "global_glacier_mass_balance",
+  "mountain_glacier_mass_balance",
   "antarctic_ice_sheet_mass_balance",
+  "west_antarctic_ice_sheet_mass_balance",
   "greenland_ice_sheet_mass_balance",
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
@@ -126,6 +134,7 @@ const AI_SUMMARY_FINGERPRINT_KEYS = [
   "atmospheric_co2",
   "atmospheric_ch4",
   "atmospheric_aggi",
+  "nino34_index",
 ];
 const AI_SUMMARY_DISALLOWED_TEXT_PATTERN = /\brecord\s+lows?\b|\brecord\s+cold\b|\bcoldest\b|\bcooling\b/i;
 const AI_SUMMARY_STALE_TEXT_PATTERN = /\bhistorical rank\b/i;
@@ -148,8 +157,11 @@ const AI_SUMMARY_SIGNAL_LABELS = {
   global_mean_sea_level: "Global Mean Sea Level",
   ocean_heat_content: "Ocean Heat Content",
   earth_energy_imbalance: "Earth Energy Imbalance",
+  incoming_solar_energy: "Incoming Solar Energy",
   global_glacier_mass_balance: "Global Glacier Mass Balance",
+  mountain_glacier_mass_balance: "Mountain Glacier Mass Balance",
   antarctic_ice_sheet_mass_balance: "Antarctic Ice Sheet Mass Balance",
+  west_antarctic_ice_sheet_mass_balance: "West Antarctic Ice Sheet Mass Balance",
   greenland_ice_sheet_mass_balance: "Greenland Ice Sheet Mass Balance",
   global_sea_ice_extent: "Global Sea Ice Extent",
   arctic_sea_ice_extent: "Arctic Sea Ice Extent",
@@ -157,6 +169,7 @@ const AI_SUMMARY_SIGNAL_LABELS = {
   atmospheric_co2: "Atmospheric CO2",
   atmospheric_ch4: "Atmospheric CH4",
   atmospheric_aggi: "Annual Greenhouse Gas Index",
+  nino34_index: "Oceanic Nino Index",
 };
 const AI_SUMMARY_SIGNAL_CATEGORIES = {
   northern_hemisphere_surface_temperature: "regional",
@@ -172,8 +185,11 @@ const AI_SUMMARY_SIGNAL_CATEGORIES = {
   global_mean_sea_level: "oceanic",
   ocean_heat_content: "oceanic",
   earth_energy_imbalance: "energy imbalance",
+  incoming_solar_energy: "forcing",
   global_glacier_mass_balance: "cryosphere",
+  mountain_glacier_mass_balance: "cryosphere",
   antarctic_ice_sheet_mass_balance: "cryosphere",
+  west_antarctic_ice_sheet_mass_balance: "cryosphere",
   greenland_ice_sheet_mass_balance: "cryosphere",
   global_sea_ice_extent: "sea ice",
   arctic_sea_ice_extent: "sea ice",
@@ -181,6 +197,7 @@ const AI_SUMMARY_SIGNAL_CATEGORIES = {
   atmospheric_co2: "forcing",
   atmospheric_ch4: "forcing",
   atmospheric_aggi: "forcing",
+  nino34_index: "oceanic",
 };
 const AI_SUMMARY_BACKGROUND_SIGNAL_KEYS = new Set([
   "global_mean_sea_level",
@@ -276,6 +293,12 @@ function monthDateFromUtcTimestamp(timestamp) {
   if (!Number.isFinite(timestamp)) return null;
   const date = new Date(timestamp);
   return formatDateFromParts(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
+}
+
+function dateFromJulianDate(julianDate) {
+  if (!Number.isFinite(julianDate)) return null;
+  const unixDays = julianDate - 2440587.5;
+  return formatIsoDate(new Date(unixDays * DAY_MS));
 }
 
 function extractLatestGlobalMeanSeaLevelUrl(homepageHtml) {
@@ -810,6 +833,41 @@ function parseNoaaAggiCsv(rawCsv) {
   return normalizePoints(points);
 }
 
+function parseLaspTsisTsiDailyCsv(rawCsv) {
+  const points = [];
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
+  let timeColumn = -1;
+  let valueColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const columns = line.split(",").map((col) => col.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((col) => col.toLowerCase());
+      timeColumn = header.findIndex((col) => col.startsWith("time"));
+      valueColumn = header.findIndex((col) => col.startsWith("tsi_1au"));
+      hasHeader = true;
+      continue;
+    }
+
+    if (timeColumn < 0 || valueColumn < 0) continue;
+    if (columns.length <= timeColumn || columns.length <= valueColumn) continue;
+
+    const julianDate = toFiniteNumber(columns[timeColumn]);
+    const value = toFiniteNumber(columns[valueColumn]);
+    if (julianDate == null || value == null || value <= 0) continue;
+
+    const date = dateFromJulianDate(julianDate);
+    if (!date) continue;
+    points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
 function parseLooseDateToken(token) {
   const value = String(token ?? "").trim();
   if (!value) return null;
@@ -1100,6 +1158,108 @@ function parseWgmsGlobalGlacierCsv(rawCsv) {
   }
 
   return normalizePoints(points);
+}
+
+function parseWgmsReferenceGlacierMassBalanceCsv(rawCsv) {
+  const points = [];
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
+  let yearColumn = -1;
+  let valueColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const columns = line.split(",").map((column) => column.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((column) => column.replace(/^\uFEFF/, "").toLowerCase());
+      yearColumn = header.findIndex((column) => column === "year");
+      valueColumn = header.findIndex((column) => column === "ref_regionavg" || column.includes("regionavg"));
+      hasHeader = true;
+      continue;
+    }
+
+    if (yearColumn < 0 || valueColumn < 0) continue;
+    if (columns.length <= yearColumn || columns.length <= valueColumn) continue;
+
+    const year = Number(columns[yearColumn]);
+    const millimetersWaterEquivalent = toFiniteNumber(columns[valueColumn]);
+    if (!Number.isFinite(year) || year < 1900 || year > 2200 || millimetersWaterEquivalent == null) continue;
+
+    const date = formatDateFromParts(year, 1, 1);
+    if (!date) continue;
+    points.push({ date, value: Math.round((millimetersWaterEquivalent / 1000) * 1000) / 1000 });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseNoaaCpcOniText(rawText) {
+  const points = [];
+  const lines = String(rawText ?? "").split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || /^seas\b/i.test(line)) continue;
+
+    const columns = line.split(/\s+/);
+    if (columns.length < 4) continue;
+
+    const season = columns[0];
+    const year = Number(columns[1]);
+    const anomaly = toFiniteNumber(columns[3]);
+    const centerMonth = ENSO_SEASON_CENTER_MONTH[season];
+    if (!Number.isFinite(year) || !Number.isFinite(centerMonth) || anomaly == null) continue;
+
+    const date = formatDateFromParts(year, centerMonth, 1);
+    if (!date) continue;
+    points.push({ date, value: anomaly });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseImbieCumulativeMassLossCsv(rawCsv) {
+  const rows = [];
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
+  let yearColumn = -1;
+  let cumulativeColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const columns = line.split(",").map((column) => column.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((column) => column.replace(/^\uFEFF/, "").toLowerCase());
+      yearColumn = header.indexOf("year");
+      cumulativeColumn = header.findIndex((column) => column === "cumulative mass balance (gt)");
+      hasHeader = true;
+      continue;
+    }
+
+    if (yearColumn < 0 || cumulativeColumn < 0) continue;
+    if (columns.length <= yearColumn || columns.length <= cumulativeColumn) continue;
+
+    const decimalYear = toFiniteNumber(columns[yearColumn]);
+    const cumulativeMassBalance = toFiniteNumber(columns[cumulativeColumn]);
+    if (decimalYear == null || cumulativeMassBalance == null) continue;
+
+    const date = dateFromDecimalYear(decimalYear);
+    if (!date) continue;
+    rows.push({ date, cumulativeMassBalance });
+  }
+
+  if (!rows.length) return [];
+  const baseline = rows[0].cumulativeMassBalance;
+  return normalizePoints(
+    rows.map((row) => ({
+      date: row.date,
+      value: Math.round((baseline - row.cumulativeMassBalance) * 1000) / 1000,
+    }))
+  );
 }
 
 function parseNasaMassVariationChartJson(payload) {
@@ -2097,12 +2257,16 @@ async function updateOnce() {
     ch4Csv,
     aggiCsv,
     dailyGlobalMeanAnomalyCsv,
+    incomingSolarEnergyCsv,
     ceresContentsHtml,
+    wgmsReferenceGlacierCsv,
     wgmsAmceHtml,
+    imbieWestAntarcticaCsv,
     antarcticaMassVariationPayload,
     greenlandMassVariationPayload,
     iriEnsoHtml,
     ensoDiscussionHtml,
+    nino34IndexText,
     sstMapDatePayload,
   ] = await Promise.all([
     fetchJson(ERA5_GLOBAL_SURFACE_TEMP_URL),
@@ -2120,6 +2284,7 @@ async function updateOnce() {
     fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
     fetchText(NOAA_AGGI_CSV_URL),
     fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
+    fetchText(LASP_TSIS_TSI_DAILY_URL),
     fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL, {
       timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
       attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
@@ -2128,12 +2293,28 @@ async function updateOnce() {
       dataWarnings.push(`earth_energy_imbalance: CERES listing refresh failed (${reason}).`);
       return null;
     }),
+    fetchText(WGMS_REFERENCE_GLACIERS_MASS_BALANCE_URL, {
+      timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
+      attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
+    }).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`mountain_glacier_mass_balance: WGMS reference-glacier refresh failed (${reason}).`);
+      return null;
+    }),
     fetchText(WGMS_MASS_CHANGE_ESTIMATES_URL, {
       timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
       attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
     }).catch((error) => {
       const reason = error instanceof Error ? error.message : String(error);
       dataWarnings.push(`global_glacier_mass_balance: WGMS listing refresh failed (${reason}).`);
+      return null;
+    }),
+    fetchText(IMBIE_WEST_ANTARCTICA_MASS_BALANCE_CSV_URL, {
+      timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
+      attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
+    }).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`west_antarctic_ice_sheet_mass_balance: IMBIE refresh failed (${reason}).`);
       return null;
     }),
     fetchJson(NASA_ANTARCTICA_MASS_VARIATION_CHART_URL).catch((error) => {
@@ -2154,6 +2335,11 @@ async function updateOnce() {
     fetchText(NOAA_CPC_ENSO_DISCUSSION_URL).catch((error) => {
       const reason = error instanceof Error ? error.message : String(error);
       dataWarnings.push(`enso_outlook: NOAA CPC refresh failed (${reason}).`);
+      return null;
+    }),
+    fetchText(NOAA_CPC_ONI_URL).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`nino34_index: NOAA CPC ONI refresh failed (${reason}).`);
       return null;
     }),
     fetchJson(CR_SST_LATEST_MAP_DATE_URL),
@@ -2293,6 +2479,17 @@ async function updateOnce() {
     maxValue: 3.5,
     maxAgeDays: 1000,
   });
+  let incomingSolarEnergy = sanitizeSeries(parseLaspTsisTsiDailyCsv(incomingSolarEnergyCsv), {
+    minValue: 1358,
+    maxValue: 1364,
+    maxAgeDays: 220,
+  });
+  if (!incomingSolarEnergy.length) {
+    incomingSolarEnergy = await loadPreviousSeries("incoming_solar_energy");
+    if (incomingSolarEnergy.length > 0) {
+      dataWarnings.push("incoming_solar_energy: retaining the previous validated TSIS-1 series.");
+    }
+  }
   const ceresFileName = ceresContentsHtml ? extractLatestCeresEebafDatasetName(ceresContentsHtml) : null;
   let earthEnergyImbalanceAscii = "";
   if (ceresFileName) {
@@ -2340,6 +2537,28 @@ async function updateOnce() {
       dataWarnings.push("global_glacier_mass_balance: retaining the previous validated WGMS series.");
     }
   }
+  let mountainGlacierMassBalance = sanitizeSeries(parseWgmsReferenceGlacierMassBalanceCsv(wgmsReferenceGlacierCsv), {
+    minValue: -4,
+    maxValue: 2,
+    maxAgeDays: 1600,
+  });
+  if (!mountainGlacierMassBalance.length) {
+    mountainGlacierMassBalance = await loadPreviousSeries("mountain_glacier_mass_balance");
+    if (mountainGlacierMassBalance.length > 0) {
+      dataWarnings.push("mountain_glacier_mass_balance: retaining the previous validated WGMS reference-glacier series.");
+    }
+  }
+  let westAntarcticIceSheetMassBalance = sanitizeSeries(parseImbieCumulativeMassLossCsv(imbieWestAntarcticaCsv), {
+    minValue: 0,
+    maxValue: 4000,
+    maxAgeDays: 3200,
+  });
+  if (!westAntarcticIceSheetMassBalance.length) {
+    westAntarcticIceSheetMassBalance = await loadPreviousSeries("west_antarctic_ice_sheet_mass_balance");
+    if (westAntarcticIceSheetMassBalance.length > 0) {
+      dataWarnings.push("west_antarctic_ice_sheet_mass_balance: retaining the previous validated IMBIE series.");
+    }
+  }
   const antarcticMassVariation = parseNasaMassVariationChartJson(antarcticaMassVariationPayload);
   let antarcticIceSheetMassBalance = sanitizeSeries(buildCumulativeLossSeries(antarcticMassVariation), {
     minValue: 0,
@@ -2369,6 +2588,17 @@ async function updateOnce() {
     maxValue: 10,
     maxAgeDays: 20,
   });
+  let nino34Index = sanitizeSeries(parseNoaaCpcOniText(nino34IndexText), {
+    minValue: -4,
+    maxValue: 4,
+    maxAgeDays: 220,
+  });
+  if (!nino34Index.length) {
+    nino34Index = await loadPreviousSeries("nino34_index");
+    if (nino34Index.length > 0) {
+      dataWarnings.push("nino34_index: retaining the previous validated NOAA CPC ONI series.");
+    }
+  }
   const parsedCpcEnsoOutlook = parseCpcEnsoOutlook(ensoDiscussionHtml);
   const parsedIriEnsoOutlook = parseIriEnsoOutlook(iriEnsoHtml);
   let ensoOutlook = isCompleteEnsoOutlook(parsedCpcEnsoOutlook)
@@ -2476,8 +2706,11 @@ async function updateOnce() {
     global_mean_sea_level: globalMeanSeaLevel,
     ocean_heat_content: oceanHeatContent,
     earth_energy_imbalance: earthEnergyImbalance,
+    incoming_solar_energy: incomingSolarEnergy,
     global_glacier_mass_balance: globalGlacierMassBalance,
+    mountain_glacier_mass_balance: mountainGlacierMassBalance,
     antarctic_ice_sheet_mass_balance: antarcticIceSheetMassBalance,
+    west_antarctic_ice_sheet_mass_balance: westAntarcticIceSheetMassBalance,
     greenland_ice_sheet_mass_balance: greenlandIceSheetMassBalance,
     northern_hemisphere_surface_temperature: northernHemisphereSurfaceTemperature,
     southern_hemisphere_surface_temperature: southernHemisphereSurfaceTemperature,
@@ -2498,6 +2731,7 @@ async function updateOnce() {
     atmospheric_co2: atmosphericCo2,
     atmospheric_ch4: atmosphericCh4,
     atmospheric_aggi: atmosphericAggi,
+    nino34_index: nino34Index,
   };
   const summaryOutput = Object.fromEntries(Object.entries(seriesOutput).map(([key, series]) => [key, summarize(series)]));
   const aiSummaryWarnings = [];
@@ -2520,7 +2754,10 @@ async function updateOnce() {
       earth_energy_imbalance: hasFreshEarthEnergyImbalance && ceresFileName
         ? buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName)
         : (await loadPreviousSourceUrl("earth_energy_imbalance")) ?? NASA_CERES_EBAF_PROJECT_URL,
+      incoming_solar_energy: LASP_TSIS_TSI_DAILY_URL,
       global_glacier_mass_balance: wgmsAmceZipUrl ?? WGMS_MASS_CHANGE_ESTIMATES_URL,
+      mountain_glacier_mass_balance: WGMS_REFERENCE_GLACIERS_MASS_BALANCE_URL,
+      west_antarctic_ice_sheet_mass_balance: IMBIE_WEST_ANTARCTICA_MASS_BALANCE_CSV_URL,
       antarctic_ice_sheet_mass_balance: NASA_ANTARCTICA_MASS_VARIATION_CHART_URL,
       greenland_ice_sheet_mass_balance: NASA_GREENLAND_MASS_VARIATION_CHART_URL,
       northern_hemisphere_surface_temperature: ERA5_NH_SURFACE_TEMP_URL,
@@ -2549,6 +2786,7 @@ async function updateOnce() {
       atmospheric_co2: NOAA_MAUNA_LOA_CO2_DAILY_URL,
       atmospheric_ch4: NOAA_GLOBAL_CH4_MONTHLY_URL,
       atmospheric_aggi: NOAA_AGGI_CSV_URL,
+      nino34_index: NOAA_CPC_ONI_URL,
       enso_outlook: ensoOutlook?.sourceUrl ?? IRI_ENSO_CURRENT_URL,
       maps_current_weather: CR_TODAYS_WEATHER_PAGE_URL,
       maps_sst_dates: CR_SST_LATEST_MAP_DATE_URL,

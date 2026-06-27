@@ -23,7 +23,9 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "ocean_heat_content",
   "earth_energy_imbalance",
   "global_glacier_mass_balance",
+  "mountain_glacier_mass_balance",
   "antarctic_ice_sheet_mass_balance",
+  "west_antarctic_ice_sheet_mass_balance",
   "greenland_ice_sheet_mass_balance",
   "northern_hemisphere_surface_temperature",
   "arctic_surface_temperature",
@@ -41,9 +43,10 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
   "antarctic_sea_ice_extent",
+  "nino34_index",
 ];
 
-const FORCING_KEYS: ClimateMetricKey[] = ["atmospheric_co2", "atmospheric_ch4", "atmospheric_aggi"];
+const FORCING_KEYS: ClimateMetricKey[] = ["atmospheric_co2", "atmospheric_ch4", "atmospheric_aggi", "incoming_solar_energy"];
 
 interface ClimateMetricMetadata {
   titleEn: string;
@@ -116,6 +119,18 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       url: "https://asdc.larc.nasa.gov/project/CERES/CERES_EBAF-TOA_Edition4.2.1",
     },
   },
+  incoming_solar_energy: {
+    titleEn: "Incoming Solar Energy",
+    titleHu: "Beérkező napsugárzási energia",
+    unit: "W/m²",
+    decimals: 2,
+    source: {
+      shortName: "LASP LISIRD TSIS-1",
+      descriptionEn: "Daily TSIS-1 total solar irradiance at 1 AU from LASP/LISIRD.",
+      descriptionHu: "Napi TSIS-1 teljes napsugárzás 1 csillagászati egységnél, a LASP/LISIRD adatai alapján.",
+      url: "https://lasp.colorado.edu/lisird/data/tsis_tsi_24hr",
+    },
+  },
   global_glacier_mass_balance: {
     titleEn: "Global Glacier Mass Balance",
     titleHu: "Globális gleccser-tömegmérleg",
@@ -130,6 +145,20 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       url: "https://wgms.ch/mass_change_estimates/",
     },
   },
+  mountain_glacier_mass_balance: {
+    titleEn: "Mountain Glacier Mass Balance",
+    titleHu: "Hegyi gleccserek tömegmérlege",
+    unit: "m w.e.",
+    decimals: 2,
+    source: {
+      shortName: "WGMS reference glaciers",
+      descriptionEn:
+        "Annual specific mass balance of WGMS reference glaciers, converted from millimetres to metres water equivalent.",
+      descriptionHu:
+        "A WGMS referencia-gleccserek éves fajlagos tömegmérlege, milliméter vízegyenértékből méter vízegyenértékre átszámítva.",
+      url: "https://wgms.ch/data/faq/mb_ref.csv",
+    },
+  },
   antarctic_ice_sheet_mass_balance: {
     titleEn: "Antarctic Ice Sheet Mass Loss",
     titleHu: "Antarktiszi jégtakaró tömegvesztesége",
@@ -142,6 +171,20 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionHu:
         "A NASA Vital Signs GRACE/GRACE-FO tömegváltozási adatsorából származtatott kumulatív antarktiszi jégtakaró-tömegveszteség 2002 óta.",
       url: "https://science.nasa.gov/earth/explore/earth-indicators/ice-sheets/",
+    },
+  },
+  west_antarctic_ice_sheet_mass_balance: {
+    titleEn: "West Antarctic Ice Sheet Mass Loss",
+    titleHu: "Nyugat-antarktiszi jégtakaró tömegvesztesége",
+    unit: "Gt",
+    decimals: 1,
+    source: {
+      shortName: "IMBIE / UK Polar Data Centre",
+      descriptionEn:
+        "Cumulative West Antarctic Ice Sheet mass loss since 1992, derived from IMBIE reconciled regional cumulative mass balance.",
+      descriptionHu:
+        "A nyugat-antarktiszi jégtakaró 1992 óta halmozott tömegvesztesége, az IMBIE egyeztetett regionális kumulatív tömegmérlegéből származtatva.",
+      url: "https://doi.org/10.5285/77b64c55-7166-4a06-9def-2e400398e452",
     },
   },
   greenland_ice_sheet_mass_balance: {
@@ -400,6 +443,18 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionEn: "Annual NOAA Atmospheric Greenhouse Gas Index (1990 = 1) from NOAA GML.",
       descriptionHu: "Éves NOAA légköri üvegházhatásúgáz-index (AGGI, 1990 = 1) a NOAA GML adatai alapján.",
       url: "https://gml.noaa.gov/aggi/AGGI_Table.csv",
+    },
+  },
+  nino34_index: {
+    titleEn: "Oceanic Niño Index",
+    titleHu: "Óceáni Niño Index",
+    unit: "°C",
+    decimals: 2,
+    source: {
+      shortName: "NOAA CPC ONI",
+      descriptionEn: "Historical Oceanic Niño Index: centered 3-month Niño 3.4 SST anomaly from NOAA CPC.",
+      descriptionHu: "Történeti Óceáni Niño Index: középre igazított 3 havi Niño 3.4 SST-anomália a NOAA CPC adatai alapján.",
+      url: "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt",
     },
   },
 };
