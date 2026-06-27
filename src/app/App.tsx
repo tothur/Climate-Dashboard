@@ -601,7 +601,8 @@ const STRINGS = {
     mapSstSubtitle: "Latest available map · Climate Reanalyzer Today’s Weather",
     mapUnavailable: "Map unavailable",
     forcingTitle: "Forcing",
-    forcingNote: "Forcing signals from Mauna Loa CO2, global CH4 observations, the NOAA Annual Greenhouse Gas Index, and TSIS-1 total solar irradiance.",
+    forcingNote:
+      "Forcing signals from Mauna Loa CO2, global CH4 observations, the NOAA Annual Greenhouse Gas Index, and long-record total solar irradiance.",
     sourceTitle: "Data source mode",
     sourceLive: "Live feeds",
     sourceMixed: "Mixed live + fallback",
@@ -623,6 +624,7 @@ const STRINGS = {
     freshnessMonthly: "monthly",
     freshnessQuarterly: "quarterly",
     freshnessAnnual: "annual",
+    freshnessAssessment: "assessment",
     freshnessLagging: "Lagging",
     freshnessStale: "Stale",
     ytdLabel: "YTD",
@@ -791,7 +793,8 @@ const STRINGS = {
     mapSstSubtitle: "Legfrissebb elérhető térkép · Climate Reanalyzer Today’s Weather",
     mapUnavailable: "A térkép nem érhető el",
     forcingTitle: "Éghajlati kényszerek",
-    forcingNote: "Éghajlati kényszerek a Mauna Loa CO2, a globális CH4 megfigyelések, a NOAA éves üvegházhatásúgáz-index és a TSIS-1 teljes napsugárzás alapján.",
+    forcingNote:
+      "Éghajlati kényszerek a Mauna Loa CO2, a globális CH4 megfigyelések, a NOAA éves üvegházhatásúgáz-index és hosszú idősoros teljes napsugárzás alapján.",
     sourceTitle: "Adatforrás mód",
     sourceLive: "Élő adatforrások",
     sourceMixed: "Vegyes (élő + tartalék)",
@@ -813,6 +816,7 @@ const STRINGS = {
     freshnessMonthly: "havi",
     freshnessQuarterly: "negyedéves",
     freshnessAnnual: "éves",
+    freshnessAssessment: "értékelési adatsor",
     freshnessLagging: "Késik",
     freshnessStale: "Elavult",
     ytdLabel: "évközi",
@@ -2739,7 +2743,7 @@ function topSummaryCategoryClass(metricKey: ClimateMetricSeries["key"]): string 
 }
 
 type FreshnessTone = "fresh" | "warning" | "stale";
-type FreshnessCadence = "daily" | "monthly" | "quarterly" | "annual";
+type FreshnessCadence = "daily" | "monthly" | "quarterly" | "annual" | "assessment";
 type DataSourceSection = "temperature" | "ocean" | "ice" | "forcing" | "maps" | "outlook";
 
 interface FreshnessPolicy {
@@ -2805,7 +2809,7 @@ function freshnessPolicyForMetric(metricKey: ClimateMetricSeries["key"]): Freshn
     case "antarctic_ice_sheet_mass_balance":
       return { cadence: "monthly", warningDays: 220, staleDays: 430 };
     case "west_antarctic_ice_sheet_mass_balance":
-      return { cadence: "annual", warningDays: 2400, staleDays: 3200 };
+      return { cadence: "assessment", warningDays: 2400, staleDays: 3200 };
     case "greenland_ice_sheet_mass_balance":
       return { cadence: "monthly", warningDays: 220, staleDays: 430 };
     case "atmospheric_aggi":
@@ -2834,6 +2838,8 @@ function cadenceLabel(cadence: FreshnessCadence, t: (typeof STRINGS)[Language]):
       return t.freshnessQuarterly;
     case "annual":
       return t.freshnessAnnual;
+    case "assessment":
+      return t.freshnessAssessment;
     default:
       return t.freshnessDaily;
   }

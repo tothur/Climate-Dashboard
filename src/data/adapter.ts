@@ -125,10 +125,12 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
     unit: "W/m²",
     decimals: 2,
     source: {
-      shortName: "LASP LISIRD TSIS-1",
-      descriptionEn: "Daily TSIS-1 total solar irradiance at 1 AU from LASP/LISIRD.",
-      descriptionHu: "Napi TSIS-1 teljes napsugárzás 1 csillagászati egységnél, a LASP/LISIRD adatai alapján.",
-      url: "https://lasp.colorado.edu/lisird/data/tsis_tsi_24hr",
+      shortName: "LASP LISIRD NRLTSI2 + TSIS-1",
+      descriptionEn:
+        "Monthly NRLTSI2 total solar irradiance reconstruction at 1 AU, extended with overlap-adjusted TSIS-1 observations.",
+      descriptionHu:
+        "Havi NRLTSI2 teljes napsugárzás-rekonstrukció 1 csillagászati egységnél, átfedés alapján igazított TSIS-1 megfigyelésekkel kiegészítve.",
+      url: "https://lasp.colorado.edu/lisird/data/nrl2_tsi_P1M",
     },
   },
   global_glacier_mass_balance: {

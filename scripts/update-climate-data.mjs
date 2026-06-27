@@ -29,6 +29,7 @@ const WGMS_MASS_CHANGE_ESTIMATES_URL = "https://wgms.ch/mass_change_estimates/";
 const WGMS_REFERENCE_GLACIERS_MASS_BALANCE_URL = "https://wgms.ch/data/faq/mb_ref.csv";
 const WGMS_AMCE_ZIP_PATTERN = /(?:https:\/\/wgms\.ch)?\/downloads\/wgms-amce-\d{4}-\d{2}-\d{2}\.zip/g;
 const WGMS_AMCE_GLOBAL_CSV_ENTRY = "global.csv";
+const LASP_NRL2_TSI_MONTHLY_URL = "https://lasp.colorado.edu/lisird/latis/dap/nrl2_tsi_P1M.csv?time,irradiance";
 const LASP_TSIS_TSI_DAILY_URL = "https://lasp.colorado.edu/lisird/latis/dap/tsis_tsi_24hr.csv?time,tsi_1au";
 const IMBIE_WEST_ANTARCTICA_MASS_BALANCE_CSV_URL =
   "https://ramadda.data.bas.ac.uk/repository/entry/get/imbie_west_antarctica_2021_Gt.csv?entryid=synth:77b64c55-7166-4a06-9def-2e400398e452:L2ltYmllX3dlc3RfYW50YXJjdGljYV8yMDIxX0d0LmNzdg==";
@@ -299,6 +300,11 @@ function dateFromJulianDate(julianDate) {
   if (!Number.isFinite(julianDate)) return null;
   const unixDays = julianDate - 2440587.5;
   return formatIsoDate(new Date(unixDays * DAY_MS));
+}
+
+function dateFromDaysSince1610(daysSince1610) {
+  if (!Number.isFinite(daysSince1610)) return null;
+  return formatIsoDate(new Date(Date.UTC(1610, 0, 1) + daysSince1610 * DAY_MS));
 }
 
 function extractLatestGlobalMeanSeaLevelUrl(homepageHtml) {
@@ -866,6 +872,81 @@ function parseLaspTsisTsiDailyCsv(rawCsv) {
   }
 
   return normalizePoints(points);
+}
+
+function parseLaspNrl2TsiMonthlyCsv(rawCsv) {
+  const points = [];
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
+  let timeColumn = -1;
+  let valueColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const columns = line.split(",").map((col) => col.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((col) => col.toLowerCase());
+      timeColumn = header.findIndex((col) => col.startsWith("time"));
+      valueColumn = header.findIndex((col) => col.startsWith("irradiance"));
+      hasHeader = true;
+      continue;
+    }
+
+    if (timeColumn < 0 || valueColumn < 0) continue;
+    if (columns.length <= timeColumn || columns.length <= valueColumn) continue;
+
+    const daysSince1610 = toFiniteNumber(columns[timeColumn]);
+    const value = toFiniteNumber(columns[valueColumn]);
+    if (daysSince1610 == null || value == null || value <= 0) continue;
+
+    const date = dateFromDaysSince1610(daysSince1610);
+    if (!date) continue;
+    points.push({ date: date.slice(0, 8) + "01", value });
+  }
+
+  return normalizePoints(points);
+}
+
+function monthlyMeanSeries(points) {
+  const buckets = new Map();
+  for (const point of points) {
+    const date = String(point.date ?? "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const monthDate = `${date.slice(0, 7)}-01`;
+    const values = buckets.get(monthDate) ?? [];
+    values.push(Number(point.value));
+    buckets.set(monthDate, values);
+  }
+
+  return normalizePoints(
+    Array.from(buckets.entries()).map(([date, values]) => ({
+      date,
+      value: values.reduce((sum, value) => sum + value, 0) / values.length,
+    }))
+  );
+}
+
+function mergeNrl2WithTsisExtension(nrl2MonthlyPoints, tsisDailyPoints) {
+  const nrl2Monthly = normalizePoints(nrl2MonthlyPoints);
+  const tsisMonthly = monthlyMeanSeries(tsisDailyPoints);
+  if (!nrl2Monthly.length) return tsisMonthly;
+  if (!tsisMonthly.length) return nrl2Monthly;
+
+  const nrl2ByDate = new Map(nrl2Monthly.map((point) => [point.date, point.value]));
+  const overlapDifferences = tsisMonthly
+    .filter((point) => nrl2ByDate.has(point.date))
+    .map((point) => point.value - nrl2ByDate.get(point.date));
+  const overlapOffset = overlapDifferences.length
+    ? overlapDifferences.reduce((sum, value) => sum + value, 0) / overlapDifferences.length
+    : 0;
+  const lastNrl2Date = nrl2Monthly[nrl2Monthly.length - 1].date;
+  const tsisExtension = tsisMonthly
+    .filter((point) => point.date > lastNrl2Date)
+    .map((point) => ({ date: point.date, value: point.value - overlapOffset }));
+
+  return normalizePoints([...nrl2Monthly, ...tsisExtension]);
 }
 
 function parseLooseDateToken(token) {
@@ -2257,6 +2338,7 @@ async function updateOnce() {
     ch4Csv,
     aggiCsv,
     dailyGlobalMeanAnomalyCsv,
+    incomingSolarEnergyHistoricalCsv,
     incomingSolarEnergyCsv,
     ceresContentsHtml,
     wgmsReferenceGlacierCsv,
@@ -2284,6 +2366,7 @@ async function updateOnce() {
     fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
     fetchText(NOAA_AGGI_CSV_URL),
     fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
+    fetchText(LASP_NRL2_TSI_MONTHLY_URL),
     fetchText(LASP_TSIS_TSI_DAILY_URL),
     fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL, {
       timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
@@ -2479,15 +2562,21 @@ async function updateOnce() {
     maxValue: 3.5,
     maxAgeDays: 1000,
   });
-  let incomingSolarEnergy = sanitizeSeries(parseLaspTsisTsiDailyCsv(incomingSolarEnergyCsv), {
-    minValue: 1358,
-    maxValue: 1364,
-    maxAgeDays: 220,
-  });
+  let incomingSolarEnergy = sanitizeSeries(
+    mergeNrl2WithTsisExtension(
+      parseLaspNrl2TsiMonthlyCsv(incomingSolarEnergyHistoricalCsv),
+      parseLaspTsisTsiDailyCsv(incomingSolarEnergyCsv)
+    ),
+    {
+      minValue: 1358,
+      maxValue: 1364,
+      maxAgeDays: 220,
+    }
+  );
   if (!incomingSolarEnergy.length) {
     incomingSolarEnergy = await loadPreviousSeries("incoming_solar_energy");
     if (incomingSolarEnergy.length > 0) {
-      dataWarnings.push("incoming_solar_energy: retaining the previous validated TSIS-1 series.");
+      dataWarnings.push("incoming_solar_energy: retaining the previous validated NRLTSI2/TSIS-1 series.");
     }
   }
   const ceresFileName = ceresContentsHtml ? extractLatestCeresEebafDatasetName(ceresContentsHtml) : null;
@@ -2754,7 +2843,7 @@ async function updateOnce() {
       earth_energy_imbalance: hasFreshEarthEnergyImbalance && ceresFileName
         ? buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName)
         : (await loadPreviousSourceUrl("earth_energy_imbalance")) ?? NASA_CERES_EBAF_PROJECT_URL,
-      incoming_solar_energy: LASP_TSIS_TSI_DAILY_URL,
+      incoming_solar_energy: `${LASP_NRL2_TSI_MONTHLY_URL} + ${LASP_TSIS_TSI_DAILY_URL}`,
       global_glacier_mass_balance: wgmsAmceZipUrl ?? WGMS_MASS_CHANGE_ESTIMATES_URL,
       mountain_glacier_mass_balance: WGMS_REFERENCE_GLACIERS_MASS_BALANCE_URL,
       west_antarctic_ice_sheet_mass_balance: IMBIE_WEST_ANTARCTICA_MASS_BALANCE_CSV_URL,

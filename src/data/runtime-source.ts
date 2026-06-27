@@ -32,6 +32,7 @@ const WGMS_MASS_CHANGE_ESTIMATES_URL = "https://wgms.ch/mass_change_estimates/";
 const WGMS_REFERENCE_GLACIERS_MASS_BALANCE_URL = "https://wgms.ch/data/faq/mb_ref.csv";
 const WGMS_AMCE_ZIP_PATTERN = /(?:https:\/\/wgms\.ch)?\/downloads\/wgms-amce-\d{4}-\d{2}-\d{2}\.zip/g;
 const WGMS_AMCE_GLOBAL_CSV_ENTRY = "global.csv";
+const LASP_NRL2_TSI_MONTHLY_URL = "https://lasp.colorado.edu/lisird/latis/dap/nrl2_tsi_P1M.csv?time,irradiance";
 const LASP_TSIS_TSI_DAILY_URL = "https://lasp.colorado.edu/lisird/latis/dap/tsis_tsi_24hr.csv?time,tsi_1au";
 const IMBIE_WEST_ANTARCTICA_MASS_BALANCE_CSV_URL =
   "https://ramadda.data.bas.ac.uk/repository/entry/get/imbie_west_antarctica_2021_Gt.csv?entryid=synth:77b64c55-7166-4a06-9def-2e400398e452:L2ltYmllX3dlc3RfYW50YXJjdGljYV8yMDIxX0d0LmNzdg==";
@@ -182,6 +183,11 @@ function monthDateFromUtcTimestamp(timestamp: number): string | null {
 function dateFromJulianDate(julianDate: number): string | null {
   if (!Number.isFinite(julianDate)) return null;
   return formatIsoDate(new Date((julianDate - 2440587.5) * DAY_MS));
+}
+
+function dateFromDaysSince1610(daysSince1610: number): string | null {
+  if (!Number.isFinite(daysSince1610)) return null;
+  return formatIsoDate(new Date(Date.UTC(1610, 0, 1) + daysSince1610 * DAY_MS));
 }
 
 function extractLatestGlobalMeanSeaLevelUrl(homepageHtml: string | null | undefined): string | null {
@@ -750,6 +756,81 @@ function parseLaspTsisTsiDailyCsv(rawCsv: string): DailyPoint[] {
   }
 
   return normalizePoints(points);
+}
+
+function parseLaspNrl2TsiMonthlyCsv(rawCsv: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
+  let timeColumn = -1;
+  let valueColumn = -1;
+  let hasHeader = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const columns = line.split(",").map((col) => col.replace(/"/g, "").trim());
+    if (!hasHeader) {
+      const header = columns.map((col) => col.toLowerCase());
+      timeColumn = header.findIndex((col) => col.startsWith("time"));
+      valueColumn = header.findIndex((col) => col.startsWith("irradiance"));
+      hasHeader = true;
+      continue;
+    }
+
+    if (timeColumn < 0 || valueColumn < 0) continue;
+    if (columns.length <= timeColumn || columns.length <= valueColumn) continue;
+
+    const daysSince1610 = toFiniteNumber(columns[timeColumn]);
+    const value = toFiniteNumber(columns[valueColumn]);
+    if (daysSince1610 == null || value == null || value <= 0) continue;
+
+    const date = dateFromDaysSince1610(daysSince1610);
+    if (!date) continue;
+    points.push({ date: `${date.slice(0, 7)}-01`, value });
+  }
+
+  return normalizePoints(points);
+}
+
+function monthlyMeanSeries(points: DailyPoint[]): DailyPoint[] {
+  const buckets = new Map<string, number[]>();
+  for (const point of points) {
+    const date = String(point.date ?? "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const monthDate = `${date.slice(0, 7)}-01`;
+    const values = buckets.get(monthDate) ?? [];
+    values.push(Number(point.value));
+    buckets.set(monthDate, values);
+  }
+
+  return normalizePoints(
+    Array.from(buckets.entries()).map(([date, values]) => ({
+      date,
+      value: values.reduce((sum, value) => sum + value, 0) / values.length,
+    }))
+  );
+}
+
+function mergeNrl2WithTsisExtension(nrl2MonthlyPoints: DailyPoint[], tsisDailyPoints: DailyPoint[]): DailyPoint[] {
+  const nrl2Monthly = normalizePoints(nrl2MonthlyPoints);
+  const tsisMonthly = monthlyMeanSeries(tsisDailyPoints);
+  if (!nrl2Monthly.length) return tsisMonthly;
+  if (!tsisMonthly.length) return nrl2Monthly;
+
+  const nrl2ByDate = new Map(nrl2Monthly.map((point) => [point.date, point.value]));
+  const overlapDifferences = tsisMonthly
+    .filter((point) => nrl2ByDate.has(point.date))
+    .map((point) => point.value - (nrl2ByDate.get(point.date) ?? 0));
+  const overlapOffset = overlapDifferences.length
+    ? overlapDifferences.reduce((sum, value) => sum + value, 0) / overlapDifferences.length
+    : 0;
+  const lastNrl2Date = nrl2Monthly[nrl2Monthly.length - 1].date;
+  const tsisExtension = tsisMonthly
+    .filter((point) => point.date > lastNrl2Date)
+    .map((point) => ({ date: point.date, value: point.value - overlapOffset }));
+
+  return normalizePoints([...nrl2Monthly, ...tsisExtension]);
 }
 
 function parseLooseDateToken(token: string): string | null {
@@ -1472,9 +1553,9 @@ async function loadAggiSeries(): Promise<DailyPoint[] | null> {
 }
 
 async function loadIncomingSolarEnergySeries(): Promise<DailyPoint[] | null> {
-  const csv = await fetchText(LASP_TSIS_TSI_DAILY_URL);
-  if (!csv) return null;
-  const points = sanitizeSeries(parseLaspTsisTsiDailyCsv(csv), {
+  const [nrl2Csv, tsisCsv] = await Promise.all([fetchText(LASP_NRL2_TSI_MONTHLY_URL), fetchText(LASP_TSIS_TSI_DAILY_URL)]);
+  if (!nrl2Csv && !tsisCsv) return null;
+  const points = sanitizeSeries(mergeNrl2WithTsisExtension(parseLaspNrl2TsiMonthlyCsv(nrl2Csv ?? ""), parseLaspTsisTsiDailyCsv(tsisCsv ?? "")), {
     minValue: 1358,
     maxValue: 1364,
     maxAgeDays: 220,
