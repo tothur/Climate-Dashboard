@@ -315,7 +315,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
     maxThreshold: 10,
   },
 ];
-type DashboardView = "overview" | "indicators" | "forcing" | "maps" | "projections" | "sources";
+type DashboardView = "overview" | "indicators" | "forcing" | "variability" | "maps" | "projections" | "sources";
 type ToolkitIconName =
   | "alert"
   | "bars"
@@ -336,7 +336,15 @@ type ToolkitIconName =
   | "trend"
   | "up";
 
-const DASHBOARD_VIEW_IDS = new Set<DashboardView>(["overview", "indicators", "forcing", "maps", "projections", "sources"]);
+const DASHBOARD_VIEW_IDS = new Set<DashboardView>([
+  "overview",
+  "indicators",
+  "forcing",
+  "variability",
+  "maps",
+  "projections",
+  "sources",
+]);
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
 const ICE_SHEET_AND_GLACIER_KEYS = new Set([
@@ -452,6 +460,7 @@ const STRINGS = {
     dataUpdatedLabel: "Data updated",
     navOverview: "Overview",
     navIndicators: "Indicators",
+    navVariability: "Variability",
     overviewTitle: "Global Climate Overview",
     overviewSubtitle: "Key indicators and insights into our changing climate",
     overviewDailyGlobalTemperatureAnomalyTitle: "Daily Global Temperature Anomaly",
@@ -590,6 +599,9 @@ const STRINGS = {
     seaLevelEquivalentSubtitle: "Potential global mean sea-level rise from complete ice-sheet loss.",
     nino34IndexTitle: "Historical Niño 3.4 Index",
     nino34IndexSubtitle: "NOAA CPC Oceanic Niño Index · centered 3-month Niño 3.4 SST anomaly",
+    naturalVariabilityTitle: "Natural Variability",
+    naturalVariabilityNote:
+      "Large-scale climate variability outlooks and indices, starting with ENSO conditions and historical Niño 3.4 anomalies.",
     mapsSectionTitle: "Maps",
     mapsSectionNote:
       "Latest available Climate Reanalyzer Today’s Weather maps. Temperature fields use GFS; SST uses preliminary NOAA OISST. Baselines are shown within anomaly maps.",
@@ -644,6 +656,7 @@ const STRINGS = {
     dataUpdatedLabel: "Adatok frissítve",
     navOverview: "Áttekintés",
     navIndicators: "Indikátorok",
+    navVariability: "Változékonyság",
     overviewTitle: "Globális éghajlati áttekintés",
     overviewSubtitle: "Fő indikátorok és megállapítások a változó éghajlatról",
     overviewDailyGlobalTemperatureAnomalyTitle: "Napi globális hőmérsékleti anomália",
@@ -782,6 +795,9 @@ const STRINGS = {
     seaLevelEquivalentSubtitle: "A teljes jégtakaró-veszteségből adódó lehetséges globális átlagos tengerszint-emelkedés.",
     nino34IndexTitle: "Történeti Niño 3.4 index",
     nino34IndexSubtitle: "NOAA CPC Óceáni Niño Index · középre igazított 3 havi Niño 3.4 SST-anomália",
+    naturalVariabilityTitle: "Természetes változékonyság",
+    naturalVariabilityNote:
+      "Nagy léptékű éghajlati változékonysági kilátások és indexek, jelenleg ENSO-állapottal és történeti Niño 3.4 anomáliákkal.",
     mapsSectionTitle: "Térképek",
     mapsSectionNote:
       "A legfrissebb elérhető Climate Reanalyzer Today’s Weather térképek. A hőmérsékleti mezők GFS-, az SST-térképek előzetes NOAA OISST-adatokat használnak. Az anomáliabázisok a térképeken láthatók.",
@@ -2781,7 +2797,7 @@ function dataSourceSectionTitle(section: DataSourceSection, t: (typeof STRINGS)[
     case "maps":
       return t.mapsSectionTitle;
     case "outlook":
-      return t.ensoOutlookTitle;
+      return t.naturalVariabilityTitle;
   }
 }
 
@@ -2902,6 +2918,7 @@ export function App() {
   const [climateSectionOpen, setClimateSectionOpen] = useState(true);
   const [mapsSectionOpen, setMapsSectionOpen] = useState(true);
   const [forcingSectionOpen, setForcingSectionOpen] = useState(true);
+  const [variabilitySectionOpen, setVariabilitySectionOpen] = useState(true);
   const [projectionsSectionOpen, setProjectionsSectionOpen] = useState(true);
   const [activeView, setActiveView] = useState<DashboardView>(() => {
     if (typeof window === "undefined") return "overview";
@@ -3184,49 +3201,6 @@ export function App() {
     t.annualGlobalTemperatureAnomalyTitle,
     t.projectedAnnualTemperatureAnomalyTitle,
     t.projectionIntervalLabel,
-  ]);
-  const projectedAnnualGlobalMeanAnomalyChartOption = useMemo(() => {
-    if (!dailyGlobalMeanAnomalyMetric || !projectedAnnualGlobalMeanAnomaly || !projectedAnnualChartPoints.length) return null;
-
-    return buildAnnualProjectionTrendOption({
-      points: projectedAnnualChartPoints,
-      projection: projectedAnnualGlobalMeanAnomaly,
-      seriesName: t.annualGlobalTemperatureAnomalyTitle,
-      projectionSeriesName: t.projectedAnnualTemperatureAnomalyTitle,
-      rangeLabel: t.projectionRangeLabel,
-      unit: cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language),
-      decimals: dailyGlobalMeanAnomalyMetric.decimals,
-      yAxisMin: 1,
-      yAxisMax: 2,
-      yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
-      xAxisYearLabelStep: 1,
-      disableDataZoom: true,
-      forceMappedYearLabels: true,
-      showLegend: false,
-      compact,
-      dark: resolvedTheme === "dark",
-      color: topicChartColor(dailyGlobalMeanAnomalyMetric.key, resolvedTheme === "dark"),
-      referenceLines: [
-        { value: 1.5, label: "1.5°C", color: resolvedTheme === "dark" ? "#fbbf24" : "#f59e0b" },
-        { value: 2, label: "2.0°C", color: resolvedTheme === "dark" ? "#f87171" : "#dc2626" },
-      ],
-      labels: {
-        noData: t.noData,
-        latest: t.chartLatest,
-      },
-    });
-  }, [
-    compact,
-    dailyGlobalMeanAnomalyMetric,
-    language,
-    projectedAnnualChartPoints,
-    projectedAnnualGlobalMeanAnomaly,
-    resolvedTheme,
-    t.annualGlobalTemperatureAnomalyTitle,
-    t.chartLatest,
-    t.noData,
-    t.projectedAnnualTemperatureAnomalyTitle,
-    t.projectionRangeLabel,
   ]);
   const longRangeTemperatureTrendOption = useMemo(() => {
     if (!dailyGlobalMeanAnomalyMetric || !annualGlobalMeanAnomalyPoints.length) return null;
@@ -3652,6 +3626,7 @@ export function App() {
     { view: "overview", label: t.navOverview, icon: "home", available: true },
     { view: "indicators", label: t.navIndicators, icon: "bars", available: true },
     { view: "forcing", label: t.forcingTitle, icon: "trend", available: true },
+    { view: "variability", label: t.navVariability, icon: "ocean", available: true },
     { view: "maps", label: t.mapsSectionTitle, icon: "map", available: true },
     { view: "projections", label: t.projectionsTitle, icon: "trend", available: projectedAnnualGlobalMeanAnomaly != null },
     { view: "sources", label: t.sourceCardsTitle, icon: "reports", available: true },
@@ -3663,11 +3638,13 @@ export function App() {
         ? t.climateIndicatorsTitle
         : activeView === "forcing"
           ? t.forcingTitle
-          : activeView === "maps"
-            ? t.mapsSectionTitle
-            : activeView === "projections"
-              ? t.projectionsTitle
-              : t.sourceCardsTitle;
+          : activeView === "variability"
+            ? t.naturalVariabilityTitle
+            : activeView === "maps"
+              ? t.mapsSectionTitle
+              : activeView === "projections"
+                ? t.projectionsTitle
+                : t.sourceCardsTitle;
   const pageSubtitle =
     activeView === "overview"
       ? t.overviewSubtitle
@@ -3675,11 +3652,13 @@ export function App() {
         ? t.climateIndicatorsNote
         : activeView === "forcing"
           ? t.forcingNote
-          : activeView === "maps"
-            ? t.mapsSectionNote
-            : activeView === "projections"
-              ? t.projectionsNote
-              : sourceModeLabel;
+          : activeView === "variability"
+            ? t.naturalVariabilityNote
+            : activeView === "maps"
+              ? t.mapsSectionNote
+              : activeView === "projections"
+                ? t.projectionsNote
+                : sourceModeLabel;
   const formatMetricDelta = (metric: ClimateMetricSeries) => {
     const latestIndex = metric.points.length - 1;
     if (latestIndex <= 0) return null;
@@ -4681,6 +4660,45 @@ export function App() {
       </section>
       ) : null}
 
+      {activeView === "variability" ? (
+        <section className="collapsible-section detail-page-section" id="variability">
+          <header className="section-header">
+            <div className="section-header-main">
+              <h2>{t.naturalVariabilityTitle}</h2>
+              <p>{t.naturalVariabilityNote}</p>
+            </div>
+            <button
+              type="button"
+              className="section-toggle"
+              aria-expanded={variabilitySectionOpen}
+              onClick={() => setVariabilitySectionOpen((open) => !open)}
+            >
+              <span className={`section-toggle-icon ${variabilitySectionOpen ? "open" : ""}`} aria-hidden="true" />
+              <span>{variabilitySectionOpen ? t.sectionCollapse : t.sectionExpand}</span>
+            </button>
+          </header>
+
+          {variabilitySectionOpen ? (
+            <div className="section-content">
+              <div className="projection-enso-card-row">{renderEnsoOutlookCard({ showSourceLink: true })}</div>
+              {nino34IndexMetric && nino34IndexChartOption ? (
+                <div className="charts-grid climate-grid">
+                  <EChartsPanel
+                    title={t.nino34IndexTitle}
+                    subtitle={t.nino34IndexSubtitle}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
+                    freshnessLabel={metricFreshnessBadge(nino34IndexMetric, language, t)?.label}
+                    freshnessTone={metricFreshnessBadge(nino34IndexMetric, language, t)?.tone}
+                    option={nino34IndexChartOption}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       {activeView === "projections" && projectedAnnualGlobalMeanAnomaly ? (
         <section className="collapsible-section detail-page-section" id="projections">
           <header className="section-header">
@@ -4701,114 +4719,116 @@ export function App() {
 
           {projectionsSectionOpen ? (
             <div className="section-content">
-              <div className="projection-enso-card-row">{renderEnsoOutlookCard({ showSourceLink: true })}</div>
-              {nino34IndexMetric && nino34IndexChartOption ? (
-                <div className="charts-grid climate-grid">
-                  <EChartsPanel
-                    title={t.nino34IndexTitle}
-                    subtitle={t.nino34IndexSubtitle}
-                    expandLabel={t.chartFullscreenEnter}
-                    collapseLabel={t.chartFullscreenExit}
-                    freshnessLabel={metricFreshnessBadge(nino34IndexMetric, language, t)?.label}
-                    freshnessTone={metricFreshnessBadge(nino34IndexMetric, language, t)?.tone}
-                    option={nino34IndexChartOption}
-                  />
+              <article className="overview-card overview-projection-card projections-outlook-card">
+                <div className="overview-card-header">
+                  <h2>{t.outlookTitle} {currentYear}</h2>
+                  <ToolkitIcon name="info" className="info-icon" />
                 </div>
-              ) : null}
-              <div className="summary-cards-section">
-                <div className="regional-summary-grid projection-summary-grid">
-                  <article className="alert-card summary topcat-anomaly projection-summary-card projection-estimate-summary-card">
-                    <div className="projection-summary-heading">
-                      <h2>{t.projectedAnnualTemperatureAnomalyTitle}</h2>
-                    </div>
-                    {renderProjectionEstimate("summary")}
-                    {runtimeDataReady ? <p>{projectionSignalSummary ?? t.projectionMethodLabel}</p> : null}
-                    {runtimeDataReady && projectionFreshness ? (
-                      <span className={`freshness-chip ${projectionFreshness.tone}`}>{projectionFreshness.label}</span>
-                    ) : null}
-                    <div className="alert-meta">
-                      <span className="alert-meta-chip confidence-medium">{t.projectionMethodLabel}</span>
-                      {projectionSupportLabel ? (
-                        <span className="alert-meta-chip confidence-medium">{projectionSupportLabel}</span>
-                      ) : null}
-                    </div>
-                  </article>
-                  <article className="alert-card summary topcat-anomaly projection-summary-card">
-                    <h2>{t.projectionProbabilityAboveOnePointFiveTitle}</h2>
-                    <p className="alert-emphasis">
-                      {renderPrimaryValue(
-                        projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive),
-                        "value-loading-skeleton detail-value-loading"
-                      )}
-                    </p>
-                    {runtimeDataReady ? <p>{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p> : null}
-                    {runtimeDataReady ? (
-                      <p>
-                        {t.projectionRangeLabel}: {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
-                        {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)}{" "}
-                        {cardUnitLabel(
-                          DAILY_GLOBAL_MEAN_ANOMALY_KEY,
-                          dailyGlobalMeanAnomalyMetric?.unit ?? "°C",
-                          language
-                        )}
-                      </p>
-                    ) : null}
-                    {runtimeDataReady ? <p>{projectionSignalSummary ?? t.projectionMethodLabel}</p> : null}
-                    {runtimeDataReady && projectionFreshness ? (
-                      <span className={`freshness-chip ${projectionFreshness.tone}`}>{projectionFreshness.label}</span>
-                    ) : null}
-                    <div className="alert-meta">
-                      <span className="alert-meta-chip confidence-medium">{t.projectionProbabilityMethodLabel}</span>
-                      <span className="alert-meta-chip confidence-medium">
-                        {projectedAnnualGlobalMeanAnomaly.analogCount} {t.projectionAnalogsLabel}
-                      </span>
-                    </div>
-                  </article>
-                  <article className="alert-card summary topcat-anomaly projection-summary-card">
-                    <h2>{t.projectionProbabilityWarmestRecordTitle}</h2>
-                    <p className="alert-emphasis">
-                      {renderPrimaryValue(
-                        projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord),
-                        "value-loading-skeleton detail-value-loading"
-                      )}
-                    </p>
-                    {runtimeDataReady ? <p>{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</p> : null}
-                    {runtimeDataReady ? (
-                      <p>
-                        {t.projectionRecordThresholdLabel}:{" "}
-                        {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.recordThreshold)}{" "}
-                        {cardUnitLabel(
-                          DAILY_GLOBAL_MEAN_ANOMALY_KEY,
-                          dailyGlobalMeanAnomalyMetric?.unit ?? "°C",
-                          language
-                        )}
-                      </p>
-                    ) : null}
-                    {runtimeDataReady ? <p>{projectionSignalSummary ?? t.projectionMethodLabel}</p> : null}
-                    {runtimeDataReady && projectionFreshness ? (
-                      <span className={`freshness-chip ${projectionFreshness.tone}`}>{projectionFreshness.label}</span>
-                    ) : null}
-                    <div className="alert-meta">
-                      <span className="alert-meta-chip confidence-medium">{t.projectionProbabilityMethodLabel}</span>
-                      <span className="alert-meta-chip confidence-medium">
-                        {projectedAnnualGlobalMeanAnomaly.analogCount} {t.projectionAnalogsLabel}
-                      </span>
-                    </div>
-                  </article>
+                {renderProjectionEstimate("overview")}
+                <div className="projection-chart-cell overview-current-year-chart">
+                  {projectedAnnualOverviewChartOption ? (
+                    <EChartsPanel
+                      title={t.projectedAnnualTemperatureAnomalyChartTitle}
+                      subtitle={t.projectedAnnualTemperatureAnomalyChartSubtitle}
+                      expandLabel={t.chartFullscreenEnter}
+                      collapseLabel={t.chartFullscreenExit}
+                      freshnessLabel={projectionFreshness?.label}
+                      freshnessTone={projectionFreshness?.tone}
+                      option={projectedAnnualOverviewChartOption}
+                    />
+                  ) : null}
                 </div>
+              </article>
+
+              <div className="regional-summary-grid projection-summary-grid projection-compact-grid">
+                <article className="alert-card summary topcat-anomaly projection-summary-card projection-compact-card">
+                  <h2>{t.projectionProbabilityAboveOnePointFiveTitle}</h2>
+                  <p className="alert-emphasis">
+                    {renderPrimaryValue(
+                      projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive),
+                      "value-loading-skeleton detail-value-loading"
+                    )}
+                  </p>
+                  {runtimeDataReady ? (
+                    <p>
+                      {t.projectionRangeLabel}: {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
+                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)} {projectionUnitLabel}
+                    </p>
+                  ) : null}
+                  <div className="alert-meta">
+                    <span className="alert-meta-chip confidence-medium">{t.projectionProbabilityMethodLabel}</span>
+                    <span className="alert-meta-chip confidence-medium">
+                      {projectedAnnualGlobalMeanAnomaly.analogCount} {t.projectionAnalogsLabel}
+                    </span>
+                  </div>
+                </article>
+                <article className="alert-card summary topcat-anomaly projection-summary-card projection-compact-card">
+                  <h2>{t.projectionProbabilityWarmestRecordTitle}</h2>
+                  <p className="alert-emphasis">
+                    {renderPrimaryValue(
+                      projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord),
+                      "value-loading-skeleton detail-value-loading"
+                    )}
+                  </p>
+                  {runtimeDataReady ? (
+                    <p>
+                      {t.projectionRecordThresholdLabel}:{" "}
+                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.recordThreshold)} {projectionUnitLabel}
+                    </p>
+                  ) : null}
+                  <div className="alert-meta">
+                    <span className="alert-meta-chip confidence-medium">{t.projectionProbabilityMethodLabel}</span>
+                    <span className="alert-meta-chip confidence-medium">
+                      {projectedAnnualGlobalMeanAnomaly.analogCount} {t.projectionAnalogsLabel}
+                    </span>
+                  </div>
+                </article>
               </div>
-              {projectedAnnualGlobalMeanAnomalyChartOption ? (
-                <div className="charts-grid climate-grid">
-                  <EChartsPanel
-                    title={t.projectedAnnualTemperatureAnomalyChartTitle}
-                    subtitle={t.projectedAnnualTemperatureAnomalyChartSubtitle}
-                    expandLabel={t.chartFullscreenEnter}
-                    collapseLabel={t.chartFullscreenExit}
-                    freshnessLabel={projectionFreshness?.label}
-                    freshnessTone={projectionFreshness?.tone}
-                    option={projectedAnnualGlobalMeanAnomalyChartOption}
-                  />
-                </div>
+
+              {longRangeTemperatureTrendOption ? (
+                <section className="overview-long-range-section projections-long-range-section">
+                  <article className="overview-card overview-temperature-trend-card">
+                    <div className="overview-card-header">
+                      <div>
+                        <h2>{t.longRangeTemperatureTrendTitle}</h2>
+                        <p>{t.longRangeTemperatureTrendSource}</p>
+                      </div>
+                      <a
+                        className="text-link-button"
+                        href={CMIP7_SCENARIOMIP_TEMPERATURE_SOURCE_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {t.cmip7ScenarioSourceLabel} →
+                      </a>
+                    </div>
+                    <div className="long-range-temperature-chart">
+                      <EChartsPanel
+                        title={t.longRangeTemperatureTrendTitle}
+                        subtitle={t.longRangeTemperatureTrendSubtitle}
+                        expandLabel={t.chartFullscreenEnter}
+                        collapseLabel={t.chartFullscreenExit}
+                        option={longRangeTemperatureTrendOption}
+                      />
+                    </div>
+                    <div className="scenario-2100-values" aria-label={t.longRangeTemperatureTrendValueLabel}>
+                      {longRangeScenarioSummaries.map((scenario) => (
+                        <div
+                          className="scenario-2100-chip"
+                          key={scenario.key}
+                          style={{ "--scenario-color": scenario.color } as CSSProperties}
+                        >
+                          <span>{scenario.label}</span>
+                          <strong>
+                            {scenario.value2100 == null ? "-" : projectionNumberFormat.format(scenario.value2100)}{" "}
+                            {projectionUnitLabel}
+                          </strong>
+                          <small>{t.longRangeTemperatureTrendValueLabel}</small>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                </section>
               ) : null}
             </div>
           ) : null}

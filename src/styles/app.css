@@ -1772,6 +1772,38 @@ h3 {
   max-width: 360px;
 }
 
+.projection-compact-grid {
+  grid-template-columns: repeat(2, minmax(220px, 360px));
+  align-items: stretch;
+}
+
+.projection-compact-card {
+  gap: 8px;
+  min-height: 0;
+  padding: 14px;
+}
+
+.projection-compact-card h2 {
+  font-size: 0.98rem;
+  line-height: 1.18;
+}
+
+.projection-compact-card .alert-emphasis {
+  margin: 0;
+  font-size: clamp(1.45rem, 3vw, 2.1rem);
+  line-height: 1;
+}
+
+.projection-compact-card p:not(.alert-emphasis) {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.projection-compact-card .alert-meta {
+  margin-top: 2px;
+}
+
 .summary-cards-section {
   display: grid;
   gap: 12px;
