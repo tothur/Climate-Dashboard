@@ -229,6 +229,10 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
   const incomingSolarEnergy = generateSeries("2018-01-11", endDateIso, 1361.4, 0.000006, 0.45, 365.25 * 11, 0.02);
   const mountainGlacierMassBalance = generateAnnualSeries(1950, endDateIso, -1.1, -0.025, 0.18);
   const nino34Index = generateSeries("1950-01-01", endDateIso, 0, 0, 1.0, 365.25 * 3.4, 0.18);
+  const naoIndex = generateSeries("1950-01-01", endDateIso, 0, 0, 0.95, 365.25 * 2.8, 0.2, 32);
+  const pnaIndex = generateSeries("1950-01-01", endDateIso, 0, 0, 0.9, 365.25 * 3.1, 0.2, 78);
+  const soiIndex = generateSeries("1951-01-01", endDateIso, 0, 0, 1.1, 365.25 * 3.6, 0.22, 132);
+  const arcticOscillationIndex = generateSeries("1950-01-01", endDateIso, 0, 0, 1.05, 365.25 * 2.6, 0.22, 180);
 
   return {
     // Multi-decade fallback windows so year selection remains useful when live feeds fail.
@@ -263,6 +267,10 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
     atmospheric_ch4: generateSeries("1983-07-01", endDateIso, 1630, 0.0017, 14.5, 365.25, 0.55),
     atmospheric_aggi: atmosphericAggi,
     nino34_index: nino34Index,
+    nao_index: naoIndex,
+    pna_index: pnaIndex,
+    soi_index: soiIndex,
+    arctic_oscillation_index: arcticOscillationIndex,
   };
 }
 
@@ -302,4 +310,8 @@ export const CLIMATE_METRIC_KEYS: ClimateMetricKey[] = [
   "atmospheric_ch4",
   "atmospheric_aggi",
   "nino34_index",
+  "nao_index",
+  "pna_index",
+  "soi_index",
+  "arctic_oscillation_index",
 ];

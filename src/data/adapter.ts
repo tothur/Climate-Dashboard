@@ -44,6 +44,10 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "arctic_sea_ice_extent",
   "antarctic_sea_ice_extent",
   "nino34_index",
+  "nao_index",
+  "pna_index",
+  "soi_index",
+  "arctic_oscillation_index",
 ];
 
 const FORCING_KEYS: ClimateMetricKey[] = ["atmospheric_co2", "atmospheric_ch4", "atmospheric_aggi", "incoming_solar_energy"];
@@ -457,6 +461,55 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionEn: "Historical Oceanic Niño Index: centered 3-month Niño 3.4 SST anomaly from NOAA CPC.",
       descriptionHu: "Történeti Óceáni Niño Index: középre igazított 3 havi Niño 3.4 SST-anomália a NOAA CPC adatai alapján.",
       url: "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt",
+    },
+  },
+  nao_index: {
+    titleEn: "North Atlantic Oscillation Index",
+    titleHu: "Észak-atlanti oszcilláció index",
+    unit: "index",
+    decimals: 2,
+    source: {
+      shortName: "NOAA CPC NAO",
+      descriptionEn: "Monthly standardized North Atlantic Oscillation index from NOAA Climate Prediction Center.",
+      descriptionHu: "Havi standardizált észak-atlanti oszcilláció index a NOAA Climate Prediction Center adatai alapján.",
+      url: "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/nao.shtml",
+    },
+  },
+  pna_index: {
+    titleEn: "Pacific-North American Index",
+    titleHu: "Csendes-óceáni-észak-amerikai index",
+    unit: "index",
+    decimals: 2,
+    source: {
+      shortName: "NOAA CPC PNA",
+      descriptionEn: "Monthly standardized Pacific-North American teleconnection index from NOAA Climate Prediction Center.",
+      descriptionHu:
+        "Havi standardizált csendes-óceáni-észak-amerikai telekapcsolati index a NOAA Climate Prediction Center adatai alapján.",
+      url: "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/pna.shtml",
+    },
+  },
+  soi_index: {
+    titleEn: "Southern Oscillation Index",
+    titleHu: "Déli oszcilláció index",
+    unit: "index",
+    decimals: 2,
+    source: {
+      shortName: "NOAA PSL SOI",
+      descriptionEn: "Monthly standardized Southern Oscillation Index from NOAA Physical Sciences Laboratory.",
+      descriptionHu: "Havi standardizált déli oszcilláció index a NOAA Physical Sciences Laboratory adatai alapján.",
+      url: "https://psl.noaa.gov/data/correlation/soi.data",
+    },
+  },
+  arctic_oscillation_index: {
+    titleEn: "Arctic Oscillation Index",
+    titleHu: "Arktikus oszcilláció index",
+    unit: "index",
+    decimals: 2,
+    source: {
+      shortName: "NOAA CPC AO",
+      descriptionEn: "Monthly standardized Arctic Oscillation index from NOAA Climate Prediction Center.",
+      descriptionHu: "Havi standardizált arktikus oszcilláció index a NOAA Climate Prediction Center adatai alapján.",
+      url: "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/daily_ao_index/ao.shtml",
     },
   },
 };

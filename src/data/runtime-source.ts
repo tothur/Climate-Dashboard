@@ -48,6 +48,11 @@ const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/c
 const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
 const NOAA_AGGI_CSV_URL = "https://gml.noaa.gov/aggi/AGGI_Table.csv";
 const NOAA_CPC_ONI_URL = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt";
+const NOAA_CPC_NAO_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii.table";
+const NOAA_CPC_PNA_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.pna.monthly.b5001.current.ascii.table";
+const NOAA_PSL_SOI_MONTHLY_URL = "https://psl.noaa.gov/data/correlation/soi.data";
+const NOAA_CPC_AO_MONTHLY_URL =
+  "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/daily_ao_index/monthly.ao.index.b50.current.ascii.table";
 const LOCAL_GENERATED_DATA_URL = "./data/climate-realtime.json";
 const DAY_MS = 86_400_000;
 const FUTURE_TOLERANCE_DAYS = 0;
@@ -83,6 +88,10 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "atmospheric_ch4",
   "atmospheric_aggi",
   "nino34_index",
+  "nao_index",
+  "pna_index",
+  "soi_index",
+  "arctic_oscillation_index",
 ];
 const MAP_KEYS: ClimateMapKey[] = [
   "global_2m_temperature",
@@ -122,6 +131,10 @@ const LOCAL_GENERATED_SERIES_MAX_AGE_DAYS: Record<keyof ClimateSeriesBundle, num
   atmospheric_ch4: 220,
   atmospheric_aggi: 1000,
   nino34_index: 220,
+  nao_index: 220,
+  pna_index: 220,
+  soi_index: 220,
+  arctic_oscillation_index: 220,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -1212,6 +1225,56 @@ function parseNoaaCpcOniText(rawText: string): DailyPoint[] {
   return normalizePoints(points);
 }
 
+function parseNoaaCpcMonthlyIndexTable(rawText: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+
+  for (const rawLine of String(rawText ?? "").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || /^jan\b/i.test(line)) continue;
+
+    const columns = line.split(/\s+/);
+    if (columns.length < 13) continue;
+
+    const year = Number(columns[0]);
+    if (!Number.isFinite(year) || year < 1800 || year > 2200) continue;
+
+    for (let month = 1; month <= 12; month += 1) {
+      const value = toFiniteNumber(columns[month]);
+      if (value == null || value <= -90) continue;
+      const date = formatDateFromParts(year, month, 1);
+      if (!date) continue;
+      points.push({ date, value });
+    }
+  }
+
+  return normalizePoints(points);
+}
+
+function parseNoaaPslMonthlyIndexData(rawText: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+
+  for (const rawLine of String(rawText ?? "").split(/\r?\n/).slice(1)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const columns = line.split(/\s+/);
+    if (columns.length < 13) continue;
+
+    const year = Number(columns[0]);
+    if (!Number.isFinite(year) || year < 1800 || year > 2200) continue;
+
+    for (let month = 1; month <= 12; month += 1) {
+      const value = toFiniteNumber(columns[month]);
+      if (value == null || value <= -90) continue;
+      const date = formatDateFromParts(year, month, 1);
+      if (!date) continue;
+      points.push({ date, value });
+    }
+  }
+
+  return normalizePoints(points);
+}
+
 function parseImbieCumulativeMassLossCsv(rawCsv: string): DailyPoint[] {
   const rows: Array<{ date: string; cumulativeMassBalance: number }> = [];
   const lines = String(rawCsv ?? "").split(/\r?\n/);
@@ -1574,6 +1637,20 @@ async function loadNino34IndexSeries(): Promise<DailyPoint[] | null> {
   return points.length ? points : null;
 }
 
+async function loadMonthlyClimateIndexSeries(
+  url: string,
+  parser: (text: string) => DailyPoint[]
+): Promise<DailyPoint[] | null> {
+  const text = await fetchText(url);
+  if (!text) return null;
+  const points = sanitizeSeries(parser(text), {
+    minValue: -8,
+    maxValue: 8,
+    maxAgeDays: 220,
+  });
+  return points.length ? points : null;
+}
+
 interface OceanSeriesBundle {
   globalMeanSeaLevel: DailyPoint[] | null;
   oceanHeatContent: DailyPoint[] | null;
@@ -1730,6 +1807,10 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     dailyGlobalMeanAnomalyResult,
     iceSheetAndGlacierResult,
     nino34IndexResult,
+    naoIndexResult,
+    pnaIndexResult,
+    soiIndexResult,
+    arcticOscillationIndexResult,
   ] = await Promise.allSettled([
     loadSurfaceTempSeriesBundle(),
     loadSeaSurfaceTempSeriesBundle(),
@@ -1743,6 +1824,10 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     loadDailyGlobalMeanTemperatureAnomalySeries(),
     loadIceSheetAndGlacierSeriesBundle(),
     loadNino34IndexSeries(),
+    loadMonthlyClimateIndexSeries(NOAA_CPC_NAO_MONTHLY_URL, parseNoaaCpcMonthlyIndexTable),
+    loadMonthlyClimateIndexSeries(NOAA_CPC_PNA_MONTHLY_URL, parseNoaaCpcMonthlyIndexTable),
+    loadMonthlyClimateIndexSeries(NOAA_PSL_SOI_MONTHLY_URL, parseNoaaPslMonthlyIndexData),
+    loadMonthlyClimateIndexSeries(NOAA_CPC_AO_MONTHLY_URL, parseNoaaCpcMonthlyIndexTable),
   ]);
 
   if (surfaceResult.status === "fulfilled" && surfaceResult.value.absolute?.length) {
@@ -1962,6 +2047,26 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     liveSeries.nino34_index = nino34IndexResult.value;
   } else {
     warnings.push("Live Oceanic Nino Index feed was unavailable or stale; using bundled fallback.");
+  }
+  if (naoIndexResult.status === "fulfilled" && naoIndexResult.value?.length) {
+    liveSeries.nao_index = naoIndexResult.value;
+  } else {
+    warnings.push("Live North Atlantic Oscillation Index feed was unavailable or stale; using bundled fallback.");
+  }
+  if (pnaIndexResult.status === "fulfilled" && pnaIndexResult.value?.length) {
+    liveSeries.pna_index = pnaIndexResult.value;
+  } else {
+    warnings.push("Live Pacific-North American Index feed was unavailable or stale; using bundled fallback.");
+  }
+  if (soiIndexResult.status === "fulfilled" && soiIndexResult.value?.length) {
+    liveSeries.soi_index = soiIndexResult.value;
+  } else {
+    warnings.push("Live Southern Oscillation Index feed was unavailable or stale; using bundled fallback.");
+  }
+  if (arcticOscillationIndexResult.status === "fulfilled" && arcticOscillationIndexResult.value?.length) {
+    liveSeries.arctic_oscillation_index = arcticOscillationIndexResult.value;
+  } else {
+    warnings.push("Live Arctic Oscillation Index feed was unavailable or stale; using bundled fallback.");
   }
 
   return createDataSourceFromSeries({

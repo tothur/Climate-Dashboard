@@ -33,7 +33,11 @@ export type ClimateMetricKey =
   | "atmospheric_co2"
   | "atmospheric_ch4"
   | "atmospheric_aggi"
-  | "nino34_index";
+  | "nino34_index"
+  | "nao_index"
+  | "pna_index"
+  | "soi_index"
+  | "arctic_oscillation_index";
 
 export interface DailyPoint {
   date: string;

@@ -370,6 +370,14 @@ const REGIONAL_TEMPERATURE_ANOMALY_KEYS = new Set([
   "antarctic_surface_temperature_anomaly",
   "north_atlantic_sea_surface_temperature_anomaly",
 ]);
+const VARIABILITY_INDEX_KEYS: ClimateMetricSeries["key"][] = [
+  "nino34_index",
+  "nao_index",
+  "pna_index",
+  "soi_index",
+  "arctic_oscillation_index",
+];
+const VARIABILITY_INDEX_KEY_SET = new Set<ClimateMetricSeries["key"]>(VARIABILITY_INDEX_KEYS);
 const MONTHLY_COMPARISON_EXCLUDED_KEYS = new Set([...OCEAN_KEYS, EARTH_ENERGY_IMBALANCE_KEY, ...ICE_SHEET_AND_GLACIER_KEYS]);
 const REGIONAL_TEMPERATURE_KEYS = new Set([
   "northern_hemisphere_surface_temperature",
@@ -599,9 +607,13 @@ const STRINGS = {
     seaLevelEquivalentSubtitle: "Potential global mean sea-level rise from complete ice-sheet loss.",
     nino34IndexTitle: "Historical Niño 3.4 Index",
     nino34IndexSubtitle: "NOAA CPC Oceanic Niño Index · centered 3-month Niño 3.4 SST anomaly",
+    naoIndexSubtitle: "NOAA CPC monthly North Atlantic Oscillation index",
+    pnaIndexSubtitle: "NOAA CPC monthly Pacific-North American index",
+    soiIndexSubtitle: "NOAA PSL monthly Southern Oscillation Index",
+    arcticOscillationIndexSubtitle: "NOAA CPC monthly Arctic Oscillation index",
     naturalVariabilityTitle: "Natural Variability",
     naturalVariabilityNote:
-      "Large-scale climate variability outlooks and indices, starting with ENSO conditions and historical Niño 3.4 anomalies.",
+      "Large-scale climate variability outlooks and indices: ENSO conditions, Niño 3.4, NAO, PNA, SOI, and Arctic Oscillation.",
     mapsSectionTitle: "Maps",
     mapsSectionNote:
       "Latest available Climate Reanalyzer Today’s Weather maps. Temperature fields use GFS; SST uses preliminary NOAA OISST. Baselines are shown within anomaly maps.",
@@ -795,9 +807,13 @@ const STRINGS = {
     seaLevelEquivalentSubtitle: "A teljes jégtakaró-veszteségből adódó lehetséges globális átlagos tengerszint-emelkedés.",
     nino34IndexTitle: "Történeti Niño 3.4 index",
     nino34IndexSubtitle: "NOAA CPC Óceáni Niño Index · középre igazított 3 havi Niño 3.4 SST-anomália",
+    naoIndexSubtitle: "NOAA CPC havi észak-atlanti oszcilláció index",
+    pnaIndexSubtitle: "NOAA CPC havi csendes-óceáni-észak-amerikai index",
+    soiIndexSubtitle: "NOAA PSL havi déli oszcilláció index",
+    arcticOscillationIndexSubtitle: "NOAA CPC havi arktikus oszcilláció index",
     naturalVariabilityTitle: "Természetes változékonyság",
     naturalVariabilityNote:
-      "Nagy léptékű éghajlati változékonysági kilátások és indexek, jelenleg ENSO-állapottal és történeti Niño 3.4 anomáliákkal.",
+      "Nagy léptékű éghajlati változékonysági kilátások és indexek: ENSO, Niño 3.4, NAO, PNA, SOI és arktikus oszcilláció.",
     mapsSectionTitle: "Térképek",
     mapsSectionNote:
       "A legfrissebb elérhető Climate Reanalyzer Today’s Weather térképek. A hőmérsékleti mezők GFS-, az SST-térképek előzetes NOAA OISST-adatokat használnak. Az anomáliabázisok a térképeken láthatók.",
@@ -2707,6 +2723,7 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
   ) {
     return "°C";
   }
+  if (VARIABILITY_INDEX_KEY_SET.has(metricKey)) return "index";
   if (language !== "hu") return unit;
   if (SEA_ICE_KEYS.has(metricKey)) return "millió km²";
   if (metricKey === "global_mean_sea_level") return "mm";
@@ -2748,7 +2765,7 @@ function topSummaryCategoryClass(metricKey: ClimateMetricSeries["key"]): string 
   ) {
     return "topcat-forcing";
   }
-  if (metricKey === "nino34_index") return "topcat-enso";
+  if (VARIABILITY_INDEX_KEY_SET.has(metricKey)) return "topcat-enso";
   if (OCEAN_KEYS.has(metricKey) || metricKey === EARTH_ENERGY_IMBALANCE_KEY) {
     return "topcat-ocean";
   }
@@ -2778,7 +2795,7 @@ function sourceSectionForMetric(metricKey: ClimateMetricSeries["key"]): DataSour
   ) {
     return "temperature";
   }
-  if (metricKey === "nino34_index") return "outlook";
+  if (VARIABILITY_INDEX_KEY_SET.has(metricKey)) return "outlook";
   if (OCEAN_KEYS.has(metricKey) || metricKey === EARTH_ENERGY_IMBALANCE_KEY) return "ocean";
   if (SEA_ICE_KEYS.has(metricKey) || ICE_SHEET_AND_GLACIER_KEYS.has(metricKey)) return "ice";
   return "forcing";
@@ -2831,6 +2848,10 @@ function freshnessPolicyForMetric(metricKey: ClimateMetricSeries["key"]): Freshn
     case "atmospheric_aggi":
       return { cadence: "annual", warningDays: 550, staleDays: 900 };
     case "nino34_index":
+    case "nao_index":
+    case "pna_index":
+    case "soi_index":
+    case "arctic_oscillation_index":
       return { cadence: "monthly", warningDays: 120, staleDays: 220 };
     default:
       return { cadence: "daily", warningDays: 10, staleDays: 20 };
@@ -3088,7 +3109,10 @@ export function App() {
     () => snapshot.indicators.find((metric) => metric.key === EARTH_ENERGY_IMBALANCE_KEY) ?? null,
     [snapshot.indicators]
   );
-  const nino34IndexMetric = useMemo(() => metricByKey.get("nino34_index") ?? null, [metricByKey]);
+  const variabilityMetrics = useMemo(
+    () => VARIABILITY_INDEX_KEYS.map((key) => metricByKey.get(key)).filter((metric): metric is ClimateMetricSeries => Boolean(metric)),
+    [metricByKey]
+  );
   const globalTemperatureLines = useMemo(
     () => indicatorLines.filter(({ metric }) => GLOBAL_TEMPERATURE_KEYS.has(metric.key)),
     [indicatorLines]
@@ -3150,26 +3174,58 @@ export function App() {
     () => (earthEnergyImbalanceMetric ? buildTrailingMeanSeries(earthEnergyImbalanceMetric.points, 12) : []),
     [earthEnergyImbalanceMetric]
   );
-  const nino34IndexChartOption = useMemo(() => {
-    if (!nino34IndexMetric?.points.length) return null;
-    return buildForcingTrendOption({
-      points: nino34IndexMetric.points,
-      title: metricTitle(nino34IndexMetric, language),
-      unit: cardUnitLabel(nino34IndexMetric.key, nino34IndexMetric.unit, language),
-      decimals: nino34IndexMetric.decimals,
-      yAxisMin: -3,
-      yAxisMax: 3,
-      yAxisUnitLabel: "°C",
-      xAxisStartYear: 1950,
+  const variabilityChartPanels = useMemo(
+    () =>
+      variabilityMetrics
+        .flatMap((metric) => {
+          if (!metric.points.length) return [];
+          const isTemperatureIndex = metric.key === "nino34_index";
+          const subtitle: string =
+            metric.key === "nino34_index"
+              ? t.nino34IndexSubtitle
+              : metric.key === "nao_index"
+                ? t.naoIndexSubtitle
+                : metric.key === "pna_index"
+                  ? t.pnaIndexSubtitle
+                  : metric.key === "soi_index"
+                    ? t.soiIndexSubtitle
+                    : t.arcticOscillationIndexSubtitle;
+          return [{
+            metric,
+            subtitle,
+            option: buildForcingTrendOption({
+              points: metric.points,
+              title: metricTitle(metric, language),
+              unit: cardUnitLabel(metric.key, metric.unit, language),
+              decimals: metric.decimals,
+              yAxisMin: isTemperatureIndex ? -3 : -4,
+              yAxisMax: isTemperatureIndex ? 3 : 4,
+              yAxisUnitLabel: isTemperatureIndex ? "°C" : "index",
+              xAxisStartYear: 1950,
+              compact,
+              dark: resolvedTheme === "dark",
+              color: topicChartColor(metric.key, resolvedTheme === "dark"),
+              labels: {
+                noData: t.noData,
+                latest: t.chartLatest,
+              },
+            }),
+          }];
+        }),
+    [
       compact,
-      dark: resolvedTheme === "dark",
-      color: topicChartColor(nino34IndexMetric.key, resolvedTheme === "dark"),
-      labels: {
-        noData: t.noData,
-        latest: t.chartLatest,
-      },
-    });
-  }, [compact, language, nino34IndexMetric, resolvedTheme, t]);
+      language,
+      resolvedTheme,
+      t.arcticOscillationIndexSubtitle,
+      t.chartLatest,
+      t.naoIndexSubtitle,
+      t.nino34IndexSubtitle,
+      t.noData,
+      t.pnaIndexSubtitle,
+      t.soiIndexSubtitle,
+      variabilityMetrics,
+    ]
+  );
   const projectedAnnualChartPoints = useMemo(
     () => annualGlobalMeanAnomalyPoints.filter((point) => (parseYearFromDateIso(point.date) ?? 0) >= 2020),
     [annualGlobalMeanAnomalyPoints]
@@ -4681,17 +4737,20 @@ export function App() {
           {variabilitySectionOpen ? (
             <div className="section-content">
               <div className="projection-enso-card-row">{renderEnsoOutlookCard({ showSourceLink: true })}</div>
-              {nino34IndexMetric && nino34IndexChartOption ? (
+              {variabilityChartPanels.length ? (
                 <div className="charts-grid climate-grid">
-                  <EChartsPanel
-                    title={t.nino34IndexTitle}
-                    subtitle={t.nino34IndexSubtitle}
-                    expandLabel={t.chartFullscreenEnter}
-                    collapseLabel={t.chartFullscreenExit}
-                    freshnessLabel={metricFreshnessBadge(nino34IndexMetric, language, t)?.label}
-                    freshnessTone={metricFreshnessBadge(nino34IndexMetric, language, t)?.tone}
-                    option={nino34IndexChartOption}
-                  />
+                  {variabilityChartPanels.map(({ metric, subtitle, option }) => (
+                    <EChartsPanel
+                      key={metric.key}
+                      title={metricTitle(metric, language)}
+                      subtitle={subtitle}
+                      expandLabel={t.chartFullscreenEnter}
+                      collapseLabel={t.chartFullscreenExit}
+                      freshnessLabel={metricFreshnessBadge(metric, language, t)?.label}
+                      freshnessTone={metricFreshnessBadge(metric, language, t)?.tone}
+                      option={option}
+                    />
+                  ))}
                 </div>
               ) : null}
             </div>

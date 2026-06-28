@@ -250,6 +250,34 @@ const SERIES_RULES = {
     minPoints: 800,
     minPointsLastYear: 6,
   },
+  nao_index: {
+    minValue: -8,
+    maxValue: 8,
+    maxAgeDays: 220,
+    minPoints: 800,
+    minPointsLastYear: 6,
+  },
+  pna_index: {
+    minValue: -8,
+    maxValue: 8,
+    maxAgeDays: 220,
+    minPoints: 800,
+    minPointsLastYear: 6,
+  },
+  soi_index: {
+    minValue: -8,
+    maxValue: 8,
+    maxAgeDays: 220,
+    minPoints: 800,
+    minPointsLastYear: 6,
+  },
+  arctic_oscillation_index: {
+    minValue: -8,
+    maxValue: 8,
+    maxAgeDays: 220,
+    minPoints: 800,
+    minPointsLastYear: 6,
+  },
 };
 
 function utcMidnightNow() {

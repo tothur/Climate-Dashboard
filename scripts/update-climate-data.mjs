@@ -45,6 +45,11 @@ const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/c
 const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
 const NOAA_AGGI_CSV_URL = "https://gml.noaa.gov/aggi/AGGI_Table.csv";
 const NOAA_CPC_ONI_URL = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt";
+const NOAA_CPC_NAO_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii.table";
+const NOAA_CPC_PNA_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.pna.monthly.b5001.current.ascii.table";
+const NOAA_PSL_SOI_MONTHLY_URL = "https://psl.noaa.gov/data/correlation/soi.data";
+const NOAA_CPC_AO_MONTHLY_URL =
+  "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/daily_ao_index/monthly.ao.index.b50.current.ascii.table";
 const IRI_ENSO_CURRENT_URL = "https://iri.columbia.edu/our-expertise/climate/forecasts/enso/current/";
 const NOAA_CPC_ENSO_DISCUSSION_URL = "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml";
 const CR_TODAYS_WEATHER_PAGE_URL = "https://climatereanalyzer.org/wx/todays-weather/";
@@ -136,6 +141,10 @@ const AI_SUMMARY_FINGERPRINT_KEYS = [
   "atmospheric_ch4",
   "atmospheric_aggi",
   "nino34_index",
+  "nao_index",
+  "pna_index",
+  "soi_index",
+  "arctic_oscillation_index",
 ];
 const AI_SUMMARY_DISALLOWED_TEXT_PATTERN = /\brecord\s+lows?\b|\brecord\s+cold\b|\bcoldest\b|\bcooling\b/i;
 const AI_SUMMARY_STALE_TEXT_PATTERN = /\bhistorical rank\b/i;
@@ -171,6 +180,10 @@ const AI_SUMMARY_SIGNAL_LABELS = {
   atmospheric_ch4: "Atmospheric CH4",
   atmospheric_aggi: "Annual Greenhouse Gas Index",
   nino34_index: "Oceanic Nino Index",
+  nao_index: "North Atlantic Oscillation Index",
+  pna_index: "Pacific-North American Index",
+  soi_index: "Southern Oscillation Index",
+  arctic_oscillation_index: "Arctic Oscillation Index",
 };
 const AI_SUMMARY_SIGNAL_CATEGORIES = {
   northern_hemisphere_surface_temperature: "regional",
@@ -199,6 +212,10 @@ const AI_SUMMARY_SIGNAL_CATEGORIES = {
   atmospheric_ch4: "forcing",
   atmospheric_aggi: "forcing",
   nino34_index: "oceanic",
+  nao_index: "atmospheric variability",
+  pna_index: "atmospheric variability",
+  soi_index: "ocean-atmosphere variability",
+  arctic_oscillation_index: "atmospheric variability",
 };
 const AI_SUMMARY_BACKGROUND_SIGNAL_KEYS = new Set([
   "global_mean_sea_level",
@@ -1301,6 +1318,58 @@ function parseNoaaCpcOniText(rawText) {
   return normalizePoints(points);
 }
 
+function parseNoaaCpcMonthlyIndexTable(rawText) {
+  const points = [];
+  const lines = String(rawText ?? "").split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || /^jan\b/i.test(line)) continue;
+
+    const columns = line.split(/\s+/);
+    if (columns.length < 13) continue;
+
+    const year = Number(columns[0]);
+    if (!Number.isFinite(year) || year < 1800 || year > 2200) continue;
+
+    for (let month = 1; month <= 12; month += 1) {
+      const value = toFiniteNumber(columns[month]);
+      if (value == null || value <= -90) continue;
+      const date = formatDateFromParts(year, month, 1);
+      if (!date) continue;
+      points.push({ date, value });
+    }
+  }
+
+  return normalizePoints(points);
+}
+
+function parseNoaaPslMonthlyIndexData(rawText) {
+  const points = [];
+  const lines = String(rawText ?? "").split(/\r?\n/);
+
+  for (const rawLine of lines.slice(1)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const columns = line.split(/\s+/);
+    if (columns.length < 13) continue;
+
+    const year = Number(columns[0]);
+    if (!Number.isFinite(year) || year < 1800 || year > 2200) continue;
+
+    for (let month = 1; month <= 12; month += 1) {
+      const value = toFiniteNumber(columns[month]);
+      if (value == null || value <= -90) continue;
+      const date = formatDateFromParts(year, month, 1);
+      if (!date) continue;
+      points.push({ date, value });
+    }
+  }
+
+  return normalizePoints(points);
+}
+
 function parseImbieCumulativeMassLossCsv(rawCsv) {
   const rows = [];
   const lines = String(rawCsv ?? "").split(/\r?\n/);
@@ -2349,6 +2418,10 @@ async function updateOnce() {
     iriEnsoHtml,
     ensoDiscussionHtml,
     nino34IndexText,
+    naoIndexText,
+    pnaIndexText,
+    soiIndexText,
+    arcticOscillationIndexText,
     sstMapDatePayload,
   ] = await Promise.all([
     fetchJson(ERA5_GLOBAL_SURFACE_TEMP_URL),
@@ -2437,6 +2510,26 @@ async function updateOnce() {
     fetchText(NOAA_CPC_ONI_URL).catch((error) => {
       const reason = error instanceof Error ? error.message : String(error);
       dataWarnings.push(`nino34_index: NOAA CPC ONI refresh failed (${reason}).`);
+      return null;
+    }),
+    fetchText(NOAA_CPC_NAO_MONTHLY_URL).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`nao_index: NOAA CPC NAO refresh failed (${reason}).`);
+      return null;
+    }),
+    fetchText(NOAA_CPC_PNA_MONTHLY_URL).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`pna_index: NOAA CPC PNA refresh failed (${reason}).`);
+      return null;
+    }),
+    fetchText(NOAA_PSL_SOI_MONTHLY_URL).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`soi_index: NOAA PSL SOI refresh failed (${reason}).`);
+      return null;
+    }),
+    fetchText(NOAA_CPC_AO_MONTHLY_URL).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`arctic_oscillation_index: NOAA CPC AO refresh failed (${reason}).`);
       return null;
     }),
     fetchJson(CR_SST_LATEST_MAP_DATE_URL),
@@ -2710,6 +2803,28 @@ async function updateOnce() {
       dataWarnings.push("nino34_index: retaining the previous validated NOAA CPC ONI series.");
     }
   }
+  async function fallbackMonthlyIndexSeries(key, points, sourceLabel) {
+    let series = sanitizeSeries(points, {
+      minValue: -8,
+      maxValue: 8,
+      maxAgeDays: 220,
+    });
+    if (!series.length) {
+      series = await loadPreviousSeries(key);
+      if (series.length > 0) {
+        dataWarnings.push(`${key}: retaining the previous validated ${sourceLabel} series.`);
+      }
+    }
+    return series;
+  }
+  const naoIndex = await fallbackMonthlyIndexSeries("nao_index", parseNoaaCpcMonthlyIndexTable(naoIndexText), "NOAA CPC NAO");
+  const pnaIndex = await fallbackMonthlyIndexSeries("pna_index", parseNoaaCpcMonthlyIndexTable(pnaIndexText), "NOAA CPC PNA");
+  const soiIndex = await fallbackMonthlyIndexSeries("soi_index", parseNoaaPslMonthlyIndexData(soiIndexText), "NOAA PSL SOI");
+  const arcticOscillationIndex = await fallbackMonthlyIndexSeries(
+    "arctic_oscillation_index",
+    parseNoaaCpcMonthlyIndexTable(arcticOscillationIndexText),
+    "NOAA CPC AO"
+  );
   const parsedCpcEnsoOutlook = parseCpcEnsoOutlook(ensoDiscussionHtml);
   const parsedIriEnsoOutlook = parseIriEnsoOutlook(iriEnsoHtml);
   let ensoOutlook = isCompleteEnsoOutlook(parsedCpcEnsoOutlook)
@@ -2843,6 +2958,10 @@ async function updateOnce() {
     atmospheric_ch4: atmosphericCh4,
     atmospheric_aggi: atmosphericAggi,
     nino34_index: nino34Index,
+    nao_index: naoIndex,
+    pna_index: pnaIndex,
+    soi_index: soiIndex,
+    arctic_oscillation_index: arcticOscillationIndex,
   };
   const summaryOutput = Object.fromEntries(Object.entries(seriesOutput).map(([key, series]) => [key, summarize(series)]));
   const aiSummaryWarnings = [];
@@ -2898,6 +3017,10 @@ async function updateOnce() {
       atmospheric_ch4: NOAA_GLOBAL_CH4_MONTHLY_URL,
       atmospheric_aggi: NOAA_AGGI_CSV_URL,
       nino34_index: NOAA_CPC_ONI_URL,
+      nao_index: NOAA_CPC_NAO_MONTHLY_URL,
+      pna_index: NOAA_CPC_PNA_MONTHLY_URL,
+      soi_index: NOAA_PSL_SOI_MONTHLY_URL,
+      arctic_oscillation_index: NOAA_CPC_AO_MONTHLY_URL,
       enso_outlook: ensoOutlook?.sourceUrl ?? IRI_ENSO_CURRENT_URL,
       maps_current_weather: CR_TODAYS_WEATHER_PAGE_URL,
       maps_sst_dates: CR_SST_LATEST_MAP_DATE_URL,
