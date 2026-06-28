@@ -2366,8 +2366,22 @@ async function updateOnce() {
     fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
     fetchText(NOAA_AGGI_CSV_URL),
     fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
-    fetchText(LASP_NRL2_TSI_MONTHLY_URL),
-    fetchText(LASP_TSIS_TSI_DAILY_URL),
+    fetchText(LASP_NRL2_TSI_MONTHLY_URL, {
+      timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
+      attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
+    }).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`incoming_solar_energy: NRLTSI2 historical refresh failed (${reason}).`);
+      return null;
+    }),
+    fetchText(LASP_TSIS_TSI_DAILY_URL, {
+      timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
+      attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
+    }).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`incoming_solar_energy: TSIS-1 recent refresh failed (${reason}).`);
+      return null;
+    }),
     fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL, {
       timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
       attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
@@ -2562,19 +2576,27 @@ async function updateOnce() {
     maxValue: 3.5,
     maxAgeDays: 1000,
   });
-  let incomingSolarEnergy = sanitizeSeries(
-    mergeNrl2WithTsisExtension(
-      parseLaspNrl2TsiMonthlyCsv(incomingSolarEnergyHistoricalCsv),
-      parseLaspTsisTsiDailyCsv(incomingSolarEnergyCsv)
-    ),
-    {
-      minValue: 1358,
-      maxValue: 1364,
-      maxAgeDays: 220,
-    }
-  );
+  const incomingSolarEnergyHistorical = parseLaspNrl2TsiMonthlyCsv(incomingSolarEnergyHistoricalCsv);
+  const incomingSolarEnergyRecent = parseLaspTsisTsiDailyCsv(incomingSolarEnergyCsv);
+  let previousIncomingSolarEnergy = [];
+  if (!incomingSolarEnergyHistorical.length || !incomingSolarEnergyRecent.length) {
+    previousIncomingSolarEnergy = await loadPreviousSeries("incoming_solar_energy");
+  }
+  const incomingSolarEnergyBase = incomingSolarEnergyHistorical.length
+    ? incomingSolarEnergyHistorical
+    : previousIncomingSolarEnergy;
+  if (!incomingSolarEnergyHistorical.length && previousIncomingSolarEnergy.length > 0) {
+    dataWarnings.push("incoming_solar_energy: retaining the previous validated NRLTSI2 history.");
+  }
+  let incomingSolarEnergy = sanitizeSeries(mergeNrl2WithTsisExtension(incomingSolarEnergyBase, incomingSolarEnergyRecent), {
+    minValue: 1358,
+    maxValue: 1364,
+    maxAgeDays: 220,
+  });
   if (!incomingSolarEnergy.length) {
-    incomingSolarEnergy = await loadPreviousSeries("incoming_solar_energy");
+    incomingSolarEnergy = previousIncomingSolarEnergy.length
+      ? previousIncomingSolarEnergy
+      : await loadPreviousSeries("incoming_solar_energy");
     if (incomingSolarEnergy.length > 0) {
       dataWarnings.push("incoming_solar_energy: retaining the previous validated NRLTSI2/TSIS-1 series.");
     }

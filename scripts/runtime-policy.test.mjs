@@ -74,6 +74,18 @@ test("optional WGMS refresh cannot block daily data and map publication", async 
   assert.match(updateScript, /global_glacier_mass_balance: retaining the previous validated WGMS series/);
 });
 
+test("optional solar history refresh cannot block daily data publication", async () => {
+  const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
+
+  assert.match(
+    updateScript,
+    /fetchText\(LASP_NRL2_TSI_MONTHLY_URL,\s*\{\s*timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,\s*attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS/
+  );
+  assert.match(updateScript, /incoming_solar_energy: NRLTSI2 historical refresh failed/);
+  assert.match(updateScript, /incoming_solar_energy: retaining the previous validated NRLTSI2 history/);
+  assert.match(updateScript, /incoming_solar_energy: retaining the previous validated NRLTSI2\/TSIS-1 series/);
+});
+
 test("NASA ice-sheet chart refreshes fall back to retained validated data", async () => {
   const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
 
