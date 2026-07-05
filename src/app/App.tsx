@@ -483,7 +483,7 @@ const STRINGS = {
     navIndicators: "Indicators",
     navVariability: "Variability",
     overviewTitle: "Global Climate Overview",
-    overviewSubtitle: "Key indicators and insights into our changing climate",
+    overviewSubtitle: "Latest climate signals",
     overviewDailyGlobalTemperatureAnomalyTitle: "Daily Global Temperature Anomaly",
     overviewPreindustrialSubtitle: "vs. 1850-1900 average",
     overviewSurfaceAnomalyTitle: "Surface Temperature Anomaly",
@@ -543,8 +543,7 @@ const STRINGS = {
     highestEverGlobalSurfaceTemperatureAnomalyTitle: "Highest Ever Global Surface Temperature Anomaly",
     highestEverGlobalSeaSurfaceTemperatureAnomalyTitle: "Highest Ever Global Sea Surface Temperature Anomaly",
     climateIndicatorsTitle: "Climate Indicators",
-    climateIndicatorsNote:
-      "Monthly Jan-Dec view with daily points for temperature and sea-ice indicators, plus long-term ocean-state and planetary energy-balance charts.",
+    climateIndicatorsNote: "Core climate indicators.",
     globalTemperaturesSectionTitle: "Global Temperatures",
     globalTemperaturesSectionNote: "Global surface and sea surface temperatures in a Jan-Dec daily comparison view.",
     oceansSectionTitle: "Oceans",
@@ -600,8 +599,7 @@ const STRINGS = {
     projectionAnalogsLabel: "analogs",
     projectionRecordThresholdLabel: "Record to beat",
     projectionsTitle: "Projections",
-    projectionsNote:
-      "Experimental outlook based on the current year-to-date global anomaly, recent analog years, and the latest ENSO forecast.",
+    projectionsNote: "Experimental warming outlook.",
     yearLabel: "Year",
     regionalTemperaturesSectionTitle: "Regional Temperatures",
     regionalTemperaturesSectionNote:
@@ -628,11 +626,9 @@ const STRINGS = {
     soiIndexSubtitle: "NOAA PSL monthly Southern Oscillation Index",
     arcticOscillationIndexSubtitle: "NOAA CPC monthly Arctic Oscillation index",
     naturalVariabilityTitle: "Natural Variability",
-    naturalVariabilityNote:
-      "Large-scale climate variability outlooks and indices: ENSO conditions, Niño 3.4, NAO, PNA, SOI, and Arctic Oscillation.",
+    naturalVariabilityNote: "ENSO and climate indices.",
     mapsSectionTitle: "Maps",
-    mapsSectionNote:
-      "Latest available Climate Reanalyzer Today’s Weather maps. Temperature fields use GFS; SST uses preliminary NOAA OISST. Baselines are shown within anomaly maps.",
+    mapsSectionNote: "Latest global weather maps.",
     map2mTemperatureTitle: "Surface Temperature (2m)",
     map2mTemperatureAnomalyTitle: "Surface Temperature Anomaly (2m)",
     mapSstTitle: "Sea Surface Temperature",
@@ -641,8 +637,7 @@ const STRINGS = {
     mapSstSubtitle: "Latest available map · Climate Reanalyzer Today’s Weather",
     mapUnavailable: "Map unavailable",
     forcingTitle: "Forcing",
-    forcingNote:
-      "Forcing signals from Mauna Loa CO2, global CH4 and N2O observations, the NOAA Annual Greenhouse Gas Index, and long-record total solar irradiance.",
+    forcingNote: "Greenhouse gases and solar input.",
     sourceTitle: "Data source mode",
     sourceLive: "Live feeds",
     sourceMixed: "Mixed live + fallback",
@@ -654,7 +649,7 @@ const STRINGS = {
     sourceStatusTitle: "Dataset status",
     sourceUpdatedTitle: "Last refresh",
     sourceListTitle: "Source links",
-    sourceListNote: "Authoritative upstream feeds used to build the dashboard dataset.",
+    sourceListNote: "Upstream data feeds.",
     sourceCardsTitle: "Data",
     sourceLabel: "Source",
     chartFullscreenEnter: "Full screen",
@@ -686,7 +681,7 @@ const STRINGS = {
     navIndicators: "Indikátorok",
     navVariability: "Változékonyság",
     overviewTitle: "Globális éghajlati áttekintés",
-    overviewSubtitle: "Fő indikátorok és megállapítások a változó éghajlatról",
+    overviewSubtitle: "Friss éghajlati jelzések",
     overviewDailyGlobalTemperatureAnomalyTitle: "Napi globális hőmérsékleti anomália",
     overviewPreindustrialSubtitle: "az 1850-1900-as átlaghoz képest",
     overviewSurfaceAnomalyTitle: "Felszíni hőmérsékleti anomália",
@@ -746,8 +741,7 @@ const STRINGS = {
     highestEverGlobalSurfaceTemperatureAnomalyTitle: "Mindenkori legmagasabb globális felszíni hőmérsékleti anomália",
     highestEverGlobalSeaSurfaceTemperatureAnomalyTitle: "Mindenkori legmagasabb globális tengerfelszíni hőmérsékleti anomália",
     climateIndicatorsTitle: "Éghajlati Indikátorok",
-    climateIndicatorsNote:
-      "Január-decemberi nézet napi adatokkal a hőmérsékleti és tengeri jég indikátorokhoz, valamint hosszú távú óceáni állapot- és bolygószintű energiaegyensúly-grafikonokkal.",
+    climateIndicatorsNote: "Fő klímaindikátorok.",
     globalTemperaturesSectionTitle: "Globális hőmérsékletek",
     globalTemperaturesSectionNote: "Globális felszíni és tengerfelszíni hőmérsékletek január-decemberi napi összehasonlító nézetben.",
     oceansSectionTitle: "Óceánok",
@@ -803,8 +797,7 @@ const STRINGS = {
     projectionAnalogsLabel: "analóg",
     projectionRecordThresholdLabel: "Megközelítendő rekord",
     projectionsTitle: "Előrejelzések",
-    projectionsNote:
-      "Kísérleti becslés az aktuális évközi globális anomália, a közelmúlt analóg évei és a legfrissebb ENSO-kilátás alapján.",
+    projectionsNote: "Kísérleti melegedési kilátás.",
     yearLabel: "Év",
     regionalTemperaturesSectionTitle: "Regionális hőmérsékletek",
     regionalTemperaturesSectionNote:
@@ -831,11 +824,9 @@ const STRINGS = {
     soiIndexSubtitle: "NOAA PSL havi déli oszcilláció index",
     arcticOscillationIndexSubtitle: "NOAA CPC havi arktikus oszcilláció index",
     naturalVariabilityTitle: "Természetes változékonyság",
-    naturalVariabilityNote:
-      "Nagy léptékű éghajlati változékonysági kilátások és indexek: ENSO, Niño 3.4, NAO, PNA, SOI és arktikus oszcilláció.",
+    naturalVariabilityNote: "ENSO és klímaindexek.",
     mapsSectionTitle: "Térképek",
-    mapsSectionNote:
-      "A legfrissebb elérhető Climate Reanalyzer Today’s Weather térképek. A hőmérsékleti mezők GFS-, az SST-térképek előzetes NOAA OISST-adatokat használnak. Az anomáliabázisok a térképeken láthatók.",
+    mapsSectionNote: "Friss globális időjárási térképek.",
     map2mTemperatureTitle: "Felszíni hőmérséklet (2m)",
     map2mTemperatureAnomalyTitle: "Felszíni hőmérsékleti anomália (2m)",
     mapSstTitle: "Tengerfelszíni hőmérséklet",
@@ -844,8 +835,7 @@ const STRINGS = {
     mapSstSubtitle: "Legfrissebb elérhető térkép · Climate Reanalyzer Today’s Weather",
     mapUnavailable: "A térkép nem érhető el",
     forcingTitle: "Éghajlati kényszerek",
-    forcingNote:
-      "Éghajlati kényszerek a Mauna Loa CO2, a globális CH4 és N2O megfigyelések, a NOAA éves üvegházhatásúgáz-index és hosszú idősoros teljes napsugárzás alapján.",
+    forcingNote: "Üvegházgázok és napsugárzás.",
     sourceTitle: "Adatforrás mód",
     sourceLive: "Élő adatforrások",
     sourceMixed: "Vegyes (élő + tartalék)",
@@ -857,7 +847,7 @@ const STRINGS = {
     sourceStatusTitle: "Adatkészlet státusza",
     sourceUpdatedTitle: "Utolsó frissítés",
     sourceListTitle: "Forráshivatkozások",
-    sourceListNote: "A dashboard adatkészletének összeállításához használt elsődleges adatforrások.",
+    sourceListNote: "Elsődleges adatforrások.",
     sourceCardsTitle: "Adatok",
     sourceLabel: "Forrás",
     chartFullscreenEnter: "Teljes képernyő",
