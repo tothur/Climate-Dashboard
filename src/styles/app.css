@@ -6625,10 +6625,25 @@ body {
 }
 
 .panel-action-btn {
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border-color: transparent;
+  background: transparent;
+  color: color-mix(in srgb, var(--muted) 78%, var(--text));
+}
+
+.panel-action-icon {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.9;
+}
+
+.panel-action-btn:hover {
+  transform: none;
   border-color: var(--surface-border);
-  background: color-mix(in srgb, var(--panel) 80%, #eef4ff);
-  color: color-mix(in srgb, var(--muted) 70%, var(--text));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent);
 }
 
 .panel-chart-wrap,
@@ -6761,7 +6776,6 @@ body {
 }
 
 [data-theme="dark"] .page-meta-row span,
-[data-theme="dark"] .panel-action-btn,
 [data-theme="dark"] .section-toggle:hover,
 [data-theme="dark"] .panel-freshness-chip,
 [data-theme="dark"] .freshness-chip,
@@ -6769,6 +6783,17 @@ body {
 [data-theme="dark"] .footer-chip {
   background: rgba(255, 255, 255, 0.055);
   color: #cbd5e1;
+}
+
+[data-theme="dark"] .panel-action-btn {
+  background: transparent;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .panel-action-btn:hover {
+  border-color: rgba(203, 213, 225, 0.14);
+  background: rgba(125, 176, 255, 0.1);
+  color: #93c5fd;
 }
 
 [data-theme="dark"] .metric-icon,
