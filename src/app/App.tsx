@@ -479,6 +479,7 @@ const STRINGS = {
     dashboardNavigationAria: "Dashboard navigation",
     brandSubtitle: "Global Climate Dashboard",
     dataUpdatedLabel: "Data updated",
+    dataStatusLabel: "Data status",
     navOverview: "Overview",
     navIndicators: "Indicators",
     navVariability: "Variability",
@@ -677,6 +678,7 @@ const STRINGS = {
     dashboardNavigationAria: "Irányítópult-navigáció",
     brandSubtitle: "Globális éghajlati irányítópult",
     dataUpdatedLabel: "Adatok frissítve",
+    dataStatusLabel: "Adatállapot",
     navOverview: "Áttekintés",
     navIndicators: "Indikátorok",
     navVariability: "Változékonyság",
@@ -4025,6 +4027,17 @@ export function App() {
             <div>
               <h1>{pageTitle}</h1>
               <p className="subtitle">{pageSubtitle}</p>
+              <div className="page-meta-row" aria-label={t.dataStatusLabel}>
+                <span>{sourceModeLabel}</span>
+                <span>
+                  {t.dataUpdatedLabel}:{" "}
+                  {renderPrimaryValue(
+                    formatDateLabel(extractIsoDate(snapshot.updatedAtIso), language),
+                    "value-loading-skeleton page-meta-loading"
+                  )}
+                </span>
+                {runtimeDataReady && ensoOutlookFreshness ? <span>{ensoOutlookFreshness.label}</span> : null}
+              </div>
             </div>
           </div>
 
