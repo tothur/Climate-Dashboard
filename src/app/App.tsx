@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import type { EChartsOption } from "echarts";
 import { buildDashboardSnapshot, createBundledDataSource } from "../data/adapter";
 import type {
@@ -316,6 +316,16 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   },
 ];
 type DashboardView = "overview" | "indicators" | "forcing" | "variability" | "maps" | "projections" | "sources";
+type IndicatorSubsectionKey =
+  | "globalTemperatures"
+  | "temperatureAnomalies"
+  | "regionalTemperatures"
+  | "regionalTemperatureAnomalies"
+  | "oceans"
+  | "earthEnergyImbalance"
+  | "seaIce"
+  | "snowCover"
+  | "iceSheetsAndGlaciers";
 type ToolkitIconName =
   | "alert"
   | "bars"
@@ -2963,6 +2973,17 @@ export function App() {
   );
   const [runtimeDataReady, setRuntimeDataReady] = useState(false);
   const [climateSectionOpen, setClimateSectionOpen] = useState(true);
+  const [indicatorSubsectionsOpen, setIndicatorSubsectionsOpen] = useState<Record<IndicatorSubsectionKey, boolean>>({
+    globalTemperatures: true,
+    temperatureAnomalies: true,
+    regionalTemperatures: true,
+    regionalTemperatureAnomalies: true,
+    oceans: true,
+    earthEnergyImbalance: true,
+    seaIce: true,
+    snowCover: true,
+    iceSheetsAndGlaciers: true,
+  });
   const [mapsSectionOpen, setMapsSectionOpen] = useState(true);
   const [forcingSectionOpen, setForcingSectionOpen] = useState(true);
   const [variabilitySectionOpen, setVariabilitySectionOpen] = useState(true);
@@ -3588,6 +3609,41 @@ export function App() {
   };
 
   const renderOceanPanel = (metric: ClimateMetricSeries) => renderTrendPanel(metric);
+
+  const renderIndicatorSubsection = (
+    key: IndicatorSubsectionKey,
+    title: string,
+    note: string,
+    content: ReactNode
+  ) => {
+    const open = indicatorSubsectionsOpen[key];
+
+    return (
+      <div className="climate-subsection" key={key}>
+        <div className="climate-subsection-header collapsible-subsection-header">
+          <div className="climate-subsection-heading">
+            <h3>{title}</h3>
+            <p>{note}</p>
+          </div>
+          <button
+            type="button"
+            className="section-toggle subsection-toggle"
+            aria-expanded={open}
+            onClick={() =>
+              setIndicatorSubsectionsOpen((current) => ({
+                ...current,
+                [key]: !current[key],
+              }))
+            }
+          >
+            <span className={`section-toggle-icon ${open ? "open" : ""}`} aria-hidden="true" />
+            <span>{open ? t.sectionCollapse : t.sectionExpand}</span>
+          </button>
+        </div>
+        {open ? <div className="climate-subsection-content">{content}</div> : null}
+      </div>
+    );
+  };
 
   const sourceModeLabel =
     snapshot.sourceMode === "live"
@@ -4234,11 +4290,11 @@ export function App() {
 
         {climateSectionOpen ? (
           <div className="section-content">
-            <div className="climate-subsection">
-              <div className="climate-subsection-header">
-                <h3>{t.globalTemperaturesSectionTitle}</h3>
-                <p>{t.globalTemperaturesSectionNote}</p>
-              </div>
+            {renderIndicatorSubsection(
+              "globalTemperatures",
+              t.globalTemperaturesSectionTitle,
+              t.globalTemperaturesSectionNote,
+              <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
                   {globalTemperatureLines.map(({ metric }) => {
@@ -4267,13 +4323,14 @@ export function App() {
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
                 )}
               </div>
-            </div>
+              </>
+            )}
 
-            <div className="climate-subsection">
-              <div className="climate-subsection-header">
-                <h3>{t.temperatureAnomalySectionTitle}</h3>
-                <p>{t.temperatureAnomalySectionNote}</p>
-              </div>
+            {renderIndicatorSubsection(
+              "temperatureAnomalies",
+              t.temperatureAnomalySectionTitle,
+              t.temperatureAnomalySectionNote,
+              <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
                   {anomalyTemperatureLines.map(({ metric }) => {
@@ -4380,13 +4437,14 @@ export function App() {
                   />
                 ) : null}
               </div>
-            </div>
+              </>
+            )}
 
-            <div className="climate-subsection">
-              <div className="climate-subsection-header">
-                <h3>{t.regionalTemperaturesSectionTitle}</h3>
-                <p>{t.regionalTemperaturesSectionNote}</p>
-              </div>
+            {renderIndicatorSubsection(
+              "regionalTemperatures",
+              t.regionalTemperaturesSectionTitle,
+              t.regionalTemperaturesSectionNote,
+              <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
                   {regionalSummaryMetrics.map((metric) => {
@@ -4415,13 +4473,14 @@ export function App() {
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
                 )}
               </div>
-            </div>
+              </>
+            )}
 
-            <div className="climate-subsection">
-              <div className="climate-subsection-header">
-                <h3>{t.regionalTemperatureAnomaliesSectionTitle}</h3>
-                <p>{t.regionalTemperatureAnomaliesSectionNote}</p>
-              </div>
+            {renderIndicatorSubsection(
+              "regionalTemperatureAnomalies",
+              t.regionalTemperatureAnomaliesSectionTitle,
+              t.regionalTemperatureAnomaliesSectionNote,
+              <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
                   {regionalTemperatureAnomalySummaryMetrics.map((metric) => {
@@ -4450,13 +4509,14 @@ export function App() {
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
                 )}
               </div>
-            </div>
+              </>
+            )}
 
-            <div className="climate-subsection">
-              <div className="climate-subsection-header">
-                <h3>{t.oceansSectionTitle}</h3>
-                <p>{t.oceansSectionNote}</p>
-              </div>
+            {renderIndicatorSubsection(
+              "oceans",
+              t.oceansSectionTitle,
+              t.oceansSectionNote,
+              <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
                   {oceanMetrics.map((metric) => {
@@ -4482,14 +4542,15 @@ export function App() {
               <div className="charts-grid climate-grid">
                 {oceanMetrics.map((metric) => renderOceanPanel(metric))}
               </div>
-            </div>
+              </>
+            )}
 
             {earthEnergyImbalanceMetric && earthEnergyImbalanceTrendPoints.length ? (
-              <div className="climate-subsection">
-                <div className="climate-subsection-header">
-                  <h3>{t.earthEnergyImbalanceSectionTitle}</h3>
-                  <p>{t.earthEnergyImbalanceSectionNote}</p>
-                </div>
+              renderIndicatorSubsection(
+                "earthEnergyImbalance",
+                t.earthEnergyImbalanceSectionTitle,
+                t.earthEnergyImbalanceSectionNote,
+                <>
                 <div className="charts-grid climate-grid climate-grid-single">
                   <EChartsPanel
                     title={t.earthEnergyImbalanceTitle}
@@ -4524,14 +4585,15 @@ export function App() {
                     })}
                   />
                 </div>
-              </div>
+                </>
+              )
             ) : null}
 
-            <div className="climate-subsection">
-              <div className="climate-subsection-header">
-                <h3>{t.seaIceSectionTitle}</h3>
-                <p>{t.seaIceSectionNote}</p>
-              </div>
+            {renderIndicatorSubsection(
+              "seaIce",
+              t.seaIceSectionTitle,
+              t.seaIceSectionNote,
+              <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
                   {seaIceSummaryMetrics.map((metric) => {
@@ -4560,14 +4622,15 @@ export function App() {
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
                 )}
               </div>
-            </div>
+              </>
+            )}
 
             {snowCoverSummaryMetrics.length || snowCoverIndicatorLines.length ? (
-              <div className="climate-subsection">
-                <div className="climate-subsection-header">
-                  <h3>{t.snowCoverSectionTitle}</h3>
-                  <p>{t.snowCoverSectionNote}</p>
-                </div>
+              renderIndicatorSubsection(
+                "snowCover",
+                t.snowCoverSectionTitle,
+                t.snowCoverSectionNote,
+                <>
                 {snowCoverSummaryMetrics.length ? (
                   <div className="summary-cards-section">
                     <div className="regional-summary-grid">
@@ -4598,15 +4661,16 @@ export function App() {
                     renderIndicatorPanel(metric, lines, currentYear, climatology)
                   )}
                 </div>
-              </div>
+                </>
+              )
             ) : null}
 
             {iceSheetAndGlacierMetrics.length ? (
-              <div className="climate-subsection">
-                <div className="climate-subsection-header">
-                  <h3>{t.iceSheetsAndGlaciersSectionTitle}</h3>
-                  <p>{t.iceSheetsAndGlaciersSectionNote}</p>
-                </div>
+              renderIndicatorSubsection(
+                "iceSheetsAndGlaciers",
+                t.iceSheetsAndGlaciersSectionTitle,
+                t.iceSheetsAndGlaciersSectionNote,
+                <>
                 <div className="summary-cards-section">
                   <div className="regional-summary-grid">
                     {ICE_SHEET_SEA_LEVEL_EQUIVALENTS.map((estimate) => (
@@ -4640,7 +4704,8 @@ export function App() {
                     })
                   )}
                 </div>
-              </div>
+                </>
+              )
             ) : null}
           </div>
         ) : null}

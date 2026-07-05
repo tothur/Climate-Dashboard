@@ -1817,6 +1817,27 @@ h3 {
   padding: 2px 4px 0;
 }
 
+.collapsible-subsection-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.climate-subsection-heading {
+  min-width: 0;
+}
+
+.subsection-toggle {
+  flex: 0 0 auto;
+  min-height: 32px;
+}
+
+.climate-subsection-content {
+  display: grid;
+  gap: 12px;
+}
+
 .climate-subsection-header h3 {
   margin: 0;
   font-size: clamp(1.08rem, 1.35vw, 1.22rem);
@@ -5595,6 +5616,16 @@ body {
   html,
   body {
     overflow-x: hidden;
+  }
+
+  .collapsible-subsection-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .subsection-toggle {
+    align-self: flex-start;
   }
 
   .topbar-actions {
