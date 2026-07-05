@@ -6298,10 +6298,15 @@ body {
 
 [data-theme="dark"] .tipping-current-pill span,
 [data-theme="dark"] .tipping-current-pill small,
-[data-theme="dark"] .tipping-card-topline span,
 [data-theme="dark"] .tipping-threshold-row span,
 [data-theme="dark"] .tipping-point-card p {
   color: #cbd5e1;
+}
+
+[data-theme="dark"] .tipping-card-topline span {
+  border-color: color-mix(in srgb, var(--tipping-accent) 52%, rgba(255, 255, 255, 0.16));
+  background: color-mix(in srgb, var(--tipping-accent) 28%, rgba(15, 23, 42, 0.92));
+  color: color-mix(in srgb, var(--tipping-accent) 26%, #ffffff);
 }
 
 [data-theme="dark"] .tipping-current-pill strong {
