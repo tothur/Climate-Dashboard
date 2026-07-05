@@ -1446,6 +1446,12 @@ function formatEnsoAlertStatusLabel(alertStatus: string | null, language: Langua
   return alertStatus ?? (language === "hu" ? "Nincs adat" : "No data");
 }
 
+function formatEnsoStatusLabel(ensoOutlook: EnsoOutlook | null, language: Language, t: (typeof STRINGS)[Language]): string {
+  if (ensoOutlook?.alertStatus) return formatEnsoAlertStatusLabel(ensoOutlook.alertStatus, language, t);
+  const forecastWindow = ensoOutlook?.nextThreeMonths ?? ensoOutlook?.nextSixMonths ?? null;
+  return forecastWindow ? formatEnsoConditionLabel(forecastWindow.condition, t) : language === "hu" ? "Nincs adat" : "No data";
+}
+
 function formatEnsoTargetLabel(targetLabel: string | null, language: Language): string {
   if (!targetLabel) return "-";
   const seasonMatch = /^([A-Z]{3})\s+(\d{4})$/.exec(targetLabel.trim());
@@ -3938,7 +3944,7 @@ export function App() {
         <span>{t.ensoStatusLabel}</span>
         <strong>
           {renderPrimaryValue(
-            formatEnsoAlertStatusLabel(ensoOutlook?.alertStatus ?? null, language, t),
+            formatEnsoStatusLabel(ensoOutlook, language, t),
             "value-loading-skeleton enso-status-loading"
           )}
         </strong>

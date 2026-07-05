@@ -1728,6 +1728,23 @@ function expandIriSeasonRange(startSeason, endSeason, probability, condition) {
   return seasons;
 }
 
+function formatIriEnsoConditionName(condition) {
+  if (condition === "el_nino") return "El Niño";
+  if (condition === "la_nina") return "La Niña";
+  return "ENSO-neutral";
+}
+
+function buildIriProseEnsoSynopsis(condition, firstRow, mediumRangeRow) {
+  const conditionName = formatIriEnsoConditionName(condition);
+  const segments = [];
+  if (firstRow) segments.push(`${firstRow.probability}% for ${firstRow.targetLabel}`);
+  if (mediumRangeRow && mediumRangeRow.targetLabel !== firstRow?.targetLabel) {
+    segments.push(`${mediumRangeRow.probability}% for ${mediumRangeRow.targetLabel}`);
+  }
+  if (!segments.length) return null;
+  return `${conditionName} favored: ${segments.join("; ")}.`;
+}
+
 function parseIriProseEnsoOutlook(pageText, issuedDate) {
   const text = String(pageText ?? "").replace(/\s+/g, " ").trim();
   if (!text) return null;
@@ -1773,12 +1790,12 @@ function parseIriProseEnsoOutlook(pageText, issuedDate) {
   const datedRows = assignIriSeasonYears(uniqueRows, issuedDate);
   const firstRow = datedRows[0];
   const mediumRangeRow = datedRows[Math.min(4, datedRows.length - 1)];
-  const synopsisMatch = text.match(/A monthly summary[\s\S]*?(?=Figures 1|IRI ENSO Forecast|$)/i);
+  const synopsis = buildIriProseEnsoSynopsis(condition, firstRow, mediumRangeRow) ?? outlookText.slice(0, 240);
 
   return {
     issuedDate,
     alertStatus: null,
-    synopsis: synopsisMatch ? synopsisMatch[0].trim() : outlookText.slice(0, 500),
+    synopsis,
     sourceLabel: "IRI ENSO Forecast",
     sourceUrl: IRI_ENSO_CURRENT_URL,
     nextThreeMonths: firstRow
