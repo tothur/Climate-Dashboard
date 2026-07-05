@@ -112,6 +112,26 @@ test("ENSO outlook prefers NOAA CPC diagnostic updates when available", async ()
   assert.match(updateScript, /enso_outlook: retaining the previous validated ENSO forecast windows/);
 });
 
+test("ENSO outlook handles current IRI prose forecast format", async () => {
+  const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
+
+  assert.match(updateScript, /function parseIriProseEnsoOutlook/);
+  assert.match(updateScript, /strongly favors\(\?:\\s\+the\\s\+persistence\\s\+of\)\?/);
+  assert.match(updateScript, /El\\s\+Ni\(\?:n\|ñ\)o/);
+  assert.match(updateScript, /from\\s\+\(\[A-Z\]\{3\}\)\\s\+through\\s\+\(\[A-Z\]\{3\}\)/);
+  assert.match(updateScript, /followed by\\s\+\(\\d\{1,3\}\)\\s\*%\\s\+and\\s\+\(\\d\{1,3\}\)\\s\*%/);
+  assert.match(updateScript, /parseIriProseEnsoOutlook\(pageText, issuedDate\)/);
+});
+
+test("ENSO outlook staleness warns before it blocks daily publication", async () => {
+  const verifyScript = await readProjectFile("scripts/verify-climate-data.mjs");
+
+  assert.match(verifyScript, /const ENSO_OUTLOOK_STALE_WARNING_DAYS = 50/);
+  assert.match(verifyScript, /const ENSO_OUTLOOK_STALE_ERROR_DAYS = 140/);
+  assert.match(verifyScript, /warnings\.push\(`ensoOutlook: issuedDate \$\{issuedDate\} is stale/);
+  assert.match(verifyScript, /errors\.push\(`ensoOutlook: issuedDate \$\{issuedDate\} is stale/);
+});
+
 test("AI summary prompt prioritizes daily records over slow background indicators", async () => {
   const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
 

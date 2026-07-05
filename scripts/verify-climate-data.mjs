@@ -31,6 +31,8 @@ const REQUIRED_MAP_FILES = [
 const AI_SUMMARY_ALLOWED_MODELS = new Set(["local-rules", "gpt-5.4-mini"]);
 const AI_SUMMARY_DISALLOWED_TEXT_PATTERN = /\brecord\s+lows?\b|\brecord\s+cold\b|\bcoldest\b|\bcooling\b/i;
 const AI_SUMMARY_TEMPERATURE_KEYS = ["global_surface_temperature", "global_sea_surface_temperature"];
+const ENSO_OUTLOOK_STALE_WARNING_DAYS = 50;
+const ENSO_OUTLOOK_STALE_ERROR_DAYS = 140;
 
 const SERIES_RULES = {
   global_surface_temperature: {
@@ -657,8 +659,10 @@ function verifyEnsoOutlook(payload, nowMidnight, errors, warnings) {
     errors.push("ensoOutlook: issuedDate is missing or invalid");
   } else {
     const ageDays = Math.floor((nowMidnight - issuedTs) / DAY_MS);
-    if (ageDays > 50) {
+    if (ageDays > ENSO_OUTLOOK_STALE_ERROR_DAYS) {
       errors.push(`ensoOutlook: issuedDate ${issuedDate} is stale (${ageDays} days old)`);
+    } else if (ageDays > ENSO_OUTLOOK_STALE_WARNING_DAYS) {
+      warnings.push(`ensoOutlook: issuedDate ${issuedDate} is stale (${ageDays} days old)`);
     }
   }
 
