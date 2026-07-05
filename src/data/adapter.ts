@@ -43,6 +43,7 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
   "antarctic_sea_ice_extent",
+  "northern_hemisphere_snow_cover_extent",
   "nino34_index",
   "nao_index",
   "pna_index",
@@ -50,7 +51,13 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "arctic_oscillation_index",
 ];
 
-const FORCING_KEYS: ClimateMetricKey[] = ["atmospheric_co2", "atmospheric_ch4", "atmospheric_aggi", "incoming_solar_energy"];
+const FORCING_KEYS: ClimateMetricKey[] = [
+  "atmospheric_co2",
+  "atmospheric_ch4",
+  "atmospheric_n2o",
+  "atmospheric_aggi",
+  "incoming_solar_energy",
+];
 
 interface ClimateMetricMetadata {
   titleEn: string;
@@ -415,6 +422,20 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       url: "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/",
     },
   },
+  northern_hemisphere_snow_cover_extent: {
+    titleEn: "Northern Hemisphere Snow Cover Extent",
+    titleHu: "Északi félteke hóborítottságának kiterjedése",
+    unit: "million km²",
+    decimals: 2,
+    source: {
+      shortName: "Rutgers Global Snow Lab",
+      descriptionEn:
+        "Monthly Northern Hemisphere land snow-cover extent from the Rutgers Global Snow Lab climate data record.",
+      descriptionHu:
+        "Havi északi féltekei szárazföldi hóborítottsági kiterjedés a Rutgers Global Snow Lab éghajlati adatsorából.",
+      url: "https://climate.rutgers.edu/snowcover/",
+    },
+  },
   atmospheric_co2: {
     titleEn: "Atmospheric CO2 (Mauna Loa)",
     titleHu: "Légköri CO2 (Mauna Loa)",
@@ -437,6 +458,18 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionEn: "Monthly global CH4 mole fraction from NOAA Global Monitoring Laboratory trend products.",
       descriptionHu: "Havi globális CH4-móltört a NOAA Global Monitoring Laboratory trendtermékei alapján.",
       url: "https://gml.noaa.gov/ccgg/trends_ch4/",
+    },
+  },
+  atmospheric_n2o: {
+    titleEn: "Atmospheric N2O (Global)",
+    titleHu: "Légköri N2O (globális)",
+    unit: "ppb",
+    decimals: 2,
+    source: {
+      shortName: "NOAA GML",
+      descriptionEn: "Monthly global N2O mole fraction from NOAA Global Monitoring Laboratory trend products.",
+      descriptionHu: "Havi globális N2O-móltört a NOAA Global Monitoring Laboratory trendtermékei alapján.",
+      url: "https://gml.noaa.gov/ccgg/trends_n2o/",
     },
   },
   atmospheric_aggi: {

@@ -43,7 +43,9 @@ const NSIDC_SOUTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv";
 const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv";
 const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
+const NOAA_GLOBAL_N2O_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/n2o/n2o_mm_gl.csv";
 const NOAA_AGGI_CSV_URL = "https://gml.noaa.gov/aggi/AGGI_Table.csv";
+const RUTGERS_NH_SNOW_COVER_MONTHLY_URL = "https://climate.rutgers.edu/snowcover/files/moncov.nhland.txt";
 const NOAA_CPC_ONI_URL = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt";
 const NOAA_CPC_NAO_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii.table";
 const NOAA_CPC_PNA_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.pna.monthly.b5001.current.ascii.table";
@@ -137,8 +139,10 @@ const AI_SUMMARY_FINGERPRINT_KEYS = [
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
   "antarctic_sea_ice_extent",
+  "northern_hemisphere_snow_cover_extent",
   "atmospheric_co2",
   "atmospheric_ch4",
+  "atmospheric_n2o",
   "atmospheric_aggi",
   "nino34_index",
   "nao_index",
@@ -176,8 +180,10 @@ const AI_SUMMARY_SIGNAL_LABELS = {
   global_sea_ice_extent: "Global Sea Ice Extent",
   arctic_sea_ice_extent: "Arctic Sea Ice Extent",
   antarctic_sea_ice_extent: "Antarctic Sea Ice Extent",
+  northern_hemisphere_snow_cover_extent: "Northern Hemisphere Snow Cover Extent",
   atmospheric_co2: "Atmospheric CO2",
   atmospheric_ch4: "Atmospheric CH4",
+  atmospheric_n2o: "Atmospheric N2O",
   atmospheric_aggi: "Annual Greenhouse Gas Index",
   nino34_index: "Oceanic Nino Index",
   nao_index: "North Atlantic Oscillation Index",
@@ -208,8 +214,10 @@ const AI_SUMMARY_SIGNAL_CATEGORIES = {
   global_sea_ice_extent: "sea ice",
   arctic_sea_ice_extent: "sea ice",
   antarctic_sea_ice_extent: "sea ice",
+  northern_hemisphere_snow_cover_extent: "cryosphere",
   atmospheric_co2: "forcing",
   atmospheric_ch4: "forcing",
+  atmospheric_n2o: "forcing",
   atmospheric_aggi: "forcing",
   nino34_index: "oceanic",
   nao_index: "atmospheric variability",
@@ -223,6 +231,7 @@ const AI_SUMMARY_BACKGROUND_SIGNAL_KEYS = new Set([
   "earth_energy_imbalance",
   "atmospheric_co2",
   "atmospheric_ch4",
+  "atmospheric_n2o",
   "atmospheric_aggi",
 ]);
 
@@ -791,7 +800,7 @@ function parseNoaaCo2DailyCsv(rawCsv) {
   return normalizePoints(points);
 }
 
-function parseNoaaCh4MonthlyCsv(rawCsv) {
+function parseNoaaMonthlyGreenhouseGasCsv(rawCsv, { minValue, maxValue }) {
   const points = [];
   const lines = rawCsv.split(/\r?\n/);
 
@@ -809,10 +818,44 @@ function parseNoaaCh4MonthlyCsv(rawCsv) {
 
     const average = toFiniteNumber(columns[3]);
     const trend = toFiniteNumber(columns[5]);
-    const value = [average, trend].find((candidate) => candidate != null && candidate > 500 && candidate < 5000);
+    const value = [average, trend].find((candidate) => candidate != null && candidate > minValue && candidate < maxValue);
     if (value == null) continue;
 
     points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseNoaaCh4MonthlyCsv(rawCsv) {
+  return parseNoaaMonthlyGreenhouseGasCsv(rawCsv, { minValue: 500, maxValue: 5000 });
+}
+
+function parseNoaaN2oMonthlyCsv(rawCsv) {
+  return parseNoaaMonthlyGreenhouseGasCsv(rawCsv, { minValue: 200, maxValue: 500 });
+}
+
+function parseRutgersMonthlySnowCoverText(rawText) {
+  const points = [];
+  const lines = String(rawText ?? "").split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(/\s+/);
+    if (columns.length < 3) continue;
+
+    const year = Number(columns[0]);
+    const month = Number(columns[1]);
+    const squareKilometers = toFiniteNumber(columns[2]);
+    const date = formatDateFromParts(year, month, 1);
+    if (!date || squareKilometers == null || squareKilometers <= 0) continue;
+
+    points.push({
+      date,
+      value: Math.round((squareKilometers / 1_000_000) * 1000) / 1000,
+    });
   }
 
   return normalizePoints(points);
@@ -1447,6 +1490,8 @@ function normalizeEnsoCondition(rawValue) {
   const normalized = String(rawValue ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z\s-]/g, " ");
 
   if (normalized.includes("neutral")) return "neutral";
@@ -1624,6 +1669,11 @@ function parseIriEnsoOutlook(html) {
     });
   }
 
+  if (!rows.length) {
+    const proseOutlook = parseIriProseEnsoOutlook(pageText, issuedDate);
+    if (proseOutlook) return proseOutlook;
+  }
+
   if (!rows.length) return null;
   const datedRows = assignIriSeasonYears(rows, issuedDate);
 
@@ -1655,6 +1705,88 @@ function parseIriEnsoOutlook(html) {
     sourceUrl: IRI_ENSO_CURRENT_URL,
     nextThreeMonths,
     nextSixMonths,
+  };
+}
+
+function expandIriSeasonRange(startSeason, endSeason, probability, condition) {
+  const startIndex = ENSO_SEASON_CODES.indexOf(startSeason);
+  const endIndex = ENSO_SEASON_CODES.indexOf(endSeason);
+  if (startIndex < 0 || endIndex < 0 || !condition || !Number.isFinite(probability)) return [];
+
+  const seasons = [];
+  let index = startIndex;
+  while (true) {
+    seasons.push({
+      season: ENSO_SEASON_CODES[index],
+      condition,
+      probability,
+    });
+    if (index === endIndex) break;
+    index = (index + 1) % ENSO_SEASON_CODES.length;
+    if (seasons.length > ENSO_SEASON_CODES.length) break;
+  }
+  return seasons;
+}
+
+function parseIriProseEnsoOutlook(pageText, issuedDate) {
+  const text = String(pageText ?? "").replace(/\s+/g, " ").trim();
+  if (!text) return null;
+
+  const outlookMatch = text.match(/outlook strongly favors([\s\S]*?)(?:The accompanying probability plot|ENSO Strength Forecasts|$)/i);
+  const outlookText = outlookMatch ? outlookMatch[0] : text;
+  const conditionMatch =
+    outlookText.match(/strongly favors(?:\s+the\s+persistence\s+of)?\s+(El\s+Ni(?:n|ñ)o|La\s+Ni(?:n|ñ)a|ENSO-neutral)/i) ??
+    outlookText.match(/(El\s+Ni(?:n|ñ)o|La\s+Ni(?:n|ñ)a|ENSO-neutral)\s+probabilities\s+are\s+assigned/i);
+  const condition = normalizeEnsoCondition(conditionMatch?.[1] ?? "");
+  if (!condition) return null;
+
+  const rows = [];
+  const sameProbabilityRangePattern =
+    /(\d{1,3})\s*%\s+from\s+([A-Z]{3})\s+through\s+([A-Z]{3})|from\s+([A-Z]{3})\s+to\s+([A-Z]{3})[^.]*?(\d{1,3})\s*%/gi;
+  for (const match of outlookText.matchAll(sameProbabilityRangePattern)) {
+    const probability = Number(match[1] ?? match[6]);
+    const startSeason = match[2] ?? match[4];
+    const endSeason = match[3] ?? match[5];
+    rows.push(...expandIriSeasonRange(startSeason, endSeason, probability, condition));
+  }
+
+  const followedByPattern = /followed by\s+(\d{1,3})\s*%\s+and\s+(\d{1,3})\s*%\s+for\s+([A-Z]{3})\s+and\s+([A-Z]{3})/i;
+  const followedByMatch = outlookText.match(followedByPattern);
+  if (followedByMatch) {
+    rows.push(
+      { season: followedByMatch[3], condition, probability: Number(followedByMatch[1]) },
+      { season: followedByMatch[4], condition, probability: Number(followedByMatch[2]) }
+    );
+  }
+
+  const uniqueRows = [];
+  const seenSeasons = new Set();
+  for (const row of rows) {
+    if (!ENSO_SEASON_CODES.includes(row.season)) continue;
+    if (!Number.isFinite(row.probability) || row.probability < 0 || row.probability > 100) continue;
+    if (seenSeasons.has(row.season)) continue;
+    seenSeasons.add(row.season);
+    uniqueRows.push(row);
+  }
+  if (!uniqueRows.length) return null;
+
+  const datedRows = assignIriSeasonYears(uniqueRows, issuedDate);
+  const firstRow = datedRows[0];
+  const mediumRangeRow = datedRows[Math.min(4, datedRows.length - 1)];
+  const synopsisMatch = text.match(/A monthly summary[\s\S]*?(?=Figures 1|IRI ENSO Forecast|$)/i);
+
+  return {
+    issuedDate,
+    alertStatus: null,
+    synopsis: synopsisMatch ? synopsisMatch[0].trim() : outlookText.slice(0, 500),
+    sourceLabel: "IRI ENSO Forecast",
+    sourceUrl: IRI_ENSO_CURRENT_URL,
+    nextThreeMonths: firstRow
+      ? { condition: firstRow.condition, probability: firstRow.probability, targetLabel: firstRow.targetLabel }
+      : null,
+    nextSixMonths: mediumRangeRow
+      ? { condition: mediumRangeRow.condition, probability: mediumRangeRow.probability, targetLabel: mediumRangeRow.targetLabel }
+      : null,
   };
 }
 
@@ -1842,6 +1974,7 @@ function signalPriority(signal) {
     global_sea_ice_extent: 8,
     arctic_sea_ice_extent: 8,
     antarctic_sea_ice_extent: 8,
+    northern_hemisphere_snow_cover_extent: 5,
     north_atlantic_sea_surface_temperature: 7,
     northern_hemisphere_surface_temperature: 6,
     southern_hemisphere_surface_temperature: 6,
@@ -1855,6 +1988,7 @@ function signalPriority(signal) {
     global_mean_sea_level: 1,
     atmospheric_co2: 1,
     atmospheric_ch4: 1,
+    atmospheric_n2o: 1,
     atmospheric_aggi: 1,
   };
   const categoryPriority = {
@@ -1895,8 +2029,10 @@ function buildAiSummaryAnomalySignals(series) {
     () => sameDateRankSignal("global_sea_ice_extent", series.global_sea_ice_extent, { direction: "low", nearRecordMargin: 0.15 }),
     () => sameDateRankSignal("arctic_sea_ice_extent", series.arctic_sea_ice_extent, { direction: "low", nearRecordMargin: 0.1 }),
     () => sameDateRankSignal("antarctic_sea_ice_extent", series.antarctic_sea_ice_extent, { direction: "low", nearRecordMargin: 0.1 }),
+    () => historicalRankSignal("northern_hemisphere_snow_cover_extent", series.northern_hemisphere_snow_cover_extent, { direction: "low" }),
     () => historicalRankSignal("atmospheric_co2", series.atmospheric_co2),
     () => historicalRankSignal("atmospheric_ch4", series.atmospheric_ch4),
+    () => historicalRankSignal("atmospheric_n2o", series.atmospheric_n2o),
     () => historicalRankSignal("atmospheric_aggi", series.atmospheric_aggi),
   ];
 
@@ -2405,7 +2541,9 @@ async function updateOnce() {
     southCsv,
     co2Csv,
     ch4Csv,
+    n2oCsv,
     aggiCsv,
+    northernHemisphereSnowCoverText,
     dailyGlobalMeanAnomalyCsv,
     incomingSolarEnergyHistoricalCsv,
     incomingSolarEnergyCsv,
@@ -2437,7 +2575,9 @@ async function updateOnce() {
     fetchText(NSIDC_SOUTH_DAILY_EXTENT_URL),
     fetchText(NOAA_MAUNA_LOA_CO2_DAILY_URL),
     fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
+    fetchText(NOAA_GLOBAL_N2O_MONTHLY_URL),
     fetchText(NOAA_AGGI_CSV_URL),
+    fetchText(RUTGERS_NH_SNOW_COVER_MONTHLY_URL),
     fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
     fetchText(LASP_NRL2_TSI_MONTHLY_URL, {
       timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
@@ -2664,10 +2804,20 @@ async function updateOnce() {
     maxValue: 3000,
     maxAgeDays: 220,
   });
+  const atmosphericN2o = sanitizeSeries(parseNoaaN2oMonthlyCsv(n2oCsv), {
+    minValue: 200,
+    maxValue: 500,
+    maxAgeDays: 220,
+  });
   const atmosphericAggi = sanitizeSeries(parseNoaaAggiCsv(aggiCsv), {
     minValue: 0.5,
     maxValue: 3.5,
     maxAgeDays: 1000,
+  });
+  const northernHemisphereSnowCoverExtent = sanitizeSeries(parseRutgersMonthlySnowCoverText(northernHemisphereSnowCoverText), {
+    minValue: 0,
+    maxValue: 60,
+    maxAgeDays: 120,
   });
   const incomingSolarEnergyHistorical = parseLaspNrl2TsiMonthlyCsv(incomingSolarEnergyHistoricalCsv);
   const incomingSolarEnergyRecent = parseLaspTsisTsiDailyCsv(incomingSolarEnergyCsv);
@@ -2723,7 +2873,10 @@ async function updateOnce() {
   let wgmsAmceZipBytes = null;
   if (wgmsAmceZipUrl) {
     try {
-      wgmsAmceZipBytes = await fetchBinary(wgmsAmceZipUrl);
+      wgmsAmceZipBytes = await fetchBinary(wgmsAmceZipUrl, {
+        timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
+        attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
+      });
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       dataWarnings.push(`global_glacier_mass_balance: WGMS archive refresh failed (${reason}).`);
@@ -2954,8 +3107,10 @@ async function updateOnce() {
     global_sea_ice_extent: globalSeaIceExtent,
     arctic_sea_ice_extent: arcticSeaIceExtent,
     antarctic_sea_ice_extent: antarcticSeaIceExtent,
+    northern_hemisphere_snow_cover_extent: northernHemisphereSnowCoverExtent,
     atmospheric_co2: atmosphericCo2,
     atmospheric_ch4: atmosphericCh4,
+    atmospheric_n2o: atmosphericN2o,
     atmospheric_aggi: atmosphericAggi,
     nino34_index: nino34Index,
     nao_index: naoIndex,
@@ -3013,8 +3168,10 @@ async function updateOnce() {
       global_sea_ice_extent: "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files.",
       arctic_sea_ice_extent: NSIDC_NORTH_DAILY_EXTENT_URL,
       antarctic_sea_ice_extent: NSIDC_SOUTH_DAILY_EXTENT_URL,
+      northern_hemisphere_snow_cover_extent: RUTGERS_NH_SNOW_COVER_MONTHLY_URL,
       atmospheric_co2: NOAA_MAUNA_LOA_CO2_DAILY_URL,
       atmospheric_ch4: NOAA_GLOBAL_CH4_MONTHLY_URL,
+      atmospheric_n2o: NOAA_GLOBAL_N2O_MONTHLY_URL,
       atmospheric_aggi: NOAA_AGGI_CSV_URL,
       nino34_index: NOAA_CPC_ONI_URL,
       nao_index: NOAA_CPC_NAO_MONTHLY_URL,

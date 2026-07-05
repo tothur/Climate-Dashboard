@@ -31,8 +31,10 @@ const METRICS = {
   global_sea_ice_extent: { label: "Global Sea Ice Extent", unit: "million km²" },
   arctic_sea_ice_extent: { label: "Arctic Sea Ice Extent", unit: "million km²" },
   antarctic_sea_ice_extent: { label: "Antarctic Sea Ice Extent", unit: "million km²" },
+  northern_hemisphere_snow_cover_extent: { label: "Northern Hemisphere Snow Cover Extent", unit: "million km²" },
   atmospheric_co2: { label: "Atmospheric CO2 (Mauna Loa)", unit: "ppm" },
   atmospheric_ch4: { label: "Atmospheric CH4 (Global)", unit: "ppb" },
+  atmospheric_n2o: { label: "Atmospheric N2O (Global)", unit: "ppb" },
   atmospheric_aggi: { label: "NOAA Annual Greenhouse Gas Index", unit: "index" },
 };
 

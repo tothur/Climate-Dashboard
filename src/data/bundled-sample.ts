@@ -225,6 +225,7 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
   const arcticSeaIce = generateSeries("1979-01-01", endDateIso, 12.8, -0.0004, 3.9, 365.25, 0.12, 0);
   const antarcticSeaIce = generateSeries("1979-01-01", endDateIso, 10.4, -0.0003, 4.3, 365.25, 0.14, 182.625);
   const globalSeaIce = mergeSeriesByDate(arcticSeaIce, antarcticSeaIce);
+  const northernHemisphereSnowCover = generateMonthlySeries(1966, 11, endDateIso, 24.8, -0.004, 18.5, 0.75, 2);
   const atmosphericAggi = generateAnnualSeries(1979, endDateIso, 0.78, 0.017, 0.018);
   const incomingSolarEnergy = generateSeries("2018-01-11", endDateIso, 1361.4, 0.000006, 0.45, 365.25 * 11, 0.02);
   const mountainGlacierMassBalance = generateAnnualSeries(1950, endDateIso, -1.1, -0.025, 0.18);
@@ -263,8 +264,10 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
     global_sea_ice_extent: globalSeaIce,
     arctic_sea_ice_extent: arcticSeaIce,
     antarctic_sea_ice_extent: antarcticSeaIce,
+    northern_hemisphere_snow_cover_extent: northernHemisphereSnowCover,
     atmospheric_co2: generateSeries("1958-03-29", endDateIso, 315.7, 0.0078, 6.1, 365.25, 0.32),
     atmospheric_ch4: generateSeries("1983-07-01", endDateIso, 1630, 0.0017, 14.5, 365.25, 0.55),
+    atmospheric_n2o: generateSeries("2001-01-01", endDateIso, 316, 0.0029, 0.8, 365.25, 0.04),
     atmospheric_aggi: atmosphericAggi,
     nino34_index: nino34Index,
     nao_index: naoIndex,
@@ -306,8 +309,10 @@ export const CLIMATE_METRIC_KEYS: ClimateMetricKey[] = [
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
   "antarctic_sea_ice_extent",
+  "northern_hemisphere_snow_cover_extent",
   "atmospheric_co2",
   "atmospheric_ch4",
+  "atmospheric_n2o",
   "atmospheric_aggi",
   "nino34_index",
   "nao_index",

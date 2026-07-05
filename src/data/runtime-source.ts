@@ -46,7 +46,9 @@ const NSIDC_SOUTH_DAILY_EXTENT_URL =
   "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv";
 const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv";
 const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
+const NOAA_GLOBAL_N2O_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/n2o/n2o_mm_gl.csv";
 const NOAA_AGGI_CSV_URL = "https://gml.noaa.gov/aggi/AGGI_Table.csv";
+const RUTGERS_NH_SNOW_COVER_MONTHLY_URL = "https://climate.rutgers.edu/snowcover/files/moncov.nhland.txt";
 const NOAA_CPC_ONI_URL = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt";
 const NOAA_CPC_NAO_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii.table";
 const NOAA_CPC_PNA_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.pna.monthly.b5001.current.ascii.table";
@@ -84,8 +86,10 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
   "antarctic_sea_ice_extent",
+  "northern_hemisphere_snow_cover_extent",
   "atmospheric_co2",
   "atmospheric_ch4",
+  "atmospheric_n2o",
   "atmospheric_aggi",
   "nino34_index",
   "nao_index",
@@ -127,8 +131,10 @@ const LOCAL_GENERATED_SERIES_MAX_AGE_DAYS: Record<keyof ClimateSeriesBundle, num
   global_sea_ice_extent: 20,
   arctic_sea_ice_extent: 20,
   antarctic_sea_ice_extent: 20,
+  northern_hemisphere_snow_cover_extent: 120,
   atmospheric_co2: 120,
   atmospheric_ch4: 220,
+  atmospheric_n2o: 220,
   atmospheric_aggi: 1000,
   nino34_index: 220,
   nao_index: 220,
@@ -671,7 +677,7 @@ function parseNoaaCo2DailyCsv(rawCsv: string): DailyPoint[] {
   return normalizePoints(points);
 }
 
-function parseNoaaCh4MonthlyCsv(rawCsv: string): DailyPoint[] {
+function parseNoaaMonthlyGreenhouseGasCsv(rawCsv: string, options: { minValue: number; maxValue: number }): DailyPoint[] {
   const points: DailyPoint[] = [];
   const lines = rawCsv.split(/\r?\n/);
 
@@ -689,10 +695,46 @@ function parseNoaaCh4MonthlyCsv(rawCsv: string): DailyPoint[] {
 
     const average = toFiniteNumber(columns[3]);
     const trend = toFiniteNumber(columns[5]);
-    const value = [average, trend].find((candidate) => candidate != null && candidate > 500 && candidate < 5000);
+    const value = [average, trend].find(
+      (candidate) => candidate != null && candidate > options.minValue && candidate < options.maxValue
+    );
     if (value == null) continue;
 
     points.push({ date, value });
+  }
+
+  return normalizePoints(points);
+}
+
+function parseNoaaCh4MonthlyCsv(rawCsv: string): DailyPoint[] {
+  return parseNoaaMonthlyGreenhouseGasCsv(rawCsv, { minValue: 500, maxValue: 5000 });
+}
+
+function parseNoaaN2oMonthlyCsv(rawCsv: string): DailyPoint[] {
+  return parseNoaaMonthlyGreenhouseGasCsv(rawCsv, { minValue: 200, maxValue: 500 });
+}
+
+function parseRutgersMonthlySnowCoverText(rawText: string): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  const lines = String(rawText ?? "").split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const columns = line.split(/\s+/);
+    if (columns.length < 3) continue;
+
+    const year = Number(columns[0]);
+    const month = Number(columns[1]);
+    const squareKilometers = toFiniteNumber(columns[2]);
+    const date = formatDateFromParts(year, month, 1);
+    if (!date || squareKilometers == null || squareKilometers <= 0) continue;
+
+    points.push({
+      date,
+      value: Math.round((squareKilometers / 1_000_000) * 1000) / 1000,
+    });
   }
 
   return normalizePoints(points);
@@ -1604,6 +1646,17 @@ async function loadCh4Series(): Promise<DailyPoint[] | null> {
   return points.length ? points : null;
 }
 
+async function loadN2oSeries(): Promise<DailyPoint[] | null> {
+  const csv = await fetchText(NOAA_GLOBAL_N2O_MONTHLY_URL);
+  if (!csv) return null;
+  const points = sanitizeSeries(parseNoaaN2oMonthlyCsv(csv), {
+    minValue: 200,
+    maxValue: 500,
+    maxAgeDays: 220,
+  });
+  return points.length ? points : null;
+}
+
 async function loadAggiSeries(): Promise<DailyPoint[] | null> {
   const csv = await fetchText(NOAA_AGGI_CSV_URL);
   if (!csv) return null;
@@ -1611,6 +1664,17 @@ async function loadAggiSeries(): Promise<DailyPoint[] | null> {
     minValue: 0.5,
     maxValue: 3.5,
     maxAgeDays: 1000,
+  });
+  return points.length ? points : null;
+}
+
+async function loadNorthernHemisphereSnowCoverSeries(): Promise<DailyPoint[] | null> {
+  const text = await fetchText(RUTGERS_NH_SNOW_COVER_MONTHLY_URL);
+  if (!text) return null;
+  const points = sanitizeSeries(parseRutgersMonthlySnowCoverText(text), {
+    minValue: 0,
+    maxValue: 60,
+    maxAgeDays: 120,
   });
   return points.length ? points : null;
 }
@@ -1802,7 +1866,9 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     seaIceResult,
     co2Result,
     ch4Result,
+    n2oResult,
     aggiResult,
+    northernHemisphereSnowCoverResult,
     incomingSolarEnergyResult,
     dailyGlobalMeanAnomalyResult,
     iceSheetAndGlacierResult,
@@ -1819,7 +1885,9 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     loadSeaIceSeriesBundle(),
     loadCo2Series(),
     loadCh4Series(),
+    loadN2oSeries(),
     loadAggiSeries(),
+    loadNorthernHemisphereSnowCoverSeries(),
     loadIncomingSolarEnergySeries(),
     loadDailyGlobalMeanTemperatureAnomalySeries(),
     loadIceSheetAndGlacierSeriesBundle(),
@@ -1987,10 +2055,22 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     warnings.push("Live global CH4 feed was unavailable or stale; using bundled fallback.");
   }
 
+  if (n2oResult.status === "fulfilled" && n2oResult.value?.length) {
+    liveSeries.atmospheric_n2o = n2oResult.value;
+  } else {
+    warnings.push("Live global N2O feed was unavailable or stale; using bundled fallback.");
+  }
+
   if (aggiResult.status === "fulfilled" && aggiResult.value?.length) {
     liveSeries.atmospheric_aggi = aggiResult.value;
   } else {
     warnings.push("Live NOAA AGGI feed was unavailable or stale; using bundled fallback.");
+  }
+
+  if (northernHemisphereSnowCoverResult.status === "fulfilled" && northernHemisphereSnowCoverResult.value?.length) {
+    liveSeries.northern_hemisphere_snow_cover_extent = northernHemisphereSnowCoverResult.value;
+  } else {
+    warnings.push("Live Northern Hemisphere Snow Cover Extent feed was unavailable or stale; using bundled fallback.");
   }
 
   if (incomingSolarEnergyResult.status === "fulfilled" && incomingSolarEnergyResult.value?.length) {

@@ -346,6 +346,7 @@ const DASHBOARD_VIEW_IDS = new Set<DashboardView>([
   "sources",
 ]);
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
+const SNOW_COVER_KEYS = new Set<ClimateMetricSeries["key"]>(["northern_hemisphere_snow_cover_extent"]);
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
 const ICE_SHEET_AND_GLACIER_KEYS = new Set([
   "global_glacier_mass_balance",
@@ -458,6 +459,8 @@ const SEA_ICE_SUMMARY_ORDER: ClimateMetricSeries["key"][] = [
   "antarctic_sea_ice_extent",
 ];
 const SEA_ICE_SUMMARY_RANK = new Map(SEA_ICE_SUMMARY_ORDER.map((key, index) => [key, index]));
+const SNOW_COVER_SUMMARY_ORDER: ClimateMetricSeries["key"][] = ["northern_hemisphere_snow_cover_extent"];
+const SNOW_COVER_SUMMARY_RANK = new Map(SNOW_COVER_SUMMARY_ORDER.map((key, index) => [key, index]));
 
 const STRINGS = {
   en: {
@@ -600,6 +603,9 @@ const STRINGS = {
     seaIceSectionTitle: "Sea Ice",
     seaIceSectionNote:
       "Global, Arctic, and Antarctic extent shown with daily points in a Jan-Dec comparison view.",
+    snowCoverSectionTitle: "Snow Cover",
+    snowCoverSectionNote:
+      "Monthly Northern Hemisphere land snow-cover extent from Rutgers Global Snow Lab. Comparable Southern Hemisphere/global snow-cover extent is not published in the same climate time-series feed.",
     iceSheetsAndGlaciersSectionTitle: "Ice Sheets and Glaciers",
     iceSheetsAndGlaciersSectionNote:
       "WGMS global glacier mass change and reference-glacier mass balance, plus cumulative Antarctic and Greenland ice-sheet mass loss since 2002 derived from NASA GRACE/GRACE-FO mass variation.",
@@ -626,7 +632,7 @@ const STRINGS = {
     mapUnavailable: "Map unavailable",
     forcingTitle: "Forcing",
     forcingNote:
-      "Forcing signals from Mauna Loa CO2, global CH4 observations, the NOAA Annual Greenhouse Gas Index, and long-record total solar irradiance.",
+      "Forcing signals from Mauna Loa CO2, global CH4 and N2O observations, the NOAA Annual Greenhouse Gas Index, and long-record total solar irradiance.",
     sourceTitle: "Data source mode",
     sourceLive: "Live feeds",
     sourceMixed: "Mixed live + fallback",
@@ -800,6 +806,9 @@ const STRINGS = {
     seaIceSectionTitle: "Tengeri jég",
     seaIceSectionNote:
       "Globális, arktiszi és antarktiszi jégkiterjedés napi adatokkal, január-decemberi összehasonlító nézetben.",
+    snowCoverSectionTitle: "Hóborítottság",
+    snowCoverSectionNote:
+      "Havi északi féltekei szárazföldi hóborítottsági kiterjedés a Rutgers Global Snow Lab adatai alapján. Összehasonlítható déli féltekei/globális hóborítottsági idősor ugyanebben a klíma-adatforrásban nem érhető el.",
     iceSheetsAndGlaciersSectionTitle: "Jégtakarók és gleccserek",
     iceSheetsAndGlaciersSectionNote:
       "A WGMS globális gleccser-tömegváltozása és referencia-gleccser tömegmérlege, valamint a NASA GRACE/GRACE-FO tömegváltozási adataiból származtatott kumulatív antarktiszi és grönlandi jégtakaró-tömegveszteség 2002 óta.",
@@ -826,7 +835,7 @@ const STRINGS = {
     mapUnavailable: "A térkép nem érhető el",
     forcingTitle: "Éghajlati kényszerek",
     forcingNote:
-      "Éghajlati kényszerek a Mauna Loa CO2, a globális CH4 megfigyelések, a NOAA éves üvegházhatásúgáz-index és hosszú idősoros teljes napsugárzás alapján.",
+      "Éghajlati kényszerek a Mauna Loa CO2, a globális CH4 és N2O megfigyelések, a NOAA éves üvegházhatásúgáz-index és hosszú idősoros teljes napsugárzás alapján.",
     sourceTitle: "Adatforrás mód",
     sourceLive: "Élő adatforrások",
     sourceMixed: "Vegyes (élő + tartalék)",
@@ -2635,6 +2644,8 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
       return { min: 2, max: 18 };
     case "antarctic_sea_ice_extent":
       return { min: 0, max: 22 };
+    case "northern_hemisphere_snow_cover_extent":
+      return { min: 0, max: 55 };
     default:
       return {};
   }
@@ -2676,6 +2687,7 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
     case "global_sea_ice_extent":
     case "arctic_sea_ice_extent":
     case "antarctic_sea_ice_extent":
+    case "northern_hemisphere_snow_cover_extent":
       return language === "hu" ? "millió km²" : "million km²";
     default:
       return undefined;
@@ -2688,6 +2700,8 @@ function forcingYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language: 
       return language === "hu" ? "CO2 ppm" : "CO2 parts per million (ppm)";
     case "atmospheric_ch4":
       return language === "hu" ? "CH4 ppb" : "CH4 parts per billion (ppb)";
+    case "atmospheric_n2o":
+      return language === "hu" ? "N2O ppb" : "N2O parts per billion (ppb)";
     case "atmospheric_aggi":
       return language === "hu" ? "AGGI index (1990=1)" : "AGGI index (1990=1)";
     case "incoming_solar_energy":
@@ -2703,6 +2717,8 @@ function forcingAxisBounds(metricKey: ClimateMetricSeries["key"]): { yMin?: numb
       return { yMin: 280, yMax: 500, minYear: 1974 };
     case "atmospheric_ch4":
       return { yMin: 1500, yMax: 2050, minYear: 1983 };
+    case "atmospheric_n2o":
+      return { yMin: 300, yMax: 360, minYear: 2001 };
     case "atmospheric_aggi":
       return { yMin: 0.7, yMax: 1.8, minYear: 1979 };
     case "incoming_solar_energy":
@@ -2725,7 +2741,7 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
   }
   if (VARIABILITY_INDEX_KEY_SET.has(metricKey)) return "index";
   if (language !== "hu") return unit;
-  if (SEA_ICE_KEYS.has(metricKey)) return "millió km²";
+  if (SEA_ICE_KEYS.has(metricKey) || SNOW_COVER_KEYS.has(metricKey)) return "millió km²";
   if (metricKey === "global_mean_sea_level") return "mm";
   if (metricKey === "ocean_heat_content") return "10^22 J";
   if (metricKey === EARTH_ENERGY_IMBALANCE_KEY || metricKey === "incoming_solar_energy") return "W/m²";
@@ -2754,12 +2770,18 @@ function topSummaryCategoryClass(metricKey: ClimateMetricSeries["key"]): string 
   ) {
     return "topcat-anomaly";
   }
-  if (metricKey === "global_sea_ice_extent" || metricKey === "arctic_sea_ice_extent" || metricKey === "antarctic_sea_ice_extent") {
+  if (
+    metricKey === "global_sea_ice_extent" ||
+    metricKey === "arctic_sea_ice_extent" ||
+    metricKey === "antarctic_sea_ice_extent" ||
+    SNOW_COVER_KEYS.has(metricKey)
+  ) {
     return "topcat-sea-ice";
   }
   if (
     metricKey === "atmospheric_co2" ||
     metricKey === "atmospheric_ch4" ||
+    metricKey === "atmospheric_n2o" ||
     metricKey === "atmospheric_aggi" ||
     metricKey === "incoming_solar_energy"
   ) {
@@ -2797,7 +2819,7 @@ function sourceSectionForMetric(metricKey: ClimateMetricSeries["key"]): DataSour
   }
   if (VARIABILITY_INDEX_KEY_SET.has(metricKey)) return "outlook";
   if (OCEAN_KEYS.has(metricKey) || metricKey === EARTH_ENERGY_IMBALANCE_KEY) return "ocean";
-  if (SEA_ICE_KEYS.has(metricKey) || ICE_SHEET_AND_GLACIER_KEYS.has(metricKey)) return "ice";
+  if (SEA_ICE_KEYS.has(metricKey) || SNOW_COVER_KEYS.has(metricKey) || ICE_SHEET_AND_GLACIER_KEYS.has(metricKey)) return "ice";
   return "forcing";
 }
 
@@ -2829,6 +2851,8 @@ function freshnessPolicyForMetric(metricKey: ClimateMetricSeries["key"]): Freshn
       return { cadence: "daily", warningDays: 14, staleDays: 35 };
     case "atmospheric_ch4":
       return { cadence: "monthly", warningDays: 90, staleDays: 180 };
+    case "atmospheric_n2o":
+      return { cadence: "monthly", warningDays: 90, staleDays: 180 };
     case "global_mean_sea_level":
       return { cadence: "monthly", warningDays: 120, staleDays: 240 };
     case "ocean_heat_content":
@@ -2845,6 +2869,8 @@ function freshnessPolicyForMetric(metricKey: ClimateMetricSeries["key"]): Freshn
       return { cadence: "assessment", warningDays: 2400, staleDays: 3200 };
     case "greenland_ice_sheet_mass_balance":
       return { cadence: "monthly", warningDays: 220, staleDays: 430 };
+    case "northern_hemisphere_snow_cover_extent":
+      return { cadence: "monthly", warningDays: 90, staleDays: 120 };
     case "atmospheric_aggi":
       return { cadence: "annual", warningDays: 550, staleDays: 900 };
     case "nino34_index":
@@ -3341,6 +3367,10 @@ export function App() {
     () => indicatorLines.filter(({ metric }) => SEA_ICE_KEYS.has(metric.key)),
     [indicatorLines]
   );
+  const snowCoverIndicatorLines = useMemo(
+    () => indicatorLines.filter(({ metric }) => SNOW_COVER_KEYS.has(metric.key)),
+    [indicatorLines]
+  );
   const seaIceSummaryMetrics = useMemo(
     () =>
       snapshot.indicators
@@ -3348,6 +3378,17 @@ export function App() {
         .sort((left, right) => {
           const leftRank = SEA_ICE_SUMMARY_RANK.get(left.key) ?? Number.MAX_SAFE_INTEGER;
           const rightRank = SEA_ICE_SUMMARY_RANK.get(right.key) ?? Number.MAX_SAFE_INTEGER;
+          return leftRank - rightRank;
+        }),
+    [snapshot.indicators]
+  );
+  const snowCoverSummaryMetrics = useMemo(
+    () =>
+      snapshot.indicators
+        .filter((metric) => SNOW_COVER_SUMMARY_RANK.has(metric.key))
+        .sort((left, right) => {
+          const leftRank = SNOW_COVER_SUMMARY_RANK.get(left.key) ?? Number.MAX_SAFE_INTEGER;
+          const rightRank = SNOW_COVER_SUMMARY_RANK.get(right.key) ?? Number.MAX_SAFE_INTEGER;
           return leftRank - rightRank;
         }),
     [snapshot.indicators]
@@ -4520,6 +4561,45 @@ export function App() {
                 )}
               </div>
             </div>
+
+            {snowCoverSummaryMetrics.length || snowCoverIndicatorLines.length ? (
+              <div className="climate-subsection">
+                <div className="climate-subsection-header">
+                  <h3>{t.snowCoverSectionTitle}</h3>
+                  <p>{t.snowCoverSectionNote}</p>
+                </div>
+                {snowCoverSummaryMetrics.length ? (
+                  <div className="summary-cards-section">
+                    <div className="regional-summary-grid">
+                      {snowCoverSummaryMetrics.map((metric) => {
+                        const freshness = metricFreshnessBadge(metric, language, t);
+                        return (
+                          <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-snow-cover-summary`}>
+                            <span className="alert-kicker">{t.latestLabel}</span>
+                            <h2>{metricTitle(metric, language)}</h2>
+                            <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
+                            {runtimeDataReady ? (
+                              <p>
+                                {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
+                              </p>
+                            ) : null}
+                            {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
+                            <div className="alert-meta">
+                              <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="charts-grid climate-grid">
+                  {snowCoverIndicatorLines.map(({ metric, lines, currentYear, climatology }) =>
+                    renderIndicatorPanel(metric, lines, currentYear, climatology)
+                  )}
+                </div>
+              </div>
+            ) : null}
 
             {iceSheetAndGlacierMetrics.length ? (
               <div className="climate-subsection">

@@ -222,6 +222,13 @@ const SERIES_RULES = {
     minPoints: 8_000,
     minPointsLastYear: 300,
   },
+  northern_hemisphere_snow_cover_extent: {
+    minValue: 0,
+    maxValue: 60,
+    maxAgeDays: 120,
+    minPoints: 600,
+    minPointsLastYear: 10,
+  },
   atmospheric_co2: {
     minValue: 200,
     maxValue: 700,
@@ -234,6 +241,13 @@ const SERIES_RULES = {
     maxValue: 3000,
     maxAgeDays: 220,
     minPoints: 400,
+    minPointsLastYear: 6,
+  },
+  atmospheric_n2o: {
+    minValue: 200,
+    maxValue: 500,
+    maxAgeDays: 220,
+    minPoints: 200,
     minPointsLastYear: 6,
   },
   atmospheric_aggi: {
