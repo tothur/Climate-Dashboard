@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAtIso": "2026-07-05T09:28:04.699Z",
+  "generatedAtIso": "2026-07-05T09:32:49.553Z",
   "scope": "Read-only compact snapshot of the latest published Climate Dashboard observations. It excludes full historical series; answer historical trend questions only when data for them is present.",
   "interpretationRules": [
     "State the observation date alongside each reported latest value.",
@@ -259,12 +259,12 @@
     "nextThreeMonths": {
       "condition": "el_nino",
       "probability": 100,
-      "targetLabel": "JJA 2026"
+      "targetLabel": "June-August 2026"
     },
     "nextSixMonths": {
       "condition": "el_nino",
       "probability": 99,
-      "targetLabel": "OND 2026"
+      "targetLabel": "October-December 2026"
     }
   }
 }

@@ -105,6 +105,20 @@ const ENSO_SEASON_CENTER_MONTH = {
   OND: 11,
   NDJ: 12,
 };
+const ENSO_SEASON_TARGET_LABELS = {
+  DJF: "December-February",
+  JFM: "January-March",
+  FMA: "February-April",
+  MAM: "March-May",
+  AMJ: "April-June",
+  MJJ: "May-July",
+  JJA: "June-August",
+  JAS: "July-September",
+  ASO: "August-October",
+  SON: "September-November",
+  OND: "October-December",
+  NDJ: "November-January",
+};
 const MAP_KEYS = ["global_2m_temperature", "global_2m_temperature_anomaly", "global_sst", "global_sst_anomaly"];
 const DEFAULT_OPENAI_SUMMARY_MODEL = "gpt-5.4-mini";
 const OPENAI_SUMMARY_ALLOWED_MODELS = new Set([DEFAULT_OPENAI_SUMMARY_MODEL]);
@@ -1612,6 +1626,11 @@ function buildEnsoWindowFromProbabilities(targetLabel, laNinaProbability, neutra
   };
 }
 
+function formatIriSeasonTargetLabel(season, year) {
+  const monthRange = ENSO_SEASON_TARGET_LABELS[season] ?? season;
+  return `${monthRange} ${year}`;
+}
+
 function assignIriSeasonYears(rows, issuedDate) {
   const parsedIssued = typeof issuedDate === "string" ? Date.parse(`${issuedDate}T00:00:00Z`) : Number.NaN;
   const issuedDateValue = Number.isFinite(parsedIssued) ? new Date(parsedIssued) : new Date();
@@ -1634,7 +1653,7 @@ function assignIriSeasonYears(rows, issuedDate) {
     return {
       ...row,
       year: String(year),
-      targetLabel: `${row.season} ${year}`,
+      targetLabel: formatIriSeasonTargetLabel(row.season, year),
     };
   });
 }
@@ -1662,7 +1681,7 @@ function parseIriEnsoOutlook(html) {
     rows.push({
       season,
       year: String(forecastYear),
-      targetLabel: `${season} ${forecastYear}`,
+      targetLabel: formatIriSeasonTargetLabel(season, forecastYear),
       laNinaProbability: Number(match[2]),
       neutralProbability: Number(match[3]),
       elNinoProbability: Number(match[4]),

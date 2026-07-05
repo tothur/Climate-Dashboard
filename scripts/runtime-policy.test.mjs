@@ -116,6 +116,9 @@ test("ENSO outlook handles current IRI prose forecast format", async () => {
   const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
 
   assert.match(updateScript, /function parseIriProseEnsoOutlook/);
+  assert.match(updateScript, /const ENSO_SEASON_TARGET_LABELS/);
+  assert.match(updateScript, /JJA:\s+"June-August"/);
+  assert.match(updateScript, /targetLabel:\s+formatIriSeasonTargetLabel\(row\.season,\s+year\)/);
   assert.match(updateScript, /strongly favors\(\?:\\s\+the\\s\+persistence\\s\+of\)\?/);
   assert.match(updateScript, /El\\s\+Ni\(\?:n\|ñ\)o/);
   assert.match(updateScript, /from\\s\+\(\[A-Z\]\{3\}\)\\s\+through\\s\+\(\[A-Z\]\{3\}\)/);
