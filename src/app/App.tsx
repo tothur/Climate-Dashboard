@@ -3987,10 +3987,10 @@ export function App() {
   return (
     <div className="app-frame">
       <aside className="dashboard-sidebar" aria-label={t.dashboardNavigationAria}>
-        <button type="button" className="sidebar-brand" onClick={() => setDashboardView("overview")} aria-label="ClimateWatch">
+        <button type="button" className="sidebar-brand" onClick={() => setDashboardView("overview")} aria-label={t.appTitle}>
           <img className="sidebar-logo" src={EARTH_LOGO_URL} alt="" aria-hidden="true" />
           <span>
-            <strong>ClimateWatch</strong>
+            <strong>{t.appTitle}</strong>
             <small>{t.brandSubtitle}</small>
           </span>
         </button>
