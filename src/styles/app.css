@@ -9075,6 +9075,138 @@ h3,
   padding-block: 2px;
 }
 
+/* ============================================================
+   Overview cohesion + sidebar palette pass
+   Unifies card geometry (radius, padding, borders, no stray
+   shadows) and reties the sidebar to the dusty-blue family.
+   ============================================================ */
+
+/* Cards — one shared geometry across every overview surface */
+
+.overview-hero,
+.overview-metric-card,
+.overview-card,
+.overview-ai-summary,
+.ai-summary-panel,
+.enso-outlook-card,
+.overview-map-suite,
+.overview-projection-card,
+.overview-tipping-card {
+  border-radius: 18px;
+  box-shadow: none;
+}
+
+.overview-hero {
+  padding: 22px 24px;
+}
+
+.overview-ai-summary {
+  padding: 20px 24px;
+}
+
+.overview-metric-card {
+  padding: 18px;
+}
+
+.overview-card,
+.enso-outlook-card,
+.overview-map-suite,
+.overview-projection-card {
+  padding: 20px;
+}
+
+/* Featured outlook keeps its single accent border, matched radius */
+
+.overview-projection-card.outlook-featured {
+  border: 1.5px solid color-mix(in srgb, var(--accent-strong) 34%, var(--surface-border));
+  border-radius: 18px;
+  padding: 22px 24px;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .overview-projection-card.outlook-featured {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--surface-border));
+}
+
+/* AI summary — same geometry as the card family, no stray shadow.
+   Kept as the accent panel; now visually rhymes with the blue rail. */
+
+.overview-ai-summary,
+.ai-summary-panel,
+.ai-summary-panel.watch,
+.ai-summary-panel.critical {
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 24%, var(--surface-border));
+  background: color-mix(in srgb, var(--accent-soft) 62%, var(--panel));
+  box-shadow: none;
+}
+
+[data-theme="dark"] .overview-ai-summary,
+[data-theme="dark"] .ai-summary-panel,
+[data-theme="dark"] .ai-summary-panel.watch,
+[data-theme="dark"] .ai-summary-panel.critical {
+  border-color: rgba(145, 171, 216, 0.26);
+  background: rgba(145, 171, 216, 0.13);
+  box-shadow: none;
+}
+
+/* Consistent hover across every overview card */
+
+.overview-hero:hover,
+.overview-metric-card:hover,
+.overview-card:hover,
+.overview-ai-summary:hover,
+.enso-outlook-card:hover,
+.overview-map-suite:hover,
+.overview-projection-card:hover,
+.overview-tipping-card:hover {
+  border-color: var(--surface-border-strong);
+  box-shadow: none;
+  transform: none;
+}
+
+/* Sidebar — deep blue-slate, same hue family as the accent */
+
+:root {
+  --dashboard-sidebar-bg: #212a40;
+  --dashboard-sidebar-active: #334364;
+}
+
+[data-theme="dark"] {
+  --dashboard-sidebar-bg: #151d30;
+  --dashboard-sidebar-active: rgba(122, 148, 205, 0.22);
+}
+
+@media (min-width: 1021px) {
+  .sidebar-logo {
+    background: #2e3a5a;
+  }
+
+  .sidebar-nav button.active {
+    border-color: rgba(140, 164, 224, 0.45);
+    background: var(--dashboard-sidebar-active);
+    color: #eef2fb;
+  }
+
+  .sidebar-nav button,
+  .sidebar-control-btn {
+    color: rgba(214, 222, 240, 0.72);
+  }
+
+  .sidebar-nav button:hover,
+  .sidebar-control-btn:hover {
+    background: rgba(140, 164, 224, 0.12);
+    color: #f2f5fc;
+  }
+
+  .sidebar-control-btn {
+    border-color: rgba(140, 164, 224, 0.2);
+  }
+}
+
+.sidebar-status-dot {
+  border-color: var(--dashboard-sidebar-bg);
+}
+
 .overview-map-pair .panel-header h2 {
   width: auto;
   max-width: 100%;
