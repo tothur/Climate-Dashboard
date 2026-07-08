@@ -9008,7 +9008,7 @@ h3,
 
 .overview-temperature-trend-card .overview-card-header h2,
 .long-range-temperature-chart .panel-header h2 {
-  font-size: clamp(1rem, 1.12vw, 1.12rem);
+  font-size: 1rem;
 }
 
 .overview-temperature-trend-card .overview-card-header p,
@@ -9037,4 +9037,54 @@ h3,
     font-size: 0.96rem;
     line-height: 1.4;
   }
+}
+
+/* --- Overview card title alignment + map header clipping fix -- */
+
+.overview-card-header h2,
+.outlook-title-row h2,
+.panel-header h2,
+.overview-map-pair .panel-header h2,
+.overview-metric-copy h2 {
+  font-size: 1rem;
+  line-height: 1.22;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.overview-metric-copy h2 {
+  min-height: 2.44em;
+}
+
+.overview-map-pair .panel {
+  overflow: visible;
+  grid-template-rows: auto minmax(0, 320px) auto;
+}
+
+.overview-map-pair .panel-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  gap: 8px;
+  min-height: 0;
+  padding-bottom: 10px;
+  overflow: visible;
+}
+
+.overview-map-pair .panel-header-main {
+  min-width: 0;
+  padding-block: 2px;
+}
+
+.overview-map-pair .panel-header h2 {
+  width: auto;
+  max-width: 100%;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.overview-map-pair .panel-header-actions {
+  justify-self: end;
+  width: 32px;
+  min-width: 32px;
 }
