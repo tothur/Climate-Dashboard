@@ -2516,16 +2516,16 @@ function topicChartColor(metricKey: ClimateMetricSeries["key"], dark: boolean): 
   switch (category) {
     case "topcat-temperature":
     case "topcat-anomaly":
-      return dark ? "#fb7185" : "#e11d2f";
+      return dark ? "#f08a8a" : "#c55353";
     case "topcat-sea-ice":
-      return dark ? "#a78bfa" : "#7c3aed";
+      return dark ? "#94b4df" : "#4f86bf";
     case "topcat-forcing":
     case "topcat-enso":
-      return dark ? "#34d399" : "#16a34a";
+      return dark ? "#9ab47a" : "#78945b";
     case "topcat-ocean":
     case "topcat-neutral":
     default:
-      return dark ? "#7db0ff" : "#0b69ff";
+      return dark ? "#91b7e4" : "#4f86bf";
   }
 }
 
@@ -2534,16 +2534,16 @@ function topicChartSoftColor(metricKey: ClimateMetricSeries["key"], dark: boolea
   switch (category) {
     case "topcat-temperature":
     case "topcat-anomaly":
-      return dark ? "rgba(251, 113, 133, 0.42)" : "rgba(225, 29, 47, 0.34)";
+      return dark ? "rgba(240, 138, 138, 0.42)" : "rgba(197, 83, 83, 0.34)";
     case "topcat-sea-ice":
-      return dark ? "rgba(167, 139, 250, 0.42)" : "rgba(124, 58, 237, 0.34)";
+      return dark ? "rgba(148, 180, 223, 0.42)" : "rgba(79, 134, 191, 0.34)";
     case "topcat-forcing":
     case "topcat-enso":
-      return dark ? "rgba(52, 211, 153, 0.42)" : "rgba(22, 163, 74, 0.34)";
+      return dark ? "rgba(154, 180, 122, 0.42)" : "rgba(120, 148, 91, 0.34)";
     case "topcat-ocean":
     case "topcat-neutral":
     default:
-      return dark ? "rgba(125, 176, 255, 0.42)" : "rgba(11, 105, 255, 0.34)";
+      return dark ? "rgba(145, 183, 228, 0.42)" : "rgba(79, 134, 191, 0.34)";
   }
 }
 
