@@ -19,6 +19,7 @@ import { buildClimateMonthlyComparisonOption, buildClimateTrendOption } from "..
 import { buildForcingTrendOption } from "../charts/historicalTrend";
 import { EChartsPanel } from "../components/EChartsPanel";
 import { MapPanel } from "../components/MapPanel";
+import { Sparkline } from "../components/Sparkline";
 
 const STORAGE_LANG_KEY = "climate-dashboard-lang";
 const STORAGE_THEME_KEY = "climate-dashboard-theme";
@@ -331,17 +332,20 @@ type ToolkitIconName =
   | "bars"
   | "calendar"
   | "cloud"
+  | "contrast"
   | "download"
   | "globe"
   | "home"
   | "info"
   | "leaf"
   | "map"
+  | "moon"
   | "more"
   | "ocean"
   | "reports"
   | "search"
   | "snow"
+  | "sun"
   | "temperature"
   | "trend"
   | "up";
@@ -493,6 +497,13 @@ const STRINGS = {
     overviewAtmosphericSubtitle: "Atmospheric",
     overviewArcticSeaIceTitle: "Arctic Sea Ice Extent",
     overviewClimatologySubtitle: "vs. 1991-2020 average",
+    planetNowTitle: "Planet Now",
+    heroSparklineLabel: "Past 365 days",
+    heroRecordLabel: "All-time high",
+    warmingStripesAria: "Annual global temperature anomalies since 1940, shown as warming stripes",
+    navGroupMonitor: "Monitor",
+    navGroupExplore: "Explore",
+    navGroupSystem: "System",
     deltaSincePrevious: "since previous",
     recordReachedText: "reached",
     ensoTargetConnector: "for",
@@ -692,6 +703,13 @@ const STRINGS = {
     overviewAtmosphericSubtitle: "Légköri",
     overviewArcticSeaIceTitle: "Arktiszi tengeri jégkiterjedés",
     overviewClimatologySubtitle: "az 1991-2020-as átlaghoz képest",
+    planetNowTitle: "A bolygó most",
+    heroSparklineLabel: "Elmúlt 365 nap",
+    heroRecordLabel: "Mindenkori csúcs",
+    warmingStripesAria: "Éves globális hőmérsékleti anomáliák 1940 óta, melegedési csíkokként ábrázolva",
+    navGroupMonitor: "Megfigyelés",
+    navGroupExplore: "Felfedezés",
+    navGroupSystem: "Rendszer",
     deltaSincePrevious: "az előző értékhez képest",
     recordReachedText: "elérte ezt az értéket:",
     ensoTargetConnector: "időszakra:",
@@ -958,6 +976,13 @@ function ToolkitIcon({ name, className }: { name: ToolkitIconName; className?: s
           <path d="M17.5 18H8a5 5 0 1 1 1.1-9.9A6 6 0 0 1 20 12.2 3.2 3.2 0 0 1 17.5 18Z" />
         </svg>
       );
+    case "contrast":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none" />
+        </svg>
+      );
     case "download":
       return (
         <svg {...common}>
@@ -1006,6 +1031,12 @@ function ToolkitIcon({ name, className }: { name: ToolkitIconName; className?: s
           <path d="M15 6v15" />
         </svg>
       );
+    case "moon":
+      return (
+        <svg {...common}>
+          <path d="M20 12.6A8 8 0 1 1 11.4 4a6.3 6.3 0 0 0 8.6 8.6Z" />
+        </svg>
+      );
     case "more":
       return (
         <svg {...common}>
@@ -1045,6 +1076,20 @@ function ToolkitIcon({ name, className }: { name: ToolkitIconName; className?: s
           <path d="m4.9 4.9 14.2 14.2" />
           <path d="M2 12h20" />
           <path d="m4.9 19.1 14.2-14.2" />
+        </svg>
+      );
+    case "sun":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2.5v2.4" />
+          <path d="M12 19.1v2.4" />
+          <path d="M2.5 12h2.4" />
+          <path d="M19.1 12h2.4" />
+          <path d="m5 5 1.7 1.7" />
+          <path d="m17.3 17.3 1.7 1.7" />
+          <path d="m19 5-1.7 1.7" />
+          <path d="m6.7 17.3-1.7 1.7" />
         </svg>
       );
     case "temperature":
@@ -1686,6 +1731,28 @@ function scenarioDisplayLabel(scenario: LongRangeScenarioDefinition, language: L
   return language === "hu" ? scenario.labelHu : scenario.labelEn;
 }
 
+const WARMING_STRIPE_COLORS = [
+  "#08306b",
+  "#08519c",
+  "#2171b5",
+  "#4292c6",
+  "#6baed6",
+  "#9ecae1",
+  "#c6dbef",
+  "#fddbc7",
+  "#fcae91",
+  "#fb6a4a",
+  "#ef3b2c",
+  "#cb181d",
+  "#a50f15",
+  "#67000d",
+];
+
+function warmingStripeColor(ratio: number): string {
+  const bounded = Math.min(Math.max(ratio, 0), 1);
+  return WARMING_STRIPE_COLORS[Math.round(bounded * (WARMING_STRIPE_COLORS.length - 1))];
+}
+
 function tippingPointLabel(tippingPoint: TippingPointDefinition, language: Language): string {
   return language === "hu" ? tippingPoint.labelHu : tippingPoint.labelEn;
 }
@@ -1811,6 +1878,18 @@ function buildLongRangeTemperatureTrendOption({
   const scenarioValueByLabel = new Map(
     scenarioPoints.map(({ label, value2100 }) => [label, value2100] as const)
   );
+  const tippingThresholdMarkers =
+    language === "hu"
+      ? [
+          { threshold: 1.5, label: "1,5 °C · WAIS + GrIS összeomlás, korallzátonyok" },
+          { threshold: 2, label: "2,0 °C · hegyi gleccserek, Száhel-monszun" },
+          { threshold: 3, label: "3,0 °C · Amazónia pusztulása, K-antarktiszi medencék" },
+        ]
+      : [
+          { threshold: 1.5, label: "1.5 °C · WAIS + GrIS collapse, coral reefs" },
+          { threshold: 2, label: "2.0 °C · mountain glaciers, Sahel monsoon" },
+          { threshold: 3, label: "3.0 °C · Amazon dieback, E. Antarctic basins" },
+        ];
 
   return {
     animation: false,
@@ -1905,12 +1984,19 @@ function buildLongRangeTemperatureTrendOption({
         markLine: {
           silent: true,
           symbol: "none",
-          lineStyle: { type: "dashed", width: 1.2 },
-          label: { show: false },
-          data: [
-            { yAxis: 1.5, label: { formatter: "1.5°C" }, lineStyle: { color: dark ? "#fbbf24" : "#f59e0b" } },
-            { yAxis: 2, label: { formatter: "2.0°C" }, lineStyle: { color: dark ? "#f87171" : "#dc2626" } },
-          ],
+          lineStyle: { type: "dashed", width: 1.3, color: dark ? "rgba(248, 113, 113, 0.55)" : "rgba(220, 38, 38, 0.45)" },
+          label: {
+            show: !compact,
+            position: "insideStartTop" as const,
+            color: dark ? "#fca5a5" : "#a32d2d",
+            fontSize: 10.5,
+            fontWeight: 700,
+            padding: [0, 0, 2, 2],
+          },
+          data: tippingThresholdMarkers.map((marker) => ({
+            yAxis: marker.threshold,
+            label: { formatter: marker.label },
+          })),
         },
       },
       ...scenarioPoints.map(({ label, color, points }) => {
@@ -3174,6 +3260,19 @@ export function App() {
     () => (dailyGlobalMeanAnomalyMetric ? buildAnnualMeanSeries(dailyGlobalMeanAnomalyMetric.points) : []),
     [dailyGlobalMeanAnomalyMetric]
   );
+  const warmingStripes = useMemo(() => {
+    const entries: Array<{ year: number; value: number }> = [];
+    for (const point of annualGlobalMeanAnomalyPoints) {
+      const year = parseYearFromDateIso(point.date);
+      if (year == null || !Number.isFinite(point.value)) continue;
+      entries.push({ year, value: point.value });
+    }
+    if (!entries.length) return [];
+    const values = entries.map((entry) => entry.value);
+    const min = Math.min(...values);
+    const span = Math.max(...values) - min || 1;
+    return entries.map((entry) => ({ ...entry, ratio: (entry.value - min) / span }));
+  }, [annualGlobalMeanAnomalyPoints]);
   const dailyGlobalMeanAnomaly365DayPoints = useMemo(
     () => (dailyGlobalMeanAnomalyMetric ? buildTrailingMeanSeries(dailyGlobalMeanAnomalyMetric.points, 365) : []),
     [dailyGlobalMeanAnomalyMetric]
@@ -3782,6 +3881,11 @@ export function App() {
     { view: "projections", label: t.projectionsTitle, icon: "trend", available: projectedAnnualGlobalMeanAnomaly != null },
     { view: "sources", label: t.sourceCardsTitle, icon: "reports", available: true },
   ];
+  const navGroups: Array<{ key: string; label: string; views: DashboardView[] }> = [
+    { key: "monitor", label: t.navGroupMonitor, views: ["overview", "indicators", "forcing", "variability"] },
+    { key: "explore", label: t.navGroupExplore, views: ["maps", "projections"] },
+    { key: "system", label: t.navGroupSystem, views: ["sources"] },
+  ];
   const pageTitle =
     activeView === "overview"
       ? t.overviewTitle
@@ -3835,26 +3939,9 @@ export function App() {
       `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
       className
     );
+  const heroDelta = dailyGlobalMeanAnomalyMetric ? formatMetricDelta(dailyGlobalMeanAnomalyMetric) : null;
+  const heroRecordPoint = dailyGlobalMeanAnomalyMetric ? latestRecordHighPoint(dailyGlobalMeanAnomalyMetric) : null;
   const overviewMetricCards = [
-    dailyGlobalMeanAnomalyMetric
-      ? (() => {
-          const delta = formatMetricDelta(dailyGlobalMeanAnomalyMetric);
-          return {
-            key: "overview-daily-temperature-anomaly",
-            title: t.overviewDailyGlobalTemperatureAnomalyTitle,
-            subtitle: t.overviewPreindustrialSubtitle,
-            value: `${formatMetricValue(dailyGlobalMeanAnomalyMetric, language, t.valueUnavailable)} ${cardUnitLabel(
-              dailyGlobalMeanAnomalyMetric.key,
-              dailyGlobalMeanAnomalyMetric.unit,
-              language
-            )}`,
-            meta: `${t.chartLatest}: ${formatDateLabel(dailyGlobalMeanAnomalyMetric.latestDate, language)}`,
-            delta: delta?.label ?? dailyGlobalMeanAnomalyFreshness?.label ?? null,
-            icon: "temperature" as ToolkitIconName,
-            tone: "temperature",
-          };
-        })()
-      : null,
     (() => {
       const metric = metricByKey.get("global_surface_temperature_anomaly");
       if (!metric) return null;
@@ -3868,6 +3955,7 @@ export function App() {
         delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
         icon: "temperature" as ToolkitIconName,
         tone: "temperature",
+        points: metric.points,
       };
     })(),
     (() => {
@@ -3883,6 +3971,7 @@ export function App() {
         delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
         icon: "ocean" as ToolkitIconName,
         tone: "info",
+        points: metric.points,
       };
     })(),
     (() => {
@@ -3898,6 +3987,7 @@ export function App() {
         delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
         icon: "snow" as ToolkitIconName,
         tone: "purple",
+        points: metric.points,
       };
     })(),
     (() => {
@@ -3913,6 +4003,7 @@ export function App() {
         delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
         icon: "leaf" as ToolkitIconName,
         tone: "success",
+        points: metric.points,
       };
     })(),
   ].filter((card): card is NonNullable<typeof card> => card != null);
@@ -3988,27 +4079,66 @@ export function App() {
     <div className="app-frame">
       <aside className="dashboard-sidebar" aria-label={t.dashboardNavigationAria}>
         <button type="button" className="sidebar-brand" onClick={() => setDashboardView("overview")} aria-label={t.appTitle}>
-          <img className="sidebar-logo" src={EARTH_LOGO_URL} alt="" aria-hidden="true" />
-          <span>
+          <span className={`sidebar-logo-wrap mode-${snapshot.sourceMode}`} title={sourceModeLabel}>
+            <img className="sidebar-logo" src={EARTH_LOGO_URL} alt="" aria-hidden="true" />
+            <span className="sidebar-status-dot" aria-hidden="true" />
+          </span>
+          <span className="sidebar-brand-copy">
             <strong>{t.appTitle}</strong>
             <small>{t.brandSubtitle}</small>
           </span>
         </button>
         <nav className="sidebar-nav">
-          {navItems
-            .filter((item) => item.available)
-            .map((item) => (
-              <button
-                type="button"
-                key={item.view}
-                className={activeView === item.view ? "active" : ""}
-                onClick={() => setDashboardView(item.view)}
-              >
-                <ToolkitIcon name={item.icon} className="nav-icon" />
-                {item.label}
-              </button>
-            ))}
+          {navGroups.map((group) => {
+            const items = navItems.filter((item) => group.views.includes(item.view) && item.available);
+            if (!items.length) return null;
+            return (
+              <div className="sidebar-nav-group" key={group.key}>
+                <span className="sidebar-nav-group-label">{group.label}</span>
+                {items.map((item) => (
+                  <button
+                    type="button"
+                    key={item.view}
+                    className={activeView === item.view ? "active" : ""}
+                    onClick={() => setDashboardView(item.view)}
+                    title={item.label}
+                    aria-label={item.label}
+                  >
+                    <ToolkitIcon name={item.icon} className="nav-icon" />
+                    <span className="nav-label">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </nav>
+        <div className="sidebar-controls">
+          <button
+            type="button"
+            className="sidebar-control-btn"
+            onClick={() => setThemeMode(themeMode === "system" ? "light" : themeMode === "light" ? "dark" : "system")}
+            title={`${t.theme}: ${themeMode === "dark" ? t.themeDark : themeMode === "light" ? t.themeLight : t.themeSystem}`}
+            aria-label={`${t.theme}: ${themeMode === "dark" ? t.themeDark : themeMode === "light" ? t.themeLight : t.themeSystem}`}
+          >
+            <ToolkitIcon
+              name={themeMode === "dark" ? "moon" : themeMode === "light" ? "sun" : "contrast"}
+              className="control-icon"
+            />
+            <span className="control-label">
+              {themeMode === "dark" ? t.themeDark : themeMode === "light" ? t.themeLight : t.themeSystem}
+            </span>
+          </button>
+          <button
+            type="button"
+            className="sidebar-control-btn"
+            onClick={() => setLanguage(language === "hu" ? "en" : "hu")}
+            title={`${t.language}: ${language === "hu" ? "Magyar" : "English"}`}
+            aria-label={`${t.language}: ${language === "hu" ? "Magyar" : "English"}`}
+          >
+            <span className="control-lang">{language.toUpperCase()}</span>
+            <span className="control-label">{language === "hu" ? "Magyar" : "English"}</span>
+          </button>
+        </div>
         <div className="sidebar-meta">
           <span>{t.dataUpdatedLabel}</span>
           <strong>
@@ -4041,27 +4171,58 @@ export function App() {
             </div>
           </div>
 
-          <div className="topbar-actions">
-            <div className="controls">
-              <div className="control-group">
-                <label htmlFor="lang-select">{t.language}</label>
-                <select id="lang-select" value={language} onChange={(event) => setLanguage(safeLanguage(event.target.value))}>
-                  <option value="en">English</option>
-                  <option value="hu">Magyar</option>
-                </select>
-              </div>
+        </header>
 
-              <div className="control-group">
-                <label htmlFor="theme-select">{t.theme}</label>
-                <select id="theme-select" value={themeMode} onChange={(event) => setThemeMode(safeTheme(event.target.value))}>
-                  <option value="system">{t.themeSystem}</option>
-                  <option value="light">{t.themeLight}</option>
-                  <option value="dark">{t.themeDark}</option>
-                </select>
+        {activeView === "overview" && dailyGlobalMeanAnomalyMetric ? (
+          <section className="overview-hero" aria-label={t.overviewDailyGlobalTemperatureAnomalyTitle}>
+            <div className="overview-hero-main">
+              <div className="overview-hero-copy">
+                <span className="overview-hero-kicker">
+                  {t.overviewDailyGlobalTemperatureAnomalyTitle} · {t.overviewPreindustrialSubtitle}
+                </span>
+                <strong className="overview-hero-value">
+                  {renderMetricValue(dailyGlobalMeanAnomalyMetric, "value-loading-skeleton overview-value-loading")}
+                </strong>
+                <div className="overview-hero-chips">
+                  {runtimeDataReady ? (
+                    <>
+                      <span className="overview-hero-chip">
+                        {t.chartLatest}: {formatDateLabel(dailyGlobalMeanAnomalyMetric.latestDate, language)}
+                      </span>
+                      {heroDelta ? <span className="overview-hero-chip">{heroDelta.label}</span> : null}
+                      {heroRecordPoint ? (
+                        <span className="overview-hero-chip record">
+                          <ToolkitIcon name="up" className="hero-chip-icon" />
+                          {t.heroRecordLabel}
+                        </span>
+                      ) : null}
+                      {dailyGlobalMeanAnomalyFreshness ? (
+                        <span className={`freshness-chip ${dailyGlobalMeanAnomalyFreshness.tone}`}>
+                          {dailyGlobalMeanAnomalyFreshness.label}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+              </div>
+              <div className="overview-hero-spark" aria-hidden="true">
+                <Sparkline points={dailyGlobalMeanAnomalyMetric.points} className="hero-sparkline" strokeWidth={2.2} />
+                <span>{t.heroSparklineLabel}</span>
               </div>
             </div>
-          </div>
-        </header>
+            {warmingStripes.length ? (
+              <div className="warming-stripes" role="img" aria-label={t.warmingStripesAria}>
+                {warmingStripes.map((stripe) => (
+                  <span
+                    key={stripe.year}
+                    style={{ background: warmingStripeColor(stripe.ratio) }}
+                    title={`${stripe.year}: ${formatNumericValue(stripe.value, 2, language, t.valueUnavailable)} °C`}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         {activeView === "overview" ? (
           <section className={`ai-summary-panel overview-ai-summary ${aiDashboardSummary.tone}`} aria-label={t.aiSummaryAria}>
@@ -4110,6 +4271,9 @@ export function App() {
                     <h2>{card.title}</h2>
                     <p className="metric-subtitle">{card.subtitle}</p>
                     <strong>{renderPrimaryValue(card.value, "value-loading-skeleton overview-value-loading")}</strong>
+                    {runtimeDataReady && card.points ? (
+                      <Sparkline className="metric-sparkline" points={card.points} />
+                    ) : null}
                     {runtimeDataReady ? (
                       <p className="metric-meta">{card.meta}</p>
                     ) : (
@@ -4123,6 +4287,12 @@ export function App() {
 
             <section className="overview-main-grid">
               <section className="overview-card overview-map-suite" aria-label={t.mapsSectionTitle}>
+                <div className="overview-card-header planet-now-header">
+                  <h2>{t.planetNowTitle}</h2>
+                  <button type="button" className="text-link-button" onClick={() => setDashboardView("maps")}>
+                    {t.viewAllMaps} →
+                  </button>
+                </div>
                 <div className="overview-map-pair">
                   {overviewMapCards.map((mapCard) => (
                     <MapPanel
@@ -4140,21 +4310,35 @@ export function App() {
                     />
                   ))}
                 </div>
-                <button type="button" className="text-link-button" onClick={() => setDashboardView("maps")}>
-                  {t.viewAllMaps} →
-                </button>
               </section>
 
               {renderEnsoOutlookCard({ showSourceLink: false })}
             </section>
 
             <section className="overview-bottom-grid">
-              <article className="overview-card overview-projection-card">
+              <article className="overview-card overview-projection-card outlook-featured">
                 <div className="overview-card-header">
-                  <h2>{t.outlookTitle} {currentYear}</h2>
+                  <div className="outlook-heading">
+                    <h2>{t.outlookTitle} {currentYear}</h2>
+                    <span className="outlook-kicker">
+                      {t.projectionExperimentalLabel} · {t.projectionMethodLabel}
+                    </span>
+                  </div>
                   <ToolkitIcon name="info" className="info-icon" />
                 </div>
                 {renderProjectionEstimate("overview")}
+                {runtimeDataReady && projectedAnnualGlobalMeanAnomaly ? (
+                  <div className="outlook-probability-row">
+                    <span className="outlook-chip">
+                      {t.projectionProbabilityAboveOnePointFiveTitle} ·{" "}
+                      <strong>{projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive)}</strong>
+                    </span>
+                    <span className="outlook-chip">
+                      {t.projectionProbabilityWarmestRecordTitle} ·{" "}
+                      <strong>{projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord)}</strong>
+                    </span>
+                  </div>
+                ) : null}
                 <div className="projection-chart-cell overview-current-year-chart">
                   {projectedAnnualOverviewChartOption ? (
                     <EChartsPanel
@@ -4216,66 +4400,6 @@ export function App() {
               </section>
             ) : null}
 
-            <section className="overview-tipping-section">
-              <article className="overview-card overview-tipping-card">
-                <div className="overview-card-header">
-                  <div>
-                    <h2>{t.tippingPointsTitle}</h2>
-                    <p>{t.tippingPointsSubtitle}</p>
-                  </div>
-                  <a className="text-link-button" href={MCKAY_TIPPING_POINTS_SOURCE_URL} target="_blank" rel="noreferrer">
-                    {t.tippingPointsSourceLabel} →
-                  </a>
-                </div>
-                <div className="tipping-current-pill">
-                  <span>{t.tippingCurrentWarmingLabel}</span>
-                  <strong>
-                    {currentTippingWarming == null ? "-" : projectionNumberFormat.format(currentTippingWarming)} {projectionUnitLabel}
-                  </strong>
-                  {annualGlobalMeanAnomalyIsYtd ? <small>{t.ytdLabel}</small> : null}
-                </div>
-                <div className="tipping-card-grid">
-                  {tippingPointCards.map((card) => (
-                    <article
-                      className="tipping-point-card"
-                      key={card.key}
-                      style={{ "--tipping-accent": card.accent } as CSSProperties}
-                      aria-label={`${card.label}: ${card.state}`}
-                    >
-                      <div className="tipping-card-topline">
-                        <span>{card.category}</span>
-                      </div>
-                      <h3>{card.label}</h3>
-                      <div className="tipping-threshold-row">
-                        <span>{t.tippingCentralThresholdLabel}</span>
-                        <strong>
-                          {projectionNumberFormat.format(card.centralThreshold)} {projectionUnitLabel}
-                        </strong>
-                      </div>
-                      <div className="tipping-range-track" aria-hidden="true">
-                        <span
-                          className="tipping-current-marker"
-                          style={{
-                            left:
-                              currentTippingWarming == null
-                                ? "0%"
-                                : `${clamp((currentTippingWarming / card.maxThreshold) * 100, 0, 100)}%`,
-                          }}
-                        />
-                        <span
-                          className="tipping-central-marker"
-                          style={{ left: `${clamp((card.centralThreshold / card.maxThreshold) * 100, 0, 100)}%` }}
-                        />
-                      </div>
-                      <p>
-                        {t.tippingRangeLabel}: {projectionNumberFormat.format(card.minThreshold)}-
-                        {projectionNumberFormat.format(card.maxThreshold)} {projectionUnitLabel}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              </article>
-            </section>
           </div>
         ) : null}
 
@@ -5043,6 +5167,67 @@ export function App() {
                   </article>
                 </section>
               ) : null}
+
+              <section className="overview-tipping-section">
+                <article className="overview-card overview-tipping-card">
+                  <div className="overview-card-header">
+                    <div>
+                      <h2>{t.tippingPointsTitle}</h2>
+                      <p>{t.tippingPointsSubtitle}</p>
+                    </div>
+                    <a className="text-link-button" href={MCKAY_TIPPING_POINTS_SOURCE_URL} target="_blank" rel="noreferrer">
+                      {t.tippingPointsSourceLabel} →
+                    </a>
+                  </div>
+                  <div className="tipping-current-pill">
+                    <span>{t.tippingCurrentWarmingLabel}</span>
+                    <strong>
+                      {currentTippingWarming == null ? "-" : projectionNumberFormat.format(currentTippingWarming)} {projectionUnitLabel}
+                    </strong>
+                    {annualGlobalMeanAnomalyIsYtd ? <small>{t.ytdLabel}</small> : null}
+                  </div>
+                  <div className="tipping-card-grid">
+                    {tippingPointCards.map((card) => (
+                      <article
+                        className="tipping-point-card"
+                        key={card.key}
+                        style={{ "--tipping-accent": card.accent } as CSSProperties}
+                        aria-label={`${card.label}: ${card.state}`}
+                      >
+                        <div className="tipping-card-topline">
+                          <span>{card.category}</span>
+                        </div>
+                        <h3>{card.label}</h3>
+                        <div className="tipping-threshold-row">
+                          <span>{t.tippingCentralThresholdLabel}</span>
+                          <strong>
+                            {projectionNumberFormat.format(card.centralThreshold)} {projectionUnitLabel}
+                          </strong>
+                        </div>
+                        <div className="tipping-range-track" aria-hidden="true">
+                          <span
+                            className="tipping-current-marker"
+                            style={{
+                              left:
+                                currentTippingWarming == null
+                                  ? "0%"
+                                  : `${clamp((currentTippingWarming / card.maxThreshold) * 100, 0, 100)}%`,
+                            }}
+                          />
+                          <span
+                            className="tipping-central-marker"
+                            style={{ left: `${clamp((card.centralThreshold / card.maxThreshold) * 100, 0, 100)}%` }}
+                          />
+                        </div>
+                        <p>
+                          {t.tippingRangeLabel}: {projectionNumberFormat.format(card.minThreshold)}-
+                          {projectionNumberFormat.format(card.maxThreshold)} {projectionUnitLabel}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+                </article>
+              </section>
             </div>
           ) : null}
         </section>
