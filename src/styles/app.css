@@ -7767,36 +7767,123 @@ h3 {
 /* Outlook — featured card */
 
 .overview-projection-card.outlook-featured {
-  border: 2px solid color-mix(in srgb, var(--accent) 42%, transparent);
-  box-shadow:
-    0 10px 30px -14px color-mix(in srgb, var(--accent) 38%, transparent),
-    var(--surface-shadow);
+  border: 2px solid color-mix(in srgb, var(--accent) 46%, var(--surface-border));
+  border-radius: 14px;
+  padding: 24px 28px;
+  background: var(--panel);
+  box-shadow: none;
 }
 
 .overview-projection-card.outlook-featured:hover {
-  border-color: color-mix(in srgb, var(--accent) 58%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--surface-border));
 }
 
-.outlook-heading {
+.outlook-card-grid {
   display: grid;
-  gap: 6px;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(320px, 1.05fr);
+  gap: clamp(28px, 6vw, 72px);
+  align-items: center;
 }
 
-.outlook-kicker {
+.outlook-card-copy {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+}
+
+.outlook-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.outlook-title-row h2 {
+  margin: 0;
   width: fit-content;
   border-radius: 999px;
-  padding: 3px 10px;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  padding: 6px 15px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: color-mix(in srgb, var(--accent-strong) 75%, var(--text));
+  font-size: clamp(1rem, 1.5vw, 1.34rem);
+  line-height: 1.05;
+  font-weight: 620;
+  letter-spacing: 0;
+}
+
+.outlook-title-row span {
+  color: color-mix(in srgb, var(--text) 82%, var(--muted));
+  font-size: clamp(0.85rem, 1.4vw, 1.05rem);
+  font-weight: 620;
+}
+
+.outlook-measure-label {
+  margin: 14px 0 -4px;
+  color: color-mix(in srgb, var(--text) 86%, var(--muted));
+  font-size: clamp(0.86rem, 1.25vw, 1.05rem);
+  font-weight: 560;
+}
+
+.outlook-main-value {
+  display: block;
+  color: #9f272f;
+  font-family: var(--font-mono);
+  font-size: clamp(3rem, 5.8vw, 4.55rem);
+  line-height: 0.92;
+  font-weight: 620;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.outlook-range-block {
+  display: grid;
+  gap: 8px;
+  max-width: 390px;
+  margin-top: 10px;
+}
+
+.outlook-range-block p {
+  margin: 0;
+  color: color-mix(in srgb, var(--text) 78%, var(--muted));
+  font-size: clamp(0.82rem, 1.18vw, 0.98rem);
+  font-weight: 560;
+}
+
+.outlook-range-track {
+  position: relative;
+  width: min(205px, 78%);
+  height: 14px;
+  margin-left: min(175px, 32%);
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.outlook-range-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 2px;
+  bottom: 2px;
+  min-width: 26px;
+  border-radius: 999px;
+  background: #d45252;
+}
+
+.outlook-range-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 999px;
+  background: #1e293b;
+  transform: translateX(-50%);
 }
 
 .outlook-probability-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;
+  margin-top: 2px;
 }
 
 .outlook-chip {
@@ -7805,22 +7892,188 @@ h3 {
   gap: 6px;
   border: 1px solid var(--surface-border);
   border-radius: 999px;
-  padding: 6px 12px;
-  background: color-mix(in srgb, var(--panel) 80%, transparent);
-  color: color-mix(in srgb, var(--muted) 80%, var(--text));
-  font-size: 0.74rem;
-  font-weight: 640;
+  padding: 5px 12px;
+  background: var(--panel);
+  color: color-mix(in srgb, var(--text) 76%, var(--muted));
+  font-size: clamp(0.78rem, 1.08vw, 0.94rem);
+  font-weight: 560;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
 .outlook-chip strong {
-  color: var(--domain-temperature);
-  font-size: 0.92rem;
-  font-weight: 800;
+  color: inherit;
+  font-size: 1em;
+  font-weight: 680;
   font-variant-numeric: tabular-nums;
 }
 
+.outlook-mini-chart {
+  position: relative;
+  display: grid;
+  align-content: end;
+  min-height: 222px;
+  padding: 34px 0 0;
+}
+
+.outlook-bars {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(38px, 1fr));
+  align-items: end;
+  gap: clamp(9px, 1.3vw, 16px);
+  min-height: 150px;
+  border-bottom: 2px solid color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.outlook-bar-cell {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  height: 180px;
+  min-width: 0;
+  color: color-mix(in srgb, var(--text) 58%, var(--muted));
+  font-size: clamp(0.8rem, 1.18vw, 1rem);
+  font-weight: 560;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.outlook-bar {
+  justify-self: center;
+  width: min(48px, 76%);
+  min-height: 18px;
+  border-radius: 7px 7px 3px 3px;
+  background: #d45252;
+}
+
+.outlook-bar.projected {
+  border: 2px dashed #c85c5c;
+  background: transparent;
+}
+
+.outlook-chart-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  border-top: 2px dashed color-mix(in srgb, #9f272f 42%, transparent);
+}
+
+.outlook-chart-line span {
+  position: absolute;
+  top: -28px;
+  color: color-mix(in srgb, var(--text) 72%, var(--muted));
+  font-size: clamp(0.78rem, 1.15vw, 0.95rem);
+  font-weight: 560;
+  white-space: nowrap;
+}
+
+.outlook-chart-line.threshold span {
+  left: 0;
+}
+
+.outlook-chart-line.record span {
+  left: 54%;
+  transform: translateX(-50%);
+  color: color-mix(in srgb, var(--text) 86%, var(--muted));
+  font-weight: 620;
+}
+
+.outlook-mini-chart > p {
+  margin: 14px 0 0;
+  color: color-mix(in srgb, var(--text) 78%, var(--muted));
+  font-size: clamp(0.82rem, 1.12vw, 1rem);
+  font-weight: 600;
+  text-align: center;
+}
+
 [data-theme="dark"] .outlook-chip strong {
+  color: inherit;
+}
+
+[data-theme="dark"] .overview-projection-card.outlook-featured {
+  background: #0d1729;
+}
+
+[data-theme="dark"] .outlook-title-row h2 {
+  background: rgba(125, 176, 255, 0.16);
+  color: #bfdbfe;
+}
+
+[data-theme="dark"] .outlook-main-value {
   color: #fda4af;
+}
+
+[data-theme="dark"] .outlook-range-fill,
+[data-theme="dark"] .outlook-bar {
+  background: #fb7185;
+}
+
+[data-theme="dark"] .outlook-range-marker {
+  background: #e5eefb;
+}
+
+[data-theme="dark"] .outlook-bar.projected {
+  border-color: #fda4af;
+  background: transparent;
+}
+
+[data-theme="dark"] .outlook-chart-line {
+  border-top-color: rgba(253, 164, 175, 0.48);
+}
+
+[data-theme="dark"] .outlook-chip {
+  background: #0d1729;
+}
+
+@media (max-width: 980px) {
+  .outlook-card-grid {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .outlook-mini-chart {
+    min-height: 210px;
+  }
+}
+
+@media (max-width: 560px) {
+  .overview-projection-card.outlook-featured {
+    padding: 18px;
+  }
+
+  .outlook-title-row {
+    gap: 8px;
+  }
+
+  .outlook-main-value {
+    font-size: clamp(2.6rem, 14vw, 3.2rem);
+  }
+
+  .outlook-range-track {
+    width: min(205px, 84%);
+    margin-left: 18%;
+  }
+
+  .outlook-bars {
+    grid-template-columns: repeat(6, minmax(26px, 1fr));
+    gap: 6px;
+  }
+
+  .outlook-bar-cell {
+    height: 150px;
+    font-size: 0.72rem;
+  }
+
+  .outlook-bar {
+    width: min(34px, 80%);
+  }
+
+  .outlook-chart-line.record span {
+    left: 62%;
+  }
 }
 
 /* Sidebar — grouped nav, status dot, controls */

@@ -610,6 +610,12 @@ const STRINGS = {
     projectionProbabilityMethodLabel: "Weighted analog years",
     projectionAnalogsLabel: "analogs",
     projectionRecordThresholdLabel: "Record to beat",
+    outlookProjectedAnnualMeanLabel: "Projected annual mean",
+    outlookChanceAboveOnePointFiveLabel: "chance above 1.5 °C",
+    outlookChanceWarmestYearLabel: "chance warmest year",
+    outlookChartCaption: "annual anomaly, last five years + 2026 projection",
+    outlookProjectionSuffix: "p",
+    outlookRecordLabel: "record",
     projectionsTitle: "Projections",
     projectionsNote: "Experimental warming outlook.",
     yearLabel: "Year",
@@ -816,6 +822,12 @@ const STRINGS = {
     projectionProbabilityMethodLabel: "Súlyozott analóg évek",
     projectionAnalogsLabel: "analóg",
     projectionRecordThresholdLabel: "Megközelítendő rekord",
+    outlookProjectedAnnualMeanLabel: "Becsült éves átlag",
+    outlookChanceAboveOnePointFiveLabel: "esély 1,5 °C felett",
+    outlookChanceWarmestYearLabel: "esély rekordmeleg évre",
+    outlookChartCaption: "éves anomália, elmúlt öt év + 2026 becslés",
+    outlookProjectionSuffix: "b",
+    outlookRecordLabel: "rekord",
     projectionsTitle: "Előrejelzések",
     projectionsNote: "Kísérleti melegedési kilátás.",
     yearLabel: "Év",
@@ -3374,6 +3386,28 @@ export function App() {
     () => annualGlobalMeanAnomalyPoints.filter((point) => (parseYearFromDateIso(point.date) ?? 0) >= 2020),
     [annualGlobalMeanAnomalyPoints]
   );
+  const outlookMiniChartBars = useMemo(() => {
+    if (!projectedAnnualGlobalMeanAnomaly) return [];
+    const historicalBars = projectedAnnualChartPoints
+      .map((point) => {
+        const year = parseYearFromDateIso(point.date);
+        return year == null ? null : { year, value: point.value, projected: false };
+      })
+      .filter(
+        (point): point is { year: number; value: number; projected: false } =>
+          point != null && point.year < projectedAnnualGlobalMeanAnomaly.year && Number.isFinite(point.value)
+      )
+      .slice(-5);
+
+    return [
+      ...historicalBars,
+      {
+        year: projectedAnnualGlobalMeanAnomaly.year,
+        value: projectedAnnualGlobalMeanAnomaly.value,
+        projected: true,
+      },
+    ];
+  }, [projectedAnnualChartPoints, projectedAnnualGlobalMeanAnomaly]);
   const projectedAnnualOverviewChartOption = useMemo(() => {
     if (!dailyGlobalMeanAnomalyMetric || !projectedAnnualGlobalMeanAnomaly || !projectedAnnualChartPoints.length) return null;
 
@@ -3811,6 +3845,32 @@ export function App() {
           start,
           width: Math.max(end - start, 1.5),
           marker,
+        };
+      })()
+    : null;
+  const outlookIntervalMarker = projectedAnnualGlobalMeanAnomaly
+    ? (() => {
+        const span = projectedAnnualGlobalMeanAnomaly.high - projectedAnnualGlobalMeanAnomaly.low || 1;
+        return clamp(((projectedAnnualGlobalMeanAnomaly.value - projectedAnnualGlobalMeanAnomaly.low) / span) * 100, 0, 100);
+      })()
+    : null;
+  const outlookMiniChartScale = projectedAnnualGlobalMeanAnomaly
+    ? (() => {
+        const values = [
+          ...outlookMiniChartBars.map((bar) => bar.value),
+          projectedAnnualGlobalMeanAnomaly.recordThreshold,
+          projectedAnnualGlobalMeanAnomaly.low,
+          projectedAnnualGlobalMeanAnomaly.high,
+          1.5,
+        ].filter(Number.isFinite);
+        const min = Math.min(...values) - 0.08;
+        const max = Math.max(...values) + 0.08;
+        const span = max - min || 1;
+        return {
+          min,
+          max,
+          barPercent: (value: number) => clamp(((value - min) / span) * 100, 4, 100),
+          linePercent: (value: number) => clamp(100 - ((value - min) / span) * 100, 0, 100),
         };
       })()
     : null;
@@ -4317,39 +4377,91 @@ export function App() {
 
             <section className="overview-bottom-grid">
               <article className="overview-card overview-projection-card outlook-featured">
-                <div className="overview-card-header">
-                  <div className="outlook-heading">
-                    <h2>{t.outlookTitle} {currentYear}</h2>
-                    <span className="outlook-kicker">
-                      {t.projectionExperimentalLabel} · {t.projectionMethodLabel}
-                    </span>
+                <div className="outlook-card-grid">
+                  <div className="outlook-card-copy">
+                    <div className="outlook-title-row">
+                      <h2>{currentYear} {t.outlookTitle}</h2>
+                      <span>{t.projectionExperimentalLabel.toLowerCase()} · {t.projectionProbabilityMethodLabel.toLowerCase()}</span>
+                    </div>
+                    {projectedAnnualGlobalMeanAnomaly ? (
+                      <>
+                        <p className="outlook-measure-label">
+                          {t.outlookProjectedAnnualMeanLabel} · {t.overviewPreindustrialSubtitle}
+                        </p>
+                        <strong className="outlook-main-value">
+                          {renderPrimaryValue(
+                            `${projectedAnnualGlobalMeanAnomaly.value > 0 ? "+" : ""}${projectionNumberFormat.format(
+                              projectedAnnualGlobalMeanAnomaly.value
+                            )} ${projectionUnitLabel}`,
+                            "value-loading-skeleton projection-value-loading"
+                          )}
+                        </strong>
+                        <div className="outlook-range-block">
+                          <p>
+                            {t.projectionIntervalLabel} · {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
+                            {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)} {projectionUnitLabel}
+                          </p>
+                          {runtimeDataReady ? (
+                            <div className="outlook-range-track" aria-hidden="true">
+                              <span className="outlook-range-fill" />
+                              <span className="outlook-range-marker" style={{ left: `${outlookIntervalMarker ?? 50}%` }} />
+                            </div>
+                          ) : (
+                            <div className="projection-track-loading" aria-hidden="true">
+                              {renderLoadingValue("value-loading-skeleton projection-track-loading-bar")}
+                            </div>
+                          )}
+                        </div>
+                        {runtimeDataReady ? (
+                          <div className="outlook-probability-row">
+                            <span className="outlook-chip">
+                              {t.outlookChanceAboveOnePointFiveLabel} ·{" "}
+                              <strong>{projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive)}</strong>
+                            </span>
+                            <span className="outlook-chip">
+                              {t.outlookChanceWarmestYearLabel} ·{" "}
+                              <strong>{projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord)}</strong>
+                            </span>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
                   </div>
-                  <ToolkitIcon name="info" className="info-icon" />
-                </div>
-                {renderProjectionEstimate("overview")}
-                {runtimeDataReady && projectedAnnualGlobalMeanAnomaly ? (
-                  <div className="outlook-probability-row">
-                    <span className="outlook-chip">
-                      {t.projectionProbabilityAboveOnePointFiveTitle} ·{" "}
-                      <strong>{projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive)}</strong>
-                    </span>
-                    <span className="outlook-chip">
-                      {t.projectionProbabilityWarmestRecordTitle} ·{" "}
-                      <strong>{projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord)}</strong>
-                    </span>
-                  </div>
-                ) : null}
-                <div className="projection-chart-cell overview-current-year-chart">
-                  {projectedAnnualOverviewChartOption ? (
-                    <EChartsPanel
-                      title={t.projectedAnnualTemperatureAnomalyChartTitle}
-                      subtitle={t.projectedAnnualTemperatureAnomalyChartSubtitle}
-                      expandLabel={t.chartFullscreenEnter}
-                      collapseLabel={t.chartFullscreenExit}
-                      freshnessLabel={projectionFreshness?.label}
-                      freshnessTone={projectionFreshness?.tone}
-                      option={projectedAnnualOverviewChartOption}
-                    />
+                  {projectedAnnualGlobalMeanAnomaly && outlookMiniChartScale && outlookMiniChartBars.length ? (
+                    <div className="outlook-mini-chart" role="img" aria-label={t.outlookChartCaption}>
+                      <div
+                        className="outlook-chart-line threshold"
+                        style={{ top: `${outlookMiniChartScale.linePercent(1.5)}%` }}
+                        aria-hidden="true"
+                      >
+                        <span>1.5 °C</span>
+                      </div>
+                      <div
+                        className="outlook-chart-line record"
+                        style={{ top: `${outlookMiniChartScale.linePercent(projectedAnnualGlobalMeanAnomaly.recordThreshold)}%` }}
+                        aria-hidden="true"
+                      >
+                        <span>
+                          {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.recordThreshold)} {t.outlookRecordLabel}
+                        </span>
+                      </div>
+                      <div className="outlook-bars" aria-hidden="true">
+                        {outlookMiniChartBars.map((bar) => (
+                          <div className="outlook-bar-cell" key={bar.year}>
+                            <div
+                              className={`outlook-bar ${bar.projected ? "projected" : ""}`}
+                              style={{ height: `${outlookMiniChartScale.barPercent(bar.value)}%` }}
+                              title={`${bar.year}: ${projectionNumberFormat.format(bar.value)} ${projectionUnitLabel}`}
+                            />
+                            <span>
+                              {bar.year}
+                              {bar.projected ? t.outlookProjectionSuffix : ""}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <p>{t.outlookChartCaption}</p>
+                    </div>
                   ) : null}
                 </div>
               </article>
@@ -5058,7 +5170,7 @@ export function App() {
             <div className="section-content">
               <article className="overview-card overview-projection-card projections-outlook-card">
                 <div className="overview-card-header">
-                  <h2>{t.outlookTitle} {currentYear}</h2>
+                  <h2>{currentYear} {t.outlookTitle}</h2>
                   <ToolkitIcon name="info" className="info-icon" />
                 </div>
                 {renderProjectionEstimate("overview")}
