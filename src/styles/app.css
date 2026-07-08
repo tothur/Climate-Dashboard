@@ -8900,3 +8900,141 @@ h3,
     font-size: clamp(1.46rem, 8vw, 1.8rem);
   }
 }
+
+/* --- Overview type hierarchy cleanup ------------------------- */
+
+.overview-hero-kicker,
+.outlook-measure-label {
+  color: color-mix(in srgb, var(--text) 76%, var(--muted));
+  font-size: clamp(0.96rem, 1.1vw, 1.08rem);
+  line-height: 1.35;
+  font-weight: 590;
+}
+
+.overview-card-header,
+.outlook-title-row,
+.panel-header {
+  gap: 10px;
+}
+
+.overview-card-header h2,
+.outlook-title-row h2,
+.panel-header h2,
+.overview-map-pair .panel-header h2,
+.overview-metric-copy h2 {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(1rem, 1.15vw, 1.14rem);
+  line-height: 1.18;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.outlook-title-row h2 {
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.outlook-title-row span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.25;
+  font-weight: 540;
+}
+
+.overview-metric-copy h2 {
+  max-width: 100%;
+  min-height: 2.36em;
+  font-size: clamp(0.95rem, 1.05vw, 1.04rem);
+}
+
+.metric-subtitle {
+  max-width: 100%;
+  font-size: 0.8rem;
+}
+
+.overview-metric-copy strong {
+  margin-top: 8px;
+  font-size: clamp(1.52rem, 2.05vw, 1.86rem);
+}
+
+.overview-ai-summary {
+  padding: 16px 18px;
+}
+
+.overview-ai-summary .ai-summary-copy {
+  gap: 10px;
+}
+
+.overview-ai-summary .alert-kicker,
+.ai-summary-copy .alert-kicker {
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.overview-ai-summary .ai-summary-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.overview-ai-summary .ai-summary-list li,
+.overview-ai-summary p {
+  font-family: var(--font-sans);
+  font-size: clamp(0.98rem, 1.18vw, 1.08rem);
+  line-height: 1.42;
+  font-weight: 560;
+}
+
+.overview-ai-summary .ai-summary-list li {
+  position: relative;
+  padding-left: 15px;
+}
+
+.overview-ai-summary .ai-summary-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.72em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-strong) 72%, var(--domain-forcing));
+}
+
+.overview-temperature-trend-card .overview-card-header h2,
+.long-range-temperature-chart .panel-header h2 {
+  font-size: clamp(1rem, 1.12vw, 1.12rem);
+}
+
+.overview-temperature-trend-card .overview-card-header p,
+.long-range-temperature-chart .panel-header p {
+  max-width: 82ch;
+  font-size: 0.82rem;
+  line-height: 1.42;
+}
+
+@media (max-width: 560px) {
+  .overview-hero-kicker,
+  .outlook-measure-label {
+    font-size: 0.92rem;
+  }
+
+  .overview-card-header h2,
+  .outlook-title-row h2,
+  .panel-header h2,
+  .overview-map-pair .panel-header h2,
+  .overview-metric-copy h2 {
+    font-size: 1rem;
+  }
+
+  .overview-ai-summary .ai-summary-list li,
+  .overview-ai-summary p {
+    font-size: 0.96rem;
+    line-height: 1.4;
+  }
+}

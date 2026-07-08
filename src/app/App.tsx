@@ -579,6 +579,7 @@ const STRINGS = {
     projectedAnnualTemperatureAnomalyChartSubtitle:
       "Historical annual means with the projected current-year value and confidence interval.",
     longRangeTemperatureTrendTitle: "Temperature Trend to 2100",
+    longRangeTemperatureTrendShortTitle: "2100 Trend",
     longRangeTemperatureTrendSubtitle:
       "Measured annual warming to present, then indicative CMIP7 ScenarioMIP FaIR median pathways.",
     longRangeTemperatureTrendSource:
@@ -791,6 +792,7 @@ const STRINGS = {
     projectedAnnualTemperatureAnomalyChartSubtitle:
       "Történeti éves átlagok az aktuális év becsült értékével és bizonytalansági tartományával.",
     longRangeTemperatureTrendTitle: "Hőmérsékleti trend 2100-ig",
+    longRangeTemperatureTrendShortTitle: "2100-as trend",
     longRangeTemperatureTrendSubtitle:
       "Mért éves melegedés napjainkig, majd indikatív CMIP7 ScenarioMIP FaIR medián pályák.",
     longRangeTemperatureTrendSource:
@@ -4472,7 +4474,7 @@ export function App() {
                 <article className="overview-card overview-temperature-trend-card">
                   <div className="overview-card-header">
                     <div>
-                      <h2>{t.longRangeTemperatureTrendTitle}</h2>
+                      <h2>{t.longRangeTemperatureTrendShortTitle}</h2>
                       <p>{t.longRangeTemperatureTrendSource}</p>
                     </div>
                     <a
@@ -4486,7 +4488,7 @@ export function App() {
                   </div>
                   <div className="long-range-temperature-chart">
                     <EChartsPanel
-                      title={t.longRangeTemperatureTrendTitle}
+                      title={t.longRangeTemperatureTrendShortTitle}
                       subtitle={t.longRangeTemperatureTrendSubtitle}
                       expandLabel={t.chartFullscreenEnter}
                       collapseLabel={t.chartFullscreenExit}
