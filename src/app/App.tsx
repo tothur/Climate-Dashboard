@@ -4217,8 +4217,10 @@ export function App() {
         <header className="topbar">
           <div className="topbar-brand">
             <div>
-              <h1>{pageTitle}</h1>
-              <p className="subtitle">{pageSubtitle}</p>
+              <div className="topbar-heading">
+                <h1>{pageTitle}</h1>
+                <p className="subtitle">{pageSubtitle}</p>
+              </div>
               <div className="page-meta-row" aria-label={t.dataStatusLabel}>
                 <span>{sourceModeLabel}</span>
                 <span>
@@ -4454,8 +4456,10 @@ export function App() {
                               className={`outlook-bar ${bar.projected ? "projected" : ""}`}
                               style={{ height: `${outlookMiniChartScale.barPercent(bar.value)}%` }}
                               title={`${bar.year}: ${projectionNumberFormat.format(bar.value)} ${projectionUnitLabel}`}
-                            />
-                            <span>
+                            >
+                              <span className="outlook-bar-value">{projectionNumberFormat.format(bar.value)}</span>
+                            </div>
+                            <span className="outlook-bar-year">
                               {bar.year}
                               {bar.projected ? t.outlookProjectionSuffix : ""}
                             </span>
