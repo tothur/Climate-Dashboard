@@ -1,40 +1,35 @@
-**Source Visual**
-- Path: `/Users/andrastoth/Desktop/IMG_1240.jpeg`
+# Overview Redesign QA
 
-**Implementation**
-- Screenshot: `/Users/andrastoth/Coding/Climate-Dashboard/design-qa-artifacts/outlook-card-implementation.png`
-- Viewport: 1440 x 1100
-- State: Overview page, light theme, live runtime data loaded, 2026 Outlook card visible
-
-**Full-View Comparison Evidence**
-- The implementation matches the source composition: rounded blue-outline card, title pill, experimental/method line, large projected annual mean on the left, percentile range strip with marker, probability pills, and a six-bar recent-years chart with a dashed 2026 projection bar.
-- The implementation intentionally uses live projection data, so values differ slightly from the static concept where the model currently reports `+1.47 °C`, `1.41-1.63 °C`, `30%`, and `30%`.
-
-**Focused Region Comparison Evidence**
-- Focused region used: the card itself, captured as a standalone component screenshot. A narrower detail crop was not needed because all important text, chart marks, borders, and spacing are readable in the component capture.
+- Source visual truth: `/Users/andrastoth/.codex/generated_images/019f40ea-b0ff-7190-9ea1-8c59a7ec433a/exec-348aef87-537c-46c8-900f-ddb241ae582a.png`
+- Implementation screenshot: `design-qa-artifacts/overview-redesign-desktop.png`
+- Responsive screenshot: `design-qa-artifacts/overview-redesign-mobile-fixed.png`
+- Viewports: desktop `1440 x 1024`; mobile `390 x 844`
+- State: Overview, light theme, live runtime data loaded.
 
 **Findings**
-- No actionable P0/P1/P2 findings remain.
+
+- [P2] Mobile metadata chips initially overflowed the viewport.
+  Location: Overview header.
+  Fix applied: the metadata row now wraps below the title at small widths.
+  Evidence: the post-fix mobile capture has a `390px` document width and a `338px` metadata row.
 
 **Required Fidelity Surfaces**
-- Fonts and typography: Uses the dashboard's existing font tokens with mono numerals for the projection value; hierarchy, wrapping, and optical weight are close to the reference and fit on desktop/mobile.
-- Spacing and layout rhythm: Two-column desktop layout, left copy block, right chart block, rounded outer frame, title pill, range strip, and probability pills match the concept's structure. Mobile stacks cleanly.
-- Colors and visual tokens: Pale blue border/title pill and muted red projection marks are matched through existing dashboard tokens plus scoped red accents.
-- Image quality and asset fidelity: No raster assets or icons are required by the reference; chart marks are live UI primitives, appropriate for this data card.
-- Copy and content: Card title is renamed to `2026 Outlook`; labels match the concept more closely, including `experimental · weighted analog years`, `Projected annual mean`, short probability labels, and `2026p`.
 
-**Patches Made Since QA Start**
-- Replaced the overview Outlook card's full ECharts panel with a compact live mini bar chart.
-- Added concept-matching card copy, probability chips, percentile range strip, and responsive styles.
-- Adjusted chart scaling to the visible six-year data range so historical bars match the reference rhythm.
+- Fonts and typography: verified in implementation capture; the serif display hierarchy is limited to overview headings and key values while data remains in the existing sans/mono system.
+- Spacing and layout rhythm: verified in implementation capture; the lead grid contains a single map, hero, and AI briefing, with the duplicate map pair replaced by regional signals.
+- Colors and visual tokens: verified in implementation capture; the sidebar is mineral charcoal with moss active states, and the workspace retains semantic coral, blue, and green data accents.
+- Image quality and asset fidelity: verified in implementation capture; the existing live map asset remains an inspectable image with the original fullscreen action.
+- Copy and app-specific text: verified in implementation capture; visible live data and source freshness labels are retained.
 
-**Implementation Checklist**
-- Confirm `2026 Outlook` title appears on Overview.
-- Confirm desktop card keeps the concept's left-summary/right-chart composition.
-- Confirm mobile card stacks without overflow.
-- Confirm build and tests pass.
+**Comparison History**
 
-**Follow-up Polish**
-- P3: The exact typeface differs from the concept because the card stays within the app's current font system.
+1. Initial implementation capture found the mobile freshness row exceeded the viewport. The responsive rule was updated and recaptured successfully.
+2. A final side-by-side comparison was required between the selected visual and the browser-rendered implementation. The in-app browser security policy blocked opening the local comparison artifact, so this comparison could not be completed.
+3. Final fidelity pass tightened the lead-grid proportions, constrained the primary map height, reduced briefing density, and reshaped the 2026 outlook into a compact two-column range module. The production build and automated tests passed after these changes; a fresh browser capture remains blocked by the same local-URL policy.
 
-final result: passed
+**Console And Interaction Checks**
+
+- Pending final browser-console check because the required comparison gate is blocked.
+- `npm test` passes all 20 tests and `npm run build` passes after the final fidelity pass.
+
+final result: blocked

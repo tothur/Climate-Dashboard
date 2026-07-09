@@ -4069,10 +4069,13 @@ export function App() {
       };
     })(),
   ].filter((card): card is NonNullable<typeof card> => card != null);
-  const overviewMapCards = [
-    mapCards.find((card) => card.key === "map-2m-temperature-anomaly"),
-    mapCards.find((card) => card.key === "map-sst-anomaly"),
-  ].filter((card): card is (typeof mapCards)[number] => card != null);
+  const overviewMapCard = mapCards.find((card) => card.key === "map-2m-temperature-anomaly") ?? null;
+  const overviewRegionalSignals = regionalTemperatureAnomalyLines.slice(0, 4).map(({ metric }) => ({
+    key: metric.key,
+    title: metricTitle(metric, language),
+    value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
+    points: metric.points,
+  }));
   const ensoOverviewRows = [
     ensoOutlook?.nextThreeMonths
       ? {
@@ -4136,6 +4139,84 @@ export function App() {
         ) : null}
       </div>
     </article>
+  );
+  const renderOverviewHero = () =>
+    dailyGlobalMeanAnomalyMetric ? (
+      <section className="overview-hero" aria-label={t.overviewDailyGlobalTemperatureAnomalyTitle}>
+        <div className="overview-hero-main">
+          <div className="overview-hero-copy">
+            <span className="overview-hero-kicker">
+              {t.overviewDailyGlobalTemperatureAnomalyTitle} · {t.overviewPreindustrialSubtitle}
+            </span>
+            <strong className="overview-hero-value">
+              {renderMetricValue(dailyGlobalMeanAnomalyMetric, "value-loading-skeleton overview-value-loading")}
+            </strong>
+            <div className="overview-hero-chips">
+              {runtimeDataReady ? (
+                <>
+                  <span className="overview-hero-chip">
+                    {t.chartLatest}: {formatDateLabel(dailyGlobalMeanAnomalyMetric.latestDate, language)}
+                  </span>
+                  {heroDelta ? <span className="overview-hero-chip">{heroDelta.label}</span> : null}
+                  {heroRecordPoint ? (
+                    <span className="overview-hero-chip record">
+                      <ToolkitIcon name="up" className="hero-chip-icon" />
+                      {t.heroRecordLabel}
+                    </span>
+                  ) : null}
+                  {dailyGlobalMeanAnomalyFreshness ? (
+                    <span className={`freshness-chip ${dailyGlobalMeanAnomalyFreshness.tone}`}>
+                      {dailyGlobalMeanAnomalyFreshness.label}
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+          </div>
+          <div className="overview-hero-spark" aria-hidden="true">
+            <Sparkline points={dailyGlobalMeanAnomalyMetric.points} className="hero-sparkline" strokeWidth={2.2} />
+            <span>{t.heroSparklineLabel}</span>
+          </div>
+        </div>
+        {warmingStripes.length ? (
+          <div className="warming-stripes" role="img" aria-label={t.warmingStripesAria}>
+            {warmingStripes.map((stripe) => (
+              <span
+                key={stripe.year}
+                style={{ background: warmingStripeColor(stripe.ratio) }}
+                title={`${stripe.year}: ${formatNumericValue(stripe.value, 2, language, t.valueUnavailable)} °C`}
+              />
+            ))}
+          </div>
+        ) : null}
+      </section>
+    ) : null;
+  const renderOverviewAiSummary = () => (
+    <section className={`ai-summary-panel overview-ai-summary ${aiDashboardSummary.tone}`} aria-label={t.aiSummaryAria}>
+      <div className="ai-summary-main">
+        <div className="ai-summary-copy">
+          <div className="ai-summary-label-row">
+            <span className="alert-kicker">{t.aiSummaryKicker}</span>
+          </div>
+          {runtimeDataReady ? (
+            aiDashboardSummary.bulletItems.length > 0 ? (
+              <ul className="ai-summary-list">
+                {aiDashboardSummary.bulletItems.map((item, index) => (
+                  <li key={`${index}-${item}`}>{item}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>{aiDashboardSummary.headline}</p>
+            )
+          ) : (
+            <div className="ai-summary-loading" role="status" aria-live="polite">
+              <span className="ai-summary-spinner" aria-hidden="true" />
+              <span>{t.aiSummaryLoading}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   );
   return (
     <div className="app-frame">
@@ -4237,94 +4318,39 @@ export function App() {
 
         </header>
 
-        {activeView === "overview" && dailyGlobalMeanAnomalyMetric ? (
-          <section className="overview-hero" aria-label={t.overviewDailyGlobalTemperatureAnomalyTitle}>
-            <div className="overview-hero-main">
-              <div className="overview-hero-copy">
-                <span className="overview-hero-kicker">
-                  {t.overviewDailyGlobalTemperatureAnomalyTitle} · {t.overviewPreindustrialSubtitle}
-                </span>
-                <strong className="overview-hero-value">
-                  {renderMetricValue(dailyGlobalMeanAnomalyMetric, "value-loading-skeleton overview-value-loading")}
-                </strong>
-                <div className="overview-hero-chips">
-                  {runtimeDataReady ? (
-                    <>
-                      <span className="overview-hero-chip">
-                        {t.chartLatest}: {formatDateLabel(dailyGlobalMeanAnomalyMetric.latestDate, language)}
-                      </span>
-                      {heroDelta ? <span className="overview-hero-chip">{heroDelta.label}</span> : null}
-                      {heroRecordPoint ? (
-                        <span className="overview-hero-chip record">
-                          <ToolkitIcon name="up" className="hero-chip-icon" />
-                          {t.heroRecordLabel}
-                        </span>
-                      ) : null}
-                      {dailyGlobalMeanAnomalyFreshness ? (
-                        <span className={`freshness-chip ${dailyGlobalMeanAnomalyFreshness.tone}`}>
-                          {dailyGlobalMeanAnomalyFreshness.label}
-                        </span>
-                      ) : null}
-                    </>
-                  ) : null}
-                </div>
-              </div>
-              <div className="overview-hero-spark" aria-hidden="true">
-                <Sparkline points={dailyGlobalMeanAnomalyMetric.points} className="hero-sparkline" strokeWidth={2.2} />
-                <span>{t.heroSparklineLabel}</span>
-              </div>
-            </div>
-            {warmingStripes.length ? (
-              <div className="warming-stripes" role="img" aria-label={t.warmingStripesAria}>
-                {warmingStripes.map((stripe) => (
-                  <span
-                    key={stripe.year}
-                    style={{ background: warmingStripeColor(stripe.ratio) }}
-                    title={`${stripe.year}: ${formatNumericValue(stripe.value, 2, language, t.valueUnavailable)} °C`}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-
-        {activeView === "overview" ? (
-          <section className={`ai-summary-panel overview-ai-summary ${aiDashboardSummary.tone}`} aria-label={t.aiSummaryAria}>
-            <div className="ai-summary-main">
-              <div className="ai-summary-copy">
-                <div className="ai-summary-label-row">
-                  <span className="ai-generic-mark" aria-label={t.aiGeneratedAria}>
-                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                      <path d="M12 2.8 13.55 7.2 18 8.75l-4.45 1.55L12 14.8l-1.55-4.5L6 8.75l4.45-1.55L12 2.8Z" />
-                      <path d="M17.9 13.1 18.8 15.6l2.5.9-2.5.9-.9 2.5-.9-2.5-2.5-.9 2.5-.9.9-2.5Z" />
-                      <path d="M6.1 14.1 6.8 16l1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7.7-1.9Z" />
-                    </svg>
-                  </span>
-                  <span className="alert-kicker">{t.aiSummaryKicker}</span>
-                </div>
-                {runtimeDataReady ? (
-                  aiDashboardSummary.bulletItems.length > 0 ? (
-                    <ul className="ai-summary-list">
-                      {aiDashboardSummary.bulletItems.map((item, index) => (
-                        <li key={`${index}-${item}`}>{item}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>{aiDashboardSummary.headline}</p>
-                  )
-                ) : (
-                  <div className="ai-summary-loading" role="status" aria-live="polite">
-                    <span className="ai-summary-spinner" aria-hidden="true" />
-                    <span>{t.aiSummaryLoading}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-        ) : null}
-
         {activeView === "overview" ? (
           <div className="overview-page">
+            <section className="overview-lead-grid">
+              {renderOverviewHero()}
+              <section className="overview-card overview-map-suite overview-primary-map" aria-label={t.mapsSectionTitle}>
+                <div className="overview-card-header planet-now-header">
+                  <div>
+                    <h2>{t.planetNowTitle}</h2>
+                    <p>{overviewMapCard?.subtitle}</p>
+                  </div>
+                  <button type="button" className="text-link-button" onClick={() => setDashboardView("maps")}>
+                    {t.viewAllMaps} →
+                  </button>
+                </div>
+                {overviewMapCard ? (
+                  <MapPanel
+                    key={overviewMapCard.key}
+                    title={overviewMapCard.title}
+                    subtitle={undefined}
+                    imageUrl={overviewMapCard.imageUrl}
+                    fallbackImageUrls={overviewMapCard.fallbackImageUrls}
+                    imageAlt={overviewMapCard.imageAlt}
+                    noImageLabel={t.mapUnavailable}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
+                    freshnessLabel={overviewMapCard.freshness?.label}
+                    freshnessTone={overviewMapCard.freshness?.tone}
+                  />
+                ) : null}
+              </section>
+              {renderOverviewAiSummary()}
+            </section>
+
             <section className="overview-metric-grid" aria-label={t.latestSignalsAria}>
               {overviewMetricCards.map((card) => (
                 <article className={`overview-metric-card tone-${card.tone}`} key={card.key}>
@@ -4349,33 +4375,27 @@ export function App() {
               ))}
             </section>
 
-            <section className="overview-main-grid">
-              <section className="overview-card overview-map-suite" aria-label={t.mapsSectionTitle}>
-                <div className="overview-card-header planet-now-header">
-                  <h2>{t.planetNowTitle}</h2>
-                  <button type="button" className="text-link-button" onClick={() => setDashboardView("maps")}>
-                    {t.viewAllMaps} →
+            <section className="overview-main-grid overview-secondary-grid">
+              <section className="overview-card overview-regional-signals" aria-label={t.regionalTemperatureAnomaliesSectionTitle}>
+                <div className="overview-card-header">
+                  <div>
+                    <h2>{t.regionalTemperatureAnomaliesSectionTitle}</h2>
+                    <p>{t.regionalTemperatureAnomaliesSectionNote}</p>
+                  </div>
+                  <button type="button" className="text-link-button" onClick={() => setDashboardView("indicators")}>
+                    {t.sectionExpand} →
                   </button>
                 </div>
-                <div className="overview-map-pair">
-                  {overviewMapCards.map((mapCard) => (
-                    <MapPanel
-                      key={mapCard.key}
-                      title={mapCard.title}
-                      subtitle={mapCard.subtitle}
-                      imageUrl={mapCard.imageUrl}
-                      fallbackImageUrls={mapCard.fallbackImageUrls}
-                      imageAlt={mapCard.imageAlt}
-                      noImageLabel={t.mapUnavailable}
-                      expandLabel={t.chartFullscreenEnter}
-                      collapseLabel={t.chartFullscreenExit}
-                      freshnessLabel={mapCard.freshness?.label}
-                      freshnessTone={mapCard.freshness?.tone}
-                    />
+                <div className="regional-signal-grid">
+                  {overviewRegionalSignals.map((signal) => (
+                    <article className="regional-signal" key={signal.key}>
+                      <h3>{signal.title}</h3>
+                      <strong>{renderPrimaryValue(signal.value, "value-loading-skeleton overview-value-loading")}</strong>
+                      {runtimeDataReady ? <Sparkline points={signal.points} /> : null}
+                    </article>
                   ))}
                 </div>
               </section>
-
               {renderEnsoOutlookCard({ showSourceLink: false })}
             </section>
 

@@ -9354,3 +9354,538 @@ h3,
 [data-theme="dark"] .outlook-bar {
   background: var(--domain-temperature);
 }
+
+/* ============================================================
+   Climate observatory overview
+   Map-led editorial hierarchy, one primary map, mineral sidebar.
+   ============================================================ */
+
+:root {
+  --dashboard-sidebar-bg: #1c2421;
+  --dashboard-sidebar-active: #31443b;
+  --overview-ink: #172019;
+  --overview-border: #dde4df;
+  --overview-paper: #fbfcfa;
+  --overview-moss: #547664;
+  --overview-coral: #bf4a42;
+}
+
+[data-theme="dark"] {
+  --dashboard-sidebar-bg: #101815;
+  --dashboard-sidebar-active: #293a32;
+}
+
+body {
+  background: #f3f5f2;
+}
+
+.dashboard-sidebar {
+  background: var(--dashboard-sidebar-bg);
+  border-right-color: rgba(224, 233, 225, 0.12);
+}
+
+.sidebar-logo {
+  background: #2c3932;
+}
+
+.sidebar-nav button.active {
+  border-color: rgba(164, 195, 169, 0.5);
+  background: var(--dashboard-sidebar-active);
+  color: #f5f8f5;
+}
+
+.sidebar-nav button.active .nav-icon,
+.sidebar-nav button:hover .nav-icon {
+  color: #c3d8c7;
+}
+
+.sidebar-nav button:hover,
+.sidebar-control-btn:hover {
+  background: rgba(195, 216, 199, 0.1);
+  color: #f5f8f5;
+}
+
+.sidebar-nav button,
+.sidebar-control-btn {
+  color: rgba(227, 236, 229, 0.7);
+}
+
+.sidebar-status-dot {
+  border-color: var(--dashboard-sidebar-bg);
+}
+
+.topbar-brand h1,
+.overview-hero-kicker,
+.overview-card-header h2,
+.outlook-title-row h2,
+.regional-signal h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0;
+}
+
+.topbar-brand h1 {
+  font-size: clamp(1.45rem, 2vw, 1.75rem);
+  font-weight: 600;
+}
+
+.overview-page {
+  gap: 14px;
+}
+
+.overview-lead-grid {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.76fr) minmax(460px, 1.32fr) minmax(235px, 0.58fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.overview-lead-grid > * {
+  min-width: 0;
+}
+
+.overview-lead-grid .overview-hero,
+.overview-lead-grid .overview-card,
+.overview-lead-grid .overview-ai-summary {
+  margin: 0;
+  border: 1px solid var(--overview-border);
+  border-radius: 12px;
+  background: var(--overview-paper);
+}
+
+.overview-lead-grid .overview-hero {
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+  padding: 20px;
+}
+
+.overview-hero-main {
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+.overview-hero-kicker {
+  color: var(--overview-ink);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.28;
+}
+
+.overview-hero-value,
+.outlook-main-value {
+  color: var(--overview-coral);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+}
+
+.overview-hero-value {
+  margin-top: 14px;
+  font-size: clamp(3.2rem, 5.3vw, 4.7rem);
+  line-height: 0.94;
+}
+
+.overview-hero-spark {
+  min-height: 94px;
+  margin-top: auto;
+}
+
+.overview-hero-spark span {
+  font-size: 0.76rem;
+}
+
+.overview-hero-chip,
+.freshness-chip {
+  border-radius: 999px;
+  font-size: 0.7rem;
+}
+
+.overview-primary-map {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: 16px;
+}
+
+.overview-primary-map .planet-now-header {
+  margin-bottom: 8px;
+}
+
+.overview-primary-map .overview-card-header h2 {
+  color: var(--overview-ink);
+  font-size: 1.12rem;
+}
+
+.overview-primary-map .overview-card-header p,
+.overview-secondary-grid .overview-card-header p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+.overview-primary-map .text-link-button {
+  margin-top: 0;
+  color: #315f9c;
+  font-size: 0.76rem;
+}
+
+.overview-primary-map .map-panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.overview-primary-map .map-panel .panel-header {
+  display: none;
+}
+
+.overview-primary-map .map-panel-image-wrap {
+  height: 360px;
+  min-height: 0;
+  border: 1px solid var(--overview-border);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.overview-primary-map .panel-chart-footer {
+  padding-top: 9px;
+}
+
+.overview-primary-map .map-panel-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.overview-lead-grid .overview-ai-summary {
+  padding: 18px;
+  background: #f2f6ff;
+  border-color: #c9d9f2;
+}
+
+.overview-ai-summary .alert-kicker {
+  color: #295c9d;
+  background: #e4eefc;
+}
+
+.overview-ai-summary .ai-summary-list {
+  gap: 12px;
+}
+
+.overview-ai-summary .ai-summary-list li,
+.overview-ai-summary p {
+  color: #24334c;
+  font-size: 0.83rem;
+  font-weight: 560;
+  line-height: 1.42;
+}
+
+.overview-ai-summary .ai-summary-list li::before {
+  background: #547da9;
+}
+
+.overview-metric-grid {
+  gap: 12px;
+}
+
+.overview-metric-card {
+  min-height: 162px;
+  border: 1px solid var(--overview-border);
+  border-radius: 12px;
+  padding: 15px 16px;
+  background: var(--overview-paper);
+}
+
+.overview-metric-copy h2 {
+  min-height: 0;
+  color: var(--overview-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+
+.overview-metric-copy strong {
+  margin-top: 9px;
+  color: var(--overview-ink);
+  font-family: var(--font-mono);
+  font-size: 1.38rem;
+}
+
+.overview-metric-card .metric-sparkline {
+  margin-top: auto;
+}
+
+.metric-meta,
+.metric-delta {
+  font-size: 0.7rem;
+}
+
+.overview-secondary-grid {
+  grid-template-columns: minmax(0, 1.45fr) minmax(250px, 0.55fr);
+  gap: 12px;
+}
+
+.overview-secondary-grid .overview-card {
+  border: 1px solid var(--overview-border);
+  border-radius: 12px;
+  background: var(--overview-paper);
+}
+
+.overview-regional-signals {
+  padding: 16px;
+}
+
+.overview-regional-signals .overview-card-header {
+  margin-bottom: 12px;
+}
+
+.overview-regional-signals .text-link-button {
+  margin-top: 0;
+  color: #315f9c;
+  font-size: 0.76rem;
+}
+
+.regional-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+}
+
+.regional-signal {
+  min-width: 0;
+  padding: 0 12px;
+  border-left: 1px solid var(--overview-border);
+}
+
+.regional-signal:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.regional-signal:last-child {
+  padding-right: 0;
+}
+
+.regional-signal h3 {
+  min-height: 2.5em;
+  margin: 0;
+  color: var(--overview-ink);
+  font-size: 0.83rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.regional-signal strong {
+  display: block;
+  margin: 8px 0;
+  color: var(--overview-coral);
+  font-family: var(--font-mono);
+  font-size: 1.03rem;
+  font-weight: 600;
+}
+
+.regional-signal .sparkline {
+  height: 42px;
+}
+
+.overview-secondary-grid .enso-outlook-card {
+  padding: 16px;
+}
+
+.enso-overview-status {
+  background: #f4f7ef;
+  border-color: #d9e2cf;
+}
+
+.enso-overview-status strong,
+.enso-overview-window strong {
+  color: #557345;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.enso-overview-synopsis {
+  display: none;
+}
+
+.enso-overview-window-list {
+  display: none;
+}
+
+.overview-bottom-grid {
+  gap: 12px;
+}
+
+.overview-projection-card.outlook-featured {
+  border: 1px solid var(--overview-border);
+  border-radius: 12px;
+  padding: 17px 20px;
+  background: var(--overview-paper);
+}
+
+.outlook-card-grid {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.34fr) minmax(320px, 0.66fr);
+  column-gap: 28px;
+  row-gap: 10px;
+}
+
+.outlook-card-copy {
+  display: contents;
+}
+
+.outlook-title-row {
+  grid-column: 1 / -1;
+  align-items: baseline;
+}
+
+.outlook-title-row h2 {
+  color: var(--overview-ink);
+  font-size: 1.12rem;
+}
+
+.outlook-main-value {
+  grid-column: 1;
+  align-self: end;
+  margin: 0;
+  font-size: clamp(2.1rem, 3vw, 2.85rem);
+}
+
+.outlook-measure-label {
+  grid-column: 1;
+  margin: 0;
+  align-self: end;
+}
+
+.outlook-mini-chart {
+  display: none;
+}
+
+.outlook-range-block {
+  grid-column: 2;
+  grid-row: 2 / span 2;
+  align-self: center;
+  max-width: 720px;
+}
+
+.outlook-range-track {
+  height: 8px;
+  overflow: visible;
+  border-radius: 0;
+  background: #e8e4dc;
+}
+
+.outlook-range-fill {
+  border-radius: 0;
+  background: #d36b5b;
+}
+
+.outlook-range-track::after {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  left: 62.5%;
+  width: 1px;
+  background: #737a76;
+  content: "";
+}
+
+.outlook-range-marker {
+  top: -7px;
+  width: 2px;
+  height: 22px;
+  border: 0;
+  border-radius: 0;
+  background: #172019;
+  box-shadow: none;
+}
+
+.outlook-probability-row {
+  grid-column: 1 / -1;
+  gap: 16px;
+}
+
+.outlook-chip {
+  border-radius: 999px;
+  background: #f3f5f2;
+}
+
+.overview-temperature-trend-card {
+  border: 1px solid var(--overview-border);
+  border-radius: 12px;
+}
+
+@media (max-width: 1220px) {
+  .overview-lead-grid {
+    grid-template-columns: minmax(260px, 0.72fr) minmax(420px, 1.28fr);
+  }
+
+  .overview-lead-grid .overview-ai-summary {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .overview-lead-grid,
+  .overview-secondary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-lead-grid .overview-ai-summary {
+    grid-column: auto;
+  }
+
+  .overview-primary-map .map-panel-image-wrap {
+    height: 320px;
+  }
+
+  .outlook-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .outlook-title-row,
+  .outlook-measure-label,
+  .outlook-main-value,
+  .outlook-range-block,
+  .outlook-probability-row {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 680px) {
+  .topbar-brand > div {
+    display: block;
+  }
+
+  .page-meta-row {
+    width: 100%;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  .page-meta-row span {
+    flex: 0 1 auto;
+    white-space: normal;
+  }
+
+  .regional-signal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 0;
+  }
+
+  .regional-signal:nth-child(odd) {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .regional-signal:nth-child(even) {
+    padding-right: 0;
+  }
+
+  .overview-lead-grid .overview-hero {
+    min-height: 0;
+  }
+}
