@@ -49,16 +49,17 @@ Axis constraints:
 - Sea ice extent (north + south daily): NSIDC Sea Ice Index v4 (NOAA-hosted files)
 - Atmospheric CO2 (daily Mauna Loa): NOAA GML
 
-Generated dataset file:
+Generated dataset files:
 
-- `public/data/climate-realtime.json`
+- `public/data/climate-core.json` - latest values, summary, ENSO outlook, AI summary, map metadata, and a manifest of series chunks
+- `public/data/series/<start>-<end>.json` - per-decade columnar series chunks (daily runs stored as value arrays with implicit dates; sparse series as date/value lists). Historical decades are immutable, so only the current decade changes day to day.
 - `public/data/climate-latest.json` - compact read-only snapshot for a ChatGPT Action
 
 ## Runtime Loading Strategy
 
 The app resolves data in this order:
 
-1. Load local generated file: `./data/climate-realtime.json`
+1. Load local generated artifacts: `./data/climate-core.json` plus its series chunks (falls back to a legacy `./data/climate-realtime.json` monolith if present)
 2. If unavailable/invalid, fetch live series directly from remote feeds at runtime
 3. For any missing live series, fill with bundled fallback data
 
@@ -109,7 +110,7 @@ npm run dev:live
 - Fetches all source datasets.
 - Uses request timeout + retry/backoff for network robustness.
 - Normalizes and sanitizes each series (value ranges, staleness windows, no future dates).
-- Writes `public/data/climate-realtime.json` with:
+- Writes `public/data/climate-core.json` + `public/data/series/*.json` with:
   - `generatedAtIso`
   - `sources`
   - `aiSummary`
@@ -118,7 +119,7 @@ npm run dev:live
 
 ### Optional OpenAI Daily Summary
 
-If `OPENAI_API_KEY` is present in the update environment, `data:update:raw` generates one compact 2-3 sentence AI summary through the OpenAI Responses API and stores it in `public/data/climate-realtime.json` as `aiSummary`.
+If `OPENAI_API_KEY` is present in the update environment, `data:update:raw` generates one compact 2-3 sentence AI summary through the OpenAI Responses API and stores it in `public/data/climate-core.json` as `aiSummary`.
 
 Cost and safety controls:
 

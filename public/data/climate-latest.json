@@ -36,7 +36,7 @@
       "key": "ocean_heat_content",
       "label": "Ocean Heat Content (0-2000m)",
       "latestDate": "2026-03-01",
-      "latestValue": 33.965076,
+      "latestValue": 33.9651,
       "unit": "10^22 J",
       "source": "https://www.ncei.noaa.gov/data/oceans/woa/DATA_ANALYSIS/3M_HEAT_CONTENT/DATA/basin/3month/ohc2000m_levitus_climdash_seasonal.csv"
     },
@@ -180,7 +180,7 @@
       "key": "global_sea_ice_extent",
       "label": "Global Sea Ice Extent",
       "latestDate": "2026-07-06",
-      "latestValue": 22.988999999999997,
+      "latestValue": 22.989,
       "unit": "million km²",
       "source": "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files."
     },

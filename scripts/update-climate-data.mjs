@@ -3,8 +3,11 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
 
+import { loadPublishedDataset, roundSeriesPoints, writeDatasetArtifacts } from "./dataset-format.mjs";
+
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const OUTPUT_PATH = resolve(ROOT_DIR, "public/data/climate-realtime.json");
+const DATA_DIR = resolve(ROOT_DIR, "public/data");
+const LEGACY_OUTPUT_PATH = resolve(DATA_DIR, "climate-realtime.json");
 const MAP_OUTPUT_DIR = resolve(ROOT_DIR, "public/data/maps");
 const BUNDLED_ENSO_OUTPUT_PATH = resolve(ROOT_DIR, "src/data/bundled-enso.ts");
 
@@ -450,11 +453,22 @@ function parseStoredMapAsset(rawAsset) {
   };
 }
 
-async function loadPreviousMapSources() {
-  if (!(await fileExists(OUTPUT_PATH))) return {};
+let previousPublishedDatasetPromise = null;
 
+function resetPreviousPublishedDatasetCache() {
+  previousPublishedDatasetPromise = null;
+}
+
+async function loadPreviousPublishedDataset() {
+  if (!previousPublishedDatasetPromise) {
+    previousPublishedDatasetPromise = loadPublishedDataset(DATA_DIR).catch(() => null);
+  }
+  return previousPublishedDatasetPromise;
+}
+
+async function loadPreviousMapSources() {
   try {
-    const payload = JSON.parse(await readFile(OUTPUT_PATH, "utf8"));
+    const payload = await loadPreviousPublishedDataset();
     if (!isRecord(payload) || !isRecord(payload.maps)) return {};
 
     const previousMapSources = {};
@@ -469,10 +483,8 @@ async function loadPreviousMapSources() {
 }
 
 async function loadPreviousSeries(key) {
-  if (!(await fileExists(OUTPUT_PATH))) return [];
-
   try {
-    const payload = JSON.parse(await readFile(OUTPUT_PATH, "utf8"));
+    const payload = await loadPreviousPublishedDataset();
     if (!isRecord(payload) || !isRecord(payload.series)) return [];
     return Array.isArray(payload.series[key]) ? payload.series[key] : [];
   } catch {
@@ -481,10 +493,8 @@ async function loadPreviousSeries(key) {
 }
 
 async function loadPreviousSourceUrl(key) {
-  if (!(await fileExists(OUTPUT_PATH))) return null;
-
   try {
-    const payload = JSON.parse(await readFile(OUTPUT_PATH, "utf8"));
+    const payload = await loadPreviousPublishedDataset();
     if (!isRecord(payload) || !isRecord(payload.sources)) return null;
     const sourceUrl = payload.sources[key];
     return typeof sourceUrl === "string" && sourceUrl.trim().length > 0 ? sourceUrl.trim() : null;
@@ -494,10 +504,8 @@ async function loadPreviousSourceUrl(key) {
 }
 
 async function loadPreviousAiSummary() {
-  if (!(await fileExists(OUTPUT_PATH))) return null;
-
   try {
-    const payload = JSON.parse(await readFile(OUTPUT_PATH, "utf8"));
+    const payload = await loadPreviousPublishedDataset();
     const aiSummary = isRecord(payload) && isRecord(payload.aiSummary) ? payload.aiSummary : null;
     if (!aiSummary) return null;
 
@@ -550,8 +558,7 @@ function isCompleteEnsoOutlook(value) {
 
 async function loadPreviousEnsoOutlook() {
   try {
-    const raw = await readFile(OUTPUT_PATH, "utf8");
-    const payload = JSON.parse(raw);
+    const payload = await loadPreviousPublishedDataset();
     return isCompleteEnsoOutlook(payload?.ensoOutlook) ? payload.ensoOutlook : null;
   } catch {
     return null;
@@ -2562,6 +2569,7 @@ function printHelp() {
 }
 
 async function updateOnce() {
+  resetPreviousPublishedDatasetCache();
   const dataWarnings = [];
   const [
     surfacePayload,
@@ -3154,6 +3162,9 @@ async function updateOnce() {
     soi_index: soiIndex,
     arctic_oscillation_index: arcticOscillationIndex,
   };
+  for (const key of Object.keys(seriesOutput)) {
+    seriesOutput[key] = roundSeriesPoints(seriesOutput[key]);
+  }
   const summaryOutput = Object.fromEntries(Object.entries(seriesOutput).map(([key, series]) => [key, summarize(series)]));
   const aiSummaryWarnings = [];
   const aiSummary = await buildDailyAiSummary({
@@ -3238,10 +3249,16 @@ async function updateOnce() {
 
   await mkdir(resolve(ROOT_DIR, "public/data"), { recursive: true });
   await mkdir(resolve(ROOT_DIR, "src/data"), { recursive: true });
-  await writeFile(OUTPUT_PATH, `${JSON.stringify(output)}\n`, "utf8");
+  const writtenArtifacts = await writeDatasetArtifacts(DATA_DIR, output);
+  if (await fileExists(LEGACY_OUTPUT_PATH)) {
+    await unlink(LEGACY_OUTPUT_PATH);
+    console.log(`Removed legacy ${LEGACY_OUTPUT_PATH}`);
+  }
   await writeFile(BUNDLED_ENSO_OUTPUT_PATH, renderBundledEnsoModule(ensoOutlook), "utf8");
 
-  console.log(`Wrote ${OUTPUT_PATH}`);
+  for (const artifact of writtenArtifacts) {
+    console.log(`Wrote ${resolve(DATA_DIR, artifact)}`);
+  }
   console.log(`Wrote ${BUNDLED_ENSO_OUTPUT_PATH}`);
   console.log(JSON.stringify(output.summary, null, 2));
   if (output.mapWarnings.length) {

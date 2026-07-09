@@ -1,4 +1,4 @@
-const CACHE_NAME = "climate-dashboard-v1";
+const CACHE_NAME = "climate-dashboard-v2";
 const APP_SHELL = [
   "./",
   "./index.html",

@@ -1,9 +1,11 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { loadPublishedDataset } from "./dataset-format.mjs";
+
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const SOURCE_PATH = resolve(ROOT_DIR, "public/data/climate-realtime.json");
+const DATA_DIR = resolve(ROOT_DIR, "public/data");
 const OUTPUT_PATH = resolve(ROOT_DIR, "public/data/climate-latest.json");
 
 const METRICS = {
@@ -85,7 +87,10 @@ function buildTemperatureStatus(raw) {
 }
 
 async function main() {
-  const realtime = JSON.parse(await readFile(SOURCE_PATH, "utf8"));
+  const realtime = await loadPublishedDataset(DATA_DIR);
+  if (!realtime) {
+    throw new Error("No published dataset found (expected climate-core.json + series chunks).");
+  }
   const generatedAtIso = requireString(realtime.generatedAtIso, "generatedAtIso");
 
   const output = {

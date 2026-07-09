@@ -2,8 +2,10 @@ import { access, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { loadPublishedDataset } from "./dataset-format.mjs";
+
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const INPUT_PATH = resolve(ROOT_DIR, "public/data/climate-realtime.json");
+const DATA_DIR = resolve(ROOT_DIR, "public/data");
 const DAY_MS = 86_400_000;
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const REQUIRED_MAP_FILES = [
@@ -737,8 +739,10 @@ async function verifyMapFiles(payload, errors, warnings) {
 }
 
 async function main() {
-  const raw = await readFile(INPUT_PATH, "utf8");
-  const payload = JSON.parse(raw);
+  const payload = await loadPublishedDataset(DATA_DIR);
+  if (!payload) {
+    throw new Error("No published dataset found (expected climate-core.json + series chunks).");
+  }
 
   const errors = [];
   const warnings = [];

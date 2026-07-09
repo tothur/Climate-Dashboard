@@ -56,6 +56,8 @@ const NOAA_PSL_SOI_MONTHLY_URL = "https://psl.noaa.gov/data/correlation/soi.data
 const NOAA_CPC_AO_MONTHLY_URL =
   "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/daily_ao_index/monthly.ao.index.b50.current.ascii.table";
 const LOCAL_GENERATED_DATA_URL = "./data/climate-realtime.json";
+const LOCAL_CORE_DATA_URL = "./data/climate-core.json";
+const CHUNKED_DATASET_FORMAT_VERSION = 2;
 const DAY_MS = 86_400_000;
 const FUTURE_TOLERANCE_DAYS = 0;
 const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
@@ -504,8 +506,77 @@ function readGeneratedAiSummary(payload: unknown): AiSummary | null {
   };
 }
 
+function decodeChunkSeriesPoints(encoded: unknown): DailyPoint[] | null {
+  if (!isRecord(encoded)) return null;
+
+  if (encoded.enc === "days") {
+    const start = typeof encoded.start === "string" ? encoded.start : "";
+    const startTime = parseIsoDateToUtc(start);
+    if (startTime == null || !Array.isArray(encoded.values)) return null;
+    const points: DailyPoint[] = [];
+    for (let index = 0; index < encoded.values.length; index += 1) {
+      const value = encoded.values[index];
+      if (value == null) continue;
+      const numeric = toFiniteNumber(value);
+      if (numeric == null) continue;
+      points.push({ date: new Date(startTime + index * DAY_MS).toISOString().slice(0, 10), value: numeric });
+    }
+    return points;
+  }
+
+  if (encoded.enc === "list") {
+    if (!Array.isArray(encoded.dates) || !Array.isArray(encoded.values)) return null;
+    if (encoded.dates.length !== encoded.values.length) return null;
+    const points: DailyPoint[] = [];
+    for (let index = 0; index < encoded.dates.length; index += 1) {
+      const date = encoded.dates[index];
+      const numeric = toFiniteNumber(encoded.values[index]);
+      if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || numeric == null) continue;
+      points.push({ date, value: numeric });
+    }
+    return points;
+  }
+
+  return null;
+}
+
+function isSafeChunkPath(path: string): boolean {
+  return /^[\w./-]+$/.test(path) && !path.includes("..") && !path.startsWith("/");
+}
+
+async function fetchChunkedGeneratedPayload(): Promise<unknown | null> {
+  const core = await fetchJson(LOCAL_CORE_DATA_URL);
+  if (!isRecord(core)) return null;
+  if (core.formatVersion !== CHUNKED_DATASET_FORMAT_VERSION) return null;
+  if (!Array.isArray(core.seriesChunks) || core.seriesChunks.length === 0) return null;
+
+  const chunkPayloads = await Promise.all(
+    core.seriesChunks.map(async (entry) => {
+      if (!isRecord(entry) || typeof entry.path !== "string" || !isSafeChunkPath(entry.path)) return null;
+      const token = typeof entry.token === "string" && entry.token.length > 0 ? `?v=${encodeURIComponent(entry.token)}` : "";
+      return fetchJson(`./data/${entry.path}${token}`);
+    })
+  );
+  // Every chunk must arrive: a partial dataset would silently change
+  // record checks and history charts, so treat any gap as unavailable.
+  if (chunkPayloads.some((chunkPayload) => chunkPayload == null)) return null;
+
+  const series: Record<string, DailyPoint[]> = {};
+  for (const chunkPayload of chunkPayloads) {
+    if (!isRecord(chunkPayload) || !isRecord(chunkPayload.series)) return null;
+    for (const [key, encoded] of Object.entries(chunkPayload.series)) {
+      const points = decodeChunkSeriesPoints(encoded);
+      if (points == null) return null;
+      if (!series[key]) series[key] = [];
+      series[key].push(...points);
+    }
+  }
+
+  return { ...core, series };
+}
+
 async function loadGeneratedLocalDataSource(): Promise<DashboardDataSource | null> {
-  const payload = await fetchJson(LOCAL_GENERATED_DATA_URL);
+  const payload = (await fetchChunkedGeneratedPayload()) ?? (await fetchJson(LOCAL_GENERATED_DATA_URL));
   if (!payload) return null;
 
   const parsedSeries = readGeneratedSeries(payload);
