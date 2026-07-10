@@ -272,12 +272,27 @@ function utcMidnightNow(): number {
   return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
 }
 
+// Only fast-cadence series gate the entire local dataset: when any of
+// these goes stale the publishing pipeline itself has stopped, so falling
+// back to live feeds is right. Slow series (monthly climate indices,
+// annual mass balances) can lag upstream for months through no fault of
+// the pipeline — rejecting the whole dataset over them forces the browser
+// onto live feeds that are partly CORS-blocked, which degrades every
+// chart. They stay in the dataset and surface staleness through the
+// per-metric freshness chips instead.
+const BLOCKING_FRESHNESS_KEYS = new Set<keyof ClimateSeriesBundle>(
+  (Object.keys(LOCAL_GENERATED_SERIES_MAX_AGE_DAYS) as (keyof ClimateSeriesBundle)[]).filter(
+    (key) => LOCAL_GENERATED_SERIES_MAX_AGE_DAYS[key] <= 45
+  )
+);
+
 function isFreshGeneratedSeriesBundle(series: Partial<ClimateSeriesBundle>): boolean {
   const nowMidnight = utcMidnightNow();
 
   return SERIES_KEYS.every((key) => {
     const points = series[key];
     if (!Array.isArray(points) || points.length === 0) return false;
+    if (!BLOCKING_FRESHNESS_KEYS.has(key)) return true;
 
     const latestPoint = points[points.length - 1];
     const latestTime = parseIsoDateToUtc(latestPoint.date);
