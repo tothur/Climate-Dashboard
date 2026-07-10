@@ -9889,3 +9889,535 @@ body {
     min-height: 0;
   }
 }
+
+/* ============================================================
+   Concept completion: structured brief, ENSO gauge, lower band,
+   climate horizon, and complete overview theme tokens.
+   ============================================================ */
+
+:root {
+  --overview-page-bg: #f3f5f2;
+  --overview-ink: #172019;
+  --overview-muted: #66716a;
+  --overview-border: #dce3de;
+  --overview-paper: #fbfcfa;
+  --overview-paper-soft: #f4f7f4;
+  --overview-link: #315f9c;
+  --overview-ai-bg: #f2f6ff;
+  --overview-ai-border: #c9d9f2;
+  --overview-ai-text: #24334c;
+  --overview-ai-chip: #e4eefc;
+  --overview-enso-bg: #f4f7ef;
+  --overview-enso-border: #d9e2cf;
+  --overview-range-bg: #e8e4dc;
+  --overview-chip-bg: #f1f4f1;
+  --overview-marker: #172019;
+}
+
+[data-theme="dark"] {
+  --overview-page-bg: #0c1210;
+  --overview-ink: #edf3ee;
+  --overview-muted: #9eada3;
+  --overview-border: #2d3932;
+  --overview-paper: #151d19;
+  --overview-paper-soft: #1b2520;
+  --overview-link: #9ab9e5;
+  --overview-ai-bg: #172235;
+  --overview-ai-border: #344968;
+  --overview-ai-text: #dce7f7;
+  --overview-ai-chip: #223758;
+  --overview-enso-bg: #1b271d;
+  --overview-enso-border: #354838;
+  --overview-range-bg: #39413d;
+  --overview-chip-bg: #202a24;
+  --overview-marker: #f0f5f1;
+}
+
+body,
+[data-theme="dark"] body {
+  background: var(--overview-page-bg);
+}
+
+.overview-lead-grid .overview-hero,
+.overview-lead-grid .overview-card,
+.overview-metric-card,
+.overview-secondary-grid .overview-card,
+.overview-projection-card.outlook-featured,
+.overview-temperature-trend-card {
+  color: var(--overview-ink);
+  border-color: var(--overview-border);
+  background: var(--overview-paper);
+}
+
+.overview-primary-map .overview-card-header h2,
+.overview-metric-copy h2,
+.overview-metric-copy strong,
+.overview-card-header h2,
+.outlook-title-row h2,
+.regional-signal h3 {
+  color: var(--overview-ink);
+}
+
+.overview-primary-map .overview-card-header p,
+.overview-secondary-grid .overview-card-header p,
+.metric-subtitle,
+.metric-meta,
+.overview-temperature-trend-card .overview-card-header p {
+  color: var(--overview-muted);
+}
+
+.overview-primary-map .text-link-button,
+.overview-regional-signals .text-link-button,
+.overview-temperature-trend-card .text-link-button {
+  color: var(--overview-link);
+}
+
+.overview-lead-grid .overview-ai-summary,
+[data-theme="dark"] .overview-lead-grid .overview-ai-summary {
+  display: flex;
+  flex-direction: column;
+  padding: 17px;
+  border-color: var(--overview-ai-border);
+  background: var(--overview-ai-bg);
+}
+
+.overview-ai-summary .ai-summary-label-row {
+  margin-bottom: 15px;
+}
+
+.overview-ai-summary .alert-kicker,
+[data-theme="dark"] .overview-ai-summary .alert-kicker {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--overview-link);
+  background: var(--overview-ai-chip);
+}
+
+.overview-ai-summary .alert-kicker svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ai-overview-signal-list {
+  display: grid;
+  gap: 0;
+}
+
+.ai-overview-signal {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  padding: 13px 0;
+  border-top: 1px solid color-mix(in srgb, var(--overview-ai-border) 72%, transparent);
+}
+
+.ai-overview-signal:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.ai-overview-signal-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #b8423d;
+  background: color-mix(in srgb, #ef6a61 14%, var(--overview-ai-bg));
+}
+
+.ai-overview-signal.tone-ice .ai-overview-signal-icon {
+  color: #3474bd;
+  background: color-mix(in srgb, #6ca7ed 16%, var(--overview-ai-bg));
+}
+
+.ai-overview-signal.tone-ocean .ai-overview-signal-icon {
+  color: #3f7d56;
+  background: color-mix(in srgb, #73ad83 17%, var(--overview-ai-bg));
+}
+
+.ai-overview-signal-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ai-overview-signal h3 {
+  margin: 0;
+  color: var(--overview-ai-text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.89rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ai-overview-signal p,
+[data-theme="dark"] .ai-overview-signal p {
+  margin: 5px 0 0;
+  color: color-mix(in srgb, var(--overview-ai-text) 78%, var(--overview-muted));
+  font-size: 0.75rem;
+  font-weight: 480;
+  line-height: 1.42;
+}
+
+.ai-summary-methodology,
+.enso-overview-details {
+  margin-top: auto;
+  padding-top: 10px;
+  color: var(--overview-link);
+  font-size: 0.7rem;
+}
+
+.ai-summary-methodology summary,
+.enso-overview-details summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ai-summary-methodology p {
+  margin: 7px 0 0;
+  color: var(--overview-muted);
+  font-size: 0.68rem;
+}
+
+.overview-secondary-grid {
+  grid-template-columns: minmax(470px, 1.55fr) minmax(220px, 0.58fr) minmax(250px, 0.72fr);
+  align-items: stretch;
+}
+
+.overview-secondary-grid .overview-card {
+  min-width: 0;
+}
+
+.enso-outlook-card .overview-card-header {
+  margin-bottom: 4px;
+}
+
+.enso-outlook-card .overview-card-header p {
+  margin: 3px 0 0;
+}
+
+.enso-gauge-block {
+  position: relative;
+  height: 118px;
+  margin: 0 -3px;
+}
+
+.enso-gauge-block .panel {
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.enso-gauge-block .panel-header,
+.enso-gauge-block .panel-chart-footer {
+  display: none;
+}
+
+.enso-gauge-block .panel-chart-wrap,
+.enso-gauge-block .panel-chart {
+  height: 100%;
+  background: transparent;
+}
+
+.enso-gauge-labels {
+  position: absolute;
+  z-index: 2;
+  top: 82px;
+  right: 7px;
+  left: 7px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  pointer-events: none;
+}
+
+.enso-gauge-labels span {
+  color: var(--overview-muted);
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.enso-gauge-labels span:first-child {
+  color: #4b86c9;
+  text-align: left;
+}
+
+.enso-gauge-labels span:last-child {
+  color: #578a5b;
+  text-align: right;
+}
+
+.enso-overview-status {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+}
+
+.enso-overview-status span {
+  color: var(--overview-muted);
+  font-size: 0.62rem;
+}
+
+.enso-overview-status strong,
+[data-theme="dark"] .enso-overview-status strong {
+  color: #5c8b5f;
+  font-size: 1.03rem;
+}
+
+.enso-overview-window-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-top: 10px;
+}
+
+.enso-overview-window {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 8px;
+  align-items: baseline;
+  min-width: 0;
+  padding: 7px 0;
+  border: 0;
+  border-top: 1px solid var(--overview-enso-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.enso-overview-window span {
+  color: var(--overview-muted);
+  font-size: 0.58rem;
+}
+
+.enso-overview-window strong,
+[data-theme="dark"] .enso-overview-window strong {
+  color: var(--overview-ink);
+  font-size: 0.81rem;
+}
+
+.enso-overview-window small {
+  grid-column: 1 / -1;
+  color: var(--overview-muted);
+  font-size: 0.65rem;
+  overflow-wrap: anywhere;
+}
+
+.enso-overview-synopsis {
+  display: block;
+  margin: 7px 0 0;
+  color: var(--overview-muted);
+  font-size: 0.7rem;
+}
+
+.enso-overview-meta {
+  padding-top: 9px;
+}
+
+.overview-secondary-grid .enso-overview-details,
+.overview-secondary-grid .enso-overview-meta {
+  display: none;
+}
+
+.enso-overview-meta .freshness-chip {
+  max-width: 100%;
+  white-space: normal;
+}
+
+.overview-secondary-grid .overview-projection-card.outlook-featured {
+  padding: 16px;
+  border: 1px solid var(--overview-border);
+  background: var(--overview-paper);
+}
+
+.overview-secondary-grid .outlook-card-grid,
+.overview-secondary-grid .outlook-card-copy {
+  display: block;
+}
+
+.overview-secondary-grid .outlook-title-row {
+  display: grid;
+  gap: 3px;
+}
+
+.overview-secondary-grid .outlook-title-row h2 {
+  font-size: 1rem;
+}
+
+.overview-secondary-grid .outlook-title-row span {
+  color: var(--overview-muted);
+  font-size: 0.64rem;
+  line-height: 1.25;
+}
+
+.overview-secondary-grid .outlook-measure-label {
+  margin-top: 16px;
+  color: var(--overview-muted);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.overview-secondary-grid .outlook-main-value {
+  display: block;
+  margin-top: 5px;
+  font-size: clamp(2rem, 3.1vw, 2.6rem);
+}
+
+.overview-secondary-grid .outlook-range-block {
+  margin-top: 14px;
+}
+
+.overview-secondary-grid .outlook-range-block p {
+  color: var(--overview-muted);
+  font-size: 0.67rem;
+}
+
+.outlook-range-track {
+  background: var(--overview-range-bg);
+}
+
+.outlook-range-marker {
+  background: var(--overview-marker);
+}
+
+.overview-secondary-grid .outlook-probability-row {
+  display: grid;
+  gap: 6px;
+  margin-top: 15px;
+}
+
+.overview-secondary-grid .outlook-chip {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--overview-border);
+  border-radius: 6px;
+  color: var(--overview-muted);
+  background: var(--overview-chip-bg);
+  font-size: 0.65rem;
+}
+
+.overview-temperature-trend-card {
+  gap: 10px;
+  padding: 16px 18px;
+}
+
+.overview-temperature-trend-card .overview-card-header {
+  margin-bottom: 0;
+}
+
+.overview-temperature-trend-card .overview-card-header h2 {
+  font-size: 1.08rem;
+}
+
+.overview-temperature-trend-card .overview-card-header p {
+  max-width: 100ch;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.long-range-temperature-chart .panel-chart-wrap {
+  height: clamp(260px, 28vw, 340px);
+}
+
+.scenario-2100-values {
+  gap: 0;
+  border-top: 1px solid var(--overview-border);
+}
+
+.scenario-2100-chip,
+[data-theme="dark"] .scenario-2100-chip {
+  position: relative;
+  gap: 4px;
+  padding: 12px 13px 4px;
+  border: 0;
+  border-left: 1px solid var(--overview-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.scenario-2100-chip:first-child {
+  border-left: 0;
+}
+
+.scenario-2100-chip::before {
+  position: absolute;
+  top: -2px;
+  left: 13px;
+  width: 34px;
+  height: 3px;
+  background: var(--scenario-color);
+  content: "";
+}
+
+.scenario-2100-chip span,
+.scenario-2100-chip small,
+[data-theme="dark"] .scenario-2100-chip span,
+[data-theme="dark"] .scenario-2100-chip small {
+  color: var(--overview-muted);
+  letter-spacing: 0;
+}
+
+.scenario-2100-chip strong {
+  letter-spacing: 0;
+}
+
+[data-theme="dark"] .overview-lead-grid .overview-hero,
+[data-theme="dark"] .overview-lead-grid .overview-card,
+[data-theme="dark"] .overview-metric-card,
+[data-theme="dark"] .overview-secondary-grid .overview-card,
+[data-theme="dark"] .overview-secondary-grid .overview-projection-card.outlook-featured,
+[data-theme="dark"] .overview-temperature-trend-card {
+  color: var(--overview-ink);
+  border-color: var(--overview-border);
+  background: var(--overview-paper);
+}
+
+[data-theme="dark"] .enso-gauge-block .panel,
+[data-theme="dark"] .enso-gauge-block .panel-chart-wrap {
+  background: transparent;
+}
+
+@media (max-width: 1180px) {
+  .overview-secondary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .overview-regional-signals {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .overview-secondary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-regional-signals {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 680px) {
+  .scenario-2100-values {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scenario-2100-chip:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .scenario-2100-chip:nth-child(n + 3) {
+    border-top: 1px solid var(--overview-border);
+  }
+}

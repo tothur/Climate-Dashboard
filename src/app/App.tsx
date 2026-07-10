@@ -549,6 +549,12 @@ const STRINGS = {
     aiSummaryRankLabel: "same-date rank",
     aiSummaryNoWarnings: "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records.",
     aiSummaryMostImportantSignals: "Key signals:",
+    aiSummaryHeatSignalTitle: "Planet-wide warmth remains exceptionally high.",
+    aiSummaryIceSignalTitle: "Polar conditions remain under pressure.",
+    aiSummaryOceanSignalTitle: "Oceans keep setting the pace.",
+    aiSummaryOtherSignalTitle: "A major climate signal stands out.",
+    aiSummaryMethodologyLabel: "Methodology",
+    aiSummaryGeneratedLabel: "Generated",
     recordWarningsAria: "Record climate warnings",
     recordWarningKicker: "Record warning",
     recordWarningDateMeta: "Date",
@@ -580,6 +586,8 @@ const STRINGS = {
       "Historical annual means with the projected current-year value and confidence interval.",
     longRangeTemperatureTrendTitle: "Temperature Trend to 2100",
     longRangeTemperatureTrendShortTitle: "2100 Trend",
+    longRangeTemperatureHorizonTitle: "The Climate Horizon to 2100",
+    longRangeTemperatureExploreLabel: "Explore scenarios",
     longRangeTemperatureTrendSubtitle:
       "Measured annual warming to present, then indicative CMIP7 ScenarioMIP FaIR median pathways.",
     longRangeTemperatureTrendSource:
@@ -762,6 +770,12 @@ const STRINGS = {
     aiSummaryRankLabel: "azonos dátumú rang",
     aiSummaryNoWarnings: "A globális felszíni hőmérséklet és a globális tengerfelszíni hőmérséklet nem szokatlanul magas az azonos dátumú történeti rekordokhoz képest.",
     aiSummaryMostImportantSignals: "Fő jelzések:",
+    aiSummaryHeatSignalTitle: "A bolygószintű meleg továbbra is rendkívül magas.",
+    aiSummaryIceSignalTitle: "A sarkvidéki körülmények továbbra is aggasztóak.",
+    aiSummaryOceanSignalTitle: "Az óceánok diktálják továbbra is az ütemet.",
+    aiSummaryOtherSignalTitle: "Egy fontos éghajlati jelzés emelkedik ki.",
+    aiSummaryMethodologyLabel: "Módszertan",
+    aiSummaryGeneratedLabel: "Készült",
     recordWarningsAria: "Rekord éghajlati figyelmeztetések",
     recordWarningKicker: "Rekordfigyelmeztetés",
     recordWarningDateMeta: "Dátum",
@@ -793,6 +807,8 @@ const STRINGS = {
       "Történeti éves átlagok az aktuális év becsült értékével és bizonytalansági tartományával.",
     longRangeTemperatureTrendTitle: "Hőmérsékleti trend 2100-ig",
     longRangeTemperatureTrendShortTitle: "2100-as trend",
+    longRangeTemperatureHorizonTitle: "Éghajlati horizont 2100-ig",
+    longRangeTemperatureExploreLabel: "Forgatókönyvek megnyitása",
     longRangeTemperatureTrendSubtitle:
       "Mért éves melegedés napjainkig, majd indikatív CMIP7 ScenarioMIP FaIR medián pályák.",
     longRangeTemperatureTrendSource:
@@ -1281,6 +1297,14 @@ interface AiDashboardSummary {
   checks: SameDateTemperatureCheck[];
 }
 
+interface AiOverviewItem {
+  key: string;
+  title: string;
+  detail: string;
+  icon: ToolkitIconName;
+  tone: "heat" | "ice" | "ocean" | "signal";
+}
+
 function toneRank(tone: AiSummaryTone): number {
   switch (tone) {
     case "critical":
@@ -1442,6 +1466,76 @@ function buildAiDashboardSummary({
     headline,
     bulletItems: splitAiSummaryBulletItems(headline),
     checks,
+  };
+}
+
+function buildAiOverviewItems(
+  summary: AiDashboardSummary,
+  t: (typeof STRINGS)[Language]
+): AiOverviewItem[] {
+  const sourceItems = summary.bulletItems.length ? summary.bulletItems : [summary.headline];
+
+  return sourceItems.slice(0, 3).map((detail, index) => {
+    const normalized = detail.toLocaleLowerCase();
+    if (/arctic|antarctic|polar|sea ice|arkt|antarkt|sarkvid/.test(normalized)) {
+      return { key: `ice-${index}`, title: t.aiSummaryIceSignalTitle, detail, icon: "snow", tone: "ice" };
+    }
+    if (/ocean|sea level|ocean heat|óceán|tengerszint|tengerfelszín/.test(normalized)) {
+      return { key: `ocean-${index}`, title: t.aiSummaryOceanSignalTitle, detail, icon: "ocean", tone: "ocean" };
+    }
+    if (/temperature|warm|heat|hőmérsék|meleg/.test(normalized)) {
+      return { key: `heat-${index}`, title: t.aiSummaryHeatSignalTitle, detail, icon: "trend", tone: "heat" };
+    }
+    return { key: `signal-${index}`, title: t.aiSummaryOtherSignalTitle, detail, icon: "up", tone: "signal" };
+  });
+}
+
+function buildEnsoGaugeOption({
+  value,
+  dark,
+  ariaLabel,
+}: {
+  value: number;
+  dark: boolean;
+  ariaLabel: string;
+}): EChartsOption {
+  const clampedValue = clamp(value, -2, 2);
+  const needle = dark ? "#f4f8f5" : "#172019";
+  const neutral = dark ? "#68736d" : "#a8aea8";
+
+  return {
+    animation: false,
+    aria: { enabled: true, description: ariaLabel },
+    series: [
+      {
+        type: "gauge",
+        min: -2,
+        max: 2,
+        startAngle: 180,
+        endAngle: 0,
+        center: ["50%", "78%"],
+        radius: "112%",
+        splitNumber: 4,
+        axisLine: {
+          lineStyle: {
+            width: 13,
+            color: [
+              [0.375, dark ? "#73a9f7" : "#4c8fda"],
+              [0.625, neutral],
+              [1, dark ? "#82bb82" : "#5d945f"],
+            ],
+          },
+        },
+        pointer: { show: true, length: "68%", width: 4, itemStyle: { color: needle } },
+        anchor: { show: true, size: 9, itemStyle: { color: needle, borderColor: dark ? "#172019" : "#ffffff", borderWidth: 2 } },
+        axisTick: { show: false },
+        splitLine: { show: false },
+        axisLabel: { show: false },
+        title: { show: false },
+        detail: { show: false },
+        data: [{ value: clampedValue }],
+      },
+    ],
   };
 }
 
@@ -3270,6 +3364,7 @@ export function App() {
     () => snapshot.indicators.find((metric) => metric.key === DAILY_GLOBAL_MEAN_ANOMALY_KEY) ?? null,
     [snapshot.indicators]
   );
+  const nino34Metric = metricByKey.get("nino34_index") ?? null;
   const annualGlobalMeanAnomalyPoints = useMemo(
     () => (dailyGlobalMeanAnomalyMetric ? buildAnnualMeanSeries(dailyGlobalMeanAnomalyMetric.points) : []),
     [dailyGlobalMeanAnomalyMetric]
@@ -3327,6 +3422,22 @@ export function App() {
         aiSummary: dataSource.aiSummary ?? null,
       }),
     [snapshot, language, t, dataSource.aiSummary]
+  );
+  const aiOverviewItems = useMemo(() => buildAiOverviewItems(aiDashboardSummary, t), [aiDashboardSummary, t]);
+  const ensoGaugeValue = useMemo(() => {
+    const observedValue = nino34Metric ? latestFinitePoint(nino34Metric.points)?.value : null;
+    if (observedValue != null && Number.isFinite(observedValue)) return observedValue;
+    const forecastCondition = ensoOutlook?.nextThreeMonths?.condition ?? ensoOutlook?.nextSixMonths?.condition;
+    return forecastCondition === "la_nina" ? -1 : forecastCondition === "el_nino" ? 1 : 0;
+  }, [ensoOutlook, nino34Metric]);
+  const ensoGaugeOption = useMemo(
+    () =>
+      buildEnsoGaugeOption({
+        value: ensoGaugeValue,
+        dark: resolvedTheme === "dark",
+        ariaLabel: `${t.ensoOutlookTitle}: ${formatEnsoStatusLabel(ensoOutlook, language, t)}`,
+      }),
+    [ensoGaugeValue, ensoOutlook, language, resolvedTheme, t]
   );
   const earthEnergyImbalanceTrendPoints = useMemo(
     () => (earthEnergyImbalanceMetric ? buildTrailingMeanSeries(earthEnergyImbalanceMetric.points, 12) : []),
@@ -4095,8 +4206,19 @@ export function App() {
   const renderEnsoOutlookCard = (options?: { showSourceLink?: boolean }) => (
     <article className="overview-card enso-outlook-card">
       <div className="overview-card-header">
-        <h2>{t.ensoOutlookTitle}</h2>
+        <div>
+          <h2>{t.ensoOutlookTitle}</h2>
+          {runtimeDataReady && ensoOutlook?.issuedDate ? <p>{formatDateLabel(ensoOutlook.issuedDate, language)}</p> : null}
+        </div>
         <ToolkitIcon name="info" className="info-icon" />
+      </div>
+      <div className="enso-gauge-block">
+        <div className="enso-gauge-labels" aria-hidden="true">
+          <span>{t.ensoConditionLaNina}</span>
+          <span>{t.ensoConditionNeutral}</span>
+          <span>{t.ensoConditionElNino}</span>
+        </div>
+        <EChartsPanel title={t.ensoOutlookTitle} option={ensoGaugeOption} />
       </div>
       <div className="enso-overview-status">
         <span>{t.ensoStatusLabel}</span>
@@ -4107,7 +4229,6 @@ export function App() {
           )}
         </strong>
       </div>
-      {runtimeDataReady && ensoOutlook?.synopsis ? <p className="enso-overview-synopsis">{ensoOutlook.synopsis}</p> : null}
       <div className="enso-overview-window-list">
         {ensoOverviewRows.map((row) => (
           <div className="enso-overview-window" key={row.key}>
@@ -4128,6 +4249,12 @@ export function App() {
           </div>
         ))}
       </div>
+      {runtimeDataReady && ensoOutlook?.synopsis ? (
+        <details className="enso-overview-details">
+          <summary>{t.sectionExpand}</summary>
+          <p className="enso-overview-synopsis">{ensoOutlook.synopsis}</p>
+        </details>
+      ) : null}
       <div className="enso-overview-meta">
         {runtimeDataReady && ensoOutlookFreshness ? (
           <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span>
@@ -4193,29 +4320,40 @@ export function App() {
     ) : null;
   const renderOverviewAiSummary = () => (
     <section className={`ai-summary-panel overview-ai-summary ${aiDashboardSummary.tone}`} aria-label={t.aiSummaryAria}>
-      <div className="ai-summary-main">
-        <div className="ai-summary-copy">
-          <div className="ai-summary-label-row">
-            <span className="alert-kicker">{t.aiSummaryKicker}</span>
-          </div>
-          {runtimeDataReady ? (
-            aiDashboardSummary.bulletItems.length > 0 ? (
-              <ul className="ai-summary-list">
-                {aiDashboardSummary.bulletItems.map((item, index) => (
-                  <li key={`${index}-${item}`}>{item}</li>
-                ))}
-              </ul>
-            ) : (
-              <p>{aiDashboardSummary.headline}</p>
-            )
-          ) : (
-            <div className="ai-summary-loading" role="status" aria-live="polite">
-              <span className="ai-summary-spinner" aria-hidden="true" />
-              <span>{t.aiSummaryLoading}</span>
-            </div>
-          )}
-        </div>
+      <div className="ai-summary-label-row">
+        <span className="alert-kicker">
+          <ToolkitIcon name="up" />
+          {t.aiSummaryTitle}
+        </span>
       </div>
+      {runtimeDataReady ? (
+        <div className="ai-overview-signal-list">
+          {aiOverviewItems.map((item) => (
+            <article className={`ai-overview-signal tone-${item.tone}`} key={item.key}>
+              <span className="ai-overview-signal-icon" aria-hidden="true">
+                <ToolkitIcon name={item.icon} />
+              </span>
+              <div>
+                <h3>{item.title}</h3>
+                <p>{item.detail}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="ai-summary-loading" role="status" aria-live="polite">
+          <span className="ai-summary-spinner" aria-hidden="true" />
+          <span>{t.aiSummaryLoading}</span>
+        </div>
+      )}
+      {runtimeDataReady && dataSource.aiSummary ? (
+        <details className="ai-summary-methodology">
+          <summary>{t.aiSummaryMethodologyLabel}</summary>
+          <p>
+            {t.aiSummaryGeneratedLabel}: {formatDateLabel(extractIsoDate(dataSource.aiSummary.generatedAtIso), language)} · {dataSource.aiSummary.model}
+          </p>
+        </details>
+      ) : null}
     </section>
   );
   return (
@@ -4397,9 +4535,6 @@ export function App() {
                 </div>
               </section>
               {renderEnsoOutlookCard({ showSourceLink: false })}
-            </section>
-
-            <section className="overview-bottom-grid">
               <article className="overview-card overview-projection-card outlook-featured">
                 <div className="outlook-card-grid">
                   <div className="outlook-card-copy">
@@ -4498,17 +4633,16 @@ export function App() {
                 <article className="overview-card overview-temperature-trend-card">
                   <div className="overview-card-header">
                     <div>
-                      <h2>{t.longRangeTemperatureTrendShortTitle}</h2>
+                      <h2>{t.longRangeTemperatureHorizonTitle}</h2>
                       <p>{t.longRangeTemperatureTrendSource}</p>
                     </div>
-                    <a
+                    <button
+                      type="button"
                       className="text-link-button"
-                      href={CMIP7_SCENARIOMIP_TEMPERATURE_SOURCE_URL}
-                      target="_blank"
-                      rel="noreferrer"
+                      onClick={() => setDashboardView("projections")}
                     >
-                      {t.cmip7ScenarioSourceLabel} →
-                    </a>
+                      {t.longRangeTemperatureExploreLabel} →
+                    </button>
                   </div>
                   <div className="long-range-temperature-chart">
                     <EChartsPanel
