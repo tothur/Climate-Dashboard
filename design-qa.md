@@ -1,9 +1,9 @@
 # Overview Redesign QA
 
 - Source visual truth: `/Users/andrastoth/Downloads/Generated image 1.png`
-- Implementation screenshot: `design-qa-artifacts/overview-redesign-desktop.png`
+- Implementation screenshot: `design-qa-artifacts/overview-scenario-order-hero-balance-desktop.png`
 - Responsive screenshot: `design-qa-artifacts/overview-redesign-mobile-fixed.png`
-- Viewports: desktop `1440 x 1024`; mobile `390 x 844`
+- Viewports: desktop `1280 x 720`; mobile `390 x 844`
 - State: Overview, light and dark themes, live runtime data loaded.
 
 **Findings**
@@ -19,6 +19,26 @@
 - [P2] Legacy dark-theme selectors produced mixed blue and green card surfaces.
   Location: Overview metric, outlook, ENSO, and horizon cards.
   Fix applied: all overview cards now resolve through the final overview theme tokens, with the AI brief retaining its intentional blue distinction.
+- [P2] Lead cards had three visibly different heights.
+  Location: Daily anomaly, Planet Now, and AI Summary cards.
+  Fix applied: the lead grid stretches all three cards to the same `463.3px` desktop row while preserving natural mobile heights.
+  Evidence: post-fix browser measurements report identical top and bottom coordinates for all three cards.
+- [P2] ENSO status competed with the gauge needle.
+  Location: ENSO Outlook status row.
+  Fix applied: the gauge was shortened slightly and the status moved below a dedicated divider with `6px` margin and `8px` top padding.
+  Evidence: the post-fix capture shows visible separation between the needle and `STATUS EL NIÑO`.
+- [P2] Regional and Outlook cards left unused space at the bottom of the shared row.
+  Location: Regional Temperature Anomalies and 2026 Outlook.
+  Fix applied: regional sparklines now anchor to the card bottom and the Outlook probability rows use the remaining vertical space intentionally.
+  Evidence: all three lower cards measure `329.2px`, with the regional signal grid and Outlook copy extending to matching bottom insets.
+- [P2] The 2100 scenario sequence did not communicate increasing warming consistently.
+  Location: Climate Horizon to 2100 chart and scenario summaries.
+  Fix applied: scenarios now sort by their 2100 values from lowest to highest before rendering.
+  Evidence: desktop and mobile browser checks show `Low`, `Medium-Low`, `Medium`, and `High` from left to right, with values `1.74`, `2.10`, `2.75`, and `3.50 °C`.
+- [P2] The Daily Global Temperature Anomaly card left too much inactive vertical space.
+  Location: Daily Global Temperature Anomaly.
+  Fix applied: its chart area now expands within the shared lead-card height, while the warming stripes remain anchored below it.
+  Evidence: the desktop sparkline grows from `64px` to `105px` without changing the equal lead-card height or introducing overflow.
 
 **Required Fidelity Surfaces**
 
@@ -28,15 +48,23 @@
 - Image quality and asset fidelity: verified in implementation capture; the existing live map asset remains an inspectable image with the original fullscreen action.
 - Copy and app-specific text: verified in implementation capture; visible live data and source freshness labels are retained.
 
+**Focused Region Comparison**
+
+- The lead and lower card bands are readable at original resolution in the full desktop comparison, so a separate crop was not needed. Browser box measurements were used to verify exact shared top and bottom edges.
+
 **Comparison History**
 
 1. Initial implementation capture found the mobile freshness row exceeded the viewport. The responsive rule was updated and recaptured successfully.
 2. The concept-completion pass replaced the AI bullet list with semantic signal rows, added the ENSO gauge and forecast windows, and moved the 2026 Outlook into the regional lower band.
 3. The final browser pass tightened the ENSO framing, unified dark-mode card surfaces, and verified the four named 2100 scenarios plus the 1.5, 2.0, and 3.0 °C tipping-point lines.
+4. The card-balance pass equalized the three lead cards, separated the ENSO status from its needle, and anchored regional charts and Outlook probabilities to the shared lower-card baseline. The post-fix side-by-side comparison found no remaining P0/P1/P2 issue in these areas.
+5. The final ordering pass sorted all four 2100 scenarios by their projected value and expanded the daily anomaly chart into the available lead-card space. Desktop, mobile, light, and dark checks retained the intended order and produced no horizontal overflow.
 
 **Console And Interaction Checks**
 
-- Browser console checked after light/dark and desktop/mobile rendering.
-- `npm test` passes all 20 tests and `npm run build` passes after the final fidelity pass.
+- Browser console checked after light/dark and desktop/mobile rendering; no warnings or errors were reported.
+- Navigation and theme controls remain functional after the layout changes.
+- Mobile verification at `390px` reports a `390px` document width with no horizontal overflow.
+- `npm test` passes all 22 tests and `npm run build` passes after the final fidelity pass.
 
-final result: pass
+final result: passed

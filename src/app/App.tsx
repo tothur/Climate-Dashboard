@@ -1982,7 +1982,7 @@ function buildLongRangeTemperatureTrendOption({
     value2100: scenario.anchors.find(([year]) => year === LONG_RANGE_SCENARIO_END_YEAR)?.[1] ?? null,
     color: dark ? scenario.colorDark : scenario.colorLight,
     points: buildScenarioAnnualPoints(scenario),
-  }));
+  })).sort((left, right) => (left.value2100 ?? Number.POSITIVE_INFINITY) - (right.value2100 ?? Number.POSITIVE_INFINITY));
   const scenarioValueByLabel = new Map(
     scenarioPoints.map(({ label, value2100 }) => [label, value2100] as const)
   );
@@ -3566,7 +3566,7 @@ export function App() {
         label: scenarioDisplayLabel(scenario, language),
         value2100: scenario.anchors.find(([year]) => year === LONG_RANGE_SCENARIO_END_YEAR)?.[1] ?? null,
         color: resolvedTheme === "dark" ? scenario.colorDark : scenario.colorLight,
-      })),
+      })).sort((left, right) => (left.value2100 ?? Number.POSITIVE_INFINITY) - (right.value2100 ?? Number.POSITIVE_INFINITY)),
     [language, resolvedTheme]
   );
   const currentTippingWarming = latestAnnualGlobalMeanAnomaly?.value ?? null;
