@@ -9510,8 +9510,8 @@ body {
 
 .overview-primary-map {
   display: grid;
-  grid-template-rows: auto auto;
-  align-self: start;
+  grid-template-rows: auto 1fr;
+  align-self: stretch;
   padding: 16px;
 }
 
@@ -10020,6 +10020,8 @@ body,
 
 .ai-overview-signal-list {
   display: grid;
+  flex: 1;
+  align-content: start;
   gap: 0;
 }
 
@@ -10027,7 +10029,7 @@ body,
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr);
   gap: 10px;
-  padding: 13px 0;
+  padding: 11px 0;
   border-top: 1px solid color-mix(in srgb, var(--overview-ai-border) 72%, transparent);
 }
 
@@ -10072,10 +10074,9 @@ body,
 
 .ai-overview-signal p,
 [data-theme="dark"] .ai-overview-signal p {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
   margin: 5px 0 0;
   color: color-mix(in srgb, var(--overview-ai-text) 78%, var(--overview-muted));
   font-size: 0.75rem;

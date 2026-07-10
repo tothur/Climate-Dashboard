@@ -158,14 +158,17 @@ test("ENSO outlook staleness warns before it blocks daily publication", async ()
 test("AI summary prompt prioritizes daily records over slow background indicators", async () => {
   const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
 
-  assert.match(updateScript, /const AI_SUMMARY_PROMPT_VERSION = 4/);
-  assert.match(updateScript, /Write a compact daily climate-watch briefing as bullet points, not a long-term climate-status recap/);
-  assert.match(updateScript, /Use 2 or 3 concise bullet points/);
-  assert.match(updateScript, /start each bullet line with "- "/);
-  assert.match(updateScript, /first bullet must copy the first sentence of temperatureBrief\.requiredSentenceEn verbatim/);
-  assert.match(updateScript, /record-low or near-record-low sea-ice extent/);
-  assert.match(updateScript, /Treat greenhouse gas, AGGI, sea-level, and ocean-heat-content records as background context/);
-  assert.match(updateScript, /Use long-term background indicators such as atmospheric CO2, CH4, AGGI, global mean sea level, and ocean heat content only as a fallback/);
+  assert.match(updateScript, /const AI_SUMMARY_PROMPT_VERSION = 5/);
+  assert.match(updateScript, /Create exactly three bilingual climate-watch items/);
+  assert.match(updateScript, /Select the three most important distinct current climate events or indicators/);
+  assert.match(updateScript, /write a specific short editorial title in English and natural Hungarian/);
+  assert.match(updateScript, /one complete short sentence in each language describing its current value, rank, record status, date, or probability/);
+  assert.match(updateScript, /Fully translate Hungarian titles, indicator names, and sentences/);
+  assert.match(updateScript, /minItems: 3/);
+  assert.match(updateScript, /maxItems: 3/);
+  assert.match(updateScript, /required: \["signalKey", "tone", "titleEn", "detailEn", "titleHu", "detailHu"\]/);
+  assert.match(updateScript, /items\.some\(\(item\) => !allowedSignalKeys\.has\(item\.signalKey\)\)/);
+  assert.match(updateScript, /Use CO2, CH4, AGGI, sea level, or ocean heat content only when they genuinely belong in the three strongest current signals/);
   assert.match(updateScript, /const dailyRecordSignals = anomalySignals\.filter\(isDailyRecordLeadSignal\)/);
   assert.match(updateScript, /const AI_SUMMARY_BACKGROUND_SIGNAL_KEYS = new Set/);
   assert.match(updateScript, /global_sea_ice_extent: 8/);

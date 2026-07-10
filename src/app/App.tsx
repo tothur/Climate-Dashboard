@@ -1294,6 +1294,7 @@ interface AiDashboardSummary {
   tone: AiSummaryTone;
   headline: string;
   bulletItems: string[];
+  overviewItems: AiOverviewItem[];
   checks: SameDateTemperatureCheck[];
 }
 
@@ -1451,6 +1452,20 @@ function buildAiDashboardSummary({
   );
 
   const warningChecks = checks.filter((check) => check.tone !== "normal");
+  const overviewItems =
+    aiSummary?.items?.map((item, index) => {
+      const title = language === "hu" ? item.titleHu : item.titleEn;
+      const detail = language === "hu" ? item.detailHu : item.detailEn;
+      const icon: ToolkitIconName =
+        item.tone === "ice" ? "snow" : item.tone === "ocean" ? "ocean" : item.tone === "heat" ? "trend" : "up";
+      return {
+        key: `${item.signalKey}-${index}`,
+        title: localizeMetricMentions(title, [...snapshot.indicators, ...snapshot.forcing], language),
+        detail: localizeMetricMentions(detail, [...snapshot.indicators, ...snapshot.forcing], language),
+        icon,
+        tone: item.tone,
+      };
+    }) ?? [];
   const sourceGeneratedText = language === "hu" ? aiSummary?.textHu : aiSummary?.textEn;
   const generatedText = sourceGeneratedText
     ? localizeMetricMentions(sourceGeneratedText, [...snapshot.indicators, ...snapshot.forcing], language)
@@ -1465,6 +1480,7 @@ function buildAiDashboardSummary({
     tone,
     headline,
     bulletItems: splitAiSummaryBulletItems(headline),
+    overviewItems,
     checks,
   };
 }
@@ -1473,6 +1489,7 @@ function buildAiOverviewItems(
   summary: AiDashboardSummary,
   t: (typeof STRINGS)[Language]
 ): AiOverviewItem[] {
+  if (summary.overviewItems.length === 3) return summary.overviewItems;
   const sourceItems = summary.bulletItems.length ? summary.bulletItems : [summary.headline];
 
   return sourceItems.slice(0, 3).map((detail, index) => {

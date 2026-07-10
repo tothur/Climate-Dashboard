@@ -1,9 +1,10 @@
 # Overview Redesign QA
 
 - Source visual truth: `/Users/andrastoth/Downloads/Generated image 1.png`
-- Implementation screenshot: `design-qa-artifacts/overview-scenario-order-hero-balance-desktop.png`
+- Issue reference: `/Users/andrastoth/Desktop/Screenshot 2026-07-10 at 10.03.12.png`
+- Implementation screenshot: `design-qa-artifacts/overview-ai-summary-full-height-desktop.png`
 - Responsive screenshot: `design-qa-artifacts/overview-redesign-mobile-fixed.png`
-- Viewports: desktop `1280 x 720`; mobile `390 x 844`
+- Viewports: desktop `2048 x 827`; mobile `390 x 844`
 - State: Overview, light and dark themes, live runtime data loaded.
 
 **Findings**
@@ -39,6 +40,14 @@
   Location: Daily Global Temperature Anomaly.
   Fix applied: its chart area now expands within the shared lead-card height, while the warming stripes remain anchored below it.
   Evidence: the desktop sparkline grows from `64px` to `105px` without changing the equal lead-card height or introducing overflow.
+- [P2] AI summary details were visually truncated after three lines.
+  Location: AI Summary signal details.
+  Fix applied: the visual line clamp was removed, while the generation contract now limits every English detail to `120` characters and every Hungarian detail to `140` characters.
+  Evidence: all three legacy long-form details and the expanded methodology state render with `scrollHeight === clientHeight` at desktop and mobile widths.
+- [P2] Expanding AI methodology left the Planet Now card shorter than its neighboring lead cards.
+  Location: Daily anomaly, Planet Now, and AI Summary lead row.
+  Fix applied: Planet Now now stretches with the grid row instead of opting out through `align-self: start`.
+  Evidence: at the issue screenshot's `2048 x 827` viewport, all three lead cards measure `463.3px`; with methodology expanded at `1280 x 720`, all three measure `560.7px`.
 
 **Required Fidelity Surfaces**
 
@@ -59,6 +68,7 @@
 3. The final browser pass tightened the ENSO framing, unified dark-mode card surfaces, and verified the four named 2100 scenarios plus the 1.5, 2.0, and 3.0 °C tipping-point lines.
 4. The card-balance pass equalized the three lead cards, separated the ENSO status from its needle, and anchored regional charts and Outlook probabilities to the shared lower-card baseline. The post-fix side-by-side comparison found no remaining P0/P1/P2 issue in these areas.
 5. The final ordering pass sorted all four 2100 scenarios by their projected value and expanded the daily anomaly chart into the available lead-card space. Desktop, mobile, light, and dark checks retained the intended order and produced no horizontal overflow.
+6. The AI-summary pass removed copy clipping, restored equal lead-card heights in the expanded methodology state, and verified three complete English and Hungarian signal rows at desktop and mobile widths. The model contract now supplies the three bilingual titles and their short factual sentences directly.
 
 **Console And Interaction Checks**
 

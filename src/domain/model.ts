@@ -94,9 +94,19 @@ export interface AiSummaryTemperatureCheck {
   tone: AiSummaryTone;
 }
 
+export interface AiSummaryItem {
+  signalKey: string;
+  tone: "heat" | "ice" | "ocean" | "signal";
+  titleEn: string;
+  detailEn: string;
+  titleHu: string;
+  detailHu: string;
+}
+
 export interface AiSummary {
   textEn: string;
   textHu?: string | null;
+  items?: AiSummaryItem[];
   generatedAtIso: string;
   model: string;
   source: "openai" | "local";

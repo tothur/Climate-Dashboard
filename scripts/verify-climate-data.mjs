@@ -31,6 +31,7 @@ const REQUIRED_MAP_FILES = [
   },
 ];
 const AI_SUMMARY_ALLOWED_MODELS = new Set(["local-rules", "gpt-5.4-mini"]);
+const AI_SUMMARY_STRUCTURED_PROMPT_VERSION = 5;
 const AI_SUMMARY_DISALLOWED_TEXT_PATTERN = /\brecord\s+lows?\b|\brecord\s+cold\b|\bcoldest\b|\bcooling\b/i;
 const AI_SUMMARY_TEMPERATURE_KEYS = ["global_surface_temperature", "global_sea_surface_temperature"];
 const ENSO_OUTLOOK_STALE_WARNING_DAYS = 50;
@@ -595,8 +596,33 @@ function verifyAiSummary(payload, series, nowMidnight, errors) {
   }
   if (aiSummary.source === "openai") {
     const textEnSentenceCount = sentenceCount(textEn);
-    if (textEnSentenceCount < 2 || textEnSentenceCount > 3) {
-      errors.push(`aiSummary.textEn has ${textEnSentenceCount} sentences; expected 2 or 3`);
+    if (textEnSentenceCount !== 3 && String(aiSummary.fingerprint ?? "").startsWith(`${AI_SUMMARY_STRUCTURED_PROMPT_VERSION}.`)) {
+      errors.push(`aiSummary.textEn has ${textEnSentenceCount} sentences; expected exactly 3`);
+    }
+    if (String(aiSummary.fingerprint ?? "").startsWith(`${AI_SUMMARY_STRUCTURED_PROMPT_VERSION}.`)) {
+      const items = Array.isArray(aiSummary.items) ? aiSummary.items : [];
+      if (items.length !== 3) {
+        errors.push(`aiSummary.items has ${items.length} items; expected exactly 3`);
+      } else {
+        const keys = new Set();
+        for (const [index, item] of items.entries()) {
+          if (!isRecord(item)) {
+            errors.push(`aiSummary.items[${index}] is invalid`);
+            continue;
+          }
+          const signalKey = typeof item.signalKey === "string" ? item.signalKey.trim() : "";
+          if (!signalKey || keys.has(signalKey)) errors.push(`aiSummary.items[${index}].signalKey is missing or duplicated`);
+          keys.add(signalKey);
+          for (const field of ["titleEn", "detailEn", "titleHu", "detailHu"]) {
+            if (typeof item[field] !== "string" || !item[field].trim()) {
+              errors.push(`aiSummary.items[${index}].${field} is missing`);
+            }
+          }
+          if (sentenceCount(item.detailEn) !== 1 || sentenceCount(item.detailHu) !== 1) {
+            errors.push(`aiSummary.items[${index}] details must each contain one sentence`);
+          }
+        }
+      }
     }
   }
   if (AI_SUMMARY_DISALLOWED_TEXT_PATTERN.test(textEn)) {

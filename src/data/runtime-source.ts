@@ -510,9 +510,31 @@ function readGeneratedAiSummary(payload: unknown): AiSummary | null {
         .filter((entry): entry is AiSummary["temperatureChecks"][number] => entry != null)
     : [];
 
+  const items = Array.isArray(raw.items)
+    ? raw.items
+        .map((entry) => {
+          if (!isRecord(entry)) return null;
+          const signalKey = typeof entry.signalKey === "string" ? entry.signalKey.trim() : "";
+          const tone =
+            entry.tone === "heat" || entry.tone === "ice" || entry.tone === "ocean" || entry.tone === "signal"
+              ? entry.tone
+              : null;
+          const titleEn = typeof entry.titleEn === "string" ? entry.titleEn.trim() : "";
+          const detailEn = typeof entry.detailEn === "string" ? entry.detailEn.trim() : "";
+          const titleHu = typeof entry.titleHu === "string" ? entry.titleHu.trim() : "";
+          const detailHu = typeof entry.detailHu === "string" ? entry.detailHu.trim() : "";
+          return signalKey && tone && titleEn && detailEn && titleHu && detailHu
+            ? { signalKey, tone, titleEn, detailEn, titleHu, detailHu }
+            : null;
+        })
+        .filter((entry): entry is NonNullable<AiSummary["items"]>[number] => entry != null)
+        .slice(0, 3)
+    : [];
+
   return {
     textEn,
     textHu: typeof raw.textHu === "string" && raw.textHu.trim().length > 0 ? raw.textHu.trim() : null,
+    items: items.length === 3 ? items : undefined,
     generatedAtIso,
     model,
     source,
