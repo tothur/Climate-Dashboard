@@ -10,6 +10,26 @@ async function readProjectFile(path) {
   return await readFile(resolve(ROOT_DIR, path), "utf8");
 }
 
+test("stale published dataset fills live-feed gaps before bundled stubs", async () => {
+  const runtimeSource = await readProjectFile("src/data/runtime-source.ts");
+
+  assert.match(runtimeSource, /loadGeneratedLocalPayloadBundle/);
+  assert.match(runtimeSource, /isFreshGeneratedSeriesBundle\(generated\.series\)/);
+  assert.match(runtimeSource, /staleFilledKeys/);
+  assert.match(runtimeSource, /showing the last published data/);
+
+  const adapter = await readProjectFile("src/data/adapter.ts");
+  assert.match(adapter, /staleSeriesKeys/);
+  assert.match(adapter, /staleKeys\.has\(key\)/);
+});
+
+test("only fast-cadence series gate the whole local dataset", async () => {
+  const runtimeSource = await readProjectFile("src/data/runtime-source.ts");
+
+  assert.match(runtimeSource, /BLOCKING_FRESHNESS_KEYS/);
+  assert.match(runtimeSource, /if \(!BLOCKING_FRESHNESS_KEYS\.has\(key\)\) return true;/);
+});
+
 test("runtime fallback can recover ice-sheet and glacier metrics from live sources", async () => {
   const runtimeSource = await readProjectFile("src/data/runtime-source.ts");
 

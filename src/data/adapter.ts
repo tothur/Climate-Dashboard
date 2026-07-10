@@ -619,6 +619,11 @@ export function createBundledDataSource(note?: string): DashboardDataSource {
 
 export function createDataSourceFromSeries(input: {
   series: Partial<ClimateSeriesBundle>;
+  /**
+   * Series filled from a stale published dataset rather than a live feed.
+   * They render real history but must not count toward "live" mode.
+   */
+  staleSeriesKeys?: (keyof ClimateSeriesBundle)[];
   warnings?: string[];
   updatedAtIso?: string;
   ensoOutlook?: EnsoOutlook | null;
@@ -627,7 +632,9 @@ export function createDataSourceFromSeries(input: {
   mapWarnings?: string[];
 }): DashboardDataSource {
   const mergedSeries = mergeSeriesWithBundled(input.series);
+  const staleKeys = new Set(input.staleSeriesKeys ?? []);
   const liveCount = CLIMATE_METRIC_KEYS.filter((key) => {
+    if (staleKeys.has(key)) return false;
     const candidate = input.series[key];
     return Array.isArray(candidate) && candidate.length > 0;
   }).length;

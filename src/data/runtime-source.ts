@@ -590,32 +590,41 @@ async function fetchChunkedGeneratedPayload(): Promise<unknown | null> {
   return { ...core, series };
 }
 
-async function loadGeneratedLocalDataSource(): Promise<DashboardDataSource | null> {
+interface GeneratedPayloadBundle {
+  series: Partial<ClimateSeriesBundle>;
+  ensoOutlook: EnsoOutlook | null;
+  aiSummary: AiSummary | null;
+  maps: ClimateMapAssets | undefined;
+  mapWarnings: string[];
+  generatedAtIso: string;
+}
+
+/**
+ * Fetch and parse the published local dataset without judging freshness.
+ * Callers decide: a fresh bundle serves the dashboard outright, while a
+ * stale one is still far better than bundled sample stubs for any series
+ * the browser cannot refresh live (several feeds are CORS-blocked).
+ */
+async function loadGeneratedLocalPayloadBundle(): Promise<GeneratedPayloadBundle | null> {
   const payload = (await fetchChunkedGeneratedPayload()) ?? (await fetchJson(LOCAL_GENERATED_DATA_URL));
   if (!payload) return null;
 
   const parsedSeries = readGeneratedSeries(payload);
-  if (!parsedSeries) return null;
-  if (!isFreshGeneratedSeriesBundle(parsedSeries)) return null;
-  const ensoOutlook = readGeneratedEnsoOutlook(payload);
-  const aiSummary = readGeneratedAiSummary(payload);
-  const mapAssets = readGeneratedMaps(payload);
-  const mapWarnings = readGeneratedMapWarnings(payload);
+  if (!parsedSeries || !Object.keys(parsedSeries).length) return null;
 
   const generatedAtIso =
     isRecord(payload) && typeof payload.generatedAtIso === "string" && Number.isFinite(Date.parse(payload.generatedAtIso))
       ? payload.generatedAtIso
       : new Date().toISOString();
 
-  return createDataSourceFromSeries({
+  return {
     series: parsedSeries,
-    warnings: [],
-    updatedAtIso: generatedAtIso,
-    ensoOutlook,
-    aiSummary,
-    maps: mapAssets,
-    mapWarnings,
-  });
+    ensoOutlook: readGeneratedEnsoOutlook(payload),
+    aiSummary: readGeneratedAiSummary(payload),
+    maps: readGeneratedMaps(payload),
+    mapWarnings: readGeneratedMapWarnings(payload),
+    generatedAtIso,
+  };
 }
 
 function parseReanalyzerDailyJson(payload: unknown): DailyPoint[] {
@@ -1938,8 +1947,18 @@ async function loadIceSheetAndGlacierSeriesBundle(): Promise<IceSheetAndGlacierS
 }
 
 export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
-  const localDataSource = await loadGeneratedLocalDataSource();
-  if (localDataSource) return localDataSource;
+  const generated = await loadGeneratedLocalPayloadBundle();
+  if (generated && isFreshGeneratedSeriesBundle(generated.series)) {
+    return createDataSourceFromSeries({
+      series: generated.series,
+      warnings: [],
+      updatedAtIso: generated.generatedAtIso,
+      ensoOutlook: generated.ensoOutlook,
+      aiSummary: generated.aiSummary,
+      maps: generated.maps,
+      mapWarnings: generated.mapWarnings,
+    });
+  }
 
   const warnings: string[] = [];
   const liveSeries: Partial<ClimateSeriesBundle> = {};
@@ -2235,12 +2254,43 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     warnings.push("Live Arctic Oscillation Index feed was unavailable or stale; using bundled fallback.");
   }
 
+  // Prefer the parsed-but-stale published dataset over bundled sample
+  // stubs for anything the live feeds could not deliver: several feeds
+  // are CORS-blocked in browsers, and months-old real history keeps the
+  // charts truthful where a dozen stub points would wreck them.
+  const staleFilledKeys: (keyof ClimateSeriesBundle)[] = [];
+  if (generated) {
+    for (const key of SERIES_KEYS) {
+      const livePoints = liveSeries[key];
+      if (Array.isArray(livePoints) && livePoints.length) continue;
+      const stalePoints = generated.series[key];
+      if (Array.isArray(stalePoints) && stalePoints.length) {
+        liveSeries[key] = stalePoints;
+        staleFilledKeys.push(key);
+      }
+    }
+  }
+
+  const feedWarnings = staleFilledKeys.length
+    ? warnings.map((warning) => warning.replace(/; using bundled fallback\.$/u, "."))
+    : warnings;
+  const introWarning = generated
+    ? "Local published dataset is stale; live feeds were used to refresh what the browser can reach."
+    : "Local generated real-data file was missing or invalid; attempted direct remote feeds.";
+  const staleFillWarnings =
+    generated && staleFilledKeys.length
+      ? [
+          `${staleFilledKeys.length} series could not be refreshed live; showing the last published data (${generated.generatedAtIso.slice(0, 10)}) for them.`,
+        ]
+      : [];
+
   return createDataSourceFromSeries({
     series: liveSeries,
-    warnings: [
-      "Local generated real-data file was missing or invalid; attempted direct remote feeds.",
-      ...warnings,
-    ],
+    staleSeriesKeys: staleFilledKeys,
+    warnings: [introWarning, ...staleFillWarnings, ...feedWarnings],
     updatedAtIso: new Date().toISOString(),
+    ensoOutlook: generated?.ensoOutlook ?? null,
+    maps: generated?.maps,
+    mapWarnings: generated?.mapWarnings ?? [],
   });
 }
