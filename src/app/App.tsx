@@ -4273,7 +4273,8 @@ export function App() {
         <div className="overview-hero-main">
           <div className="overview-hero-copy">
             <span className="overview-hero-kicker">
-              {t.overviewDailyGlobalTemperatureAnomalyTitle} · {t.overviewPreindustrialSubtitle}
+              <span className="overview-hero-title">{t.overviewDailyGlobalTemperatureAnomalyTitle}</span>
+              <span className="overview-hero-baseline">{t.overviewPreindustrialSubtitle}</span>
             </span>
             <strong className="overview-hero-value">
               {renderMetricValue(dailyGlobalMeanAnomalyMetric, "value-loading-skeleton overview-value-loading")}

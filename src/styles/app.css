@@ -9436,7 +9436,7 @@ body {
   display: grid;
   grid-template-columns: minmax(250px, 0.76fr) minmax(460px, 1.32fr) minmax(235px, 0.58fr);
   gap: 12px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .overview-lead-grid > * {
@@ -9455,7 +9455,7 @@ body {
 .overview-lead-grid .overview-hero {
   display: flex;
   flex-direction: column;
-  min-height: 300px;
+  min-height: 445px;
   padding: 20px;
 }
 
@@ -9465,10 +9465,19 @@ body {
 }
 
 .overview-hero-kicker {
+  display: grid;
+  gap: 3px;
   color: var(--overview-ink);
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.28;
+}
+
+.overview-hero-baseline {
+  color: var(--overview-muted);
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  font-weight: 560;
 }
 
 .overview-hero-value,
@@ -9501,7 +9510,8 @@ body {
 
 .overview-primary-map {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-self: start;
   padding: 16px;
 }
 
@@ -9530,7 +9540,8 @@ body {
 
 .overview-primary-map .map-panel {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-self: start;
   min-height: 0;
   border: 0;
   border-radius: 0;
@@ -10053,6 +10064,10 @@ body,
 
 .ai-overview-signal p,
 [data-theme="dark"] .ai-overview-signal p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   margin: 5px 0 0;
   color: color-mix(in srgb, var(--overview-ai-text) 78%, var(--overview-muted));
   font-size: 0.75rem;
@@ -10127,30 +10142,34 @@ body,
 .enso-gauge-labels {
   position: absolute;
   z-index: 2;
-  top: 82px;
-  right: 7px;
-  left: 7px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
+  inset: 0;
   pointer-events: none;
 }
 
 .enso-gauge-labels span {
+  position: absolute;
   color: var(--overview-muted);
   font-size: 0.55rem;
   font-weight: 700;
-  text-align: center;
+  white-space: nowrap;
 }
 
 .enso-gauge-labels span:first-child {
+  bottom: 7px;
+  left: 7px;
   color: #4b86c9;
-  text-align: left;
+}
+
+.enso-gauge-labels span:nth-child(2) {
+  top: 9px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .enso-gauge-labels span:last-child {
+  right: 7px;
+  bottom: 7px;
   color: #578a5b;
-  text-align: right;
 }
 
 .enso-overview-status {
@@ -10273,6 +10292,8 @@ body,
 }
 
 .overview-secondary-grid .outlook-range-block {
+  width: 100%;
+  max-width: none;
   margin-top: 14px;
 }
 
@@ -10282,6 +10303,9 @@ body,
 }
 
 .outlook-range-track {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
   background: var(--overview-range-bg);
 }
 
