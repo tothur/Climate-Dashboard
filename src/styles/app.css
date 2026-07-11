@@ -8315,6 +8315,10 @@ h3 {
     gap: 5px;
   }
 
+  .mobile-app-bar.menu-open .mobile-menu-button {
+    visibility: hidden;
+  }
+
   .mobile-menu-button span {
     display: block;
     width: 20px;
@@ -8385,17 +8389,9 @@ h3 {
     display: grid;
   }
 
-  .drawer-close-button span {
-    position: absolute;
+  .drawer-close-icon {
     width: 20px;
-    height: 2px;
-    border-radius: 999px;
-    background: currentColor;
-    transform: rotate(45deg);
-  }
-
-  .drawer-close-button span:last-child {
-    transform: rotate(-45deg);
+    height: 20px;
   }
 
   .dashboard-sidebar .sidebar-nav {

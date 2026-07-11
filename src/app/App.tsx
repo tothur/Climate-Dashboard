@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { EChartsOption } from "echarts";
 import { buildDashboardSnapshot, createBundledDataSource } from "../data/adapter";
 import type {
@@ -332,6 +332,7 @@ type ToolkitIconName =
   | "bars"
   | "calendar"
   | "cloud"
+  | "close"
   | "contrast"
   | "download"
   | "globe"
@@ -1004,6 +1005,13 @@ function ToolkitIcon({ name, className }: { name: ToolkitIconName; className?: s
       return (
         <svg {...common}>
           <path d="M17.5 18H8a5 5 0 1 1 1.1-9.9A6 6 0 0 1 20 12.2 3.2 3.2 0 0 1 17.5 18Z" />
+        </svg>
+      );
+    case "close":
+      return (
+        <svg {...common}>
+          <path d="m6 6 12 12" />
+          <path d="m18 6-12 12" />
         </svg>
       );
     case "contrast":
@@ -3202,6 +3210,12 @@ export function App() {
     return dashboardViewFromHash(window.location.hash);
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+    window.requestAnimationFrame(() => mobileMenuButtonRef.current?.focus());
+  };
 
   const t = STRINGS[language];
   const ensoOutlook = dataSource.ensoOutlook ?? null;
@@ -3241,7 +3255,7 @@ export function App() {
   useEffect(() => {
     if (!mobileMenuOpen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileMenuOpen(false);
+      if (event.key === "Escape") closeMobileMenu();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -4396,7 +4410,7 @@ export function App() {
   );
   return (
     <div className="app-frame">
-      <header className="mobile-app-bar">
+      <header className={`mobile-app-bar${mobileMenuOpen ? " menu-open" : ""}`}>
         <button type="button" className="mobile-brand" onClick={() => setDashboardView("overview")} aria-label={t.appTitle}>
           <span className={`sidebar-logo-wrap mode-${snapshot.sourceMode}`} title={sourceModeLabel}>
             <img className="sidebar-logo" src={EARTH_LOGO_URL} alt="" aria-hidden="true" />
@@ -4410,6 +4424,7 @@ export function App() {
         <button
           type="button"
           className="mobile-menu-button"
+          ref={mobileMenuButtonRef}
           aria-label={language === "hu" ? "Navigáció megnyitása" : "Open navigation"}
           aria-expanded={mobileMenuOpen}
           aria-controls="dashboard-sidebar"
@@ -4425,7 +4440,7 @@ export function App() {
         className={`sidebar-backdrop${mobileMenuOpen ? " open" : ""}`}
         aria-label={language === "hu" ? "Navigáció bezárása" : "Close navigation"}
         tabIndex={mobileMenuOpen ? 0 : -1}
-        onClick={() => setMobileMenuOpen(false)}
+        onClick={closeMobileMenu}
       />
       <aside
         id="dashboard-sidebar"
@@ -4446,10 +4461,9 @@ export function App() {
           type="button"
           className="drawer-close-button"
           aria-label={language === "hu" ? "Navigáció bezárása" : "Close navigation"}
-          onClick={() => setMobileMenuOpen(false)}
+          onClick={closeMobileMenu}
         >
-          <span aria-hidden="true" />
-          <span aria-hidden="true" />
+          <ToolkitIcon name="close" className="drawer-close-icon" />
         </button>
         <nav className="sidebar-nav">
           {navGroups.map((group) => {
