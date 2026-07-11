@@ -3201,6 +3201,7 @@ export function App() {
     if (typeof window === "undefined") return "overview";
     return dashboardViewFromHash(window.location.hash);
   });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const t = STRINGS[language];
   const ensoOutlook = dataSource.ensoOutlook ?? null;
@@ -3236,6 +3237,24 @@ export function App() {
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
   }, []);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen || !window.matchMedia("(max-width: 1020px)").matches) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -4058,6 +4077,7 @@ export function App() {
     ) : null;
   const setDashboardView = (view: DashboardView) => {
     setActiveView(view);
+    setMobileMenuOpen(false);
     if (typeof window !== "undefined") {
       window.history.replaceState(null, "", `#${view}`);
     }
@@ -4376,7 +4396,42 @@ export function App() {
   );
   return (
     <div className="app-frame">
-      <aside className="dashboard-sidebar" aria-label={t.dashboardNavigationAria}>
+      <header className="mobile-app-bar">
+        <button type="button" className="mobile-brand" onClick={() => setDashboardView("overview")} aria-label={t.appTitle}>
+          <span className={`sidebar-logo-wrap mode-${snapshot.sourceMode}`} title={sourceModeLabel}>
+            <img className="sidebar-logo" src={EARTH_LOGO_URL} alt="" aria-hidden="true" />
+            <span className="sidebar-status-dot" aria-hidden="true" />
+          </span>
+          <span>
+            <strong>{t.appTitle}</strong>
+            <small>{pageTitle}</small>
+          </span>
+        </button>
+        <button
+          type="button"
+          className="mobile-menu-button"
+          aria-label={language === "hu" ? "Navigáció megnyitása" : "Open navigation"}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="dashboard-sidebar"
+          onClick={() => setMobileMenuOpen((open) => !open)}
+        >
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+        </button>
+      </header>
+      <button
+        type="button"
+        className={`sidebar-backdrop${mobileMenuOpen ? " open" : ""}`}
+        aria-label={language === "hu" ? "Navigáció bezárása" : "Close navigation"}
+        tabIndex={mobileMenuOpen ? 0 : -1}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+      <aside
+        id="dashboard-sidebar"
+        className={`dashboard-sidebar${mobileMenuOpen ? " mobile-open" : ""}`}
+        aria-label={t.dashboardNavigationAria}
+      >
         <button type="button" className="sidebar-brand" onClick={() => setDashboardView("overview")} aria-label={t.appTitle}>
           <span className={`sidebar-logo-wrap mode-${snapshot.sourceMode}`} title={sourceModeLabel}>
             <img className="sidebar-logo" src={EARTH_LOGO_URL} alt="" aria-hidden="true" />
@@ -4386,6 +4441,15 @@ export function App() {
             <strong>{t.appTitle}</strong>
             <small>{t.brandSubtitle}</small>
           </span>
+        </button>
+        <button
+          type="button"
+          className="drawer-close-button"
+          aria-label={language === "hu" ? "Navigáció bezárása" : "Close navigation"}
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
         </button>
         <nav className="sidebar-nav">
           {navGroups.map((group) => {
@@ -4402,6 +4466,7 @@ export function App() {
                     onClick={() => setDashboardView(item.view)}
                     title={item.label}
                     aria-label={item.label}
+                    aria-current={activeView === item.view ? "page" : undefined}
                   >
                     <ToolkitIcon name={item.icon} className="nav-icon" />
                     <span className="nav-label">{item.label}</span>
