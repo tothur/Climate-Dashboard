@@ -78,3 +78,38 @@
 - `npm test` passes all 22 tests and `npm run build` passes after the final fidelity pass.
 
 final result: passed
+
+---
+
+# Mobile Drawer Close Control QA
+
+- Source visual truth: `/Users/andrastoth/Pictures/Photos Library.photoslibrary/resources/derivatives/masters/B/B7561D90-1532-4D9D-9350-F5BCD4F0252B_4_5005_c.jpeg`
+- Implementation capture: `/Users/andrastoth/Coding/Climate-Dashboard/.codex-audit/03-mobile-drawer-close-button.png`
+- Viewport: `393 x 852` CSS px (iPhone 15 Pro)
+- State: mobile navigation drawer open.
+
+**Findings**
+
+- [P1 — fixed] The source screenshot exposes the background hamburger beside the drawer X, creating competing close affordances. The open state now hides that trigger and keeps one centered X in a `48 x 48px` target. The X uses the shared icon treatment and returns focus to the menu trigger after closing.
+
+**Required Fidelity Surfaces**
+
+- Fonts and typography: unchanged; the close control contains no text.
+- Spacing and layout rhythm: the X remains at the `16px` top/right inset in its `48px` target.
+- Colors and visual tokens: the existing drawer surface, border, and high-contrast icon color are retained.
+- Image quality and asset fidelity: the existing Earth logo is retained; the close mark uses the shared vector icon system.
+- Copy and content: the localized close label remains unchanged for assistive technology.
+
+**Interaction Checks**
+
+- Tapping the X hides the drawer.
+- Focus returns to the menu trigger.
+- The menu trigger reports `aria-expanded="false"` after closing.
+
+**Comparison History**
+
+1. Initial state: the source screenshot showed the background hamburger beside the drawer X (P1).
+2. Fix: hide the opener while open; replace the custom cross lines with the shared close icon; restore focus after closing.
+3. Post-fix verification: the drawer hides, focus returns to the opener, and no actionable P0/P1/P2 issue remains for this scoped control.
+
+final result: passed
