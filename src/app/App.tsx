@@ -4529,8 +4529,8 @@ export function App() {
         </div>
       </aside>
 
-      <main className="app-shell">
-        <header className="topbar">
+      <main className={`app-shell dashboard-view dashboard-view-${activeView}`}>
+        <header className="topbar dashboard-page-header">
           <div className="topbar-brand">
             <div>
               <div className="topbar-heading">
@@ -4773,7 +4773,7 @@ export function App() {
         ) : null}
 
       {activeView === "indicators" ? (
-      <section className="collapsible-section detail-page-section" id="indicators">
+      <section className="collapsible-section detail-page-section detail-page-indicators" id="indicators">
         <header className="section-header">
           <div className="section-header-main">
             <h2>{t.climateIndicatorsTitle}</h2>
@@ -5215,7 +5215,7 @@ export function App() {
       ) : null}
 
       {activeView === "maps" ? (
-      <section className="collapsible-section detail-page-section" id="maps">
+      <section className="collapsible-section detail-page-section detail-page-maps" id="maps">
         <header className="section-header">
           <div className="section-header-main">
             <h2>{t.mapsSectionTitle}</h2>
@@ -5257,7 +5257,7 @@ export function App() {
       ) : null}
 
       {activeView === "forcing" ? (
-      <section className="collapsible-section detail-page-section" id="forcing">
+      <section className="collapsible-section detail-page-section detail-page-forcing" id="forcing">
         <header className="section-header">
           <div className="section-header-main">
             <h2>{t.forcingTitle}</h2>
@@ -5364,7 +5364,7 @@ export function App() {
       ) : null}
 
       {activeView === "variability" ? (
-        <section className="collapsible-section detail-page-section" id="variability">
+        <section className="collapsible-section detail-page-section detail-page-variability" id="variability">
           <header className="section-header">
             <div className="section-header-main">
               <h2>{t.naturalVariabilityTitle}</h2>
@@ -5406,7 +5406,7 @@ export function App() {
       ) : null}
 
       {activeView === "projections" && projectedAnnualGlobalMeanAnomaly ? (
-        <section className="collapsible-section detail-page-section" id="projections">
+        <section className="collapsible-section detail-page-section detail-page-projections" id="projections">
           <header className="section-header">
             <div className="section-header-main">
               <h2>{t.projectionsTitle}</h2>
@@ -5603,7 +5603,7 @@ export function App() {
       ) : null}
 
       {activeView === "sources" ? (
-      <footer className="dashboard-footer detail-page-section" id="sources">
+      <footer className="dashboard-footer detail-page-section detail-page-sources" id="sources">
         <div className="data-page-status-grid">
           <article className={`data-status-card source ${snapshot.sourceMode === "live" ? "live" : "sample"}`}>
             <span>{t.sourceStatusTitle}</span>
