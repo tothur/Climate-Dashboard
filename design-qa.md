@@ -113,3 +113,49 @@ final result: passed
 3. Post-fix verification: the drawer hides, focus returns to the opener, and no actionable P0/P1/P2 issue remains for this scoped control.
 
 final result: passed
+
+---
+
+# Detail Pages Design-System QA
+
+- Source visual truth: `/Users/andrastoth/Coding/Climate-Dashboard/design-qa-artifacts/overview-ai-summary-full-height-desktop.png`
+- Primary implementation capture: `/Users/andrastoth/Coding/Climate-Dashboard/design-qa-artifacts/detail-pages-indicators-desktop.png`
+- Dark-theme implementation capture: `/Users/andrastoth/Coding/Climate-Dashboard/design-qa-artifacts/detail-pages-sources-dark-desktop.png`
+- Viewports: desktop `2048 x 827`; mobile `390 x 844`
+- States: Indicators, Maps, Projections, and Data; light and dark themes; live runtime data loaded.
+
+**Findings**
+
+- [P2 — fixed] Detail content initially sat inside an additional `18px` inset, so its primary card edge did not align with the overview header and card grid. The final detail content and page header both start at `90px` in the desktop capture.
+- [P2 — fixed] Detail pages previously rendered as visually similar nested containers with weak page identity. The final system adds restrained domain accents, editorial section headings, overview-style metric hierarchy, and consistent panel framing without changing the underlying data or interactions.
+- [P2 — fixed] The Data page used a legacy footer treatment that did not read as a dashboard view. Status and source groups now use the same mineral card surfaces, border treatment, serif hierarchy, and dark-theme contrast as the rest of the product.
+
+**Required Fidelity Surfaces**
+
+- Fonts and typography: the side-by-side overview/Indicators comparison confirms that editorial headings use the same serif voice while measurements remain in the existing monospaced data face.
+- Spacing and layout rhythm: page headers, sections, summary cards, and chart panels share the overview grid line, radii, borders, and compact vertical rhythm.
+- Colors and visual tokens: temperature, forcing, ocean/variability, projection, and source views use semantic accents derived from existing dashboard tokens; dark mode retains the mineral navy surface system.
+- Image quality and asset fidelity: map imagery remains the original inspectable source asset, with no placeholder or synthetic replacement.
+- Copy and content: all existing English/Hungarian labels, values, freshness chips, source links, and chart behavior are preserved.
+
+**Focused Region Comparison**
+
+- The overview and Indicators captures were opened together at the same `2048 x 827` viewport. The header/meta hierarchy, card edge alignment, serif/sans/mono contrast, and semantic value color are readable at full resolution, so no additional crop was required.
+
+**Responsive And Interaction Checks**
+
+- Indicators at `390 x 844` reports a `390px` document width and `390px` scroll width; summary cards stack to `280px` without clipping.
+- Maps at desktop reports four visible map panels and no horizontal overflow.
+- Projections reports three primary overview-style cards and no horizontal overflow.
+- Navigation, section collapse controls, full-screen chart/map controls, theme switching, and language switching remain wired to the existing implementation.
+- Browser console checked after Projections rendering; no warnings or errors were reported.
+- `npm run typecheck`, all 22 tests, `npm run build`, and `git diff --check` pass.
+
+**Comparison History**
+
+1. Initial detail views retained legacy nested-container spacing and weak hierarchy (P2).
+2. The design-system pass added shared page state classes, semantic accents, editorial headers, metric-card hierarchy, panel framing, and Data-page surfaces.
+3. The first browser pass found the detail content grid was inset `18px` relative to the page header (P2). The final alignment override removed that inset; browser measurements now report identical `90px` left edges.
+4. Desktop light, desktop dark, and `390px` mobile verification found no remaining P0/P1/P2 issue.
+
+final result: passed
