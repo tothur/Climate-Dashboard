@@ -193,6 +193,7 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
   const arcticSurfaceTemperature = generateSeries("1979-01-01", endDateIso, -10.5, 0.0025, 13.6, 365.25, 0.22);
   const antarcticSurfaceTemperature = generateSeries("1979-01-01", endDateIso, -23.8, 0.0017, 8.8, 365.25, 0.2, 182.625);
   const northAtlanticSeaSurfaceTemperature = generateSeries("1982-01-01", endDateIso, 21.2, 0.0006, 2.45, 365.25, 0.06);
+  const dailyNino34SeaSurfaceTemperature = generateSeries("1982-01-01", endDateIso, 26.7, 0.00008, 0.75, 365.25, 0.08, 40);
   const globalSurfaceTempClimatology = climatologyByDayOfYear(globalSurfaceTemperature, 1991, 2020);
   const globalSeaSurfaceTempClimatology = climatologyByDayOfYear(globalSeaSurfaceTemperature, 1991, 2020);
   const northernHemisphereSurfaceTempClimatology = climatologyByDayOfYear(northernHemisphereSurfaceTemperature, 1991, 2020);
@@ -253,6 +254,7 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
     arctic_surface_temperature: arcticSurfaceTemperature,
     antarctic_surface_temperature: antarcticSurfaceTemperature,
     north_atlantic_sea_surface_temperature: northAtlanticSeaSurfaceTemperature,
+    daily_nino34_sea_surface_temperature: dailyNino34SeaSurfaceTemperature,
     global_surface_temperature_anomaly: globalSurfaceTemperatureAnomaly,
     global_sea_surface_temperature_anomaly: globalSeaSurfaceTemperatureAnomaly,
     northern_hemisphere_surface_temperature_anomaly: northernHemisphereSurfaceTemperatureAnomaly,
@@ -296,6 +298,7 @@ export const CLIMATE_METRIC_KEYS: ClimateMetricKey[] = [
   "northern_hemisphere_surface_temperature",
   "arctic_surface_temperature",
   "north_atlantic_sea_surface_temperature",
+  "daily_nino34_sea_surface_temperature",
   "southern_hemisphere_surface_temperature",
   "antarctic_surface_temperature",
   "global_surface_temperature_anomaly",

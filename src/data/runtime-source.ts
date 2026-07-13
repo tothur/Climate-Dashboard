@@ -19,6 +19,7 @@ const ERA5_ARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/jso
 const ERA5_ANTARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_antarctic_t2_day.json";
 const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json";
 const OISST_NORTH_ATLANTIC_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json";
+const OISST_NINO34_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_nino3.4_sst_day.json";
 const ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL = "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv";
 const ECMWF_PREINDUSTRIAL_OFFSET_C = 0.88;
 const SEA_LEVEL_RESEARCH_GROUP_URL = "https://sealevel.colorado.edu/";
@@ -77,6 +78,7 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "arctic_surface_temperature",
   "antarctic_surface_temperature",
   "north_atlantic_sea_surface_temperature",
+  "daily_nino34_sea_surface_temperature",
   "global_surface_temperature_anomaly",
   "global_sea_surface_temperature_anomaly",
   "northern_hemisphere_surface_temperature_anomaly",
@@ -122,6 +124,7 @@ const LOCAL_GENERATED_SERIES_MAX_AGE_DAYS: Record<keyof ClimateSeriesBundle, num
   arctic_surface_temperature: 20,
   antarctic_surface_temperature: 20,
   north_atlantic_sea_surface_temperature: 45,
+  daily_nino34_sea_surface_temperature: 45,
   global_surface_temperature_anomaly: 20,
   global_sea_surface_temperature_anomaly: 45,
   northern_hemisphere_surface_temperature_anomaly: 20,
@@ -1581,6 +1584,7 @@ interface RegionalTemperatureSeriesBundle {
   arctic: DailyPoint[] | null;
   antarctic: DailyPoint[] | null;
   northAtlanticSst: DailyPoint[] | null;
+  nino34Sst: DailyPoint[] | null;
   northernHemisphereAnomaly: DailyPoint[] | null;
   southernHemisphereAnomaly: DailyPoint[] | null;
   arcticAnomaly: DailyPoint[] | null;
@@ -1589,12 +1593,13 @@ interface RegionalTemperatureSeriesBundle {
 }
 
 async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatureSeriesBundle> {
-  const [nhPayload, shPayload, arcticPayload, antarcticPayload, northAtlanticSstPayload] = await Promise.all([
+  const [nhPayload, shPayload, arcticPayload, antarcticPayload, northAtlanticSstPayload, nino34SstPayload] = await Promise.all([
     fetchJson(ERA5_NH_SURFACE_TEMP_URL),
     fetchJson(ERA5_SH_SURFACE_TEMP_URL),
     fetchJson(ERA5_ARCTIC_SURFACE_TEMP_URL),
     fetchJson(ERA5_ANTARCTIC_SURFACE_TEMP_URL),
     fetchJson(OISST_NORTH_ATLANTIC_SST_URL),
+    fetchJson(OISST_NINO34_SST_URL),
   ]);
 
   const northernHemisphere = nhPayload
@@ -1686,6 +1691,13 @@ async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatur
         northAtlanticSst
       )
     : [];
+  const nino34Sst = nino34SstPayload
+    ? sanitizeSeries(parseReanalyzerDailyJson(nino34SstPayload), {
+        minValue: 15,
+        maxValue: 35,
+        maxAgeDays: 45,
+      })
+    : [];
 
   return {
     northernHemisphere: northernHemisphere.length ? northernHemisphere : null,
@@ -1693,6 +1705,7 @@ async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatur
     arctic: arctic.length ? arctic : null,
     antarctic: antarctic.length ? antarctic : null,
     northAtlanticSst: northAtlanticSst.length ? northAtlanticSst : null,
+    nino34Sst: nino34Sst.length ? nino34Sst : null,
     northernHemisphereAnomaly: northernHemisphereAnomaly.length ? northernHemisphereAnomaly : null,
     southernHemisphereAnomaly: southernHemisphereAnomaly.length ? southernHemisphereAnomaly : null,
     arcticAnomaly: arcticAnomaly.length ? arcticAnomaly : null,
@@ -2104,6 +2117,12 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
       warnings.push("Live North Atlantic Sea Surface Temperature feed was unavailable or stale; using bundled fallback.");
     }
 
+    if (regionalResult.value.nino34Sst?.length) {
+      liveSeries.daily_nino34_sea_surface_temperature = regionalResult.value.nino34Sst;
+    } else {
+      warnings.push("Live Daily Sea Surface Temperature, Niño 3.4 feed was unavailable or stale; using bundled fallback.");
+    }
+
     if (regionalResult.value.northernHemisphereAnomaly?.length) {
       liveSeries.northern_hemisphere_surface_temperature_anomaly = regionalResult.value.northernHemisphereAnomaly;
     } else {
@@ -2139,6 +2158,7 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     warnings.push("Live Arctic Surface Temperature feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live Antarctic Surface Temperature feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live North Atlantic Sea Surface Temperature feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Daily Sea Surface Temperature, Niño 3.4 feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live Northern Hemisphere Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live Southern Hemisphere Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live Arctic Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");

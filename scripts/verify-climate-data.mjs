@@ -150,6 +150,13 @@ const SERIES_RULES = {
     minPoints: 8_000,
     minPointsLastYear: 250,
   },
+  daily_nino34_sea_surface_temperature: {
+    minValue: 15,
+    maxValue: 35,
+    maxAgeDays: 45,
+    minPoints: 8_000,
+    minPointsLastYear: 250,
+  },
   global_surface_temperature_anomaly: {
     minValue: -10,
     maxValue: 10,
