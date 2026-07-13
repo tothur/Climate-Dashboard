@@ -30,6 +30,7 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "northern_hemisphere_surface_temperature",
   "arctic_surface_temperature",
   "north_atlantic_sea_surface_temperature",
+  "daily_nino34_sea_surface_temperature",
   "southern_hemisphere_surface_temperature",
   "antarctic_surface_temperature",
   "global_surface_temperature_anomaly",
@@ -272,6 +273,20 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionEn: "NOAA OISST v2.1 daily North Atlantic SST, published by Climate Reanalyzer.",
       descriptionHu: "NOAA OISST v2.1 napi észak-atlanti tengerfelszíni hőmérséklet, a Climate Reanalyzer közlésében.",
       url: "https://climatereanalyzer.org/clim/sst_daily/",
+    },
+  },
+  daily_nino34_sea_surface_temperature: {
+    titleEn: "Daily Sea Surface Temperature, Niño 3.4",
+    titleHu: "Napi tengerfelszíni hőmérséklet, Niño 3.4",
+    unit: "°C",
+    decimals: 2,
+    source: {
+      shortName: "Climate Reanalyzer (NOAA OISST v2.1)",
+      descriptionEn:
+        "NOAA OISST v2.1 daily sea surface temperature for the Niño 3.4 region (5°S-5°N, 120-170°W), published by Climate Reanalyzer.",
+      descriptionHu:
+        "NOAA OISST v2.1 napi tengerfelszíni hőmérséklet a Niño 3.4 régióban (5°D-5°É, 120-170°Ny), a Climate Reanalyzer közlésében.",
+      url: "https://climatereanalyzer.org/clim/sst_daily/?dm_id=nino3.4",
     },
   },
   global_surface_temperature_anomaly: {

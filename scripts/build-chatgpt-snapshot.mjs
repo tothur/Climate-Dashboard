@@ -22,6 +22,7 @@ const METRICS = {
   arctic_surface_temperature: { label: "Arctic Surface Temperature", unit: "°C" },
   antarctic_surface_temperature: { label: "Antarctic Surface Temperature", unit: "°C" },
   north_atlantic_sea_surface_temperature: { label: "North Atlantic Sea Surface Temperature", unit: "°C" },
+  daily_nino34_sea_surface_temperature: { label: "Daily Sea Surface Temperature, Niño 3.4", unit: "°C" },
   global_surface_temperature_anomaly: { label: "Global Surface Temperature Anomaly", unit: "°C" },
   global_sea_surface_temperature_anomaly: { label: "Global Sea Surface Temperature Anomaly", unit: "°C" },
   northern_hemisphere_surface_temperature_anomaly: { label: "Northern Hemisphere Surface Temperature Anomaly", unit: "°C" },

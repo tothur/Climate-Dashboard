@@ -401,6 +401,7 @@ const REGIONAL_TEMPERATURE_KEYS = new Set([
   "arctic_surface_temperature",
   "antarctic_surface_temperature",
   "north_atlantic_sea_surface_temperature",
+  "daily_nino34_sea_surface_temperature",
 ]);
 const REGIONAL_TEMPERATURE_ORDER: ClimateMetricSeries["key"][] = [
   "northern_hemisphere_surface_temperature",
@@ -408,6 +409,7 @@ const REGIONAL_TEMPERATURE_ORDER: ClimateMetricSeries["key"][] = [
   "arctic_surface_temperature",
   "antarctic_surface_temperature",
   "north_atlantic_sea_surface_temperature",
+  "daily_nino34_sea_surface_temperature",
 ];
 const REGIONAL_TEMPERATURE_RANK = new Map(REGIONAL_TEMPERATURE_ORDER.map((key, index) => [key, index]));
 const REGIONAL_TEMPERATURE_ANOMALY_ORDER: ClimateMetricSeries["key"][] = [
@@ -631,7 +633,7 @@ const STRINGS = {
     yearLabel: "Year",
     regionalTemperaturesSectionTitle: "Regional Temperatures",
     regionalTemperaturesSectionNote:
-      "Daily Jan-Dec comparison for Northern Hemisphere, Arctic, North Atlantic SST, Southern Hemisphere, and Antarctic temperatures.",
+      "Daily Jan-Dec comparison for Northern Hemisphere, Arctic, North Atlantic SST, Niño 3.4 SST, Southern Hemisphere, and Antarctic temperatures.",
     regionalTemperatureAnomaliesSectionTitle: "Regional Temperature Anomalies",
     regionalTemperatureAnomaliesSectionNote:
       "Daily regional anomalies relative to each feed's 1991-2020 climatology for hemispheres, polar regions, and North Atlantic SST.",
@@ -852,7 +854,7 @@ const STRINGS = {
     yearLabel: "Év",
     regionalTemperaturesSectionTitle: "Regionális hőmérsékletek",
     regionalTemperaturesSectionNote:
-      "Napi január-decemberi összehasonlítás az északi félteke, a déli félteke, az Arktisz, az Antarktisz és az észak-atlanti tengerfelszíni hőmérséklet (SST) adataival.",
+      "Napi január-decemberi összehasonlítás az északi félteke, a déli félteke, az Arktisz, az Antarktisz, az észak-atlanti SST és a Niño 3.4 SST adataival.",
     regionalTemperatureAnomaliesSectionTitle: "Regionális hőmérsékleti anomáliák",
     regionalTemperatureAnomaliesSectionNote:
       "Napi regionális anomáliák az egyes adatforrások 1991-2020-as klimatológiájához viszonyítva: féltekék, sarkvidékek és Észak-Atlanti SST.",
@@ -2865,6 +2867,8 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
       return { min: -40, max: -8 };
     case "north_atlantic_sea_surface_temperature":
       return { min: 18, max: 26 };
+    case "daily_nino34_sea_surface_temperature":
+      return { min: 24, max: 30 };
     case "global_sea_ice_extent":
       return { min: 10, max: 30 };
     case "arctic_sea_ice_extent":
@@ -2887,6 +2891,7 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
     case "arctic_surface_temperature":
     case "antarctic_surface_temperature":
     case "north_atlantic_sea_surface_temperature":
+    case "daily_nino34_sea_surface_temperature":
     case "global_surface_temperature_anomaly":
     case "global_sea_surface_temperature_anomaly":
     case "northern_hemisphere_surface_temperature_anomaly":
@@ -3072,6 +3077,7 @@ function freshnessPolicyForMetric(metricKey: ClimateMetricSeries["key"]): Freshn
     case "global_sea_surface_temperature":
     case "global_sea_surface_temperature_anomaly":
     case "north_atlantic_sea_surface_temperature":
+    case "daily_nino34_sea_surface_temperature":
     case "north_atlantic_sea_surface_temperature_anomaly":
       return { cadence: "daily", warningDays: 21, staleDays: 45 };
     case "atmospheric_co2":

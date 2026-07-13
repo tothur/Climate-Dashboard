@@ -18,6 +18,7 @@ const ERA5_ARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/jso
 const ERA5_ANTARCTIC_SURFACE_TEMP_URL = "https://cr.acg.maine.edu/clim/t2_daily/json/era5_antarctic_t2_day.json";
 const OISST_GLOBAL_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json";
 const OISST_NORTH_ATLANTIC_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json";
+const OISST_NINO34_SST_URL = "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_nino3.4_sst_day.json";
 const ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL = "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv";
 const ECMWF_PREINDUSTRIAL_OFFSET_C = 0.88;
 const SEA_LEVEL_RESEARCH_GROUP_URL = "https://sealevel.colorado.edu/";
@@ -2665,6 +2666,7 @@ async function updateOnce() {
     arcticPayload,
     antarcticPayload,
     northAtlanticSstPayload,
+    nino34SstPayload,
     northCsv,
     southCsv,
     co2Csv,
@@ -2699,6 +2701,7 @@ async function updateOnce() {
     fetchJson(ERA5_ARCTIC_SURFACE_TEMP_URL),
     fetchJson(ERA5_ANTARCTIC_SURFACE_TEMP_URL),
     fetchJson(OISST_NORTH_ATLANTIC_SST_URL),
+    fetchJson(OISST_NINO34_SST_URL),
     fetchText(NSIDC_NORTH_DAILY_EXTENT_URL),
     fetchText(NSIDC_SOUTH_DAILY_EXTENT_URL),
     fetchText(NOAA_MAUNA_LOA_CO2_DAILY_URL),
@@ -2904,6 +2907,11 @@ async function updateOnce() {
     }),
     northAtlanticSeaSurfaceTemperature
   );
+  const dailyNino34SeaSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(nino34SstPayload), {
+    minValue: 15,
+    maxValue: 35,
+    maxAgeDays: 45,
+  });
   const arcticSeaIceExtent = sanitizeSeries(parseNsidcDailyExtentCsv(northCsv), {
     minValue: 0,
     maxValue: 30,
@@ -3224,6 +3232,7 @@ async function updateOnce() {
     arctic_surface_temperature: arcticSurfaceTemperature,
     antarctic_surface_temperature: antarcticSurfaceTemperature,
     north_atlantic_sea_surface_temperature: northAtlanticSeaSurfaceTemperature,
+    daily_nino34_sea_surface_temperature: dailyNino34SeaSurfaceTemperature,
     global_surface_temperature_anomaly: globalSurfaceTemperatureAnomaly,
     global_sea_surface_temperature_anomaly: globalSeaSurfaceTemperatureAnomaly,
     northern_hemisphere_surface_temperature_anomaly: northernHemisphereSurfaceTemperatureAnomaly,
@@ -3281,6 +3290,7 @@ async function updateOnce() {
       arctic_surface_temperature: ERA5_ARCTIC_SURFACE_TEMP_URL,
       antarctic_surface_temperature: ERA5_ANTARCTIC_SURFACE_TEMP_URL,
       north_atlantic_sea_surface_temperature: OISST_NORTH_ATLANTIC_SST_URL,
+      daily_nino34_sea_surface_temperature: OISST_NINO34_SST_URL,
       global_surface_temperature_anomaly:
         "Derived from ERA5 daily global surface temperature minus 1991-2020 daily climatology from the same feed.",
       global_sea_surface_temperature_anomaly:
