@@ -2438,6 +2438,8 @@ function validateOpenAiSummaryText(openAiSummary, temperatureChecks, anomalySign
   if (hasTemperatureWarning) {
     const warningKeys = new Set(temperatureChecks.filter((check) => check.tone !== "normal").map((check) => check.key));
     if (!items.some((item) => warningKeys.has(item.signalKey))) return null;
+    const requiredTemperatureLead = buildTemperatureSummaryTextEn(temperatureChecks).split(".")[0];
+    if (!normalizedTextEn.startsWith(requiredTemperatureLead)) return null;
   } else if (!/not unusually high/i.test(normalizedTextEn)) {
     return null;
   }
