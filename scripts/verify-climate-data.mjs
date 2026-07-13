@@ -306,6 +306,16 @@ const SERIES_RULES = {
   },
 };
 
+// Stale fast-cadence series indicate that the publishing pipeline itself is
+// broken and must stop publication. Slow upstream products can legitimately
+// lag for months; keep validating their shape and values, but report their
+// age as a warning so they cannot freeze every daily dashboard metric.
+const BLOCKING_FRESHNESS_KEYS = new Set(
+  Object.entries(SERIES_RULES)
+    .filter(([, rules]) => rules.maxAgeDays <= 45)
+    .map(([key]) => key)
+);
+
 function utcMidnightNow() {
   const now = new Date();
   return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
@@ -407,7 +417,12 @@ function verifySeries(key, points, payload, nowMidnight, errors, warnings) {
 
   const ageDays = Math.floor((nowMidnight - lastPoint.ts) / DAY_MS);
   if (ageDays > rules.maxAgeDays) {
-    errors.push(`${key}: stale latest point ${formatDate(lastPoint.date)} (${ageDays} days old; max ${rules.maxAgeDays})`);
+    const message = `${key}: stale latest point ${formatDate(lastPoint.date)} (${ageDays} days old; max ${rules.maxAgeDays})`;
+    if (BLOCKING_FRESHNESS_KEYS.has(key)) {
+      errors.push(message);
+    } else {
+      warnings.push(message);
+    }
   }
 
   if (pointsLastYear < rules.minPointsLastYear) {
