@@ -1392,12 +1392,13 @@ function parseNoaaCpcMonthlyIndexTable(rawText) {
     if (!line || /^jan\b/i.test(line)) continue;
 
     const columns = line.split(/\s+/);
-    if (columns.length < 13) continue;
+    if (columns.length < 2) continue;
 
     const year = Number(columns[0]);
     if (!Number.isFinite(year) || year < 1800 || year > 2200) continue;
 
-    for (let month = 1; month <= 12; month += 1) {
+    const availableMonths = Math.min(12, columns.length - 1);
+    for (let month = 1; month <= availableMonths; month += 1) {
       const value = toFiniteNumber(columns[month]);
       if (value == null || value <= -90) continue;
       const date = formatDateFromParts(year, month, 1);
@@ -1418,12 +1419,13 @@ function parseNoaaPslMonthlyIndexData(rawText) {
     if (!line) continue;
 
     const columns = line.split(/\s+/);
-    if (columns.length < 13) continue;
+    if (columns.length < 2) continue;
 
     const year = Number(columns[0]);
     if (!Number.isFinite(year) || year < 1800 || year > 2200) continue;
 
-    for (let month = 1; month <= 12; month += 1) {
+    const availableMonths = Math.min(12, columns.length - 1);
+    for (let month = 1; month <= availableMonths; month += 1) {
       const value = toFiniteNumber(columns[month]);
       if (value == null || value <= -90) continue;
       const date = formatDateFromParts(year, month, 1);

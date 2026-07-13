@@ -25,9 +25,23 @@ test("stale published dataset fills live-feed gaps before bundled stubs", async 
 
 test("only fast-cadence series gate the whole local dataset", async () => {
   const runtimeSource = await readProjectFile("src/data/runtime-source.ts");
+  const verificationSource = await readProjectFile("scripts/verify-climate-data.mjs");
 
   assert.match(runtimeSource, /BLOCKING_FRESHNESS_KEYS/);
   assert.match(runtimeSource, /if \(!BLOCKING_FRESHNESS_KEYS\.has\(key\)\) return true;/);
+  assert.match(verificationSource, /BLOCKING_FRESHNESS_KEYS/);
+  assert.match(verificationSource, /if \(BLOCKING_FRESHNESS_KEYS\.has\(key\)\)/);
+  assert.match(verificationSource, /warnings\.push\(message\)/);
+});
+
+test("monthly index parsers accept partial current-year rows", async () => {
+  const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
+  const runtimeSource = await readProjectFile("src/data/runtime-source.ts");
+
+  for (const source of [updateScript, runtimeSource]) {
+    assert.match(source, /const availableMonths = Math\.min\(12, columns\.length - 1\);/);
+    assert.match(source, /month <= availableMonths/);
+  }
 });
 
 test("runtime fallback can recover ice-sheet and glacier metrics from live sources", async () => {
