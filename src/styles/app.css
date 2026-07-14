@@ -22,6 +22,300 @@
   --shadow: var(--shadow-1);
 }
 
+/* Detail-view alignment with the overview design system. */
+.dashboard-view {
+  --view-accent: var(--accent);
+  --view-accent-soft: color-mix(in srgb, var(--view-accent) 9%, transparent);
+}
+
+.dashboard-view-indicators {
+  --view-accent: var(--domain-temperature);
+}
+
+.dashboard-view-forcing {
+  --view-accent: var(--domain-forcing);
+}
+
+.dashboard-view-variability,
+.dashboard-view-maps {
+  --view-accent: var(--domain-ocean);
+}
+
+.dashboard-view-projections {
+  --view-accent: var(--domain-projection);
+}
+
+.dashboard-view-sources {
+  --view-accent: #64748b;
+}
+
+.dashboard-view:not(.dashboard-view-overview) .dashboard-page-header {
+  position: relative;
+  overflow: hidden;
+  min-height: 132px;
+  align-items: end;
+  border: 1px solid color-mix(in srgb, var(--view-accent) 18%, var(--surface-border));
+  border-radius: var(--radius-card);
+  padding: 24px 26px;
+  background:
+    radial-gradient(460px 180px at 100% 0%, var(--view-accent-soft), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, #ffffff), var(--panel));
+  box-shadow: var(--surface-shadow);
+}
+
+.dashboard-view:not(.dashboard-view-overview) .dashboard-page-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--view-accent), color-mix(in srgb, var(--view-accent) 35%, transparent));
+}
+
+.dashboard-view:not(.dashboard-view-overview) .topbar-brand h1 {
+  max-width: 19ch;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  letter-spacing: -0.025em;
+}
+
+.dashboard-view:not(.dashboard-view-overview) .subtitle {
+  max-width: 62ch;
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+.dashboard-view:not(.dashboard-view-overview) .page-meta-row span::before {
+  background: var(--view-accent);
+  box-shadow: 0 0 0 3px var(--view-accent-soft);
+}
+
+.dashboard-view:not(.dashboard-view-overview) .page-meta-row span:first-child::before {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.16);
+}
+
+.detail-page-section {
+  --detail-card-accent: var(--view-accent);
+  min-height: 0;
+  animation: fade-lift-in 320ms var(--ease-out) both;
+}
+
+.detail-page-section .section-content {
+  display: grid;
+  gap: 18px;
+  padding: 0;
+}
+
+.detail-page-section .climate-subsection {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 16px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  background:
+    radial-gradient(320px 120px at 100% 0%, color-mix(in srgb, var(--detail-card-accent) 5%, transparent), transparent 72%),
+    var(--panel);
+  box-shadow: var(--surface-shadow);
+}
+
+.detail-page-section .climate-subsection::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(180deg, var(--detail-card-accent), color-mix(in srgb, var(--detail-card-accent) 35%, transparent));
+}
+
+.detail-page-section .collapsible-subsection-header {
+  min-height: 58px;
+  align-items: center;
+  border-bottom: 1px solid var(--surface-border);
+  padding: 0 0 14px 2px;
+}
+
+.detail-page-section .climate-subsection-heading h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.18rem, 1.6vw, 1.42rem);
+  font-weight: 700;
+  letter-spacing: -0.012em;
+}
+
+.detail-page-section .climate-subsection-heading p {
+  margin-top: 5px;
+  max-width: 76ch;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.detail-page-section .regional-summary-grid {
+  gap: 12px;
+}
+
+.detail-page-section .alert-card.summary {
+  min-height: 154px;
+  border-radius: 12px;
+  padding: 17px 18px 16px 20px;
+  background:
+    radial-gradient(220px 120px at 100% 0%, color-mix(in srgb, var(--card-accent, var(--detail-card-accent)) 7%, transparent), transparent 72%),
+    color-mix(in srgb, var(--panel) 96%, #ffffff);
+}
+
+.detail-page-section .alert-card.summary h2 {
+  max-width: 28ch;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+  line-height: 1.2;
+  letter-spacing: -0.008em;
+}
+
+.detail-page-section .alert-card.summary .alert-emphasis {
+  margin-top: 12px;
+  font-family: var(--font-mono);
+  font-size: clamp(1.45rem, 2vw, 1.85rem);
+  line-height: 1;
+}
+
+.detail-page-section .charts-grid {
+  gap: 14px;
+}
+
+.detail-page-section .panel {
+  border-radius: 12px;
+}
+
+.detail-page-section .panel-header {
+  min-height: 72px;
+  padding: 15px 16px 12px;
+}
+
+.detail-page-section .panel-header h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.02rem;
+}
+
+.detail-page-section .panel-chart-wrap,
+.detail-page-section .map-panel-image-wrap {
+  margin-inline: 12px;
+}
+
+.detail-page-section .panel-chart-footer {
+  margin: 10px 16px 0;
+  padding: 10px 0 14px;
+}
+
+.detail-page-maps .section-content,
+.detail-page-forcing .section-content,
+.detail-page-variability .section-content,
+.detail-page-projections .section-content {
+  gap: 16px;
+}
+
+.detail-page-maps .maps-grid {
+  gap: 16px;
+}
+
+.detail-page-maps .panel {
+  border-top: 3px solid color-mix(in srgb, var(--domain-ocean) 64%, transparent);
+}
+
+.detail-page-forcing .summary-cards-section,
+.detail-page-projections .projection-compact-grid {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.detail-page-variability .projection-enso-card-row,
+.detail-page-projections .projections-outlook-card,
+.detail-page-projections .overview-temperature-trend-card,
+.detail-page-projections .overview-tipping-card {
+  border-color: color-mix(in srgb, var(--view-accent) 16%, var(--surface-border));
+}
+
+.detail-page-sources {
+  display: grid;
+  gap: 16px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.detail-page-sources .data-page-status-grid {
+  gap: 14px;
+}
+
+.detail-page-sources .data-status-card,
+.detail-page-sources .footer-warnings,
+.detail-page-sources .footer-sources {
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-card);
+  background:
+    radial-gradient(280px 120px at 100% 0%, var(--view-accent-soft), transparent 72%),
+    var(--panel);
+  box-shadow: var(--surface-shadow);
+}
+
+.detail-page-sources .data-status-card {
+  min-height: 150px;
+  padding: 20px;
+}
+
+.detail-page-sources .data-status-card strong,
+.detail-page-sources .footer-sources-title,
+.detail-page-sources .source-link-section h2 {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.detail-page-sources .footer-sources {
+  padding: 20px;
+}
+
+[data-theme="dark"] .dashboard-view:not(.dashboard-view-overview) .dashboard-page-header,
+[data-theme="dark"] .detail-page-section .climate-subsection,
+[data-theme="dark"] .detail-page-section .alert-card.summary,
+[data-theme="dark"] .detail-page-sources .data-status-card,
+[data-theme="dark"] .detail-page-sources .footer-warnings,
+[data-theme="dark"] .detail-page-sources .footer-sources {
+  background:
+    radial-gradient(360px 150px at 100% 0%, color-mix(in srgb, var(--view-accent) 11%, transparent), transparent 72%),
+    #0d1b31;
+}
+
+@media (max-width: 900px) {
+  .dashboard-view:not(.dashboard-view-overview) .dashboard-page-header {
+    min-height: 0;
+    padding: 20px;
+  }
+
+  .detail-page-section .climate-subsection {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-view:not(.dashboard-view-overview) .topbar-brand h1 {
+    font-size: 1.8rem;
+  }
+
+  .dashboard-view:not(.dashboard-view-overview) .dashboard-page-header {
+    padding: 17px 16px;
+  }
+
+  .detail-page-section .climate-subsection {
+    border-radius: 13px;
+    padding: 14px;
+  }
+
+  .detail-page-section .panel-chart-wrap,
+  .detail-page-section .map-panel-image-wrap {
+    margin-inline: 8px;
+  }
+}
+
 [data-theme="dark"] {
   color-scheme: dark;
   --bg: #061326;
@@ -8222,6 +8516,15 @@ h3 {
   .sidebar-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* Keep detail-view content on the same outer grid line as Overview. */
+.dashboard-view:not(.dashboard-view-overview) > .detail-page-section > .section-content {
+  padding: 0;
+}
+
+.dashboard-view:not(.dashboard-view-overview) > .detail-page-section {
+  min-height: 0;
 }
 
 /* Compact mobile navigation */
