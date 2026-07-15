@@ -136,7 +136,7 @@
   padding: 0 0 14px 2px;
 }
 
-.detail-page-section .climate-subsection-heading h3 {
+.detail-page-section .climate-subsection-heading h2 {
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(1.18rem, 1.6vw, 1.42rem);
   font-weight: 700;
@@ -2132,7 +2132,7 @@ h3 {
   gap: 12px;
 }
 
-.climate-subsection-header h3 {
+.climate-subsection-header h2 {
   margin: 0;
   font-size: clamp(1.08rem, 1.35vw, 1.22rem);
   font-weight: 780;
@@ -4335,7 +4335,7 @@ body {
   padding: 0 2px;
 }
 
-.climate-subsection-header h3 {
+.climate-subsection-header h2 {
   color: var(--text);
   font-size: clamp(1.1rem, 1.35vw, 1.24rem);
   line-height: 1.18;
@@ -6080,7 +6080,7 @@ body {
 [data-theme="dark"] .overview-metric-copy h2,
 [data-theme="dark"] .overview-card-header h2,
 [data-theme="dark"] .panel-header h2,
-[data-theme="dark"] .climate-subsection-header h3,
+[data-theme="dark"] .climate-subsection-header h2,
 [data-theme="dark"] .what-this-means h3,
 [data-theme="dark"] .coverage-row strong,
 [data-theme="dark"] .footer-sources-title {
@@ -7005,7 +7005,7 @@ body {
   padding-bottom: 12px;
 }
 
-.climate-subsection-heading h3 {
+.climate-subsection-heading h2 {
   font-size: 1rem;
   font-weight: 780;
   letter-spacing: 0;
@@ -11011,5 +11011,20 @@ body,
 
   .scenario-2100-chip:nth-child(n + 3) {
     border-top: 1px solid var(--overview-border);
+  }
+
+  .text-link-button,
+  .section-toggle,
+  .panel-action-btn {
+    min-height: 44px;
+  }
+
+  .panel-action-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .text-link-button {
+    padding-block: 8px;
   }
 }

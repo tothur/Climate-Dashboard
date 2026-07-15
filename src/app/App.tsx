@@ -555,6 +555,7 @@ const STRINGS = {
     aiSummaryHeatSignalTitle: "Planet-wide warmth remains exceptionally high.",
     aiSummaryIceSignalTitle: "Polar conditions remain under pressure.",
     aiSummaryOceanSignalTitle: "Oceans keep setting the pace.",
+    aiSummaryRegionalSignalTitle: "Regional extremes reinforce the global signal.",
     aiSummaryOtherSignalTitle: "A major climate signal stands out.",
     aiSummaryMethodologyLabel: "Methodology",
     aiSummaryGeneratedLabel: "Generated",
@@ -776,6 +777,7 @@ const STRINGS = {
     aiSummaryHeatSignalTitle: "A bolygószintű meleg továbbra is rendkívül magas.",
     aiSummaryIceSignalTitle: "A sarkvidéki körülmények továbbra is aggasztóak.",
     aiSummaryOceanSignalTitle: "Az óceánok diktálják továbbra is az ütemet.",
+    aiSummaryRegionalSignalTitle: "A regionális szélsőségek erősítik a globális jelzést.",
     aiSummaryOtherSignalTitle: "Egy fontos éghajlati jelzés emelkedik ki.",
     aiSummaryMethodologyLabel: "Módszertan",
     aiSummaryGeneratedLabel: "Készült",
@@ -1501,19 +1503,24 @@ function buildAiOverviewItems(
 ): AiOverviewItem[] {
   if (summary.overviewItems.length === 3) return summary.overviewItems;
   const sourceItems = summary.bulletItems.length ? summary.bulletItems : [summary.headline];
+  const toneCounts = new Map<AiOverviewItem["tone"], number>();
 
   return sourceItems.slice(0, 3).map((detail, index) => {
     const normalized = detail.toLocaleLowerCase();
+    let item: AiOverviewItem;
     if (/arctic|antarctic|polar|sea ice|arkt|antarkt|sarkvid/.test(normalized)) {
-      return { key: `ice-${index}`, title: t.aiSummaryIceSignalTitle, detail, icon: "snow", tone: "ice" };
+      item = { key: `ice-${index}`, title: t.aiSummaryIceSignalTitle, detail, icon: "snow", tone: "ice" };
+    } else if (/ocean|sea level|ocean heat|óceán|tengerszint|tengerfelszín/.test(normalized)) {
+      item = { key: `ocean-${index}`, title: t.aiSummaryOceanSignalTitle, detail, icon: "ocean", tone: "ocean" };
+    } else if (/temperature|warm|heat|hőmérsék|meleg/.test(normalized)) {
+      item = { key: `heat-${index}`, title: t.aiSummaryHeatSignalTitle, detail, icon: "trend", tone: "heat" };
+    } else {
+      item = { key: `signal-${index}`, title: t.aiSummaryOtherSignalTitle, detail, icon: "up", tone: "signal" };
     }
-    if (/ocean|sea level|ocean heat|óceán|tengerszint|tengerfelszín/.test(normalized)) {
-      return { key: `ocean-${index}`, title: t.aiSummaryOceanSignalTitle, detail, icon: "ocean", tone: "ocean" };
-    }
-    if (/temperature|warm|heat|hőmérsék|meleg/.test(normalized)) {
-      return { key: `heat-${index}`, title: t.aiSummaryHeatSignalTitle, detail, icon: "trend", tone: "heat" };
-    }
-    return { key: `signal-${index}`, title: t.aiSummaryOtherSignalTitle, detail, icon: "up", tone: "signal" };
+
+    const toneCount = toneCounts.get(item.tone) ?? 0;
+    toneCounts.set(item.tone, toneCount + 1);
+    return toneCount === 0 ? item : { ...item, title: t.aiSummaryRegionalSignalTitle };
   });
 }
 
@@ -3922,7 +3929,7 @@ export function App() {
       <div className="climate-subsection" key={key}>
         <div className="climate-subsection-header collapsible-subsection-header">
           <div className="climate-subsection-heading">
-            <h3>{title}</h3>
+            <h2>{title}</h2>
             <p>{note}</p>
           </div>
           <button
