@@ -28,6 +28,10 @@ Reviewed the deployed dashboard and the fixed local build at desktop (1125 × 10
 - `06-local-mobile-after.png` — fixed mobile overview
 - `07-local-mobile-indicators-after.png` — fixed mobile indicators
 - `08-local-desktop-after.png` — fixed desktop overview
+- `09-live-mobile-after.png` — deployed mobile overview after release
+- `10-live-mobile-indicators-after.png` — deployed mobile indicators after release
+
+The public deployment was also checked in the DOM: the Hungarian regional-summary title is present, indicator subsection headings render as `h2`, the audited mobile controls render at 44 px or taller, and the reviewed pages have no horizontal overflow at 390 px.
 
 ## Validation limits
 
