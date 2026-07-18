@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
 
 import { loadPublishedDataset, roundSeriesPoints, writeDatasetArtifacts } from "./dataset-format.mjs";
+import { METRIC_KEYS, metricSanitizeLimits } from "./metric-registry.mjs";
 import {
   parseNoaaCh4MonthlyCsv,
   parseNoaaCo2DailyCsv,
@@ -616,6 +617,10 @@ function sanitizeSeries(points, limits) {
   if (latestTime == null || latestTime < staleLimit) return [];
 
   return normalized;
+}
+
+function sanitizeMetricSeries(key, points) {
+  return sanitizeSeries(points, metricSanitizeLimits(key));
 }
 
 async function fetchWithRetry(
@@ -2574,155 +2579,109 @@ async function updateOnce() {
     resilientLoad("maps_sst_dates", () => fetchJson(CR_SST_LATEST_MAP_DATE_URL)),
   ]);
 
-  const globalSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(surfacePayload), {
-    minValue: 5,
-    maxValue: 40,
-    maxAgeDays: 20,
-  });
+  const globalSurfaceTemperature = sanitizeMetricSeries(
+    "global_surface_temperature",
+    parseReanalyzerDailyJson(surfacePayload)
+  );
   const globalSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
-    sanitizeSeries(parseReanalyzerDailyAnomalyJson(surfacePayload, "1991-2020"), {
-      minValue: -10,
-      maxValue: 10,
-      maxAgeDays: 20,
-    }),
+    sanitizeMetricSeries(
+      "global_surface_temperature_anomaly",
+      parseReanalyzerDailyAnomalyJson(surfacePayload, "1991-2020")
+    ),
     globalSurfaceTemperature
   );
-  const globalSeaSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(sstPayload), {
-    minValue: 10,
-    maxValue: 40,
-    maxAgeDays: 45,
-  });
+  const globalSeaSurfaceTemperature = sanitizeMetricSeries(
+    "global_sea_surface_temperature",
+    parseReanalyzerDailyJson(sstPayload)
+  );
   const globalSeaSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
-    sanitizeSeries(parseReanalyzerDailyAnomalyJson(sstPayload, "1991-2020"), {
-      minValue: -10,
-      maxValue: 10,
-      maxAgeDays: 45,
-    }),
+    sanitizeMetricSeries(
+      "global_sea_surface_temperature_anomaly",
+      parseReanalyzerDailyAnomalyJson(sstPayload, "1991-2020")
+    ),
     globalSeaSurfaceTemperature
   );
-  const globalMeanSeaLevel = sanitizeSeries(parseGlobalMeanSeaLevelText(gmslSource.text), {
-    minValue: -200,
-    maxValue: 300,
-    maxAgeDays: 450,
-  });
-  const oceanHeatContent = sanitizeSeries(parseNceiOceanHeatContentCsv(ohcCsv), {
-    minValue: -50,
-    maxValue: 120,
-    maxAgeDays: 900,
-  });
-  const northernHemisphereSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(nhPayload), {
-    minValue: -20,
-    maxValue: 40,
-    maxAgeDays: 20,
-  });
+  const globalMeanSeaLevel = sanitizeMetricSeries(
+    "global_mean_sea_level",
+    parseGlobalMeanSeaLevelText(gmslSource.text)
+  );
+  const oceanHeatContent = sanitizeMetricSeries("ocean_heat_content", parseNceiOceanHeatContentCsv(ohcCsv));
+  const northernHemisphereSurfaceTemperature = sanitizeMetricSeries(
+    "northern_hemisphere_surface_temperature",
+    parseReanalyzerDailyJson(nhPayload)
+  );
   const northernHemisphereSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
-    sanitizeSeries(parseReanalyzerDailyAnomalyJson(nhPayload, "1991-2020"), {
-      minValue: -10,
-      maxValue: 10,
-      maxAgeDays: 20,
-    }),
+    sanitizeMetricSeries(
+      "northern_hemisphere_surface_temperature_anomaly",
+      parseReanalyzerDailyAnomalyJson(nhPayload, "1991-2020")
+    ),
     northernHemisphereSurfaceTemperature
   );
-  const southernHemisphereSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(shPayload), {
-    minValue: -20,
-    maxValue: 35,
-    maxAgeDays: 20,
-  });
+  const southernHemisphereSurfaceTemperature = sanitizeMetricSeries(
+    "southern_hemisphere_surface_temperature",
+    parseReanalyzerDailyJson(shPayload)
+  );
   const southernHemisphereSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
-    sanitizeSeries(parseReanalyzerDailyAnomalyJson(shPayload, "1991-2020"), {
-      minValue: -10,
-      maxValue: 10,
-      maxAgeDays: 20,
-    }),
+    sanitizeMetricSeries(
+      "southern_hemisphere_surface_temperature_anomaly",
+      parseReanalyzerDailyAnomalyJson(shPayload, "1991-2020")
+    ),
     southernHemisphereSurfaceTemperature
   );
-  const arcticSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(arcticPayload), {
-    minValue: -70,
-    maxValue: 25,
-    maxAgeDays: 20,
-  });
+  const arcticSurfaceTemperature = sanitizeMetricSeries(
+    "arctic_surface_temperature",
+    parseReanalyzerDailyJson(arcticPayload)
+  );
   const arcticSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
-    sanitizeSeries(parseReanalyzerDailyAnomalyJson(arcticPayload, "1991-2020"), {
-      minValue: -10,
-      maxValue: 10,
-      maxAgeDays: 20,
-    }),
+    sanitizeMetricSeries(
+      "arctic_surface_temperature_anomaly",
+      parseReanalyzerDailyAnomalyJson(arcticPayload, "1991-2020")
+    ),
     arcticSurfaceTemperature
   );
-  const antarcticSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(antarcticPayload), {
-    minValue: -80,
-    maxValue: 25,
-    maxAgeDays: 20,
-  });
+  const antarcticSurfaceTemperature = sanitizeMetricSeries(
+    "antarctic_surface_temperature",
+    parseReanalyzerDailyJson(antarcticPayload)
+  );
   const antarcticSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
-    sanitizeSeries(parseReanalyzerDailyAnomalyJson(antarcticPayload, "1991-2020"), {
-      minValue: -10,
-      maxValue: 10,
-      maxAgeDays: 20,
-    }),
+    sanitizeMetricSeries(
+      "antarctic_surface_temperature_anomaly",
+      parseReanalyzerDailyAnomalyJson(antarcticPayload, "1991-2020")
+    ),
     antarcticSurfaceTemperature
   );
-  const northAtlanticSeaSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(northAtlanticSstPayload), {
-    minValue: -5,
-    maxValue: 40,
-    maxAgeDays: 45,
-  });
+  const northAtlanticSeaSurfaceTemperature = sanitizeMetricSeries(
+    "north_atlantic_sea_surface_temperature",
+    parseReanalyzerDailyJson(northAtlanticSstPayload)
+  );
   const northAtlanticSeaSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
-    sanitizeSeries(parseReanalyzerDailyAnomalyJson(northAtlanticSstPayload, "1991-2020"), {
-      minValue: -10,
-      maxValue: 10,
-      maxAgeDays: 45,
-    }),
+    sanitizeMetricSeries(
+      "north_atlantic_sea_surface_temperature_anomaly",
+      parseReanalyzerDailyAnomalyJson(northAtlanticSstPayload, "1991-2020")
+    ),
     northAtlanticSeaSurfaceTemperature
   );
-  const dailyNino34SeaSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(nino34SstPayload), {
-    minValue: 15,
-    maxValue: 35,
-    maxAgeDays: 45,
-  });
-  const arcticSeaIceExtent = sanitizeSeries(parseNsidcDailyExtentCsv(northCsv), {
-    minValue: 0,
-    maxValue: 30,
-    maxAgeDays: 20,
-  });
-  const antarcticSeaIceExtent = sanitizeSeries(parseNsidcDailyExtentCsv(southCsv), {
-    minValue: 0,
-    maxValue: 35,
-    maxAgeDays: 20,
-  });
-  const globalSeaIceExtent = sanitizeSeries(
-    mergeSeaIceSeries(arcticSeaIceExtent, antarcticSeaIceExtent),
-    {
-      minValue: 0,
-      maxValue: 60,
-      maxAgeDays: 20,
-    }
+  const dailyNino34SeaSurfaceTemperature = sanitizeMetricSeries(
+    "daily_nino34_sea_surface_temperature",
+    parseReanalyzerDailyJson(nino34SstPayload)
   );
-  const atmosphericCo2 = sanitizeSeries(parseNoaaCo2DailyCsv(co2Csv), {
-    minValue: 200,
-    maxValue: 700,
-    maxAgeDays: 120,
-  });
-  const atmosphericCh4 = sanitizeSeries(parseNoaaCh4MonthlyCsv(ch4Csv), {
-    minValue: 1000,
-    maxValue: 3000,
-    maxAgeDays: 220,
-  });
-  const atmosphericN2o = sanitizeSeries(parseNoaaN2oMonthlyCsv(n2oCsv), {
-    minValue: 200,
-    maxValue: 500,
-    maxAgeDays: 220,
-  });
-  const atmosphericAggi = sanitizeSeries(parseNoaaAggiCsv(aggiCsv), {
-    minValue: 0.5,
-    maxValue: 3.5,
-    maxAgeDays: 1000,
-  });
-  const northernHemisphereSnowCoverExtent = sanitizeSeries(parseRutgersMonthlySnowCoverText(northernHemisphereSnowCoverText), {
-    minValue: 0,
-    maxValue: 60,
-    maxAgeDays: 120,
-  });
+  const arcticSeaIceExtent = sanitizeMetricSeries("arctic_sea_ice_extent", parseNsidcDailyExtentCsv(northCsv));
+  const antarcticSeaIceExtent = sanitizeMetricSeries(
+    "antarctic_sea_ice_extent",
+    parseNsidcDailyExtentCsv(southCsv)
+  );
+  const globalSeaIceExtent = sanitizeMetricSeries(
+    "global_sea_ice_extent",
+    mergeSeaIceSeries(arcticSeaIceExtent, antarcticSeaIceExtent)
+  );
+  const atmosphericCo2 = sanitizeMetricSeries("atmospheric_co2", parseNoaaCo2DailyCsv(co2Csv));
+  const atmosphericCh4 = sanitizeMetricSeries("atmospheric_ch4", parseNoaaCh4MonthlyCsv(ch4Csv));
+  const atmosphericN2o = sanitizeMetricSeries("atmospheric_n2o", parseNoaaN2oMonthlyCsv(n2oCsv));
+  const atmosphericAggi = sanitizeMetricSeries("atmospheric_aggi", parseNoaaAggiCsv(aggiCsv));
+  const northernHemisphereSnowCoverExtent = sanitizeMetricSeries(
+    "northern_hemisphere_snow_cover_extent",
+    parseRutgersMonthlySnowCoverText(northernHemisphereSnowCoverText)
+  );
   const incomingSolarEnergyHistorical = parseLaspNrl2TsiMonthlyCsv(incomingSolarEnergyHistoricalCsv);
   const incomingSolarEnergyRecent = parseLaspTsisTsiDailyCsv(incomingSolarEnergyCsv);
   let previousIncomingSolarEnergy = [];
@@ -2735,11 +2694,10 @@ async function updateOnce() {
   if (!incomingSolarEnergyHistorical.length && previousIncomingSolarEnergy.length > 0) {
     dataWarnings.push("incoming_solar_energy: retaining the previous validated NRLTSI2 history.");
   }
-  let incomingSolarEnergy = sanitizeSeries(mergeNrl2WithTsisExtension(incomingSolarEnergyBase, incomingSolarEnergyRecent), {
-    minValue: 1358,
-    maxValue: 1364,
-    maxAgeDays: 220,
-  });
+  let incomingSolarEnergy = sanitizeMetricSeries(
+    "incoming_solar_energy",
+    mergeNrl2WithTsisExtension(incomingSolarEnergyBase, incomingSolarEnergyRecent)
+  );
   if (!incomingSolarEnergy.length) {
     incomingSolarEnergy = previousIncomingSolarEnergy.length
       ? previousIncomingSolarEnergy
@@ -2761,11 +2719,10 @@ async function updateOnce() {
       dataWarnings.push(`earth_energy_imbalance: CERES series refresh failed (${reason}).`);
     }
   }
-  let earthEnergyImbalance = sanitizeSeries(parseCeresEarthEnergyImbalanceAscii(earthEnergyImbalanceAscii), {
-    minValue: -20,
-    maxValue: 20,
-    maxAgeDays: 220,
-  });
+  let earthEnergyImbalance = sanitizeMetricSeries(
+    "earth_energy_imbalance",
+    parseCeresEarthEnergyImbalanceAscii(earthEnergyImbalanceAscii)
+  );
   const hasFreshEarthEnergyImbalance = earthEnergyImbalance.length > 0;
   if (!hasFreshEarthEnergyImbalance) {
     earthEnergyImbalance = await loadPreviousSeries("earth_energy_imbalance");
@@ -2787,33 +2744,30 @@ async function updateOnce() {
     }
   }
   const wgmsGlobalCsv = wgmsAmceZipBytes ? extractZipEntryText(wgmsAmceZipBytes, WGMS_AMCE_GLOBAL_CSV_ENTRY) : "";
-  let globalGlacierMassBalance = sanitizeSeries(parseWgmsGlobalGlacierCsv(wgmsGlobalCsv), {
-    minValue: -1200,
-    maxValue: 250,
-    maxAgeDays: 1600,
-  });
+  let globalGlacierMassBalance = sanitizeMetricSeries(
+    "global_glacier_mass_balance",
+    parseWgmsGlobalGlacierCsv(wgmsGlobalCsv)
+  );
   if (!globalGlacierMassBalance.length) {
     globalGlacierMassBalance = await loadPreviousSeries("global_glacier_mass_balance");
     if (globalGlacierMassBalance.length > 0) {
       dataWarnings.push("global_glacier_mass_balance: retaining the previous validated WGMS series.");
     }
   }
-  let mountainGlacierMassBalance = sanitizeSeries(parseWgmsReferenceGlacierMassBalanceCsv(wgmsReferenceGlacierCsv), {
-    minValue: -4,
-    maxValue: 2,
-    maxAgeDays: 1600,
-  });
+  let mountainGlacierMassBalance = sanitizeMetricSeries(
+    "mountain_glacier_mass_balance",
+    parseWgmsReferenceGlacierMassBalanceCsv(wgmsReferenceGlacierCsv)
+  );
   if (!mountainGlacierMassBalance.length) {
     mountainGlacierMassBalance = await loadPreviousSeries("mountain_glacier_mass_balance");
     if (mountainGlacierMassBalance.length > 0) {
       dataWarnings.push("mountain_glacier_mass_balance: retaining the previous validated WGMS reference-glacier series.");
     }
   }
-  let westAntarcticIceSheetMassBalance = sanitizeSeries(parseImbieCumulativeMassLossCsv(imbieWestAntarcticaCsv), {
-    minValue: 0,
-    maxValue: 4000,
-    maxAgeDays: 3200,
-  });
+  let westAntarcticIceSheetMassBalance = sanitizeMetricSeries(
+    "west_antarctic_ice_sheet_mass_balance",
+    parseImbieCumulativeMassLossCsv(imbieWestAntarcticaCsv)
+  );
   if (!westAntarcticIceSheetMassBalance.length) {
     westAntarcticIceSheetMassBalance = await loadPreviousSeries("west_antarctic_ice_sheet_mass_balance");
     if (westAntarcticIceSheetMassBalance.length > 0) {
@@ -2821,11 +2775,10 @@ async function updateOnce() {
     }
   }
   const antarcticMassVariation = parseNasaMassVariationChartJson(antarcticaMassVariationPayload);
-  let antarcticIceSheetMassBalance = sanitizeSeries(buildCumulativeLossSeries(antarcticMassVariation), {
-    minValue: 0,
-    maxValue: 4000,
-    maxAgeDays: 430,
-  });
+  let antarcticIceSheetMassBalance = sanitizeMetricSeries(
+    "antarctic_ice_sheet_mass_balance",
+    buildCumulativeLossSeries(antarcticMassVariation)
+  );
   if (!antarcticIceSheetMassBalance.length) {
     antarcticIceSheetMassBalance = await loadPreviousSeries("antarctic_ice_sheet_mass_balance");
     if (antarcticIceSheetMassBalance.length > 0) {
@@ -2833,27 +2786,21 @@ async function updateOnce() {
     }
   }
   const greenlandMassVariation = parseNasaMassVariationChartJson(greenlandMassVariationPayload);
-  let greenlandIceSheetMassBalance = sanitizeSeries(buildCumulativeLossSeries(greenlandMassVariation), {
-    minValue: 0,
-    maxValue: 7000,
-    maxAgeDays: 430,
-  });
+  let greenlandIceSheetMassBalance = sanitizeMetricSeries(
+    "greenland_ice_sheet_mass_balance",
+    buildCumulativeLossSeries(greenlandMassVariation)
+  );
   if (!greenlandIceSheetMassBalance.length) {
     greenlandIceSheetMassBalance = await loadPreviousSeries("greenland_ice_sheet_mass_balance");
     if (greenlandIceSheetMassBalance.length > 0) {
       dataWarnings.push("greenland_ice_sheet_mass_balance: retaining the previous validated NASA GRACE/GRACE-FO series.");
     }
   }
-  const dailyGlobalMeanTemperatureAnomaly = sanitizeSeries(parseEcmwfClimatePulseGlobal2tDailyCsv(dailyGlobalMeanAnomalyCsv), {
-    minValue: -10,
-    maxValue: 10,
-    maxAgeDays: 20,
-  });
-  let nino34Index = sanitizeSeries(parseNoaaCpcOniText(nino34IndexText), {
-    minValue: -4,
-    maxValue: 4,
-    maxAgeDays: 220,
-  });
+  const dailyGlobalMeanTemperatureAnomaly = sanitizeMetricSeries(
+    "daily_global_mean_temperature_anomaly",
+    parseEcmwfClimatePulseGlobal2tDailyCsv(dailyGlobalMeanAnomalyCsv)
+  );
+  let nino34Index = sanitizeMetricSeries("nino34_index", parseNoaaCpcOniText(nino34IndexText));
   if (!nino34Index.length) {
     nino34Index = await loadPreviousSeries("nino34_index");
     if (nino34Index.length > 0) {
@@ -2861,11 +2808,7 @@ async function updateOnce() {
     }
   }
   async function fallbackMonthlyIndexSeries(key, points, sourceLabel) {
-    let series = sanitizeSeries(points, {
-      minValue: -8,
-      maxValue: 8,
-      maxAgeDays: 220,
-    });
+    let series = sanitizeMetricSeries(key, points);
     if (!series.length) {
       series = await loadPreviousSeries(key);
       if (series.length > 0) {
@@ -3108,6 +3051,23 @@ async function updateOnce() {
     series: seriesOutput,
     summary: summaryOutput,
   };
+
+  const missingRegistrySeries = METRIC_KEYS.filter((key) => !Object.hasOwn(output.series, key));
+  const unregisteredSeries = Object.keys(output.series).filter((key) => !METRIC_KEYS.includes(key));
+  const missingMetricSources = METRIC_KEYS.filter(
+    (key) => typeof output.sources[key] !== "string" || output.sources[key].trim().length === 0
+  );
+  if (missingRegistrySeries.length || unregisteredSeries.length || missingMetricSources.length) {
+    throw new Error(
+      [
+        missingRegistrySeries.length ? `missing registered series: ${missingRegistrySeries.join(", ")}` : null,
+        unregisteredSeries.length ? `unregistered series: ${unregisteredSeries.join(", ")}` : null,
+        missingMetricSources.length ? `missing metric sources: ${missingMetricSources.join(", ")}` : null,
+      ]
+        .filter(Boolean)
+        .join("; ")
+    );
+  }
 
   const emptySeries = Object.entries(output.series)
     .filter(([, series]) => !Array.isArray(series) || series.length === 0)
