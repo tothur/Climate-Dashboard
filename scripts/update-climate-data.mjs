@@ -4,6 +4,17 @@ import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
 
 import { loadPublishedDataset, roundSeriesPoints, writeDatasetArtifacts } from "./dataset-format.mjs";
+import {
+  parseNoaaCh4MonthlyCsv,
+  parseNoaaCo2DailyCsv,
+  parseNoaaCpcMonthlyIndexTable,
+  parseNoaaN2oMonthlyCsv,
+  parseNoaaPslMonthlyIndexData,
+  parseNsidcDailyExtentCsv,
+  parseReanalyzerDailyAnomalyJson,
+  parseReanalyzerDailyJson,
+} from "./source-parsers.mjs";
+import { loadSourceOrFallback, retainPreviousSeries } from "./update-resilience.mjs";
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DATA_DIR = resolve(ROOT_DIR, "public/data");
@@ -262,15 +273,6 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isMissingReanalyzerValue(value) {
-  if (value == null) return true;
-  if (typeof value === "number") return !Number.isFinite(value);
-  if (typeof value !== "string") return false;
-
-  const normalized = value.trim().toLowerCase();
-  return normalized.length === 0 || normalized === "null" || normalized === "nan" || normalized === "na";
-}
-
 function decodeHtmlEntities(value) {
   return String(value ?? "")
     .replace(/&nbsp;/gi, " ")
@@ -314,14 +316,6 @@ function formatDateFromParts(year, month, day) {
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
   const date = new Date(Date.UTC(year, month - 1, day));
   if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
-  return formatIsoDate(date);
-}
-
-function dateFromYearAndDay(year, dayOfYear) {
-  if (!Number.isFinite(year) || !Number.isFinite(dayOfYear) || dayOfYear < 1 || dayOfYear > 366) return null;
-  const date = new Date(Date.UTC(year, 0, 1));
-  date.setUTCDate(dayOfYear);
-  if (date.getUTCFullYear() !== year) return null;
   return formatIsoDate(date);
 }
 
@@ -676,187 +670,6 @@ async function fetchBinary(url, options) {
   return await fetchWithRetry(url, "arrayBuffer", options);
 }
 
-function parseReanalyzerDailyJson(payload) {
-  if (!Array.isArray(payload)) return [];
-
-  const nowYear = new Date().getUTCFullYear();
-  const points = [];
-
-  for (const row of payload) {
-    if (typeof row !== "object" || row == null || Array.isArray(row)) continue;
-
-    const yearToken = typeof row.name === "number" || typeof row.name === "string" ? String(row.name).trim() : "";
-    if (!/^\d{4}$/.test(yearToken)) continue;
-
-    const year = Number(yearToken);
-    if (!Number.isFinite(year) || year < 1940 || year > nowYear + 1) continue;
-
-    const values = Array.isArray(row.data)
-      ? row.data
-      : typeof row.data === "string"
-        ? row.data.split(",")
-        : [];
-
-    let effectiveLength = values.length;
-    while (effectiveLength > 0) {
-      if (isMissingReanalyzerValue(values[effectiveLength - 1])) {
-        effectiveLength -= 1;
-        continue;
-      }
-      break;
-    }
-
-    for (let index = 0; index < effectiveLength; index += 1) {
-      const numeric = toFiniteNumber(values[index]);
-      if (numeric == null) continue;
-      const date = dateFromYearAndDay(year, index + 1);
-      if (!date) continue;
-      points.push({ date, value: numeric });
-    }
-  }
-
-  return normalizePoints(points);
-}
-
-function reanalyzerRowValues(row) {
-  if (Array.isArray(row.data)) return row.data;
-  if (typeof row.data === "string") return row.data.split(",");
-  return [];
-}
-
-function parseReanalyzerDailyAnomalyJson(payload, climatologyLabel = "1991-2020") {
-  if (!Array.isArray(payload)) return [];
-
-  const baselineRow = payload.find((row) => {
-    if (typeof row !== "object" || row == null || Array.isArray(row)) return false;
-    if (typeof row.name !== "string" && typeof row.name !== "number") return false;
-    return String(row.name).trim() === climatologyLabel;
-  });
-  if (!baselineRow || typeof baselineRow !== "object" || Array.isArray(baselineRow)) return [];
-
-  const baselineValues = reanalyzerRowValues(baselineRow).map((value) => toFiniteNumber(value));
-  if (!baselineValues.length) return [];
-
-  const nowYear = new Date().getUTCFullYear();
-  const points = [];
-
-  for (const row of payload) {
-    if (typeof row !== "object" || row == null || Array.isArray(row)) continue;
-
-    const yearToken = typeof row.name === "number" || typeof row.name === "string" ? String(row.name).trim() : "";
-    if (!/^\d{4}$/.test(yearToken)) continue;
-
-    const year = Number(yearToken);
-    if (!Number.isFinite(year) || year < 1940 || year > nowYear + 1) continue;
-
-    const values = reanalyzerRowValues(row);
-    for (let index = 0; index < values.length; index += 1) {
-      const numeric = toFiniteNumber(values[index]);
-      const baseline = baselineValues[index];
-      if (numeric == null || baseline == null || !Number.isFinite(baseline)) continue;
-      const date = dateFromYearAndDay(year, index + 1);
-      if (!date) continue;
-      points.push({
-        date,
-        value: Math.round((numeric - baseline) * 1000) / 1000,
-      });
-    }
-  }
-
-  return normalizePoints(points);
-}
-
-function parseNsidcDailyExtentCsv(rawCsv) {
-  const points = [];
-  const lines = rawCsv.split(/\r?\n/);
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-
-    const columns = line.split(",").map((col) => col.replace(/"/g, "").trim());
-    if (columns.length < 4) continue;
-
-    const year = Number(columns[0]);
-    const month = Number(columns[1]);
-    const day = Number(columns[2]);
-    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) continue;
-
-    const date = formatDateFromParts(year, month, day);
-    if (!date) continue;
-
-    const candidates = [columns[3], columns[4], columns[5]].map((value) => toFiniteNumber(value));
-    const extent = candidates.find((value) => value != null && value > 0 && value < 100);
-    if (extent == null) continue;
-
-    points.push({ date, value: extent });
-  }
-
-  return normalizePoints(points);
-}
-
-function parseNoaaCo2DailyCsv(rawCsv) {
-  const points = [];
-  const lines = rawCsv.split(/\r?\n/);
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-
-    const columns = line.split(",").map((col) => col.trim());
-    if (columns.length < 5) continue;
-
-    const year = Number(columns[0]);
-    const month = Number(columns[1]);
-    const day = Number(columns[2]);
-    const date = formatDateFromParts(year, month, day);
-    if (!date) continue;
-
-    const candidates = [columns[4], columns[5], columns[6]].map((value) => toFiniteNumber(value));
-    const value = candidates.find((candidate) => candidate != null && candidate > 0 && candidate < 1000);
-    if (value == null) continue;
-
-    points.push({ date, value });
-  }
-
-  return normalizePoints(points);
-}
-
-function parseNoaaMonthlyGreenhouseGasCsv(rawCsv, { minValue, maxValue }) {
-  const points = [];
-  const lines = rawCsv.split(/\r?\n/);
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-
-    const columns = line.split(",").map((col) => col.trim());
-    if (columns.length < 6) continue;
-
-    const year = Number(columns[0]);
-    const month = Number(columns[1]);
-    const date = formatDateFromParts(year, month, 1);
-    if (!date) continue;
-
-    const average = toFiniteNumber(columns[3]);
-    const trend = toFiniteNumber(columns[5]);
-    const value = [average, trend].find((candidate) => candidate != null && candidate > minValue && candidate < maxValue);
-    if (value == null) continue;
-
-    points.push({ date, value });
-  }
-
-  return normalizePoints(points);
-}
-
-function parseNoaaCh4MonthlyCsv(rawCsv) {
-  return parseNoaaMonthlyGreenhouseGasCsv(rawCsv, { minValue: 500, maxValue: 5000 });
-}
-
-function parseNoaaN2oMonthlyCsv(rawCsv) {
-  return parseNoaaMonthlyGreenhouseGasCsv(rawCsv, { minValue: 200, maxValue: 500 });
-}
-
 function parseRutgersMonthlySnowCoverText(rawText) {
   const points = [];
   const lines = String(rawText ?? "").split(/\r?\n/);
@@ -885,7 +698,7 @@ function parseRutgersMonthlySnowCoverText(rawText) {
 
 function parseNoaaAggiCsv(rawCsv) {
   const points = [];
-  const lines = rawCsv.split(/\r?\n/);
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
   let yearColumn = -1;
   let aggiColumn = -1;
   let hasHeader = false;
@@ -1058,7 +871,7 @@ function parseLooseDateToken(token) {
 
 function parseNceiOceanHeatContentCsv(rawCsv) {
   const points = [];
-  const lines = rawCsv.split(/\r?\n/);
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
   let dateColumn = -1;
   let valueColumn = -1;
   let hasHeader = false;
@@ -1103,7 +916,7 @@ function parseNceiOceanHeatContentCsv(rawCsv) {
 
 function parseGlobalMeanSeaLevelText(rawText) {
   const points = [];
-  const lines = rawText.split(/\r?\n/);
+  const lines = String(rawText ?? "").split(/\r?\n/);
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
@@ -1126,7 +939,7 @@ function parseGlobalMeanSeaLevelText(rawText) {
 
 function parseEcmwfClimatePulseGlobal2tDailyCsv(rawCsv) {
   const points = [];
-  const lines = rawCsv.split(/\r?\n/);
+  const lines = String(rawCsv ?? "").split(/\r?\n/);
   let dateColumn = -1;
   let anomalyColumn = -1;
   let hasHeader = false;
@@ -1378,60 +1191,6 @@ function parseNoaaCpcOniText(rawText) {
     const date = formatDateFromParts(year, centerMonth, 1);
     if (!date) continue;
     points.push({ date, value: anomaly });
-  }
-
-  return normalizePoints(points);
-}
-
-function parseNoaaCpcMonthlyIndexTable(rawText) {
-  const points = [];
-  const lines = String(rawText ?? "").split(/\r?\n/);
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line || /^jan\b/i.test(line)) continue;
-
-    const columns = line.split(/\s+/);
-    if (columns.length < 2) continue;
-
-    const year = Number(columns[0]);
-    if (!Number.isFinite(year) || year < 1800 || year > 2200) continue;
-
-    const availableMonths = Math.min(12, columns.length - 1);
-    for (let month = 1; month <= availableMonths; month += 1) {
-      const value = toFiniteNumber(columns[month]);
-      if (value == null || value <= -90) continue;
-      const date = formatDateFromParts(year, month, 1);
-      if (!date) continue;
-      points.push({ date, value });
-    }
-  }
-
-  return normalizePoints(points);
-}
-
-function parseNoaaPslMonthlyIndexData(rawText) {
-  const points = [];
-  const lines = String(rawText ?? "").split(/\r?\n/);
-
-  for (const rawLine of lines.slice(1)) {
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    const columns = line.split(/\s+/);
-    if (columns.length < 2) continue;
-
-    const year = Number(columns[0]);
-    if (!Number.isFinite(year) || year < 1800 || year > 2200) continue;
-
-    const availableMonths = Math.min(12, columns.length - 1);
-    for (let month = 1; month <= availableMonths; month += 1) {
-      const value = toFiniteNumber(columns[month]);
-      if (value == null || value <= -90) continue;
-      const date = formatDateFromParts(year, month, 1);
-      if (!date) continue;
-      points.push({ date, value });
-    }
   }
 
   return normalizePoints(points);
@@ -2660,6 +2419,8 @@ function printHelp() {
 async function updateOnce() {
   resetPreviousPublishedDatasetCache();
   const dataWarnings = [];
+  const resilientLoad = (key, load, fallbackValue = null) =>
+    loadSourceOrFallback({ key, load, warnings: dataWarnings, fallbackValue });
   const [
     surfacePayload,
     sstPayload,
@@ -2696,24 +2457,27 @@ async function updateOnce() {
     arcticOscillationIndexText,
     sstMapDatePayload,
   ] = await Promise.all([
-    fetchJson(ERA5_GLOBAL_SURFACE_TEMP_URL),
-    fetchJson(OISST_GLOBAL_SST_URL),
-    loadGlobalMeanSeaLevelSource(),
-    fetchText(NOAA_OCEAN_HEAT_CONTENT_2000M_URL),
-    fetchJson(ERA5_NH_SURFACE_TEMP_URL),
-    fetchJson(ERA5_SH_SURFACE_TEMP_URL),
-    fetchJson(ERA5_ARCTIC_SURFACE_TEMP_URL),
-    fetchJson(ERA5_ANTARCTIC_SURFACE_TEMP_URL),
-    fetchJson(OISST_NORTH_ATLANTIC_SST_URL),
-    fetchJson(OISST_NINO34_SST_URL),
-    fetchText(NSIDC_NORTH_DAILY_EXTENT_URL),
-    fetchText(NSIDC_SOUTH_DAILY_EXTENT_URL),
-    fetchText(NOAA_MAUNA_LOA_CO2_DAILY_URL),
-    fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL),
-    fetchText(NOAA_GLOBAL_N2O_MONTHLY_URL),
-    fetchText(NOAA_AGGI_CSV_URL),
-    fetchText(RUTGERS_NH_SNOW_COVER_MONTHLY_URL),
-    fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL),
+    resilientLoad("global_surface_temperature", () => fetchJson(ERA5_GLOBAL_SURFACE_TEMP_URL)),
+    resilientLoad("global_sea_surface_temperature", () => fetchJson(OISST_GLOBAL_SST_URL)),
+    resilientLoad("global_mean_sea_level", () => loadGlobalMeanSeaLevelSource(), {
+      text: null,
+      sourceUrl: SEA_LEVEL_RESEARCH_GROUP_URL,
+    }),
+    resilientLoad("ocean_heat_content", () => fetchText(NOAA_OCEAN_HEAT_CONTENT_2000M_URL)),
+    resilientLoad("northern_hemisphere_surface_temperature", () => fetchJson(ERA5_NH_SURFACE_TEMP_URL)),
+    resilientLoad("southern_hemisphere_surface_temperature", () => fetchJson(ERA5_SH_SURFACE_TEMP_URL)),
+    resilientLoad("arctic_surface_temperature", () => fetchJson(ERA5_ARCTIC_SURFACE_TEMP_URL)),
+    resilientLoad("antarctic_surface_temperature", () => fetchJson(ERA5_ANTARCTIC_SURFACE_TEMP_URL)),
+    resilientLoad("north_atlantic_sea_surface_temperature", () => fetchJson(OISST_NORTH_ATLANTIC_SST_URL)),
+    resilientLoad("daily_nino34_sea_surface_temperature", () => fetchJson(OISST_NINO34_SST_URL)),
+    resilientLoad("arctic_sea_ice_extent", () => fetchText(NSIDC_NORTH_DAILY_EXTENT_URL)),
+    resilientLoad("antarctic_sea_ice_extent", () => fetchText(NSIDC_SOUTH_DAILY_EXTENT_URL)),
+    resilientLoad("atmospheric_co2", () => fetchText(NOAA_MAUNA_LOA_CO2_DAILY_URL)),
+    resilientLoad("atmospheric_ch4", () => fetchText(NOAA_GLOBAL_CH4_MONTHLY_URL)),
+    resilientLoad("atmospheric_n2o", () => fetchText(NOAA_GLOBAL_N2O_MONTHLY_URL)),
+    resilientLoad("atmospheric_aggi", () => fetchText(NOAA_AGGI_CSV_URL)),
+    resilientLoad("northern_hemisphere_snow_cover_extent", () => fetchText(RUTGERS_NH_SNOW_COVER_MONTHLY_URL)),
+    resilientLoad("daily_global_mean_temperature_anomaly", () => fetchText(ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL)),
     fetchText(LASP_NRL2_TSI_MONTHLY_URL, {
       timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
       attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
@@ -2807,7 +2571,7 @@ async function updateOnce() {
       dataWarnings.push(`arctic_oscillation_index: NOAA CPC AO refresh failed (${reason}).`);
       return null;
     }),
-    fetchJson(CR_SST_LATEST_MAP_DATE_URL),
+    resilientLoad("maps_sst_dates", () => fetchJson(CR_SST_LATEST_MAP_DATE_URL)),
   ]);
 
   const globalSurfaceTemperature = sanitizeSeries(parseReanalyzerDailyJson(surfacePayload), {
@@ -3259,6 +3023,11 @@ async function updateOnce() {
     soi_index: soiIndex,
     arctic_oscillation_index: arcticOscillationIndex,
   };
+  const retainedSeriesKeys = await retainPreviousSeries({
+    series: seriesOutput,
+    loadPreviousSeries,
+    warnings: dataWarnings,
+  });
   for (const key of Object.keys(seriesOutput)) {
     seriesOutput[key] = roundSeriesPoints(seriesOutput[key]);
   }
@@ -3275,10 +3044,15 @@ async function updateOnce() {
 
   const output = {
     generatedAtIso,
+    dataWarnings: [...dataWarnings],
+    retainedSeriesKeys,
     sources: {
       global_surface_temperature: ERA5_GLOBAL_SURFACE_TEMP_URL,
       global_sea_surface_temperature: OISST_GLOBAL_SST_URL,
-      global_mean_sea_level: gmslSource.sourceUrl,
+      global_mean_sea_level:
+        retainedSeriesKeys.includes("global_mean_sea_level")
+          ? (await loadPreviousSourceUrl("global_mean_sea_level")) ?? gmslSource.sourceUrl
+          : gmslSource.sourceUrl,
       ocean_heat_content: NOAA_OCEAN_HEAT_CONTENT_2000M_URL,
       earth_energy_imbalance: hasFreshEarthEnergyImbalance && ceresFileName
         ? buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName)

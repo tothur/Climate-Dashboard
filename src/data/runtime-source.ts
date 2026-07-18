@@ -153,17 +153,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function toFiniteNumber(value: unknown): number | null {
+  if (value == null || (typeof value === "string" && value.trim().length === 0)) return null;
   const numeric = typeof value === "number" ? value : Number(value);
   return Number.isFinite(numeric) ? numeric : null;
 }
 
 function isMissingReanalyzerValue(value: unknown): boolean {
   if (value == null) return true;
-  if (typeof value === "number") return !Number.isFinite(value);
+  if (typeof value === "number") return !Number.isFinite(value) || value <= -900;
   if (typeof value !== "string") return false;
 
   const normalized = value.trim().toLowerCase();
-  return normalized.length === 0 || normalized === "null" || normalized === "nan" || normalized === "na";
+  const numeric = Number(normalized);
+  return (
+    normalized.length === 0 ||
+    normalized === "null" ||
+    normalized === "nan" ||
+    normalized === "na" ||
+    (Number.isFinite(numeric) && numeric <= -900)
+  );
 }
 
 function formatIsoDate(date: Date): string {
@@ -684,6 +692,7 @@ function parseReanalyzerDailyJson(payload: unknown): DailyPoint[] {
     }
 
     for (let index = 0; index < effectiveLength; index += 1) {
+      if (isMissingReanalyzerValue(values[index])) continue;
       const numeric = toFiniteNumber(values[index]);
       if (numeric == null) continue;
       const date = dateFromYearAndDay(year, index + 1);
@@ -726,6 +735,7 @@ function parseReanalyzerDailyAnomalyJson(payload: unknown, climatologyLabel = "1
 
     const values = reanalyzerRowValues(row);
     for (let index = 0; index < values.length; index += 1) {
+      if (isMissingReanalyzerValue(values[index]) || isMissingReanalyzerValue(baselineValues[index])) continue;
       const numeric = toFiniteNumber(values[index]);
       const baseline = baselineValues[index];
       if (numeric == null || baseline == null || !Number.isFinite(baseline)) continue;

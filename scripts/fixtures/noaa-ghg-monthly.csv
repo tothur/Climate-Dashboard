@@ -1,0 +1,5 @@
+# sanitized NOAA monthly greenhouse-gas fixture
+year,month,decimal,average,average_unc,trend,trend_unc
+2026,5,2026.37,1945.2,0.4,1944.8,0.3
+2026,6,2026.45,-999.9,0.4,1946.1,0.3
+2026,13,2027.04,1950.0,0.4,1949.0,0.3
