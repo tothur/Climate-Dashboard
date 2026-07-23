@@ -24,11 +24,17 @@ test("daily updater verifies once and commits every generated fallback artifact"
   assert.match(workflow, /git add -A public\/data src\/data\/bundled-enso\.ts/);
 });
 
-test("Pages deploys once per main push while preserving manual deployment", async () => {
+test("Pages deploys main pushes and successful updater completions", async () => {
   const workflow = await readProjectFile(".github/workflows/deploy-pages.yml");
 
   assert.match(workflow, /push:\s*\n\s+branches:\s*\n\s+- main/);
   assert.match(workflow, /workflow_dispatch:/);
-  assert.doesNotMatch(workflow, /workflow_run:/);
-  assert.doesNotMatch(workflow, /github\.event\.workflow_run/);
+  assert.match(
+    workflow,
+    /workflow_run:\s*\n\s+workflows:\s*\n\s+- Daily Climate Data Update\s*\n\s+types:\s*\n\s+- completed\s*\n\s+branches:\s*\n\s+- main/,
+  );
+  assert.match(
+    workflow,
+    /if: github\.event_name != 'workflow_run' \|\| github\.event\.workflow_run\.conclusion == 'success'/,
+  );
 });
