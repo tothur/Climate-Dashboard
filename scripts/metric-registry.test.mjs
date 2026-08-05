@@ -44,6 +44,20 @@ test("validation and sanitizer policies are derived from one registry", () => {
   assert.throws(() => metricSanitizeLimits("not_a_metric"), /Unknown climate metric key/);
 });
 
+test("daily SST series cannot remain silently stale for weeks", () => {
+  const dailySstKeys = [
+    "global_sea_surface_temperature",
+    "north_atlantic_sea_surface_temperature",
+    "daily_nino34_sea_surface_temperature",
+    "global_sea_surface_temperature_anomaly",
+    "north_atlantic_sea_surface_temperature_anomaly",
+  ];
+
+  for (const key of dailySstKeys) {
+    assert.equal(SERIES_RULES[key].maxAgeDays, 10, `${key} must use the daily SST freshness gate`);
+  }
+});
+
 test("snapshot registry preserves the published API metric contract", async () => {
   const raw = await readFile(new URL("../public/data/climate-latest.json", import.meta.url), "utf8");
   const snapshot = JSON.parse(raw);

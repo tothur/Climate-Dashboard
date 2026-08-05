@@ -660,20 +660,36 @@ async function loadGeneratedLocalPayloadBundle(): Promise<GeneratedPayloadBundle
   };
 }
 
+function isReanalyzerPreliminaryRow(row: unknown): boolean {
+  return isRecord(row) && typeof row.name === "string" && row.name.trim().toLowerCase() === "preliminary";
+}
+
+function orderedReanalyzerObservationRows(payload: unknown[]): unknown[] {
+  return [
+    ...payload.filter((row) => isReanalyzerPreliminaryRow(row)),
+    ...payload.filter((row) => !isReanalyzerPreliminaryRow(row)),
+  ];
+}
+
+function reanalyzerObservationYear(row: Record<string, unknown>, currentYear: number): number | null {
+  if (isReanalyzerPreliminaryRow(row)) return currentYear;
+  const yearToken = typeof row.name === "number" || typeof row.name === "string" ? String(row.name).trim() : "";
+  if (!/^\d{4}$/.test(yearToken)) return null;
+  const year = Number(yearToken);
+  return Number.isFinite(year) && year >= 1940 && year <= currentYear + 1 ? year : null;
+}
+
 function parseReanalyzerDailyJson(payload: unknown): DailyPoint[] {
   if (!Array.isArray(payload)) return [];
 
   const nowYear = new Date().getUTCFullYear();
   const points: DailyPoint[] = [];
 
-  for (const row of payload) {
+  for (const row of orderedReanalyzerObservationRows(payload)) {
     if (!isRecord(row)) continue;
 
-    const yearToken = typeof row.name === "number" || typeof row.name === "string" ? String(row.name).trim() : "";
-    if (!/^\d{4}$/.test(yearToken)) continue;
-
-    const year = Number(yearToken);
-    if (!Number.isFinite(year) || year < 1940 || year > nowYear + 1) continue;
+    const year = reanalyzerObservationYear(row, nowYear);
+    if (year == null) continue;
 
     let values: unknown[] = [];
     if (Array.isArray(row.data)) {
@@ -724,14 +740,11 @@ function parseReanalyzerDailyAnomalyJson(payload: unknown, climatologyLabel = "1
   const nowYear = new Date().getUTCFullYear();
   const points: DailyPoint[] = [];
 
-  for (const row of payload) {
+  for (const row of orderedReanalyzerObservationRows(payload)) {
     if (!isRecord(row)) continue;
 
-    const yearToken = typeof row.name === "number" || typeof row.name === "string" ? String(row.name).trim() : "";
-    if (!/^\d{4}$/.test(yearToken)) continue;
-
-    const year = Number(yearToken);
-    if (!Number.isFinite(year) || year < 1940 || year > nowYear + 1) continue;
+    const year = reanalyzerObservationYear(row, nowYear);
+    if (year == null) continue;
 
     const values = reanalyzerRowValues(row);
     for (let index = 0; index < values.length; index += 1) {

@@ -20,16 +20,22 @@ async function fixture(name) {
   return await readFile(resolve(FIXTURE_DIR, name), "utf8");
 }
 
-test("Climate Reanalyzer fixture handles strings, internal gaps, sentinels, and future rows", async () => {
+test("Climate Reanalyzer fixture merges preliminary current-year values behind finalized observations", async () => {
   const payload = JSON.parse(await fixture("reanalyzer-daily.json"));
 
   assert.deepEqual(parseReanalyzerDailyJson(payload, { currentYear: 2025 }), [
     { date: "2024-01-01", value: 11.25 },
     { date: "2024-01-04", value: 14.5 },
+    { date: "2025-01-01", value: 15 },
+    { date: "2025-01-02", value: 16 },
+    { date: "2025-01-05", value: 18 },
   ]);
   assert.deepEqual(parseReanalyzerDailyAnomalyJson(payload, "1991-2020", { currentYear: 2025 }), [
     { date: "2024-01-01", value: 1.25 },
     { date: "2024-01-04", value: 1.5 },
+    { date: "2025-01-01", value: 5 },
+    { date: "2025-01-02", value: 5 },
+    { date: "2025-01-05", value: 4 },
   ]);
 });
 

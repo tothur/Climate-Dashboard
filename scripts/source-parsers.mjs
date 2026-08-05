@@ -53,16 +53,39 @@ function reanalyzerRowValues(row) {
   return [];
 }
 
+function isReanalyzerPreliminaryRow(row) {
+  return (
+    typeof row === "object" &&
+    row != null &&
+    !Array.isArray(row) &&
+    typeof row.name === "string" &&
+    row.name.trim().toLowerCase() === "preliminary"
+  );
+}
+
+function orderedReanalyzerObservationRows(payload) {
+  return [
+    ...payload.filter((row) => isReanalyzerPreliminaryRow(row)),
+    ...payload.filter((row) => !isReanalyzerPreliminaryRow(row)),
+  ];
+}
+
+function reanalyzerObservationYear(row, currentYear) {
+  if (isReanalyzerPreliminaryRow(row)) return currentYear;
+  const yearToken = typeof row.name === "number" || typeof row.name === "string" ? String(row.name).trim() : "";
+  if (!/^\d{4}$/.test(yearToken)) return null;
+  const year = Number(yearToken);
+  return Number.isFinite(year) && year >= 1940 && year <= currentYear + 1 ? year : null;
+}
+
 export function parseReanalyzerDailyJson(payload, { currentYear = new Date().getUTCFullYear() } = {}) {
   if (!Array.isArray(payload)) return [];
   const points = [];
 
-  for (const row of payload) {
+  for (const row of orderedReanalyzerObservationRows(payload)) {
     if (typeof row !== "object" || row == null || Array.isArray(row)) continue;
-    const yearToken = typeof row.name === "number" || typeof row.name === "string" ? String(row.name).trim() : "";
-    if (!/^\d{4}$/.test(yearToken)) continue;
-    const year = Number(yearToken);
-    if (!Number.isFinite(year) || year < 1940 || year > currentYear + 1) continue;
+    const year = reanalyzerObservationYear(row, currentYear);
+    if (year == null) continue;
 
     const values = reanalyzerRowValues(row);
     let effectiveLength = values.length;
@@ -97,12 +120,10 @@ export function parseReanalyzerDailyAnomalyJson(
   if (!baselineValues.length) return [];
   const points = [];
 
-  for (const row of payload) {
+  for (const row of orderedReanalyzerObservationRows(payload)) {
     if (typeof row !== "object" || row == null || Array.isArray(row)) continue;
-    const yearToken = typeof row.name === "number" || typeof row.name === "string" ? String(row.name).trim() : "";
-    if (!/^\d{4}$/.test(yearToken)) continue;
-    const year = Number(yearToken);
-    if (!Number.isFinite(year) || year < 1940 || year > currentYear + 1) continue;
+    const year = reanalyzerObservationYear(row, currentYear);
+    if (year == null) continue;
 
     for (const [index, value] of reanalyzerRowValues(row).entries()) {
       if (isMissingReanalyzerValue(value) || isMissingReanalyzerValue(baselineValues[index])) continue;
