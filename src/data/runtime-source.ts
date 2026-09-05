@@ -346,7 +346,7 @@ function sanitizeSeries(
 
 async function fetchJson(url: string): Promise<unknown | null> {
   try {
-    const response = await fetch(url, { cache: "no-cache" });
+    const response = await fetch(url, { cache: "no-cache", signal: AbortSignal.timeout(8_000) });
     if (!response.ok) return null;
     return await response.json();
   } catch {
@@ -356,7 +356,7 @@ async function fetchJson(url: string): Promise<unknown | null> {
 
 async function fetchText(url: string): Promise<string | null> {
   try {
-    const response = await fetch(url, { cache: "no-cache" });
+    const response = await fetch(url, { cache: "no-cache", signal: AbortSignal.timeout(8_000) });
     if (!response.ok) return null;
     return await response.text();
   } catch {
@@ -366,7 +366,7 @@ async function fetchText(url: string): Promise<string | null> {
 
 async function fetchBinary(url: string): Promise<Uint8Array | null> {
   try {
-    const response = await fetch(url, { cache: "no-cache" });
+    const response = await fetch(url, { cache: "no-cache", signal: AbortSignal.timeout(8_000) });
     if (!response.ok) return null;
     return new Uint8Array(await response.arrayBuffer());
   } catch {

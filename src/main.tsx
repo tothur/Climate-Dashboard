@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { App } from "./app/App";
 import { registerServiceWorker } from "./registerServiceWorker";
 import "./styles/app.css";
+import "./styles/observatory.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

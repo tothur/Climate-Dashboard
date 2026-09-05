@@ -121,7 +121,7 @@ export function buildForcingTrendOption({
         axisLabel: "#cbd5e1",
         grid: "rgba(148, 163, 184, 0.16)",
         currentLine: "rgba(251, 146, 60, 0.58)",
-        tooltipBg: "rgba(15, 23, 42, 0.96)",
+        tooltipBg: "rgba(20, 30, 30, 0.96)",
         tooltipBorder: "rgba(148, 163, 184, 0.48)",
         tooltipText: "#e2e8f0",
       }

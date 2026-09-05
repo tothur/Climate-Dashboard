@@ -3214,6 +3214,17 @@ export function App() {
     snowCover: true,
     iceSheetsAndGlaciers: true,
   });
+  const [overviewMapMode, setOverviewMapMode] = useState("anomaly");
+  const [indicatorTopic, setIndicatorTopic] = useState("temperature");
+  const [mapTopic, setMapTopic] = useState("surface");
+  const [sourceQuery, setSourceQuery] = useState("");
+  const indicatorTopics = [
+    {key: "temperature", en: "Temperature", hu: "Hőmérséklet", sections: ["globalTemperatures", "temperatureAnomalies"]},
+    {key: "regions", en: "Regions", hu: "Régiók", sections: ["regionalTemperatures", "regionalTemperatureAnomalies"]},
+    {key: "oceans", en: "Oceans", hu: "Óceánok", sections: ["oceans"]},
+    {key: "ice", en: "Ice & snow", hu: "Jég és hó", sections: ["seaIce", "snowCover", "iceSheetsAndGlaciers"]},
+    {key: "energy", en: "Energy", hu: "Energia", sections: ["earthEnergyImbalance"]},
+  ];
   const [mapsSectionOpen, setMapsSectionOpen] = useState(true);
   const [forcingSectionOpen, setForcingSectionOpen] = useState(true);
   const [variabilitySectionOpen, setVariabilitySectionOpen] = useState(true);
@@ -3923,6 +3934,7 @@ export function App() {
     note: string,
     content: ReactNode
   ) => {
+    if (!indicatorTopics.find((topic) => topic.key === indicatorTopic)?.sections.includes(key)) return null;
     const open = indicatorSubsectionsOpen[key];
 
     return (
@@ -4218,7 +4230,7 @@ export function App() {
       return {
         key: "overview-sea-ice",
         title: metric.key === "arctic_sea_ice_extent" ? t.overviewArcticSeaIceTitle : metricTitle(metric, language),
-        subtitle: t.overviewClimatologySubtitle,
+        subtitle: language === "hu" ? "Abszolút kiterjedés" : "Absolute extent",
         value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
         meta: `${t.chartLatest}: ${formatDateLabel(metric.latestDate, language)}`,
         delta: delta?.label ?? metricFreshnessBadge(metric, language, t).label,
@@ -4244,7 +4256,7 @@ export function App() {
       };
     })(),
   ].filter((card): card is NonNullable<typeof card> => card != null);
-  const overviewMapCard = mapCards.find((card) => card.key === "map-2m-temperature-anomaly") ?? null;
+  const overviewMapCard = mapCards.find((card) => card.key === (overviewMapMode === "anomaly" ? "map-2m-temperature-anomaly" : "map-2m-temperature")) ?? null;
   const overviewRegionalSignals = regionalTemperatureAnomalyLines.slice(0, 4).map(({ metric }) => ({
     key: metric.key,
     title: metricTitle(metric, language),
@@ -4336,10 +4348,10 @@ export function App() {
       <section className="overview-hero" aria-label={t.overviewDailyGlobalTemperatureAnomalyTitle}>
         <div className="overview-hero-main">
           <div className="overview-hero-copy">
-            <span className="overview-hero-kicker">
-              <span className="overview-hero-title">{t.overviewDailyGlobalTemperatureAnomalyTitle}</span>
+            <div className="overview-hero-kicker">
+              <h2 className="overview-hero-title">{t.overviewDailyGlobalTemperatureAnomalyTitle}</h2>
               <span className="overview-hero-baseline">{t.overviewPreindustrialSubtitle}</span>
-            </span>
+            </div>
             <strong className="overview-hero-value">
               {renderMetricValue(dailyGlobalMeanAnomalyMetric, "value-loading-skeleton overview-value-loading")}
             </strong>
@@ -4386,10 +4398,10 @@ export function App() {
   const renderOverviewAiSummary = () => (
     <section className={`ai-summary-panel overview-ai-summary ${aiDashboardSummary.tone}`} aria-label={t.aiSummaryAria}>
       <div className="ai-summary-label-row">
-        <span className="alert-kicker">
+        <h2 className="alert-kicker">
           <ToolkitIcon name="up" />
           {t.aiSummaryTitle}
-        </span>
+        </h2>
       </div>
       {runtimeDataReady ? (
         <div className="ai-overview-signal-list">
@@ -4422,7 +4434,8 @@ export function App() {
     </section>
   );
   return (
-    <div className="app-frame">
+    <div className="app-frame observatory">
+      <a className="skip-link" href="#main-content" onClick={(event) => {event.preventDefault(); document.getElementById("main-content")?.focus();}}>{language === "hu" ? "Ugrás a tartalomra" : "Skip to content"}</a>
       <header className={`mobile-app-bar${mobileMenuOpen ? " menu-open" : ""}`}>
         <button type="button" className="mobile-brand" onClick={() => setDashboardView("overview")} aria-label={t.appTitle}>
           <span className={`sidebar-logo-wrap mode-${snapshot.sourceMode}`} title={sourceModeLabel}>
@@ -4504,31 +4517,16 @@ export function App() {
           })}
         </nav>
         <div className="sidebar-controls">
-          <button
-            type="button"
-            className="sidebar-control-btn"
-            onClick={() => setThemeMode(themeMode === "system" ? "light" : themeMode === "light" ? "dark" : "system")}
-            title={`${t.theme}: ${themeMode === "dark" ? t.themeDark : themeMode === "light" ? t.themeLight : t.themeSystem}`}
-            aria-label={`${t.theme}: ${themeMode === "dark" ? t.themeDark : themeMode === "light" ? t.themeLight : t.themeSystem}`}
-          >
-            <ToolkitIcon
-              name={themeMode === "dark" ? "moon" : themeMode === "light" ? "sun" : "contrast"}
-              className="control-icon"
-            />
-            <span className="control-label">
-              {themeMode === "dark" ? t.themeDark : themeMode === "light" ? t.themeLight : t.themeSystem}
-            </span>
+          <button type="button" className="language-switch" onClick={() => setLanguage(language === "hu" ? "en" : "hu")} aria-label={`${t.language}: ${language === "hu" ? "Magyar" : "English"}`}>
+            <strong>{language.toUpperCase()}</strong><span> / {language === "hu" ? "EN" : "HU"}</span>
           </button>
-          <button
-            type="button"
-            className="sidebar-control-btn"
-            onClick={() => setLanguage(language === "hu" ? "en" : "hu")}
-            title={`${t.language}: ${language === "hu" ? "Magyar" : "English"}`}
-            aria-label={`${t.language}: ${language === "hu" ? "Magyar" : "English"}`}
-          >
-            <span className="control-lang">{language.toUpperCase()}</span>
-            <span className="control-label">{language === "hu" ? "Magyar" : "English"}</span>
-          </button>
+          <div className="theme-switch segmented-control" role="group" aria-label={t.theme}>
+            {(["light", "dark", "system"] as ThemeMode[]).map((mode) => (
+              <button type="button" key={mode} aria-pressed={themeMode === mode} onClick={() => setThemeMode(mode)}>
+                {mode === "light" ? t.themeLight : mode === "dark" ? t.themeDark : t.themeSystem}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="sidebar-meta">
           <span>{t.dataUpdatedLabel}</span>
@@ -4542,7 +4540,7 @@ export function App() {
         </div>
       </aside>
 
-      <main className={`app-shell dashboard-view dashboard-view-${activeView}`}>
+      <main id="main-content" tabIndex={-1} className={`app-shell dashboard-view dashboard-view-${activeView}`}>
         <header className="topbar dashboard-page-header">
           <div className="topbar-brand">
             <div>
@@ -4559,7 +4557,7 @@ export function App() {
                     "value-loading-skeleton page-meta-loading"
                   )}
                 </span>
-                {runtimeDataReady && ensoOutlookFreshness ? <span>{ensoOutlookFreshness.label}</span> : null}
+
               </div>
             </div>
           </div>
@@ -4574,6 +4572,10 @@ export function App() {
                 <div className="overview-card-header planet-now-header">
                   <div>
                     <h2>{t.planetNowTitle}</h2>
+                    <div className="segmented-control map-mode-switch" role="group" aria-label={language === "hu" ? "Térképréteg" : "Map layer"}>
+                      <button type="button" aria-pressed={overviewMapMode === "temperature"} onClick={() => setOverviewMapMode("temperature")}>{language === "hu" ? "Hőmérséklet" : "Temperature"}</button>
+                      <button type="button" aria-pressed={overviewMapMode === "anomaly"} onClick={() => setOverviewMapMode("anomaly")}>{language === "hu" ? "Anomália" : "Anomaly"}</button>
+                    </div>
                     <p>{overviewMapCard?.subtitle}</p>
                   </div>
                   <button type="button" className="text-link-button" onClick={() => setDashboardView("maps")}>
@@ -4618,6 +4620,10 @@ export function App() {
                       <p className="metric-meta">{renderLoadingValue("value-loading-skeleton metric-meta-loading")}</p>
                     )}
                     {runtimeDataReady && card.delta ? <span className="metric-delta">{card.delta}</span> : null}
+                    <button type="button" className="text-link-button metric-explore" onClick={() => {
+                      setIndicatorTopic(card.key === "overview-sea-ice" ? "ice" : "temperature");
+                      setDashboardView(card.key === "overview-co2" ? "forcing" : "indicators");
+                    }}>{language === "hu" ? "Részletes adatok" : "Explore indicator"} →</button>
                   </div>
                 </article>
               ))}
@@ -4630,7 +4636,7 @@ export function App() {
                     <h2>{t.regionalTemperatureAnomaliesSectionTitle}</h2>
                     <p>{t.regionalTemperatureAnomaliesSectionNote}</p>
                   </div>
-                  <button type="button" className="text-link-button" onClick={() => setDashboardView("indicators")}>
+                  <button type="button" className="text-link-button" onClick={() => { setIndicatorTopic("regions"); setDashboardView("indicators"); }}>
                     {t.sectionExpand} →
                   </button>
                 </div>
@@ -4644,7 +4650,7 @@ export function App() {
                   ))}
                 </div>
               </section>
-              {renderEnsoOutlookCard({ showSourceLink: false })}
+              <div className="overview-enso-with-link">{renderEnsoOutlookCard({ showSourceLink: false })}<button type="button" className="text-link-button" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Szezonális kilátások" : "Explore seasonal outlook"} →</button></div>
               <article className="overview-card overview-projection-card outlook-featured">
                 <div className="outlook-card-grid">
                   <div className="outlook-card-copy">
@@ -4695,6 +4701,7 @@ export function App() {
                         ) : null}
                       </>
                     ) : null}
+                    <button type="button" className="text-link-button outlook-details-link" onClick={() => setDashboardView("projections")}>{language === "hu" ? "Becslés és módszertan" : "View estimate & assumptions"} →</button>
                   </div>
                   {projectedAnnualGlobalMeanAnomaly && outlookMiniChartScale && outlookMiniChartBars.length ? (
                     <div className="outlook-mini-chart" role="img" aria-label={t.outlookChartCaption}>
@@ -4744,7 +4751,7 @@ export function App() {
                   <div className="overview-card-header">
                     <div>
                       <h2>{t.longRangeTemperatureHorizonTitle}</h2>
-                      <p>{t.longRangeTemperatureTrendSource}</p>
+                      <p>{t.longRangeTemperatureTrendSubtitle}</p>
                     </div>
                     <button
                       type="button"
@@ -4787,6 +4794,9 @@ export function App() {
 
       {activeView === "indicators" ? (
       <section className="collapsible-section detail-page-section detail-page-indicators" id="indicators">
+        <div className="topic-navigation segmented-control" role="group" aria-label={language === "hu" ? "Indikátorcsoport" : "Indicator category"}>
+          {indicatorTopics.map((topic) => <button type="button" key={topic.key} aria-pressed={indicatorTopic === topic.key} onClick={() => {setIndicatorTopic(topic.key); setClimateSectionOpen(true);}}>{language === "hu" ? topic.hu : topic.en}</button>)}
+        </div>
         <header className="section-header">
           <div className="section-header-main">
             <h2>{t.climateIndicatorsTitle}</h2>
@@ -5229,6 +5239,10 @@ export function App() {
 
       {activeView === "maps" ? (
       <section className="collapsible-section detail-page-section detail-page-maps" id="maps">
+        <div className="topic-navigation segmented-control" role="group" aria-label={t.mapsSectionTitle}>
+          <button type="button" aria-pressed={mapTopic === "surface"} onClick={() => {setMapTopic("surface"); setMapsSectionOpen(true);}}>{language === "hu" ? "Felszíni hőmérséklet" : "Surface temperature"}</button>
+          <button type="button" aria-pressed={mapTopic === "ocean"} onClick={() => {setMapTopic("ocean"); setMapsSectionOpen(true);}}>{language === "hu" ? "Óceánok" : "Oceans"}</button>
+        </div>
         <header className="section-header">
           <div className="section-header-main">
             <h2>{t.mapsSectionTitle}</h2>
@@ -5248,7 +5262,7 @@ export function App() {
         {mapsSectionOpen ? (
           <div className="section-content">
             <div className="charts-grid climate-grid maps-grid">
-              {mapCards.map((mapCard) => (
+              {mapCards.filter((card) => mapTopic === "surface" ? card.key.includes("2m") : !card.key.includes("2m")).map((mapCard) => (
                 <MapPanel
                   key={mapCard.key}
                   title={mapCard.title}
@@ -5641,12 +5655,16 @@ export function App() {
             </ul>
           </details>
         ) : null}
+        <label className="source-search">{language === "hu" ? "Adatforrások keresése" : "Find a data source"}
+          <input type="search" value={sourceQuery} onChange={(event) => setSourceQuery(event.target.value)} placeholder={language === "hu" ? "Név, szolgáltató vagy témakör…" : "Name, provider or topic…"} />
+        </label>
+        {sourceQuery && !footerSources.some((source) => `${source.title} ${source.provider}`.toLocaleLowerCase().includes(sourceQuery.toLocaleLowerCase())) ? <p role="status">{language === "hu" ? "Nincs találat." : "No matching sources."}</p> : null}
         <div className="footer-sources">
           <div className="footer-sources-header">
             <strong className="footer-sources-title">{t.sourceListTitle}</strong>
             <p>{t.sourceListNote}</p>
           </div>
-          {groupedFooterSources.map((group) => (
+          {groupedFooterSources.map((group) => ({...group, sources: group.sources.filter((source) => `${source.title} ${source.provider}`.toLocaleLowerCase().includes(sourceQuery.toLocaleLowerCase()))})).filter((group) => group.sources.length).map((group) => (
             <section className="source-link-section" key={group.section}>
               <h2>{dataSourceSectionTitle(group.section, t)}</h2>
               <ul className="source-link-list">
