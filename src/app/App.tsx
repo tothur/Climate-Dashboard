@@ -62,6 +62,8 @@ interface LongRangeScenarioDefinition {
   colorDark: string;
 }
 
+type OverviewMapMode = "temperature" | "anomaly" | "sst" | "sst-anomaly";
+
 interface TippingPointDefinition {
   key: string;
   labelEn: string;
@@ -3214,17 +3216,18 @@ export function App() {
     snowCover: true,
     iceSheetsAndGlaciers: true,
   });
-  const [overviewMapMode, setOverviewMapMode] = useState("anomaly");
+  const [overviewMapMode, setOverviewMapMode] = useState<OverviewMapMode>("anomaly");
   const [indicatorTopic, setIndicatorTopic] = useState("temperature");
   const [mapTopic, setMapTopic] = useState("surface");
   const [sourceQuery, setSourceQuery] = useState("");
   const indicatorTopics = [
-    {key: "temperature", en: "Temperature", hu: "Hőmérséklet", sections: ["globalTemperatures", "temperatureAnomalies"]},
-    {key: "regions", en: "Regions", hu: "Régiók", sections: ["regionalTemperatures", "regionalTemperatureAnomalies"]},
-    {key: "oceans", en: "Oceans", hu: "Óceánok", sections: ["oceans"]},
-    {key: "ice", en: "Ice & snow", hu: "Jég és hó", sections: ["seaIce", "snowCover", "iceSheetsAndGlaciers"]},
-    {key: "energy", en: "Energy", hu: "Energia", sections: ["earthEnergyImbalance"]},
+    {key: "temperature", en: "Temperature", hu: "Hőmérséklet", descriptionEn: "Track global heat from daily variability to the long-term warming signal.", descriptionHu: "Kövesd a globális hőt a napi ingadozástól a hosszú távú melegedési jelig.", sections: ["globalTemperatures", "temperatureAnomalies"]},
+    {key: "regions", en: "Regions", hu: "Régiók", descriptionEn: "Compare how warming is distributed across hemispheres and polar regions.", descriptionHu: "Hasonlítsd össze a melegedés eloszlását a féltekék és a sarkvidékek között.", sections: ["regionalTemperatures", "regionalTemperatureAnomalies"]},
+    {key: "oceans", en: "Oceans", hu: "Óceánok", descriptionEn: "Follow ocean surface warmth, sea level and the heat stored below the surface.", descriptionHu: "Kövesd az óceánfelszín melegedését, a tengerszintet és a mélyben tárolt hőt.", sections: ["oceans"]},
+    {key: "ice", en: "Ice & snow", hu: "Jég és hó", descriptionEn: "See the changing footprint of sea ice, snow cover, glaciers and ice sheets.", descriptionHu: "Lásd a tengeri jég, a hótakaró, a gleccserek és a jégtakarók változását.", sections: ["seaIce", "snowCover", "iceSheetsAndGlaciers"]},
+    {key: "energy", en: "Energy", hu: "Energia", descriptionEn: "Measure the planetary energy imbalance driving continued climate change.", descriptionHu: "Kövesd a további klímaváltozást hajtó bolygószintű energiaegyensúly-hiányt.", sections: ["earthEnergyImbalance"]},
   ];
+  const activeIndicatorTopic = indicatorTopics.find((topic) => topic.key === indicatorTopic) ?? indicatorTopics[0];
   const [mapsSectionOpen, setMapsSectionOpen] = useState(true);
   const [forcingSectionOpen, setForcingSectionOpen] = useState(true);
   const [variabilitySectionOpen, setVariabilitySectionOpen] = useState(true);
@@ -4256,7 +4259,13 @@ export function App() {
       };
     })(),
   ].filter((card): card is NonNullable<typeof card> => card != null);
-  const overviewMapCard = mapCards.find((card) => card.key === (overviewMapMode === "anomaly" ? "map-2m-temperature-anomaly" : "map-2m-temperature")) ?? null;
+  const overviewMapCardKey: Record<OverviewMapMode, string> = {
+    temperature: "map-2m-temperature",
+    anomaly: "map-2m-temperature-anomaly",
+    sst: "map-sst",
+    "sst-anomaly": "map-sst-anomaly",
+  };
+  const overviewMapCard = mapCards.find((card) => card.key === overviewMapCardKey[overviewMapMode]) ?? null;
   const overviewRegionalSignals = regionalTemperatureAnomalyLines.slice(0, 4).map(({ metric }) => ({
     key: metric.key,
     title: metricTitle(metric, language),
@@ -4517,9 +4526,18 @@ export function App() {
           })}
         </nav>
         <div className="sidebar-controls">
-          <button type="button" className="language-switch" onClick={() => setLanguage(language === "hu" ? "en" : "hu")} aria-label={`${t.language}: ${language === "hu" ? "Magyar" : "English"}`}>
-            <strong>{language.toUpperCase()}</strong><span> / {language === "hu" ? "EN" : "HU"}</span>
-          </button>
+          <div className="language-switch segmented-control" role="group" aria-label={t.language}>
+            {(["en", "hu"] as Language[]).map((languageOption) => (
+              <button
+                type="button"
+                key={languageOption}
+                aria-pressed={language === languageOption}
+                onClick={() => setLanguage(languageOption)}
+              >
+                {languageOption.toUpperCase()}
+              </button>
+            ))}
+          </div>
           <div className="theme-switch segmented-control" role="group" aria-label={t.theme}>
             {(["light", "dark", "system"] as ThemeMode[]).map((mode) => (
               <button type="button" key={mode} aria-pressed={themeMode === mode} onClick={() => setThemeMode(mode)}>
@@ -4541,28 +4559,28 @@ export function App() {
       </aside>
 
       <main id="main-content" tabIndex={-1} className={`app-shell dashboard-view dashboard-view-${activeView}`}>
-        <header className="topbar dashboard-page-header">
-          <div className="topbar-brand">
-            <div>
-              <div className="topbar-heading">
-                <h1>{pageTitle}</h1>
-                <p className="subtitle">{pageSubtitle}</p>
-              </div>
-              <div className="page-meta-row" aria-label={t.dataStatusLabel}>
-                <span>{sourceModeLabel}</span>
-                <span>
-                  {t.dataUpdatedLabel}:{" "}
-                  {renderPrimaryValue(
-                    formatDateLabel(extractIsoDate(snapshot.updatedAtIso), language),
-                    "value-loading-skeleton page-meta-loading"
-                  )}
-                </span>
-
+        {activeView !== "overview" ? (
+          <header className="topbar dashboard-page-header">
+            <div className="topbar-brand">
+              <div>
+                <div className="topbar-heading">
+                  <h1>{pageTitle}</h1>
+                  <p className="subtitle">{pageSubtitle}</p>
+                </div>
+                <div className="page-meta-row" aria-label={t.dataStatusLabel}>
+                  <span>{sourceModeLabel}</span>
+                  <span>
+                    {t.dataUpdatedLabel}:{" "}
+                    {renderPrimaryValue(
+                      formatDateLabel(extractIsoDate(snapshot.updatedAtIso), language),
+                      "value-loading-skeleton page-meta-loading"
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-
-        </header>
+          </header>
+        ) : null}
 
         {activeView === "overview" ? (
           <div className="overview-page">
@@ -4575,6 +4593,8 @@ export function App() {
                     <div className="segmented-control map-mode-switch" role="group" aria-label={language === "hu" ? "Térképréteg" : "Map layer"}>
                       <button type="button" aria-pressed={overviewMapMode === "temperature"} onClick={() => setOverviewMapMode("temperature")}>{language === "hu" ? "Hőmérséklet" : "Temperature"}</button>
                       <button type="button" aria-pressed={overviewMapMode === "anomaly"} onClick={() => setOverviewMapMode("anomaly")}>{language === "hu" ? "Anomália" : "Anomaly"}</button>
+                      <button type="button" aria-pressed={overviewMapMode === "sst"} onClick={() => setOverviewMapMode("sst")}>SST</button>
+                      <button type="button" aria-pressed={overviewMapMode === "sst-anomaly"} onClick={() => setOverviewMapMode("sst-anomaly")}>{language === "hu" ? "SST-anomália" : "SST Anomaly"}</button>
                     </div>
                     <p>{overviewMapCard?.subtitle}</p>
                   </div>
@@ -4789,12 +4809,34 @@ export function App() {
               </section>
             ) : null}
 
+            <footer className="overview-status-footer" aria-label={t.dataStatusLabel}>
+              <span>{sourceModeLabel}</span>
+              <span>
+                {t.dataUpdatedLabel}:{" "}
+                {renderPrimaryValue(
+                  formatDateLabel(extractIsoDate(snapshot.updatedAtIso), language),
+                  "value-loading-skeleton page-meta-loading"
+                )}
+              </span>
+            </footer>
+
           </div>
         ) : null}
 
       {activeView === "indicators" ? (
-      <section className="collapsible-section detail-page-section detail-page-indicators" id="indicators">
-        <div className="topic-navigation segmented-control" role="group" aria-label={language === "hu" ? "Indikátorcsoport" : "Indicator category"}>
+      <section className={`collapsible-section detail-page-section detail-page-indicators indicator-topic-${indicatorTopic}`} id="indicators">
+        <div className="indicator-page-intro">
+          <div className="indicator-topic-copy">
+            <span className="indicator-topic-eyebrow">{language === "hu" ? "A klímarendszer állapota" : "State of the climate system"}</span>
+            <h2>{language === "hu" ? activeIndicatorTopic.hu : activeIndicatorTopic.en}</h2>
+            <p>{language === "hu" ? activeIndicatorTopic.descriptionHu : activeIndicatorTopic.descriptionEn}</p>
+          </div>
+          <div className="indicator-topic-note">
+            <span>{language === "hu" ? "Nézet" : "View"}</span>
+            <strong>{language === "hu" ? "Legfrissebb megfigyelések" : "Latest observations"}</strong>
+          </div>
+        </div>
+        <div className="topic-navigation indicator-topic-navigation segmented-control" role="group" aria-label={language === "hu" ? "Indikátorcsoport" : "Indicator category"}>
           {indicatorTopics.map((topic) => <button type="button" key={topic.key} aria-pressed={indicatorTopic === topic.key} onClick={() => {setIndicatorTopic(topic.key); setClimateSectionOpen(true);}}>{language === "hu" ? topic.hu : topic.en}</button>)}
         </div>
         <header className="section-header">
