@@ -292,6 +292,27 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .detail-page-maps .maps-grid { grid-template-columns: 1fr; }
 .observatory .detail-page-maps .map-image { max-height: 620px; object-fit: contain; }
 .observatory .detail-page-forcing .forcing-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.observatory .detail-page-forcing .forcing-gas-card {
+  box-shadow: inset 0 3px 0 var(--forcing-accent);
+}
+.observatory .detail-page-forcing .forcing-gas-card .alert-kicker {
+  color: var(--forcing-accent);
+}
+.observatory .detail-page-forcing .alert-card.summary .forcing-gas-title {
+  margin: 14px 0 0;
+  color: var(--forcing-accent);
+  font: 680 clamp(40px,4vw,62px)/.9 var(--font-display);
+  letter-spacing: -.055em;
+}
+.observatory .detail-page-forcing .forcing-gas-name {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.observatory .detail-page-forcing .forcing-gas-card .alert-emphasis {
+  color: color-mix(in srgb,var(--forcing-accent) 74%,var(--text));
+}
 .observatory .detail-page-variability .section-content { display: grid; grid-template-columns: 300px minmax(0,1fr); align-items: start; }
 .observatory .detail-page-variability .charts-grid { grid-template-columns: 1fr; }
 .observatory .detail-page-variability .projection-enso-card-row { position: sticky; top: 110px; }

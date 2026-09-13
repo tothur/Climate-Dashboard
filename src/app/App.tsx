@@ -2661,6 +2661,32 @@ function topicChartColor(metricKey: ClimateMetricSeries["key"], dark: boolean): 
   }
 }
 
+function forcingMetricColor(metricKey: ClimateMetricSeries["key"], dark: boolean): string {
+  switch (metricKey) {
+    case "atmospheric_co2":
+      return dark ? "#e9b75f" : "#a66d16";
+    case "atmospheric_ch4":
+      return dark ? "#c0a5e8" : "#7956a8";
+    case "atmospheric_n2o":
+      return dark ? "#79c7b0" : "#257d69";
+    default:
+      return topicChartColor(metricKey, dark);
+  }
+}
+
+function forcingGasLabel(metricKey: ClimateMetricSeries["key"]): string | null {
+  switch (metricKey) {
+    case "atmospheric_co2":
+      return "CO₂";
+    case "atmospheric_ch4":
+      return "CH₄";
+    case "atmospheric_n2o":
+      return "N₂O";
+    default:
+      return null;
+  }
+}
+
 function topicChartSoftColor(metricKey: ClimateMetricSeries["key"], dark: boolean): string {
   const category = topSummaryCategoryClass(metricKey);
   switch (category) {
@@ -4616,7 +4642,7 @@ export function App() {
       </aside>
 
       <main id="main-content" tabIndex={-1} className={`app-shell dashboard-view dashboard-view-${activeView}`}>
-        {activeView !== "overview" && activeView !== "indicators" ? (
+        {activeView !== "overview" && activeView !== "indicators" && activeView !== "forcing" ? (
           <header className="topbar dashboard-page-header">
             <div className="topbar-brand">
               <div>
@@ -5388,10 +5414,23 @@ export function App() {
               <div className="regional-summary-grid">
                 {snapshot.forcing.map((metric) => {
                   const freshness = metricFreshnessBadge(metric, language, t);
+                  const gasLabel = forcingGasLabel(metric.key);
+                  const accentColor = forcingMetricColor(metric.key, resolvedTheme === "dark");
                   return (
-                    <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-forcing-summary`}>
+                    <article
+                      className={`alert-card summary ${topSummaryCategoryClass(metric.key)}${gasLabel ? " forcing-gas-card" : ""}`}
+                      key={`${metric.key}-forcing-summary`}
+                      style={{ "--forcing-accent": accentColor } as CSSProperties}
+                    >
                       <span className="alert-kicker">{t.latestLabel}</span>
-                      <h2>{metricTitle(metric, language)}</h2>
+                      {gasLabel ? (
+                        <>
+                          <h2 className="forcing-gas-title">{gasLabel}</h2>
+                          <p className="forcing-gas-name">{metricTitle(metric, language)}</p>
+                        </>
+                      ) : (
+                        <h2>{metricTitle(metric, language)}</h2>
+                      )}
                       <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
                       {runtimeDataReady ? (
                         <p>
@@ -5429,7 +5468,7 @@ export function App() {
                         showLegend: false,
                         compact,
                         dark: resolvedTheme === "dark",
-                        color: topicChartColor(metric.key, resolvedTheme === "dark"),
+                        color: forcingMetricColor(metric.key, resolvedTheme === "dark"),
                         labels: {
                           noData: t.noData,
                           latest: t.chartLatest,
@@ -5446,7 +5485,7 @@ export function App() {
                         decimals: metric.decimals,
                         compact,
                         dark: resolvedTheme === "dark",
-                        color: topicChartColor(metric.key, resolvedTheme === "dark"),
+                        color: forcingMetricColor(metric.key, resolvedTheme === "dark"),
                         labels: {
                           noData: t.noData,
                           latest: t.chartLatest,
