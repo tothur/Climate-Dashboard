@@ -4616,23 +4616,13 @@ export function App() {
       </aside>
 
       <main id="main-content" tabIndex={-1} className={`app-shell dashboard-view dashboard-view-${activeView}`}>
-        {activeView !== "overview" ? (
+        {activeView !== "overview" && activeView !== "indicators" ? (
           <header className="topbar dashboard-page-header">
             <div className="topbar-brand">
               <div>
                 <div className="topbar-heading">
                   <h1>{pageTitle}</h1>
                   <p className="subtitle">{pageSubtitle}</p>
-                </div>
-                <div className="page-meta-row" aria-label={t.dataStatusLabel}>
-                  <span>{sourceModeLabel}</span>
-                  <span>
-                    {t.dataUpdatedLabel}:{" "}
-                    {renderPrimaryValue(
-                      formatDateLabel(extractIsoDate(snapshot.updatedAtIso), language),
-                      "value-loading-skeleton page-meta-loading"
-                    )}
-                  </span>
                 </div>
               </div>
             </div>
@@ -4877,18 +4867,6 @@ export function App() {
               </section>
             ) : null}
 
-            <footer className="overview-status-footer" aria-label={t.dataStatusLabel}>
-              <span className="overview-footer-credit">{t.footerCredit}</span>
-              <span>{sourceModeLabel}</span>
-              <span>
-                {t.dataUpdatedLabel}:{" "}
-                {renderPrimaryValue(
-                  formatDateLabel(extractIsoDate(snapshot.updatedAtIso), language),
-                  "value-loading-skeleton page-meta-loading"
-                )}
-              </span>
-            </footer>
-
           </div>
         ) : null}
 
@@ -4900,19 +4878,11 @@ export function App() {
             <h2>{language === "hu" ? activeIndicatorTopic.hu : activeIndicatorTopic.en}</h2>
             <p>{language === "hu" ? activeIndicatorTopic.descriptionHu : activeIndicatorTopic.descriptionEn}</p>
           </div>
-          <div className="indicator-topic-note">
-            <span>{language === "hu" ? "Nézet" : "View"}</span>
-            <strong>{language === "hu" ? "Legfrissebb megfigyelések" : "Latest observations"}</strong>
-          </div>
         </div>
         <div className="topic-navigation indicator-topic-navigation segmented-control" role="group" aria-label={language === "hu" ? "Indikátorcsoport" : "Indicator category"}>
           {indicatorTopics.map((topic) => <button type="button" key={topic.key} aria-pressed={indicatorTopic === topic.key} onClick={() => {setIndicatorTopic(topic.key); setClimateSectionOpen(true);}}>{language === "hu" ? topic.hu : topic.en}</button>)}
         </div>
         <header className="section-header">
-          <div className="section-header-main">
-            <h2>{t.climateIndicatorsTitle}</h2>
-            <p>{t.climateIndicatorsNote}</p>
-          </div>
           <button
             type="button"
             className="section-toggle"
@@ -5793,9 +5763,19 @@ export function App() {
             </section>
           ))}
         </div>
-        <p className="footer-credit">{t.footerCredit}</p>
       </footer>
       ) : null}
+      <footer className="overview-status-footer dashboard-status-footer" aria-label={t.dataStatusLabel}>
+        <span className="overview-footer-credit">{t.footerCredit}</span>
+        <span>{sourceModeLabel}</span>
+        <span>
+          {t.dataUpdatedLabel}:{" "}
+          {renderPrimaryValue(
+            formatDateLabel(extractIsoDate(snapshot.updatedAtIso), language),
+            "value-loading-skeleton page-meta-loading"
+          )}
+        </span>
+      </footer>
       </main>
     </div>
   );

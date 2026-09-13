@@ -164,7 +164,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .detail-page-indicators.indicator-topic-energy { --indicator-accent: var(--domain-forcing); }
 .observatory .indicator-page-intro {
   display: grid;
-  grid-template-columns: minmax(0,1fr) auto;
+  grid-template-columns: minmax(0,1fr);
   align-items: end;
   gap: 32px;
   margin-bottom: 22px;
@@ -844,6 +844,10 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .overview-status-footer .overview-footer-credit {
   margin-right: auto;
   color: color-mix(in srgb, var(--text) 82%, var(--muted));
+}
+
+.observatory .dashboard-status-footer {
+  margin-top: 20px;
 }
 
 @media(max-width: 1180px) {
