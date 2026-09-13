@@ -509,3 +509,366 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .map-mode-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
 }
 @media(max-width:600px) { .observatory .detail-page-projections .regional-summary-grid { grid-template-columns: 1fr; } }
+
+/* Editorial Overview outlook cards. */
+.observatory .overview-enso-with-link {
+  overflow: hidden;
+}
+
+.observatory .overview-secondary-grid .enso-outlook-card-editorial {
+  justify-content: flex-start;
+  padding: 24px 24px 10px;
+}
+
+.observatory .enso-outlook-card-editorial .overview-card-header {
+  margin: 0;
+}
+
+.observatory .enso-editorial-hero {
+  display: grid;
+  gap: 4px;
+  margin-top: 20px;
+}
+
+.observatory .enso-editorial-hero > span,
+.observatory .enso-editorial-window > span,
+.observatory .outlook-measure-label,
+.observatory .overview-secondary-grid .outlook-range-block > p {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.observatory .enso-editorial-hero > strong {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(32px, 3vw, 44px);
+  font-weight: 680;
+  letter-spacing: -.045em;
+  line-height: 1;
+}
+
+.observatory .enso-phase-continuum {
+  margin-top: 18px;
+}
+
+.observatory .enso-phase-labels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.observatory .enso-phase-labels span:first-child {
+  color: var(--domain-ocean);
+  text-align: left;
+}
+
+.observatory .enso-phase-labels span:nth-child(2) {
+  text-align: center;
+}
+
+.observatory .enso-phase-labels span:last-child {
+  color: #73ad83;
+  text-align: right;
+}
+
+.observatory .enso-phase-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  height: 6px;
+  overflow: visible;
+  border-radius: 999px;
+  background: var(--panel);
+}
+
+.observatory .enso-phase-segment {
+  min-width: 0;
+}
+
+.observatory .enso-phase-la-nina {
+  border-radius: 999px 0 0 999px;
+  background: var(--domain-ocean);
+}
+
+.observatory .enso-phase-neutral { background: #77827c; }
+
+.observatory .enso-phase-el-nino {
+  border-radius: 0 999px 999px 0;
+  background: #73ad83;
+}
+
+.observatory .enso-phase-marker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border: 3px solid var(--text);
+  border-radius: 50%;
+  background: var(--panel);
+  transform: translate(-50%, -50%);
+}
+
+.observatory .phase-la_nina .enso-phase-marker { left: 16.666%; }
+.observatory .phase-neutral .enso-phase-marker { left: 50%; }
+.observatory .phase-el_nino .enso-phase-marker { left: 83.333%; }
+
+.observatory .enso-editorial-timeline {
+  position: relative;
+  display: grid;
+  margin-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.observatory .enso-editorial-timeline::before {
+  position: absolute;
+  top: 24px;
+  bottom: 24px;
+  left: 5px;
+  width: 1px;
+  background: color-mix(in srgb, #73ad83 58%, var(--border));
+  content: "";
+}
+
+.observatory .enso-editorial-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.observatory .enso-timeline-dot {
+  position: relative;
+  z-index: 1;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--panel);
+  border-radius: 50%;
+  background: #73ad83;
+}
+
+.observatory .enso-editorial-window,
+.observatory .enso-editorial-forecast {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.observatory .enso-editorial-window small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.observatory .enso-editorial-forecast {
+  justify-items: end;
+  text-align: right;
+}
+
+.observatory .enso-editorial-forecast strong {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.observatory .enso-editorial-forecast span {
+  color: #73ad83;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.observatory .overview-secondary-grid .overview-projection-card.outlook-featured {
+  padding: 24px;
+}
+
+.observatory .overview-secondary-grid .outlook-card-copy {
+  gap: 0;
+  justify-content: flex-start;
+}
+
+.observatory .overview-secondary-grid .outlook-title-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px;
+}
+
+.observatory .overview-secondary-grid .outlook-title-row > div {
+  display: grid;
+  gap: 4px;
+}
+
+.observatory .overview-secondary-grid .outlook-measure-label {
+  align-self: flex-start;
+  margin-top: 20px;
+}
+
+.observatory .overview-secondary-grid .outlook-main-value {
+  align-self: flex-start;
+  margin-top: 4px;
+  color: var(--domain-temperature);
+  font-size: clamp(38px, 3.3vw, 50px);
+}
+
+.observatory .outlook-value-context {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.observatory .overview-secondary-grid .outlook-range-block {
+  margin-top: 22px;
+}
+
+.observatory .overview-secondary-grid .outlook-range-block > p {
+  margin-bottom: 30px;
+}
+
+.observatory .overview-secondary-grid .outlook-range-track {
+  position: relative;
+  height: 5px;
+  margin: 0 3px 33px;
+  overflow: visible;
+  border-radius: 0;
+  background: var(--overview-range-bg);
+}
+
+.observatory .overview-secondary-grid .outlook-range-track::after {
+  display: none;
+}
+
+.observatory .overview-secondary-grid .outlook-range-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+  background: var(--domain-temperature);
+}
+
+.observatory .outlook-range-endpoint {
+  position: absolute;
+  bottom: 13px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.observatory .outlook-range-low { left: 0; }
+.observatory .outlook-range-high { right: 0; }
+
+.observatory .overview-secondary-grid .outlook-range-marker {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border: 3px solid var(--text);
+  border-radius: 50%;
+  background: var(--domain-temperature);
+  box-shadow: none;
+  transform: translate(-50%, -50%);
+}
+
+.observatory .outlook-range-marker > span {
+  position: absolute;
+  top: 17px;
+  left: 50%;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.observatory .overview-secondary-grid .outlook-probability-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.observatory .overview-secondary-grid .outlook-chip {
+  display: grid;
+  justify-content: start;
+  gap: 3px;
+  padding: 0 10px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.observatory .overview-secondary-grid .outlook-chip + .outlook-chip {
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--border);
+}
+
+.observatory .overview-secondary-grid .outlook-chip strong {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 680;
+  line-height: 1;
+}
+
+.observatory .overview-secondary-grid .outlook-chip span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.observatory .overview-secondary-grid .outlook-details-link {
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.observatory .overview-status-footer .overview-footer-credit {
+  margin-right: auto;
+  color: color-mix(in srgb, var(--text) 82%, var(--muted));
+}
+
+@media(max-width: 1180px) {
+  .observatory .overview-secondary-grid .enso-outlook-card-editorial,
+  .observatory .overview-secondary-grid .overview-projection-card.outlook-featured {
+    min-height: 380px;
+  }
+}
+
+@media(max-width: 600px) {
+  .observatory .overview-secondary-grid .enso-outlook-card-editorial,
+  .observatory .overview-secondary-grid .overview-projection-card.outlook-featured {
+    min-height: 0;
+    padding: 20px;
+  }
+
+  .observatory .enso-editorial-hero > strong {
+    font-size: 38px;
+  }
+
+  .observatory .overview-secondary-grid .outlook-main-value {
+    font-size: 44px;
+  }
+
+  .observatory .overview-status-footer .overview-footer-credit {
+    flex-basis: 100%;
+  }
+}

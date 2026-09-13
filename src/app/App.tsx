@@ -702,7 +702,7 @@ const STRINGS = {
     valueUnavailable: "No value",
     footerMode: "Mode",
     footerUpdated: "Updated",
-    footerCredit: "Made by András Tóth and GPT-5.3-Codex.",
+    footerCredit: "Made by András Tóth and GPT-5.6.",
   },
   hu: {
     appTitle: "Klíma Dashboard",
@@ -924,7 +924,7 @@ const STRINGS = {
     valueUnavailable: "Nincs érték",
     footerMode: "Mód",
     footerUpdated: "Frissítve",
-    footerCredit: "Készítette: Tóth András és a GPT-5.3-Codex.",
+    footerCredit: "Made by András Tóth and GPT-5.6.",
   },
 } as const;
 
@@ -4288,7 +4288,64 @@ export function App() {
         }
       : null,
   ].filter((row): row is NonNullable<typeof row> => row != null);
-  const renderEnsoOutlookCard = (options?: { showSourceLink?: boolean }) => (
+  const ensoOverviewCondition =
+    ensoOutlook?.nextThreeMonths?.condition ?? ensoOutlook?.nextSixMonths?.condition ?? "neutral";
+  const renderEnsoOutlookCard = (options?: { showSourceLink?: boolean }) => options?.showSourceLink === false ? (
+    <article className="overview-card enso-outlook-card enso-outlook-card-editorial">
+      <div className="overview-card-header">
+        <div>
+          <h2>{t.ensoOutlookTitle}</h2>
+          {runtimeDataReady && ensoOutlook?.issuedDate ? <p>{formatDateLabel(ensoOutlook.issuedDate, language)}</p> : null}
+        </div>
+        <ToolkitIcon name="info" className="info-icon" />
+      </div>
+      <div className="enso-editorial-hero">
+        <span>{language === "hu" ? "Aktuális fázis" : "Current phase"}</span>
+        <strong>
+          {renderPrimaryValue(
+            formatEnsoConditionLabel(ensoOverviewCondition, t),
+            "value-loading-skeleton enso-status-loading"
+          )}
+        </strong>
+      </div>
+      <div
+        className={`enso-phase-continuum phase-${ensoOverviewCondition}`}
+        role="img"
+        aria-label={`${language === "hu" ? "Aktuális fázis" : "Current phase"}: ${formatEnsoConditionLabel(ensoOverviewCondition, t)}`}
+      >
+        <div className="enso-phase-labels" aria-hidden="true">
+          <span>{t.ensoConditionLaNina}</span>
+          <span>{language === "hu" ? "Semleges" : "Neutral"}</span>
+          <span>{t.ensoConditionElNino}</span>
+        </div>
+        <div className="enso-phase-track" aria-hidden="true">
+          <span className="enso-phase-segment enso-phase-la-nina" />
+          <span className="enso-phase-segment enso-phase-neutral" />
+          <span className="enso-phase-segment enso-phase-el-nino" />
+          <span className="enso-phase-marker" />
+        </div>
+      </div>
+      <div className="enso-editorial-timeline">
+        {ensoOverviewRows.map((row) => (
+          <div className="enso-editorial-row" key={row.key}>
+            <span className="enso-timeline-dot" aria-hidden="true" />
+            <div className="enso-editorial-window">
+              <span>{row.horizon}</span>
+              {runtimeDataReady ? (
+                <small>{formatEnsoTargetLabel(row.window.targetLabel, language)}</small>
+              ) : (
+                <small>{renderLoadingValue("value-loading-skeleton enso-window-meta-loading")}</small>
+              )}
+            </div>
+            <div className="enso-editorial-forecast">
+              <strong>{runtimeDataReady ? `${row.window.probability ?? "-"}%` : renderLoadingValue("value-loading-skeleton enso-window-loading")}</strong>
+              <span>{formatEnsoConditionLabel(row.window.condition, t)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </article>
+  ) : (
     <article className="overview-card enso-outlook-card">
       <div className="overview-card-header">
         <div>
@@ -4673,16 +4730,17 @@ export function App() {
               <div className="overview-enso-with-link">{renderEnsoOutlookCard({ showSourceLink: false })}<button type="button" className="text-link-button" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Szezonális kilátások" : "Explore seasonal outlook"} →</button></div>
               <article className="overview-card overview-projection-card outlook-featured">
                 <div className="outlook-card-grid">
-                  <div className="outlook-card-copy">
-                    <div className="outlook-title-row">
-                      <h2>{currentYear} {t.outlookTitle}</h2>
-                      <span>{t.projectionExperimentalLabel.toLowerCase()} · {t.projectionProbabilityMethodLabel.toLowerCase()}</span>
-                    </div>
+                    <div className="outlook-card-copy">
+                      <div className="outlook-title-row">
+                        <div>
+                          <h2>{currentYear} {t.outlookTitle}</h2>
+                          <span>{t.projectionExperimentalLabel.toLowerCase()} · {t.projectionProbabilityMethodLabel.toLowerCase()}</span>
+                        </div>
+                        <ToolkitIcon name="info" className="info-icon" />
+                      </div>
                     {projectedAnnualGlobalMeanAnomaly ? (
                       <>
-                        <p className="outlook-measure-label">
-                          {t.outlookProjectedAnnualMeanLabel} · {t.overviewPreindustrialSubtitle}
-                        </p>
+                        <p className="outlook-measure-label">{t.outlookProjectedAnnualMeanLabel}</p>
                         <strong className="outlook-main-value">
                           {renderPrimaryValue(
                             `${projectedAnnualGlobalMeanAnomaly.value > 0 ? "+" : ""}${projectionNumberFormat.format(
@@ -4691,15 +4749,25 @@ export function App() {
                             "value-loading-skeleton projection-value-loading"
                           )}
                         </strong>
+                        <p className="outlook-value-context">{t.overviewPreindustrialSubtitle}</p>
                         <div className="outlook-range-block">
-                          <p>
-                            {t.projectionIntervalLabel} · {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
-                            {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)} {projectionUnitLabel}
-                          </p>
+                          <p>{t.projectionIntervalLabel}</p>
                           {runtimeDataReady ? (
-                            <div className="outlook-range-track" aria-hidden="true">
+                            <div
+                              className="outlook-range-track"
+                              role="img"
+                              aria-label={`${t.projectionIntervalLabel}: ${projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-${projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)} ${projectionUnitLabel}`}
+                            >
                               <span className="outlook-range-fill" />
-                              <span className="outlook-range-marker" style={{ left: `${outlookIntervalMarker ?? 50}%` }} />
+                              <span className="outlook-range-endpoint outlook-range-low" aria-hidden="true">
+                                {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)} {projectionUnitLabel}
+                              </span>
+                              <span className="outlook-range-marker" style={{ left: `${outlookIntervalMarker ?? 50}%` }} aria-hidden="true">
+                                <span>{projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.value)} {projectionUnitLabel}</span>
+                              </span>
+                              <span className="outlook-range-endpoint outlook-range-high" aria-hidden="true">
+                                {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)} {projectionUnitLabel}
+                              </span>
                             </div>
                           ) : (
                             <div className="projection-track-loading" aria-hidden="true">
@@ -4710,12 +4778,12 @@ export function App() {
                         {runtimeDataReady ? (
                           <div className="outlook-probability-row">
                             <span className="outlook-chip">
-                              {t.outlookChanceAboveOnePointFiveLabel} ·{" "}
                               <strong>{projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive)}</strong>
+                              <span>{t.outlookChanceAboveOnePointFiveLabel}</span>
                             </span>
                             <span className="outlook-chip">
-                              {t.outlookChanceWarmestYearLabel} ·{" "}
                               <strong>{projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord)}</strong>
+                              <span>{t.outlookChanceWarmestYearLabel}</span>
                             </span>
                           </div>
                         ) : null}
@@ -4810,6 +4878,7 @@ export function App() {
             ) : null}
 
             <footer className="overview-status-footer" aria-label={t.dataStatusLabel}>
+              <span className="overview-footer-credit">{t.footerCredit}</span>
               <span>{sourceModeLabel}</span>
               <span>
                 {t.dataUpdatedLabel}:{" "}

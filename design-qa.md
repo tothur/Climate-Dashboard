@@ -1,63 +1,60 @@
-# Climate Dashboard redesign QA
+# Overview outlook-card design QA
 
-Source visual truth: `/Users/andrastoth/.codex/generated_images/01a07064-7c14-7ce0-8862-2329ea70ff5b/exec-db82f05f-f2dd-4cd0-b2a7-e0a43dd2278a.png`
+Source visual truth: `/Users/andrastoth/.codex/generated_images/01a09c2f-f2b7-7c43-9d13-e30a036e27e8/exec-2bb9c509-b3ba-47da-afcd-9abe9218758c.png`
 
-Latest implementation captures:
+Implementation evidence: Codex in-app browser tab 4 at `http://127.0.0.1:4173/`, with a full-page desktop capture, a focused two-card capture, and a mobile viewport capture emitted in the implementation turn. The browser sandbox did not expose a durable filesystem path for these captures.
 
-- `design-qa-artifacts/2026-09-05/overview-polish-final-dark-top.png`
-- `design-qa-artifacts/2026-09-05/overview-polish-final-dark-regional.png`
-- `design-qa-artifacts/2026-09-05/overview-polish-light-regional.png`
-- `design-qa-artifacts/2026-09-05/overview-polish-mobile-dark-loaded.png`
-- `design-qa-artifacts/2026-09-05/overview-polish-final-dark-horizon.png`
+Viewport and normalization:
 
-Desktop viewport: 1280 × 720 CSS px, device scale factor 1. Mobile viewport: 390 × 844 CSS px, device scale factor 1. Source image: 864 × 1821 px. Desktop implementation captures: 1280 × 720 px. Mobile implementation capture: 390 × 844 px.
+- Source concept: 1586 × 992 px; isolated equal-width two-card composition in dark mode.
+- Desktop implementation: 1280 × 960 CSS px; focused crop 670 × 505 px; dark mode with loaded live data.
+- Mobile implementation: 390 × 844 CSS px; dark mode with loaded live data.
+- The source intentionally isolates the two redesigned cards. The implementation preserves the production Overview's three-column Regional / ENSO / Outlook grid, so comparison was normalized around hierarchy, internal rhythm, styling, and equal card height rather than literal source-card width.
 
-State: overview route with loaded mixed live/fallback data. Light and dark themes were checked; the mobile evidence uses dark mode. The source is an illustrative design concept, so its example values differ from the runtime dataset.
+## Full-view and focused comparison evidence
 
-## Comparison evidence
+The selected concept and browser-rendered implementation were both opened and inspected. The implementation carries over the concept's editorial ENSO hierarchy, clear current-phase headline, three-phase continuum, two-stop forecast timeline, range-first annual projection, endpoint labels, central estimate marker, two supporting probability metrics, bottom-aligned actions, and restrained flat dashboard styling.
 
-The source concept and the latest desktop implementation captures were opened together for the final review. The implementation preserves the concept's horizontal navigation, three-part lead row, prominent daily anomaly, map-led center panel, indicator strip, secondary outlook row, and long-view chart. The user-requested final iteration removes the right-side “Different futures” copy block and gives the chart the full card width.
-
-Focused review covered the daily anomaly card and the secondary row. The daily sparkline now grows into the available vertical space instead of sitting above a large empty gap. Regional anomalies use a balanced 2 × 2 grid with equal-height cells and aligned sparklines. The 2026 Outlook card now has a clear title, large central estimate, readable interval, compact probabilities, and a bottom-aligned details action. Its dark-mode title no longer inherits the old blue pill treatment.
-
-The final horizon review restored the stronger “The Climate Horizon to 2100” title. The chart wrapper and rendered plot now share the same responsive height, keeping the lower axis, scenario lines, and all four 2100 values visible together at the desktop viewport.
+The focused desktop capture confirmed that the ENSO and 2026 Outlook cards align to the same 490.05 px row height. The implementation adapts the concept to narrower production grid tracks without truncation or horizontal overflow. The mobile capture confirmed that both cards become readable single-column blocks at 354 px width, with the ENSO headline, phase scale, timeline, range plot, probability metrics, and links intact.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: Inter Tight/Inter remain the product fonts. The overview H1 and card H2 hierarchy is consistent, the daily anomaly title is a semantic H2, and the outlook title uses the same clean treatment in both themes.
-- Spacing and layout rhythm: lead cards align; the daily chart fills its card; regional cells use the full card height; the outlook action aligns to the card bottom; the long-view chart spans the full width after the explanatory block was removed.
-- Colors and visual tokens: light mode uses off-white and white surfaces; dark mode uses charcoal and graphite. Temperature, ocean, ice, and forcing accents remain distinct with adequate contrast.
-- Image quality and asset fidelity: the existing Earth logo and Climate Reanalyzer map are reused at native quality. No placeholder artwork was introduced.
-- Copy and content: source, date, baseline, freshness, interval, and uncertainty labels remain visible. The removed “Different futures” block is no longer present in markup or styles.
+- Fonts and typography: The existing Inter Tight / Inter product stack is retained. Headlines use the established display weight and tight tracking; eyebrow labels are compact uppercase; headline values remain dominant; supporting labels do not wrap or collide at the checked widths.
+- Spacing and layout rhythm: The cards use the production 24 px desktop padding, fine dividers, compact vertical grouping, and bottom-aligned actions. The excessive empty zones from the previous cards are gone. Desktop card heights match exactly; stacked mobile cards have content-driven heights.
+- Colors and visual tokens: Existing dark graphite/green surfaces, gray-green borders, muted secondary text, mint actions, ocean blue, ENSO green, and coral temperature accents are reused. The current `El Niño` headline is high-contrast white, avoiding the previous green-on-green status treatment.
+- Image quality and asset fidelity: These data cards require no raster imagery. The existing toolkit info icon is reused; no placeholder or generated decorative assets were introduced.
+- Copy and content: Issue date, current ENSO phase, both forecast windows and probabilities, annual estimate, baseline, interval, both probability metrics, and both destination links remain visible. The Overview footer contains the exact credit `Made by András Tóth and GPT-5.6.` alongside live-feed and update metadata.
 
-## Interactions and responsive checks
+## Interactions and technical checks
 
-- Overview navigation, map layer switch, detail links, and theme controls remain functional.
-- Light and dark overview states were visually checked.
-- Desktop `scrollWidth` equals `innerWidth` at 1280 px.
-- Mobile `scrollWidth` equals `innerWidth` at 390 px; visible buttons have a minimum height of 44 px.
-- The mobile dashboard completed its data-loading state.
-- Browser console contained no errors or warnings in the desktop review.
+- `Explore seasonal outlook` opens the Variability view (`dashboard-view-variability`).
+- `View estimate & assumptions` opens the Projections view (`dashboard-view-projections`).
+- Returning through Overview restores `dashboard-view-overview`.
+- Desktop and mobile `scrollWidth` equal `clientWidth`; no horizontal overflow was found.
+- Browser console contained no errors or warnings.
+- Production build passed.
+- All 35 repository tests passed.
 
 ## Findings
 
-No actionable P0, P1, or P2 visual findings remain.
+No actionable P0, P1, or P2 findings remain.
 
 ## Comparison history
 
-The first redesign pass established the horizontal navigation, light/dark themes, lead-card hierarchy, overview filters, and wider long-view graph. A later review found excess unused space in the daily anomaly and regional cards, a crowded four-column regional layout, an inherited pill treatment on the dark-mode outlook title, and an unnecessary scenario-copy block. The final pass enlarged the daily sparkline, converted the regional card to a 2 × 2 grid, rebuilt the outlook hierarchy and bottom action, removed the copy block, and verified the revised desktop and mobile states.
+The first browser pass found one P2 fidelity issue: the annual projection label and `+1.53 °C` value inherited `align-self: end`, moving the hero to the right instead of following the selected concept's left-aligned editorial hierarchy. Both elements were explicitly aligned to the start, and the 2026 header received the matching information icon. The revised desktop and mobile captures show the corrected hierarchy with no overflow or collision.
 
 ## Implementation checklist
 
-- [x] Strong overview and card-title hierarchy
-- [x] Expanded daily anomaly sparkline
-- [x] Balanced 2 × 2 regional signal layout
-- [x] Polished 2026 Outlook card in light and dark modes
-- [x] Removed “Different futures” explanatory block
-- [x] Full-width long-view chart
-- [x] Complete horizon chart, including its lower axis and 2100 values
-- [x] Desktop and mobile overflow checks
-- [x] 44 px mobile controls
-- [x] Build, typecheck, and repository tests
+- [x] Clear, high-contrast ENSO current phase
+- [x] Compact three-phase continuum
+- [x] Two-stop forecast timeline with probabilities
+- [x] Range-first annual projection treatment
+- [x] Endpoint and point-estimate labels
+- [x] Supporting probability columns
+- [x] Equal desktop card heights
+- [x] Responsive mobile layout
+- [x] Exact Overview footer credit
+- [x] Working card destinations
+- [x] Build, tests, overflow, and console checks
 
 final result: passed
