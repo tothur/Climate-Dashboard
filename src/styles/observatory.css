@@ -299,13 +299,13 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   color: var(--forcing-accent);
 }
 .observatory .detail-page-forcing .alert-card.summary .forcing-gas-title {
-  margin: 14px 0 0;
+  margin: 14px 0 6px;
   color: var(--forcing-accent);
-  font: 680 clamp(40px,4vw,62px)/.9 var(--font-display);
+  font: 680 clamp(40px,4vw,62px)/1.05 var(--font-display);
   letter-spacing: -.055em;
 }
 .observatory .detail-page-forcing .forcing-gas-name {
-  margin: 8px 0 0;
+  margin: 0;
   color: var(--muted);
   font-size: 11px;
   line-height: 1.35;
