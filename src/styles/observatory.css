@@ -334,13 +334,42 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .overview-regional-signals { grid-column: 1/-1; }
 }
 @media(max-width: 900px) {
-  .observatory .mobile-app-bar { display: flex; position: sticky; top: 0; background: var(--bg); border-color: var(--border); color: var(--text); }
+  .observatory .mobile-app-bar { display: flex; position: sticky; top: 0; z-index: 60; background: var(--bg); border-color: var(--border); color: var(--text); }
   .observatory .mobile-brand { color: var(--text); }
-  .observatory .dashboard-sidebar { display: none; }
-  .observatory .dashboard-sidebar.mobile-open { display: flex; position: fixed; top: 64px; bottom: 0; left: 0; width: min(360px,92vw); flex-direction: column; align-items: stretch; justify-content: flex-start; padding: 22px; overflow: auto; }
+  .observatory .dashboard-sidebar {
+    display: flex;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 80;
+    width: min(88vw,340px);
+    height: 100dvh;
+    min-height: 0;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 18px;
+    padding: 16px;
+    background: var(--bg);
+    border: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    visibility: hidden;
+    transform: translateX(-105%);
+    transition: transform 220ms var(--ease-out),visibility 220ms;
+  }
+  .observatory .dashboard-sidebar.mobile-open { visibility: visible; transform: translateX(0); }
   .observatory .sidebar-nav,.observatory .sidebar-nav-group { flex-direction: column; align-items: stretch; flex: 0; }
   .observatory .sidebar-nav button { justify-content: flex-start; }
-  .observatory .sidebar-controls { flex-wrap: wrap; margin-top: 16px; }
+  .observatory .dashboard-sidebar .sidebar-controls {
+    display: grid;
+    grid-template-columns: minmax(0,.72fr) minmax(0,1.28fr);
+    gap: 8px;
+    width: 100%;
+    margin-top: auto;
+  }
+  .observatory .dashboard-sidebar .segmented-control { width: 100%; min-width: 0; }
+  .observatory .dashboard-sidebar .segmented-control button { flex: 1; min-width: 0; padding-inline: 7px; }
   .observatory .app-shell { margin: 0; padding: 24px 18px 40px; }
   .observatory .topbar-brand > div { flex-direction: column; align-items: flex-start; gap: 14px; }
   .observatory .page-meta-row { align-items: flex-start; }
