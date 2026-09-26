@@ -4395,6 +4395,7 @@ export function App() {
   ].filter((row): row is NonNullable<typeof row> => row != null);
   const ensoOverviewCondition =
     ensoOutlook?.nextThreeMonths?.condition ?? ensoOutlook?.nextSixMonths?.condition ?? "neutral";
+  const dailyNino34Line = regionalTemperatureLines.find(({ metric }) => metric.key === "daily_nino34_sea_surface_temperature") ?? null;
   const ensoIndexMetrics = variabilityMetrics.filter((metric) => ENSO_INDEX_KEYS.has(metric.key));
   const circulationIndexMetrics = variabilityMetrics.filter((metric) => !ENSO_INDEX_KEYS.has(metric.key));
   const ensoConditionTone = (condition: EnsoCondition) =>
@@ -5468,8 +5469,8 @@ export function App() {
           {renderPageSubsection(
             language === "hu" ? "El Niño–déli oszcilláció" : "El Niño–Southern Oscillation",
             language === "hu"
-              ? "Az ENSO az éves globális hőmérséklet-ingadozás legnagyobb forrása. Az ONI az óceáni, az SOI a légköri állapotot követi; az IRI előrejelzés a következő évszakok valószínűségeit adja."
-              : "ENSO is the largest source of year-to-year swings in global temperature. ONI tracks its ocean state, SOI its atmospheric state, and the IRI outlook gives probabilities for the coming seasons.",
+              ? "Az ENSO az éves globális hőmérséklet-ingadozás legnagyobb forrása. A napi Niño 3.4 tengerfelszín-hőmérséklet a legfrissebb óceáni állapotot mutatja, az ONI ennek háromhavi anomáliáját, az SOI a légköri állapotot követi; az IRI előrejelzés a következő évszakok valószínűségeit adja."
+              : "ENSO is the largest source of year-to-year swings in global temperature. Daily Niño 3.4 sea surface temperature shows the latest ocean state, ONI its three-month anomaly and SOI the atmospheric response; the IRI outlook gives probabilities for the coming seasons.",
             <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
@@ -5509,6 +5510,9 @@ export function App() {
                 </p>
               ) : null}
               <div className="charts-grid climate-grid">
+                {dailyNino34Line
+                  ? renderIndicatorPanel(dailyNino34Line.metric, dailyNino34Line.lines, dailyNino34Line.currentYear, dailyNino34Line.climatology)
+                  : null}
                 {variabilityChartPanels.filter(({ metric }) => ENSO_INDEX_KEYS.has(metric.key)).map(renderVariabilityPanel)}
               </div>
             </>
