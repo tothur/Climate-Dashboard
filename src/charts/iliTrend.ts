@@ -1,3 +1,4 @@
+import { axisStepDecimals, evenAxisInterval } from "./axis";
 import type { DataZoomComponentOption, EChartsOption } from "echarts";
 import { graphic } from "echarts/core";
 import type { DailyPoint } from "../domain/model";
@@ -252,6 +253,8 @@ export function buildClimateMonthlyComparisonOption({
       };
 
   const formatter = formatterFor(decimals);
+  const yAxisInterval = evenAxisInterval(yAxisMin, yAxisMax);
+  const yAxisTickFormatter = formatterFor(Math.min(decimals, axisStepDecimals(yAxisInterval, decimals)));
   const safeMonthLabels =
     monthLabels.length === 12
       ? monthLabels
@@ -341,6 +344,7 @@ export function buildClimateMonthlyComparisonOption({
       type: "value",
       min: typeof yAxisMin === "number" ? yAxisMin : undefined,
       max: typeof yAxisMax === "number" ? yAxisMax : undefined,
+      interval: yAxisInterval,
       name: yAxisName,
       nameLocation: "middle",
       nameRotate: 90,
@@ -352,7 +356,7 @@ export function buildClimateMonthlyComparisonOption({
       },
       axisLabel: {
         color: palette.axisLabel,
-        formatter: (value: number) => formatter.format(value),
+        formatter: (value: number) => yAxisTickFormatter.format(value),
       },
       splitLine: {
         lineStyle: { color: palette.grid, type: [4, 5] },
@@ -504,6 +508,8 @@ export function buildClimateTrendOption({
 
   const dataZoom = disableDataZoom ? undefined : buildCompactDataZoom(xLabels, compact, palette);
   const formatter = formatterFor(decimals);
+  const yAxisInterval = evenAxisInterval(yAxisMin, yAxisMax);
+  const yAxisTickFormatter = formatterFor(Math.min(decimals, axisStepDecimals(yAxisInterval, decimals)));
   const xAxisYearLabels = buildYearAxisLabelMap(xLabels, xAxisYearLabelStep);
   const yAxisName = yAxisUnitLabel?.trim() || undefined;
   const markLineData: Array<Record<string, unknown>> = [];
@@ -603,6 +609,7 @@ export function buildClimateTrendOption({
       type: "value",
       min: typeof yAxisMin === "number" ? yAxisMin : undefined,
       max: typeof yAxisMax === "number" ? yAxisMax : undefined,
+      interval: yAxisInterval,
       inverse: yAxisInverse,
       name: yAxisName,
       nameLocation: "middle",
@@ -615,7 +622,7 @@ export function buildClimateTrendOption({
       },
       axisLabel: {
         color: palette.axisLabel,
-        formatter: (value: number) => formatter.format(value),
+        formatter: (value: number) => yAxisTickFormatter.format(value),
       },
       splitLine: {
         lineStyle: { color: palette.grid, type: [4, 5] },

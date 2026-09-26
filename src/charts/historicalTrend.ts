@@ -1,5 +1,6 @@
 import type { EChartsOption } from "echarts";
 import type { DailyPoint } from "../domain/model";
+import { axisStepDecimals, evenAxisInterval } from "./axis";
 
 interface BuildForcingTrendOptionArgs {
   points: DailyPoint[];
@@ -139,6 +140,12 @@ export function buildForcingTrendOption({
     minimumFractionDigits: Math.max(0, Math.min(4, Math.floor(decimals))),
     maximumFractionDigits: Math.max(0, Math.min(4, Math.floor(decimals))),
   });
+  const yAxisInterval = evenAxisInterval(yAxisMin ?? 280, yAxisMax ?? 500);
+  const yAxisTickDecimals = Math.max(0, Math.min(4, Math.floor(decimals), axisStepDecimals(yAxisInterval, decimals)));
+  const yAxisTickFormatter = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: yAxisTickDecimals,
+    maximumFractionDigits: yAxisTickDecimals,
+  });
 
   const monthly = buildMonthlyAverages(points);
   const hasData = monthly.length > 0;
@@ -203,6 +210,7 @@ export function buildForcingTrendOption({
       type: "value",
       min: typeof yAxisMin === "number" ? yAxisMin : 280,
       max: typeof yAxisMax === "number" ? yAxisMax : 500,
+      interval: yAxisInterval,
       name: yAxisName,
       nameLocation: "middle",
       nameRotate: 90,
@@ -214,7 +222,7 @@ export function buildForcingTrendOption({
       },
       axisLabel: {
         color: palette.axisLabel,
-        formatter: (value: number) => formatter.format(value),
+        formatter: (value: number) => yAxisTickFormatter.format(value),
       },
       splitLine: {
         lineStyle: { color: palette.grid, type: [4, 5] },
