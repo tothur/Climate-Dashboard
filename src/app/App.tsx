@@ -17,6 +17,7 @@ import type {
 import { loadRuntimeDataSource } from "../data/runtime-source";
 import { buildClimateMonthlyComparisonOption, buildClimateTrendOption } from "../charts/iliTrend";
 import { buildForcingTrendOption } from "../charts/historicalTrend";
+import { buildVariabilityIndexOption } from "../charts/variabilityIndex";
 import { EChartsPanel } from "../components/EChartsPanel";
 import { MapPanel } from "../components/MapPanel";
 import { Sparkline } from "../components/Sparkline";
@@ -390,11 +391,19 @@ const REGIONAL_TEMPERATURE_ANOMALY_KEYS = new Set([
 ]);
 const VARIABILITY_INDEX_KEYS: ClimateMetricSeries["key"][] = [
   "nino34_index",
-  "nao_index",
-  "pna_index",
   "soi_index",
+  "nao_index",
   "arctic_oscillation_index",
+  "pna_index",
 ];
+const ENSO_INDEX_KEYS = new Set<ClimateMetricSeries["key"]>(["nino34_index", "soi_index"]);
+const VARIABILITY_INDEX_SHORT_NAMES: Partial<Record<ClimateMetricSeries["key"], string>> = {
+  nino34_index: "ONI",
+  soi_index: "SOI",
+  nao_index: "NAO",
+  arctic_oscillation_index: "AO",
+  pna_index: "PNA",
+};
 const VARIABILITY_INDEX_KEY_SET = new Set<ClimateMetricSeries["key"]>(VARIABILITY_INDEX_KEYS);
 const MONTHLY_COMPARISON_EXCLUDED_KEYS = new Set([...OCEAN_KEYS, EARTH_ENERGY_IMBALANCE_KEY, ...ICE_SHEET_AND_GLACIER_KEYS]);
 const REGIONAL_TEMPERATURE_KEYS = new Set([
@@ -606,7 +615,7 @@ const STRINGS = {
     scenarioLowLabel: "Low",
     tippingPointsTitle: "Earth System Tipping Points",
     tippingPointsSubtitle:
-      "Central global-warming thresholds from Armstrong McKay et al. (2022), colored by proximity to the dashboard's current annual warming estimate.",
+      "Global-warming thresholds for major Earth-system tipping elements from Armstrong McKay et al. (2022), set against the dashboard's current annual warming estimate.",
     tippingPointsSourceLabel: "McKay et al. 2022",
     tippingCurrentWarmingLabel: "Current warming estimate",
     tippingCentralThresholdLabel: "central threshold",
@@ -656,7 +665,7 @@ const STRINGS = {
     nino34IndexSubtitle: "NOAA CPC Oceanic Niño Index · centered 3-month Niño 3.4 SST anomaly",
     naoIndexSubtitle: "NOAA CPC monthly North Atlantic Oscillation index",
     pnaIndexSubtitle: "NOAA CPC monthly Pacific-North American index",
-    soiIndexSubtitle: "NOAA PSL monthly Southern Oscillation Index",
+    soiIndexSubtitle: "NOAA PSL monthly Southern Oscillation Index · negative values are El Niño-like",
     arcticOscillationIndexSubtitle: "NOAA CPC monthly Arctic Oscillation index",
     naturalVariabilityTitle: "Natural Variability",
     naturalVariabilityNote: "ENSO and climate indices.",
@@ -828,7 +837,7 @@ const STRINGS = {
     scenarioLowLabel: "Alacsony",
     tippingPointsTitle: "Földrendszer billenőpontjai",
     tippingPointsSubtitle:
-      "Armstrong McKay et al. (2022) központi globális melegedési küszöbei, a dashboard aktuális éves melegedési becsléséhez viszonyítva színezve.",
+      "A fő földrendszer-billenőelemek globális melegedési küszöbei Armstrong McKay et al. (2022) alapján, a dashboard aktuális éves melegedési becsléséhez viszonyítva.",
     tippingPointsSourceLabel: "McKay et al. 2022",
     tippingCurrentWarmingLabel: "Aktuális melegedési becslés",
     tippingCentralThresholdLabel: "központi küszöb",
@@ -878,7 +887,7 @@ const STRINGS = {
     nino34IndexSubtitle: "NOAA CPC Óceáni Niño Index · középre igazított 3 havi Niño 3.4 SST-anomália",
     naoIndexSubtitle: "NOAA CPC havi észak-atlanti oszcilláció index",
     pnaIndexSubtitle: "NOAA CPC havi csendes-óceáni-észak-amerikai index",
-    soiIndexSubtitle: "NOAA PSL havi déli oszcilláció index",
+    soiIndexSubtitle: "NOAA PSL havi déli oszcilláció index · a negatív értékek El Niño-szerűek",
     arcticOscillationIndexSubtitle: "NOAA CPC havi arktikus oszcilláció index",
     naturalVariabilityTitle: "Természetes változékonyság",
     naturalVariabilityNote: "ENSO és klímaindexek.",
@@ -1526,55 +1535,6 @@ function buildAiOverviewItems(
   });
 }
 
-function buildEnsoGaugeOption({
-  value,
-  dark,
-  ariaLabel,
-}: {
-  value: number;
-  dark: boolean;
-  ariaLabel: string;
-}): EChartsOption {
-  const clampedValue = clamp(value, -2, 2);
-  const needle = dark ? "#f4f8f5" : "#172019";
-  const neutral = dark ? "#68736d" : "#a8aea8";
-
-  return {
-    animation: false,
-    aria: { enabled: true, description: ariaLabel },
-    series: [
-      {
-        type: "gauge",
-        min: -2,
-        max: 2,
-        startAngle: 180,
-        endAngle: 0,
-        center: ["50%", "78%"],
-        radius: "112%",
-        splitNumber: 4,
-        axisLine: {
-          lineStyle: {
-            width: 13,
-            color: [
-              [0.375, dark ? "#73a9f7" : "#4c8fda"],
-              [0.625, neutral],
-              [1, dark ? "#82bb82" : "#5d945f"],
-            ],
-          },
-        },
-        pointer: { show: true, length: "68%", width: 4, itemStyle: { color: needle } },
-        anchor: { show: true, size: 9, itemStyle: { color: needle, borderColor: dark ? "#172019" : "#ffffff", borderWidth: 2 } },
-        axisTick: { show: false },
-        splitLine: { show: false },
-        axisLabel: { show: false },
-        title: { show: false },
-        detail: { show: false },
-        data: [{ value: clampedValue }],
-      },
-    ],
-  };
-}
-
 function buildMonthLabels(language: Language): string[] {
   if (language === "hu") return ["Jan", "Febr", "Márc", "Ápr", "Máj", "Jún", "Júl", "Aug", "Szept", "Okt", "Nov", "Dec"];
   return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -1905,14 +1865,18 @@ function tippingPointCategory(tippingPoint: TippingPointDefinition, language: La
   return language === "hu" ? tippingPoint.categoryHu : tippingPoint.categoryEn;
 }
 
-function tippingPointAccent(currentWarming: number | null, threshold: number): string {
-  if (currentWarming == null || !Number.isFinite(currentWarming) || !Number.isFinite(threshold) || threshold <= 0) {
-    return "#7db0ff";
-  }
-  const progress = clamp(currentWarming / threshold, 0, 1);
-  const hue = Math.round(210 - progress * 210);
-  const lightness = Math.round(48 + progress * 4);
-  return `hsl(${hue} 78% ${lightness}%)`;
+const TIPPING_AXIS_MAX = 10;
+const TIPPING_AXIS_TICKS = [0, 2, 4, 6, 8, 10];
+
+function tippingAxisPercent(value: number): number {
+  return clamp((value / TIPPING_AXIS_MAX) * 100, 0, 100);
+}
+
+function tippingPointStateKey(tippingPoint: TippingPointDefinition, currentWarming: number | null): "likely" | "possible" | "below" {
+  if (currentWarming == null || !Number.isFinite(currentWarming)) return "below";
+  if (currentWarming >= tippingPoint.centralThreshold) return "likely";
+  if (currentWarming >= tippingPoint.minThreshold) return "possible";
+  return "below";
 }
 
 function tippingPointState(
@@ -1920,10 +1884,8 @@ function tippingPointState(
   currentWarming: number | null,
   t: (typeof STRINGS)[Language]
 ): string {
-  if (currentWarming == null || !Number.isFinite(currentWarming)) return t.tippingStateBelow;
-  if (currentWarming >= tippingPoint.centralThreshold) return t.tippingStateLikely;
-  if (currentWarming >= tippingPoint.minThreshold) return t.tippingStatePossible;
-  return t.tippingStateBelow;
+  const stateKey = tippingPointStateKey(tippingPoint, currentWarming);
+  return stateKey === "likely" ? t.tippingStateLikely : stateKey === "possible" ? t.tippingStatePossible : t.tippingStateBelow;
 }
 
 function interpolateScenarioValue(anchors: Array<[number, number]>, year: number): number | null {
@@ -2516,7 +2478,7 @@ function buildAnnualProjectionBarOption({
     animationDuration: 420,
     grid: {
       left: compact ? 48 : 58,
-      right: compact ? 18 : 24,
+      right: compact ? 38 : 46,
       top: compact ? 20 : 28,
       bottom: compact ? 34 : 38,
       containLabel: false,
@@ -2669,6 +2631,10 @@ function forcingMetricColor(metricKey: ClimateMetricSeries["key"], dark: boolean
       return dark ? "#c0a5e8" : "#7956a8";
     case "atmospheric_n2o":
       return dark ? "#79c7b0" : "#257d69";
+    case "atmospheric_aggi":
+      return dark ? "#f28273" : "#b4533f";
+    case "incoming_solar_energy":
+      return dark ? "#f2c75c" : "#b88700";
     default:
       return topicChartColor(metricKey, dark);
   }
@@ -2889,11 +2855,11 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
     case "antarctic_ice_sheet_mass_balance":
       return { min: 0, max: 3200 };
     case "west_antarctic_ice_sheet_mass_balance":
-      return { min: 0, max: 2600 };
+      return { min: 0, max: 3000 };
     case "greenland_ice_sheet_mass_balance":
-      return { min: 0, max: 6200 };
+      return { min: 0, max: 7000 };
     case "northern_hemisphere_surface_temperature":
-      return { min: 6, max: 24 };
+      return { min: 5, max: 25 };
     case "southern_hemisphere_surface_temperature":
       return { min: 9, max: 18 };
     case "arctic_surface_temperature":
@@ -2909,9 +2875,9 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
     case "arctic_sea_ice_extent":
       return { min: 2, max: 18 };
     case "antarctic_sea_ice_extent":
-      return { min: 0, max: 22 };
+      return { min: 0, max: 24 };
     case "northern_hemisphere_snow_cover_extent":
-      return { min: 0, max: 55 };
+      return { min: 0, max: 60 };
     default:
       return {};
   }
@@ -2939,7 +2905,7 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
     case "global_mean_sea_level":
       return language === "hu" ? "milliméter (mm)" : "millimeters (mm)";
     case "ocean_heat_content":
-      return language === "hu" ? "10^22 joule" : "10^22 joules";
+      return language === "hu" ? "10²² joule" : "10²² joules";
     case "earth_energy_imbalance":
     case "incoming_solar_energy":
       return language === "hu" ? "watt per négyzetméter (W/m²)" : "watts per square meter (W/m²)";
@@ -2981,13 +2947,13 @@ function forcingYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language: 
 function forcingAxisBounds(metricKey: ClimateMetricSeries["key"]): { yMin?: number; yMax?: number; minYear?: number } {
   switch (metricKey) {
     case "atmospheric_co2":
-      return { yMin: 280, yMax: 500, minYear: 1974 };
+      return { yMin: 300, yMax: 460, minYear: 1974 };
     case "atmospheric_ch4":
-      return { yMin: 1500, yMax: 2050, minYear: 1983 };
+      return { yMin: 1600, yMax: 2100, minYear: 1983 };
     case "atmospheric_n2o":
       return { yMin: 300, yMax: 360, minYear: 2001 };
     case "atmospheric_aggi":
-      return { yMin: 0.7, yMax: 1.8, minYear: 1979 };
+      return { yMin: 0.6, yMax: 1.8, minYear: 1979 };
     case "incoming_solar_energy":
       return { yMin: 1360, yMax: 1363, minYear: 2018 };
     default:
@@ -3007,10 +2973,10 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
     return "°C";
   }
   if (VARIABILITY_INDEX_KEY_SET.has(metricKey)) return "index";
+  if (metricKey === "ocean_heat_content") return "× 10²² J";
   if (language !== "hu") return unit;
   if (SEA_ICE_KEYS.has(metricKey) || SNOW_COVER_KEYS.has(metricKey)) return "millió km²";
   if (metricKey === "global_mean_sea_level") return "mm";
-  if (metricKey === "ocean_heat_content") return "10^22 J";
   if (metricKey === EARTH_ENERGY_IMBALANCE_KEY || metricKey === "incoming_solar_energy") return "W/m²";
   if (metricKey === "global_glacier_mass_balance") return "Gt";
   if (metricKey === "mountain_glacier_mass_balance") return "m w.e.";
@@ -3254,10 +3220,6 @@ export function App() {
     {key: "energy", en: "Energy", hu: "Energia", descriptionEn: "Measure the planetary energy imbalance driving continued climate change.", descriptionHu: "Kövesd a további klímaváltozást hajtó bolygószintű energiaegyensúly-hiányt.", sections: ["earthEnergyImbalance"]},
   ];
   const activeIndicatorTopic = indicatorTopics.find((topic) => topic.key === indicatorTopic) ?? indicatorTopics[0];
-  const [mapsSectionOpen, setMapsSectionOpen] = useState(true);
-  const [forcingSectionOpen, setForcingSectionOpen] = useState(true);
-  const [variabilitySectionOpen, setVariabilitySectionOpen] = useState(true);
-  const [projectionsSectionOpen, setProjectionsSectionOpen] = useState(true);
   const [activeView, setActiveView] = useState<DashboardView>(() => {
     if (typeof window === "undefined") return "overview";
     return dashboardViewFromHash(window.location.hash);
@@ -3384,6 +3346,7 @@ export function App() {
       provider: formatSourceShortName(metric.source.shortName, language),
       section: sourceSectionForMetric(metric.key),
       label: `${metricTitle(metric, language)} · ${formatSourceShortName(metric.source.shortName, language)}`,
+      freshness: metric.latestDate ? metricFreshnessBadge(metric, language, t) : null,
     }));
     if (ensoSource?.sourceUrl) {
       sources.push({
@@ -3393,6 +3356,7 @@ export function App() {
         provider: ensoSource.sourceLabel || "NOAA CPC",
         section: "outlook",
         label: `${t.ensoOutlookTitle} · ${ensoSource.sourceLabel || "NOAA CPC"}`,
+        freshness: ensoFreshnessBadge(ensoSource, language, t),
       });
     }
     const mapSourceTitles: Record<ClimateMapKey, string> = {
@@ -3411,6 +3375,7 @@ export function App() {
         provider: "Climate Reanalyzer",
         section: "maps",
         label: `${title} · Climate Reanalyzer`,
+        freshness: mapFreshnessBadge(map.date ?? null, language, t),
       });
     }
     return sources;
@@ -3467,7 +3432,6 @@ export function App() {
     () => snapshot.indicators.find((metric) => metric.key === DAILY_GLOBAL_MEAN_ANOMALY_KEY) ?? null,
     [snapshot.indicators]
   );
-  const nino34Metric = metricByKey.get("nino34_index") ?? null;
   const annualGlobalMeanAnomalyPoints = useMemo(
     () => (dailyGlobalMeanAnomalyMetric ? buildAnnualMeanSeries(dailyGlobalMeanAnomalyMetric.points) : []),
     [dailyGlobalMeanAnomalyMetric]
@@ -3527,24 +3491,16 @@ export function App() {
     [snapshot, language, t, dataSource.aiSummary]
   );
   const aiOverviewItems = useMemo(() => buildAiOverviewItems(aiDashboardSummary, t), [aiDashboardSummary, t]);
-  const ensoGaugeValue = useMemo(() => {
-    const observedValue = nino34Metric ? latestFinitePoint(nino34Metric.points)?.value : null;
-    if (observedValue != null && Number.isFinite(observedValue)) return observedValue;
-    const forecastCondition = ensoOutlook?.nextThreeMonths?.condition ?? ensoOutlook?.nextSixMonths?.condition;
-    return forecastCondition === "la_nina" ? -1 : forecastCondition === "el_nino" ? 1 : 0;
-  }, [ensoOutlook, nino34Metric]);
-  const ensoGaugeOption = useMemo(
-    () =>
-      buildEnsoGaugeOption({
-        value: ensoGaugeValue,
-        dark: resolvedTheme === "dark",
-        ariaLabel: `${t.ensoOutlookTitle}: ${formatEnsoStatusLabel(ensoOutlook, language, t)}`,
-      }),
-    [ensoGaugeValue, ensoOutlook, language, resolvedTheme, t]
-  );
   const earthEnergyImbalanceTrendPoints = useMemo(
     () => (earthEnergyImbalanceMetric ? buildTrailingMeanSeries(earthEnergyImbalanceMetric.points, 12) : []),
     [earthEnergyImbalanceMetric]
+  );
+  const earthEnergyImbalanceLatestMean = earthEnergyImbalanceTrendPoints[earthEnergyImbalanceTrendPoints.length - 1]?.value ?? null;
+  const earthEnergyImbalanceBaselineMean = meanPointValues(
+    earthEnergyImbalanceTrendPoints.filter((point) => {
+      const year = parseYearFromDateIso(point.date);
+      return year != null && year >= 2001 && year <= 2010;
+    })
   );
   const variabilityChartPanels = useMemo(
     () =>
@@ -3565,22 +3521,22 @@ export function App() {
           return [{
             metric,
             subtitle,
-            option: buildForcingTrendOption({
+            option: buildVariabilityIndexOption({
               points: metric.points,
               title: metricTitle(metric, language),
               unit: cardUnitLabel(metric.key, metric.unit, language),
               decimals: metric.decimals,
-              yAxisMin: isTemperatureIndex ? -3 : -4,
-              yAxisMax: isTemperatureIndex ? 3 : 4,
+              yAxisLimit: isTemperatureIndex ? 3 : 4,
               yAxisUnitLabel: isTemperatureIndex ? "°C" : "index",
-              xAxisStartYear: 1950,
+              startYear: 1950,
+              threshold: isTemperatureIndex
+                ? { value: 0.5, positiveLabel: t.ensoConditionElNino, negativeLabel: t.ensoConditionLaNina }
+                : undefined,
+              invertColors: metric.key === "soi_index",
+              runningMeanLabel: language === "hu" ? "12 havi átlag" : "12-month mean",
               compact,
               dark: resolvedTheme === "dark",
-              color: topicChartColor(metric.key, resolvedTheme === "dark"),
-              labels: {
-                noData: t.noData,
-                latest: t.chartLatest,
-              },
+              language,
             }),
           }];
         }),
@@ -3589,10 +3545,10 @@ export function App() {
       language,
       resolvedTheme,
       t.arcticOscillationIndexSubtitle,
-      t.chartLatest,
+      t.ensoConditionElNino,
+      t.ensoConditionLaNina,
       t.naoIndexSubtitle,
       t.nino34IndexSubtitle,
-      t.noData,
       t.pnaIndexSubtitle,
       t.soiIndexSubtitle,
       variabilityMetrics,
@@ -3683,8 +3639,8 @@ export function App() {
         minThreshold: tippingPoint.minThreshold,
         maxThreshold: tippingPoint.maxThreshold,
         state: tippingPointState(tippingPoint, currentTippingWarming, t),
-        accent: tippingPointAccent(currentTippingWarming, tippingPoint.centralThreshold),
-      })),
+        stateKey: tippingPointStateKey(tippingPoint, currentTippingWarming),
+      })).sort((left, right) => left.centralThreshold - right.centralThreshold || left.minThreshold - right.minThreshold),
     [currentTippingWarming, language, t]
   );
   const regionalTemperatureLines = useMemo(
@@ -3993,6 +3949,138 @@ export function App() {
     );
   };
 
+  const renderMetricSummaryCard = (metric: ClimateMetricSeries, keySuffix: string) => {
+    const freshness = metricFreshnessBadge(metric, language, t);
+    return (
+      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-${keySuffix}`}>
+        <span className="alert-kicker">{t.latestLabel}</span>
+        <h2>{metricTitle(metric, language)}</h2>
+        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
+        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
+        <div className="alert-meta">
+          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
+        </div>
+      </article>
+    );
+  };
+
+  const forcingGasMetrics = snapshot.forcing.filter((metric) => forcingGasLabel(metric.key) != null);
+  const forcingOtherMetrics = snapshot.forcing.filter((metric) => forcingGasLabel(metric.key) == null);
+  const renderChemicalFormula = (formula: string) =>
+    formula.split(/([₀-₉]+)/).map((part, index) =>
+      /[₀-₉]/.test(part) ? (
+        <sub key={index}>{String.fromCharCode(...[...part].map((char) => char.charCodeAt(0) - 0x2080 + 48))}</sub>
+      ) : (
+        <Fragment key={index}>{part}</Fragment>
+      )
+    );
+  const renderForcingSummaryCard = (metric: ClimateMetricSeries) => {
+    const freshness = metricFreshnessBadge(metric, language, t);
+    const gasLabel = forcingGasLabel(metric.key);
+    const accentColor = forcingMetricColor(metric.key, resolvedTheme === "dark");
+    return (
+      <article
+        className={`alert-card summary ${topSummaryCategoryClass(metric.key)}${gasLabel ? " forcing-gas-card" : ""}`}
+        key={`${metric.key}-forcing-summary`}
+        style={{ "--indicator-accent": accentColor } as CSSProperties}
+      >
+        <span className="alert-kicker">{t.latestLabel}</span>
+        {gasLabel ? (
+          <>
+            <h2 className="forcing-gas-title" aria-label={gasLabel}>{renderChemicalFormula(gasLabel)}</h2>
+            <p className="forcing-gas-name">{metricTitle(metric, language)}</p>
+          </>
+        ) : (
+          <h2>{metricTitle(metric, language)}</h2>
+        )}
+        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
+        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
+        <div className="alert-meta">
+          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
+        </div>
+      </article>
+    );
+  };
+  const renderForcingPanel = (metric: ClimateMetricSeries) => {
+    const axisBounds = forcingAxisBounds(metric.key);
+    const title = metricTitle(metric, language);
+    const freshness = metricFreshnessBadge(metric, language, t);
+    const option =
+      metric.key === "atmospheric_aggi"
+        ? buildClimateTrendOption({
+            points: metric.points,
+            seriesName: title,
+            unit: metric.unit,
+            decimals: metric.decimals,
+            lineWidth: 2.1,
+            yAxisMin: axisBounds.yMin,
+            yAxisMax: axisBounds.yMax,
+            yAxisUnitLabel: forcingYAxisUnitLabel(metric.key, language),
+            xAxisYearLabelStep: 5,
+            disableDataZoom: true,
+            forceMappedYearLabels: true,
+            showLegend: false,
+            compact,
+            dark: resolvedTheme === "dark",
+            color: forcingMetricColor(metric.key, resolvedTheme === "dark"),
+            labels: {
+              noData: t.noData,
+              latest: t.chartLatest,
+            },
+          })
+        : buildForcingTrendOption({
+            points: metric.points,
+            title,
+            unit: metric.unit,
+            yAxisUnitLabel: forcingYAxisUnitLabel(metric.key, language),
+            yAxisMin: axisBounds.yMin,
+            yAxisMax: axisBounds.yMax,
+            xAxisStartYear: axisBounds.minYear,
+            decimals: metric.decimals,
+            compact,
+            dark: resolvedTheme === "dark",
+            color: forcingMetricColor(metric.key, resolvedTheme === "dark"),
+            labels: {
+              noData: t.noData,
+              latest: t.chartLatest,
+            },
+          });
+    return (
+      <EChartsPanel
+        key={metric.key}
+        title={title}
+        subtitle={formatSourceShortName(metric.source.shortName, language)}
+        expandLabel={t.chartFullscreenEnter}
+        collapseLabel={t.chartFullscreenExit}
+        freshnessLabel={freshness.label}
+        freshnessTone={freshness.tone}
+        option={option}
+      />
+    );
+  };
+
+  const renderPageIntro = (eyebrow: string, title: string, description: string) => (
+    <div className="indicator-page-intro">
+      <div className="indicator-topic-copy">
+        <span className="indicator-topic-eyebrow">{eyebrow}</span>
+        <h1>{title}</h1>
+        <p>{description}</p>
+      </div>
+    </div>
+  );
+  const renderPageSubsection = (title: string, note: string, content: ReactNode, action?: ReactNode) => (
+    <div className="climate-subsection">
+      <div className="climate-subsection-header collapsible-subsection-header">
+        <div className="climate-subsection-heading">
+          <h2>{title}</h2>
+          <p>{note}</p>
+        </div>
+        {action}
+      </div>
+      <div className="climate-subsection-content">{content}</div>
+    </div>
+  );
+
   const sourceModeLabel =
     snapshot.sourceMode === "live"
       ? t.sourceLive
@@ -4024,6 +4112,25 @@ export function App() {
       .map((section) => ({ section, sources: grouped.get(section) ?? [] }))
       .filter((group) => group.sources.length > 0);
   }, [footerSources]);
+  const normalizedSourceQuery = sourceQuery.trim().toLocaleLowerCase();
+  const filteredSourceGroups = groupedFooterSources
+    .map((group) => ({
+      ...group,
+      sources: group.sources.filter((source) =>
+        `${source.title} ${source.provider} ${dataSourceSectionTitle(group.section, t)}`.toLocaleLowerCase().includes(normalizedSourceQuery)
+      ),
+    }))
+    .filter((group) => group.sources.length);
+  const filteredSourceCount = filteredSourceGroups.reduce((total, group) => total + group.sources.length, 0);
+  const uniqueFooterSources = groupedFooterSources.flatMap((group) => group.sources);
+  const sourceProviderCount = new Set(uniqueFooterSources.map((source) => source.provider.split(/[\s(]/)[0])).size;
+  const sourceFreshnessCounts = uniqueFooterSources.reduce(
+    (counts, source) => {
+      if (source.freshness) counts[source.freshness.tone] += 1;
+      return counts;
+    },
+    { fresh: 0, warning: 0, stale: 0 } as Record<FreshnessTone, number>
+  );
   const ensoOutlookFreshness = ensoFreshnessBadge(ensoOutlook, language, t);
   const dailyGlobalMeanAnomalyFreshness = dailyGlobalMeanAnomalyMetric
     ? metricFreshnessBadge(dailyGlobalMeanAnomalyMetric, language, t)
@@ -4091,58 +4198,6 @@ export function App() {
         };
       })()
     : null;
-  const renderProjectionEstimate = (variant: "overview" | "summary") =>
-    projectedAnnualGlobalMeanAnomaly && projectionIntervalTrack ? (
-      <div className={`projection-estimate-panel ${variant}`}>
-        <div className="projection-estimate-copy">
-          <span>{t.projectionEstimateLabel}</span>
-          <strong>
-            {renderPrimaryValue(
-              `${projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.value)} ${projectionUnitLabel}`,
-              "value-loading-skeleton projection-value-loading"
-            )}
-          </strong>
-          {runtimeDataReady ? <small>{formatProjectionTopMeta(projectedAnnualGlobalMeanAnomaly.year, language)}</small> : null}
-        </div>
-        <div className="projection-interval-card">
-          <div className="projection-interval-heading">
-            <span>{t.projectionIntervalLabel}</span>
-            <strong>
-              {renderPrimaryValue(
-                `${projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-${projectionNumberFormat.format(
-                  projectedAnnualGlobalMeanAnomaly.high
-                )} ${projectionUnitLabel}`,
-                "value-loading-skeleton projection-interval-loading"
-              )}
-            </strong>
-          </div>
-          {runtimeDataReady ? (
-            <>
-              <div className="projection-interval-track" aria-hidden="true">
-                <span className="projection-threshold threshold-one-point-five" />
-                <span className="projection-threshold threshold-two" />
-                <span
-                  className="projection-interval-range"
-                  style={{ left: `${projectionIntervalTrack.start}%`, width: `${projectionIntervalTrack.width}%` }}
-                />
-                <span className="projection-interval-marker" style={{ left: `${projectionIntervalTrack.marker}%` }} />
-              </div>
-              <div className="projection-interval-axis" aria-hidden="true">
-                <span>{PROJECTION_OVERVIEW_Y_MIN.toFixed(1)}</span>
-                <span>1.5</span>
-                <span>
-                  {PROJECTION_OVERVIEW_Y_MAX.toFixed(1)} {projectionUnitLabel}
-                </span>
-              </div>
-            </>
-          ) : (
-            <div className="projection-track-loading" aria-hidden="true">
-              {renderLoadingValue("value-loading-skeleton projection-track-loading-bar")}
-            </div>
-          )}
-        </div>
-      </div>
-    ) : null;
   const setDashboardView = (view: DashboardView) => {
     setActiveView(view);
     setMobileMenuOpen(false);
@@ -4316,7 +4371,75 @@ export function App() {
   ].filter((row): row is NonNullable<typeof row> => row != null);
   const ensoOverviewCondition =
     ensoOutlook?.nextThreeMonths?.condition ?? ensoOutlook?.nextSixMonths?.condition ?? "neutral";
-  const renderEnsoOutlookCard = (options?: { showSourceLink?: boolean }) => options?.showSourceLink === false ? (
+  const ensoIndexMetrics = variabilityMetrics.filter((metric) => ENSO_INDEX_KEYS.has(metric.key));
+  const circulationIndexMetrics = variabilityMetrics.filter((metric) => !ENSO_INDEX_KEYS.has(metric.key));
+  const ensoConditionTone = (condition: EnsoCondition) =>
+    condition === "el_nino" ? "warm" : condition === "la_nina" ? "cool" : "neutral";
+  const variabilityIndexPhase = (metric: ClimateMetricSeries): { tone: "warm" | "cool" | "neutral"; label: string } => {
+    const value = metric.latestValue;
+    if (value == null || !Number.isFinite(value) || Math.abs(value) < 0.5) {
+      return {
+        tone: "neutral",
+        label: metric.key === "nino34_index" ? t.ensoConditionNeutral : language === "hu" ? "Semleges közeli" : "Near neutral",
+      };
+    }
+    if (metric.key === "nino34_index") {
+      return value > 0 ? { tone: "warm", label: t.ensoConditionElNino } : { tone: "cool", label: t.ensoConditionLaNina };
+    }
+    if (metric.key === "soi_index") {
+      return value < 0
+        ? { tone: "warm", label: language === "hu" ? "El Niño felé hajló" : "El Niño-leaning" }
+        : { tone: "cool", label: language === "hu" ? "La Niña felé hajló" : "La Niña-leaning" };
+    }
+    return value > 0
+      ? { tone: "warm", label: language === "hu" ? "Pozitív fázis" : "Positive phase" }
+      : { tone: "cool", label: language === "hu" ? "Negatív fázis" : "Negative phase" };
+  };
+  const renderVariabilityIndexCard = (metric: ClimateMetricSeries) => {
+    const freshness = metricFreshnessBadge(metric, language, t);
+    const phase = variabilityIndexPhase(metric);
+    const value = metric.latestValue;
+    const signedValue =
+      value == null || !Number.isFinite(value)
+        ? t.valueUnavailable
+        : `${value > 0 ? "+" : ""}${formatNumericValue(value, metric.decimals, language, t.valueUnavailable)}`;
+    return (
+      <article className={`alert-card summary variability-index-card phase-tone-${phase.tone}`} key={`${metric.key}-variability-summary`}>
+        <span className="alert-kicker">
+          {t.latestLabel}
+          {VARIABILITY_INDEX_SHORT_NAMES[metric.key] ? ` · ${VARIABILITY_INDEX_SHORT_NAMES[metric.key]}` : ""}
+        </span>
+        <h2>{metricTitle(metric, language)}</h2>
+        <p className="alert-emphasis">
+          {renderPrimaryValue(
+            `${signedValue}${metric.key === "nino34_index" ? ` ${cardUnitLabel(metric.key, metric.unit, language)}` : ""}`,
+            "value-loading-skeleton detail-value-loading"
+          )}
+        </p>
+        {runtimeDataReady ? <span className="variability-phase-label">{phase.label}</span> : null}
+        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
+        <div className="alert-meta">
+          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
+        </div>
+      </article>
+    );
+  };
+  const renderVariabilityPanel = ({ metric, subtitle, option }: (typeof variabilityChartPanels)[number]) => {
+    const freshness = metricFreshnessBadge(metric, language, t);
+    return (
+      <EChartsPanel
+        key={metric.key}
+        title={metricTitle(metric, language)}
+        subtitle={subtitle}
+        expandLabel={t.chartFullscreenEnter}
+        collapseLabel={t.chartFullscreenExit}
+        freshnessLabel={freshness.label}
+        freshnessTone={freshness.tone}
+        option={option}
+      />
+    );
+  };
+  const renderEnsoOutlookCard = () => (
     <article className="overview-card enso-outlook-card enso-outlook-card-editorial">
       <div className="overview-card-header">
         <div>
@@ -4369,69 +4492,6 @@ export function App() {
             </div>
           </div>
         ))}
-      </div>
-    </article>
-  ) : (
-    <article className="overview-card enso-outlook-card">
-      <div className="overview-card-header">
-        <div>
-          <h2>{t.ensoOutlookTitle}</h2>
-          {runtimeDataReady && ensoOutlook?.issuedDate ? <p>{formatDateLabel(ensoOutlook.issuedDate, language)}</p> : null}
-        </div>
-        <ToolkitIcon name="info" className="info-icon" />
-      </div>
-      <div className="enso-gauge-block">
-        <div className="enso-gauge-labels" aria-hidden="true">
-          <span>{t.ensoConditionLaNina}</span>
-          <span>{t.ensoConditionNeutral}</span>
-          <span>{t.ensoConditionElNino}</span>
-        </div>
-        <EChartsPanel title={t.ensoOutlookTitle} option={ensoGaugeOption} />
-      </div>
-      <div className="enso-overview-status">
-        <span>{t.ensoStatusLabel}</span>
-        <strong>
-          {renderPrimaryValue(
-            formatEnsoStatusLabel(ensoOutlook, language, t),
-            "value-loading-skeleton enso-status-loading"
-          )}
-        </strong>
-      </div>
-      <div className="enso-overview-window-list">
-        {ensoOverviewRows.map((row) => (
-          <div className="enso-overview-window" key={row.key}>
-            <span>{row.horizon}</span>
-            <strong>
-              {renderPrimaryValue(
-                formatEnsoConditionLabel(row.window.condition, t),
-                "value-loading-skeleton enso-window-loading"
-              )}
-            </strong>
-            {runtimeDataReady ? (
-              <small>
-                {row.window.probability ?? "-"}% · {formatEnsoTargetLabel(row.window.targetLabel, language)}
-              </small>
-            ) : (
-              <small>{renderLoadingValue("value-loading-skeleton enso-window-meta-loading")}</small>
-            )}
-          </div>
-        ))}
-      </div>
-      {runtimeDataReady && ensoOutlook?.synopsis ? (
-        <details className="enso-overview-details">
-          <summary>{t.sectionExpand}</summary>
-          <p className="enso-overview-synopsis">{ensoOutlook.synopsis}</p>
-        </details>
-      ) : null}
-      <div className="enso-overview-meta">
-        {runtimeDataReady && ensoOutlookFreshness ? (
-          <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span>
-        ) : null}
-        {options?.showSourceLink && ensoOutlook?.sourceUrl ? (
-          <a className="text-link-button" href={ensoOutlook.sourceUrl} target="_blank" rel="noreferrer">
-            {ensoOutlook.sourceLabel || "NOAA CPC"} →
-          </a>
-        ) : null}
       </div>
     </article>
   );
@@ -4642,19 +4702,6 @@ export function App() {
       </aside>
 
       <main id="main-content" tabIndex={-1} className={`app-shell dashboard-view dashboard-view-${activeView}`}>
-        {activeView !== "overview" && activeView !== "indicators" && activeView !== "forcing" ? (
-          <header className="topbar dashboard-page-header">
-            <div className="topbar-brand">
-              <div>
-                <div className="topbar-heading">
-                  <h1>{pageTitle}</h1>
-                  <p className="subtitle">{pageSubtitle}</p>
-                </div>
-              </div>
-            </div>
-          </header>
-        ) : null}
-
         {activeView === "overview" ? (
           <div className="overview-page">
             <section className="overview-lead-grid">
@@ -4743,7 +4790,7 @@ export function App() {
                   ))}
                 </div>
               </section>
-              <div className="overview-enso-with-link">{renderEnsoOutlookCard({ showSourceLink: false })}<button type="button" className="text-link-button" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Szezonális kilátások" : "Explore seasonal outlook"} →</button></div>
+              <div className="overview-enso-with-link">{renderEnsoOutlookCard()}<button type="button" className="text-link-button" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Szezonális kilátások" : "Explore seasonal outlook"} →</button></div>
               <article className="overview-card overview-projection-card outlook-featured">
                 <div className="outlook-card-grid">
                     <div className="outlook-card-copy">
@@ -4929,25 +4976,7 @@ export function App() {
               <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
-                  {globalTemperatureLines.map(({ metric }) => {
-                    const freshness = metricFreshnessBadge(metric, language, t);
-                    return (
-                      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-global-temperature-summary`}>
-                        <span className="alert-kicker">{t.latestLabel}</span>
-                        <h2>{metricTitle(metric, language)}</h2>
-                        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
-                        {runtimeDataReady ? (
-                          <p>
-                            {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                          </p>
-                        ) : null}
-                        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
-                        <div className="alert-meta">
-                          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
-                        </div>
-                      </article>
-                    );
-                  })}
+                  {globalTemperatureLines.map(({ metric }) => renderMetricSummaryCard(metric, "global-temperature-summary"))}
                 </div>
               </div>
               <div className="charts-grid climate-grid">
@@ -4965,25 +4994,7 @@ export function App() {
               <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
-                  {anomalyTemperatureLines.map(({ metric }) => {
-                    const freshness = metricFreshnessBadge(metric, language, t);
-                    return (
-                      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-temperature-anomaly-summary`}>
-                        <span className="alert-kicker">{t.latestLabel}</span>
-                        <h2>{metricTitle(metric, language)}</h2>
-                        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
-                        {runtimeDataReady ? (
-                          <p>
-                            {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                          </p>
-                        ) : null}
-                        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
-                        <div className="alert-meta">
-                          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
-                        </div>
-                      </article>
-                    );
-                  })}
+                  {anomalyTemperatureLines.map(({ metric }) => renderMetricSummaryCard(metric, "temperature-anomaly-summary"))}
                 </div>
               </div>
               <div className="charts-grid climate-grid">
@@ -5079,25 +5090,7 @@ export function App() {
               <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
-                  {regionalSummaryMetrics.map((metric) => {
-                    const freshness = metricFreshnessBadge(metric, language, t);
-                    return (
-                      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-regional-summary`}>
-                        <span className="alert-kicker">{t.latestLabel}</span>
-                        <h2>{metricTitle(metric, language)}</h2>
-                        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
-                        {runtimeDataReady ? (
-                          <p>
-                            {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                          </p>
-                        ) : null}
-                        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
-                        <div className="alert-meta">
-                          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
-                        </div>
-                      </article>
-                    );
-                  })}
+                  {regionalSummaryMetrics.map((metric) => renderMetricSummaryCard(metric, "regional-summary"))}
                 </div>
               </div>
               <div className="charts-grid climate-grid">
@@ -5115,25 +5108,7 @@ export function App() {
               <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
-                  {regionalTemperatureAnomalySummaryMetrics.map((metric) => {
-                    const freshness = metricFreshnessBadge(metric, language, t);
-                    return (
-                      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-regional-anomaly-summary`}>
-                        <span className="alert-kicker">{t.latestLabel}</span>
-                        <h2>{metricTitle(metric, language)}</h2>
-                        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
-                        {runtimeDataReady ? (
-                          <p>
-                            {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                          </p>
-                        ) : null}
-                        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
-                        <div className="alert-meta">
-                          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
-                        </div>
-                      </article>
-                    );
-                  })}
+                  {regionalTemperatureAnomalySummaryMetrics.map((metric) => renderMetricSummaryCard(metric, "regional-anomaly-summary"))}
                 </div>
               </div>
               <div className="charts-grid climate-grid">
@@ -5151,24 +5126,7 @@ export function App() {
               <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
-                  {oceanMetrics.map((metric) => {
-                    const freshness = metricFreshnessBadge(metric, language, t);
-                    return (
-                      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-ocean-summary`}>
-                        <h2>{metricTitle(metric, language)}</h2>
-                        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
-                        {runtimeDataReady ? (
-                          <p>
-                            {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                          </p>
-                        ) : null}
-                        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
-                        <div className="alert-meta">
-                          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
-                        </div>
-                      </article>
-                    );
-                  })}
+                  {oceanMetrics.map((metric) => renderMetricSummaryCard(metric, "ocean-summary"))}
                 </div>
               </div>
               <div className="charts-grid climate-grid">
@@ -5183,6 +5141,45 @@ export function App() {
                 t.earthEnergyImbalanceSectionTitle,
                 t.earthEnergyImbalanceSectionNote,
                 <>
+                <div className="summary-cards-section">
+                  <div className="regional-summary-grid">
+                    <article className="alert-card summary">
+                      <span className="alert-kicker">{t.latestLabel}</span>
+                      <h2>{language === "hu" ? "12 havi átlag" : "12-month mean"}</h2>
+                      <p className="alert-emphasis">
+                        {renderPrimaryValue(
+                          `${earthEnergyImbalanceLatestMean == null ? "-" : `+${formatNumericValue(earthEnergyImbalanceLatestMean, 2, language, t.valueUnavailable)}`} W/m²`,
+                          "value-loading-skeleton detail-value-loading"
+                        )}
+                      </p>
+                      {runtimeDataReady && earthEnergyImbalanceFreshness ? (
+                        <span className={`freshness-chip ${earthEnergyImbalanceFreshness.tone}`}>{earthEnergyImbalanceFreshness.label}</span>
+                      ) : null}
+                      <div className="alert-meta">
+                        <span className="alert-meta-chip confidence-medium">
+                          {formatSourceShortName(earthEnergyImbalanceMetric.source.shortName, language)}
+                        </span>
+                      </div>
+                    </article>
+                    <article className="alert-card summary">
+                      <span className="alert-kicker">{language === "hu" ? "Viszonyítás" : "Reference"}</span>
+                      <h2>{language === "hu" ? "2001–2010-es átlag" : "2001–2010 average"}</h2>
+                      <p className="alert-emphasis">
+                        {renderPrimaryValue(
+                          `${earthEnergyImbalanceBaselineMean == null ? "-" : `+${formatNumericValue(earthEnergyImbalanceBaselineMean, 2, language, t.valueUnavailable)}`} W/m²`,
+                          "value-loading-skeleton detail-value-loading"
+                        )}
+                      </p>
+                      {runtimeDataReady && earthEnergyImbalanceLatestMean != null && earthEnergyImbalanceBaselineMean ? (
+                        <p>
+                          {language === "hu"
+                            ? `A jelenlegi érték ennek ${formatNumericValue(earthEnergyImbalanceLatestMean / earthEnergyImbalanceBaselineMean, 1, language, "-")}-szerese.`
+                            : `Today's imbalance is ${formatNumericValue(earthEnergyImbalanceLatestMean / earthEnergyImbalanceBaselineMean, 1, language, "-")}× this level.`}
+                        </p>
+                      ) : null}
+                    </article>
+                  </div>
+                </div>
                 <div className="charts-grid climate-grid climate-grid-single">
                   <EChartsPanel
                     title={t.earthEnergyImbalanceTitle}
@@ -5228,25 +5225,7 @@ export function App() {
               <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
-                  {seaIceSummaryMetrics.map((metric) => {
-                    const freshness = metricFreshnessBadge(metric, language, t);
-                    return (
-                      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-sea-ice-summary`}>
-                        <span className="alert-kicker">{t.latestLabel}</span>
-                        <h2>{metricTitle(metric, language)}</h2>
-                        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
-                        {runtimeDataReady ? (
-                          <p>
-                            {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                          </p>
-                        ) : null}
-                        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
-                        <div className="alert-meta">
-                          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
-                        </div>
-                      </article>
-                    );
-                  })}
+                  {seaIceSummaryMetrics.map((metric) => renderMetricSummaryCard(metric, "sea-ice-summary"))}
                 </div>
               </div>
               <div className="charts-grid climate-grid sea-ice-grid">
@@ -5266,25 +5245,7 @@ export function App() {
                 {snowCoverSummaryMetrics.length ? (
                   <div className="summary-cards-section">
                     <div className="regional-summary-grid">
-                      {snowCoverSummaryMetrics.map((metric) => {
-                        const freshness = metricFreshnessBadge(metric, language, t);
-                        return (
-                          <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-snow-cover-summary`}>
-                            <span className="alert-kicker">{t.latestLabel}</span>
-                            <h2>{metricTitle(metric, language)}</h2>
-                            <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
-                            {runtimeDataReady ? (
-                              <p>
-                                {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                              </p>
-                            ) : null}
-                            {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
-                            <div className="alert-meta">
-                              <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
-                            </div>
-                          </article>
-                        );
-                      })}
+                      {snowCoverSummaryMetrics.map((metric) => renderMetricSummaryCard(metric, "snow-cover-summary"))}
                     </div>
                   </div>
                 ) : null}
@@ -5345,423 +5306,497 @@ export function App() {
       ) : null}
 
       {activeView === "maps" ? (
-      <section className="collapsible-section detail-page-section detail-page-maps" id="maps">
-        <div className="topic-navigation segmented-control" role="group" aria-label={t.mapsSectionTitle}>
-          <button type="button" aria-pressed={mapTopic === "surface"} onClick={() => {setMapTopic("surface"); setMapsSectionOpen(true);}}>{language === "hu" ? "Felszíni hőmérséklet" : "Surface temperature"}</button>
-          <button type="button" aria-pressed={mapTopic === "ocean"} onClick={() => {setMapTopic("ocean"); setMapsSectionOpen(true);}}>{language === "hu" ? "Óceánok" : "Oceans"}</button>
-        </div>
-        <header className="section-header">
-          <div className="section-header-main">
-            <h2>{t.mapsSectionTitle}</h2>
-            <p>{t.mapsSectionNote}</p>
-          </div>
-          <button
-            type="button"
-            className="section-toggle"
-            aria-expanded={mapsSectionOpen}
-            onClick={() => setMapsSectionOpen((open) => !open)}
-          >
-            <span className={`section-toggle-icon ${mapsSectionOpen ? "open" : ""}`} aria-hidden="true" />
-            <span>{mapsSectionOpen ? t.sectionCollapse : t.sectionExpand}</span>
+      <section className={`collapsible-section detail-page-section detail-page-editorial detail-page-maps map-topic-${mapTopic}`} id="maps">
+        {renderPageIntro(
+          language === "hu" ? "Térképek" : "Maps",
+          mapTopic === "surface"
+            ? language === "hu" ? "Felszíni hőmérséklet" : "Surface temperature"
+            : language === "hu" ? "Tengerfelszín-hőmérséklet" : "Sea surface temperature",
+          mapTopic === "surface"
+            ? language === "hu"
+              ? "A GFS modell napi átlagos 2 méteres léghőmérséklete a Climate Reanalyzertől. Az abszolút térkép az időjárást, az anomáliatérkép azt mutatja, mennyire szokatlan az 1979–2000-es alaphoz képest."
+              : "Daily mean 2-metre air temperature from the GFS model via Climate Reanalyzer. The absolute map shows the weather; the anomaly map shows how unusual it is against a 1979–2000 baseline."
+            : language === "hu"
+              ? "A napi tengerfelszín-hőmérséklet és anomáliája a Climate Reanalyzertől. Az óceánok tárolják a többlethő nagy részét, ezért lassan, de tartósan reagálnak."
+              : "Daily sea surface temperature and its anomaly via Climate Reanalyzer. The oceans store most of the extra heat, so they respond slowly but persistently."
+        )}
+        <div className="topic-navigation indicator-topic-navigation segmented-control" role="group" aria-label={t.mapsSectionTitle}>
+          <button type="button" aria-pressed={mapTopic === "surface"} onClick={() => setMapTopic("surface")}>
+            {language === "hu" ? "Felszíni hőmérséklet" : "Surface temperature"}
           </button>
-        </header>
-
-        {mapsSectionOpen ? (
-          <div className="section-content">
-            <div className="charts-grid climate-grid maps-grid">
-              {mapCards.filter((card) => mapTopic === "surface" ? card.key.includes("2m") : !card.key.includes("2m")).map((mapCard) => (
-                <MapPanel
-                  key={mapCard.key}
-                  title={mapCard.title}
-                  subtitle={mapCard.subtitle}
-                  imageUrl={mapCard.imageUrl}
-                  fallbackImageUrls={mapCard.fallbackImageUrls}
-                  imageAlt={mapCard.imageAlt}
-                  noImageLabel={t.mapUnavailable}
-                  expandLabel={t.chartFullscreenEnter}
-                  collapseLabel={t.chartFullscreenExit}
-                  freshnessLabel={mapCard.freshness?.label}
-                  freshnessTone={mapCard.freshness?.tone}
-                />
-              ))}
-            </div>
-          </div>
-        ) : null}
+          <button type="button" aria-pressed={mapTopic === "ocean"} onClick={() => setMapTopic("ocean")}>
+            {language === "hu" ? "Óceánok" : "Oceans"}
+          </button>
+        </div>
+        <div className="charts-grid climate-grid maps-grid">
+          {mapCards.filter((card) => mapTopic === "surface" ? card.key.includes("2m") : !card.key.includes("2m")).map((mapCard) => (
+            <MapPanel
+              key={mapCard.key}
+              title={mapCard.title}
+              subtitle={mapCard.subtitle}
+              imageUrl={mapCard.imageUrl}
+              fallbackImageUrls={mapCard.fallbackImageUrls}
+              imageAlt={mapCard.imageAlt}
+              noImageLabel={t.mapUnavailable}
+              expandLabel={t.chartFullscreenEnter}
+              collapseLabel={t.chartFullscreenExit}
+              freshnessLabel={mapCard.freshness?.label}
+              freshnessTone={mapCard.freshness?.tone}
+            />
+          ))}
+        </div>
+        <p className="maps-source-note">
+          {language === "hu" ? "Forrás: " : "Source: "}
+          <a href="https://climatereanalyzer.org/wx/todays-weather/" target="_blank" rel="noreferrer">
+            Climate Reanalyzer, Climate Change Institute, University of Maine
+          </a>
+        </p>
       </section>
       ) : null}
 
       {activeView === "forcing" ? (
-      <section className="collapsible-section detail-page-section detail-page-forcing" id="forcing">
-        <header className="section-header">
-          <div className="section-header-main">
-            <h2>{t.forcingTitle}</h2>
-            <p>{t.forcingNote}</p>
-          </div>
-          <button
-            type="button"
-            className="section-toggle"
-            aria-expanded={forcingSectionOpen}
-            onClick={() => setForcingSectionOpen((open) => !open)}
-          >
-            <span className={`section-toggle-icon ${forcingSectionOpen ? "open" : ""}`} aria-hidden="true" />
-            <span>{forcingSectionOpen ? t.sectionCollapse : t.sectionExpand}</span>
-          </button>
-        </header>
-
-        {forcingSectionOpen ? (
-          <div className="section-content">
+      <section className="collapsible-section detail-page-section detail-page-editorial detail-page-forcing" id="forcing">
+        {renderPageIntro(
+          language === "hu" ? "Éghajlati kényszerek" : "Climate forcing",
+          language === "hu" ? "Mi hajtja a melegedést" : "What drives the warming",
+          language === "hu"
+            ? "A légköri üvegházgázok felhalmozódása csapdába ejti a hőt, míg a Nap sugárzása alig változik. Ezek az adatsorok mutatják a klímarendszert érő külső hatásokat."
+            : "Greenhouse gases building up in the atmosphere trap more heat, while the Sun's output barely changes. These records track the external pushes on the climate system."
+        )}
+        {renderPageSubsection(
+          language === "hu" ? "Üvegházgázok" : "Greenhouse gases",
+          language === "hu"
+            ? "A három legfontosabb, hosszú élettartamú üvegházgáz légköri koncentrációja a NOAA globális megfigyelőhálózatából."
+            : "Atmospheric concentrations of the three most important long-lived greenhouse gases from NOAA's global monitoring network.",
+          <>
             <div className="summary-cards-section">
-              <div className="regional-summary-grid">
-                {snapshot.forcing.map((metric) => {
-                  const freshness = metricFreshnessBadge(metric, language, t);
-                  const gasLabel = forcingGasLabel(metric.key);
-                  const accentColor = forcingMetricColor(metric.key, resolvedTheme === "dark");
-                  return (
-                    <article
-                      className={`alert-card summary ${topSummaryCategoryClass(metric.key)}${gasLabel ? " forcing-gas-card" : ""}`}
-                      key={`${metric.key}-forcing-summary`}
-                      style={{ "--forcing-accent": accentColor } as CSSProperties}
-                    >
-                      <span className="alert-kicker">{t.latestLabel}</span>
-                      {gasLabel ? (
-                        <>
-                          <h2 className="forcing-gas-title">{gasLabel}</h2>
-                          <p className="forcing-gas-name">{metricTitle(metric, language)}</p>
-                        </>
-                      ) : (
-                        <h2>{metricTitle(metric, language)}</h2>
-                      )}
-                      <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
-                      {runtimeDataReady ? (
-                        <p>
-                          {t.chartLatest}: {formatDateLabel(metric.latestDate, language)}
-                        </p>
-                      ) : null}
-                      {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
-                      <div className="alert-meta">
-                        <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+              <div className="regional-summary-grid">{forcingGasMetrics.map((metric) => renderForcingSummaryCard(metric))}</div>
             </div>
-            <div className={`charts-grid forcing-grid ${snapshot.forcing.length === 1 ? "forcing-grid-single" : ""}`}>
-              {snapshot.forcing.map((metric) => {
-                const axisBounds = forcingAxisBounds(metric.key);
-                const title = metricTitle(metric, language);
-                const freshness = metricFreshnessBadge(metric, language, t);
-                const option =
-                  metric.key === "atmospheric_aggi"
-                    ? buildClimateTrendOption({
-                        points: metric.points,
-                        seriesName: title,
-                        unit: metric.unit,
-                        decimals: metric.decimals,
-                        lineWidth: 2.1,
-                        yAxisMin: axisBounds.yMin,
-                        yAxisMax: axisBounds.yMax,
-                        yAxisUnitLabel: forcingYAxisUnitLabel(metric.key, language),
-                        xAxisYearLabelStep: 5,
-                        disableDataZoom: true,
-                        forceMappedYearLabels: true,
-                        showLegend: false,
-                        compact,
-                        dark: resolvedTheme === "dark",
-                        color: forcingMetricColor(metric.key, resolvedTheme === "dark"),
-                        labels: {
-                          noData: t.noData,
-                          latest: t.chartLatest,
-                        },
-                      })
-                    : buildForcingTrendOption({
-                        points: metric.points,
-                        title,
-                        unit: metric.unit,
-                        yAxisUnitLabel: forcingYAxisUnitLabel(metric.key, language),
-                        yAxisMin: axisBounds.yMin,
-                        yAxisMax: axisBounds.yMax,
-                        xAxisStartYear: axisBounds.minYear,
-                        decimals: metric.decimals,
-                        compact,
-                        dark: resolvedTheme === "dark",
-                        color: forcingMetricColor(metric.key, resolvedTheme === "dark"),
-                        labels: {
-                          noData: t.noData,
-                          latest: t.chartLatest,
-                        },
-                      });
-                return (
-                  <EChartsPanel
-                    key={metric.key}
-                    title={title}
-                    subtitle={formatSourceShortName(metric.source.shortName, language)}
-                    expandLabel={t.chartFullscreenEnter}
-                    collapseLabel={t.chartFullscreenExit}
-                    freshnessLabel={freshness.label}
-                    freshnessTone={freshness.tone}
-                    option={option}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
+            <div className="charts-grid forcing-grid">{forcingGasMetrics.map(renderForcingPanel)}</div>
+          </>
+        )}
+        {forcingOtherMetrics.length
+          ? renderPageSubsection(
+              language === "hu" ? "Összesített hatás és a Nap" : "Combined effect and the Sun",
+              language === "hu"
+                ? "Az éves üvegházgáz-index az összes gáz melegítő hatását az 1990-es szinthez méri; a beérkező napenergia természetes változékonysága ehhez képest kicsi."
+                : "The annual greenhouse gas index measures the combined heating effect of all gases against 1990; natural swings in incoming solar energy are small by comparison.",
+              <>
+                <div className="summary-cards-section">
+                  <div className="regional-summary-grid">{forcingOtherMetrics.map((metric) => renderForcingSummaryCard(metric))}</div>
+                </div>
+                <div className="charts-grid forcing-grid">{forcingOtherMetrics.map(renderForcingPanel)}</div>
+              </>
+            )
+          : null}
       </section>
       ) : null}
 
       {activeView === "variability" ? (
-        <section className="collapsible-section detail-page-section detail-page-variability" id="variability">
-          <header className="section-header">
-            <div className="section-header-main">
-              <h2>{t.naturalVariabilityTitle}</h2>
-              <p>{t.naturalVariabilityNote}</p>
-            </div>
-            <button
-              type="button"
-              className="section-toggle"
-              aria-expanded={variabilitySectionOpen}
-              onClick={() => setVariabilitySectionOpen((open) => !open)}
-            >
-              <span className={`section-toggle-icon ${variabilitySectionOpen ? "open" : ""}`} aria-hidden="true" />
-              <span>{variabilitySectionOpen ? t.sectionCollapse : t.sectionExpand}</span>
-            </button>
-          </header>
-
-          {variabilitySectionOpen ? (
-            <div className="section-content">
-              <div className="projection-enso-card-row">{renderEnsoOutlookCard({ showSourceLink: true })}</div>
-              {variabilityChartPanels.length ? (
-                <div className="charts-grid climate-grid">
-                  {variabilityChartPanels.map(({ metric, subtitle, option }) => (
-                    <EChartsPanel
-                      key={metric.key}
-                      title={metricTitle(metric, language)}
-                      subtitle={subtitle}
-                      expandLabel={t.chartFullscreenEnter}
-                      collapseLabel={t.chartFullscreenExit}
-                      freshnessLabel={metricFreshnessBadge(metric, language, t)?.label}
-                      freshnessTone={metricFreshnessBadge(metric, language, t)?.tone}
-                      option={option}
-                    />
+        <section className="collapsible-section detail-page-section detail-page-editorial detail-page-variability" id="variability">
+          {renderPageIntro(
+            language === "hu" ? "Természetes változékonyság" : "Natural variability",
+            t.naturalVariabilityTitle,
+            language === "hu"
+              ? "Óceán–légkör oszcillációk, amelyek évről évre a hosszú távú melegedési trend fölé vagy alá tolják a globális hőmérsékletet és a regionális időjárást."
+              : "Ocean–atmosphere oscillations that push global temperature and regional weather above or below the long-term warming trend from one year to the next."
+          )}
+          {renderPageSubsection(
+            language === "hu" ? "El Niño–déli oszcilláció" : "El Niño–Southern Oscillation",
+            language === "hu"
+              ? "Az ENSO az éves globális hőmérséklet-ingadozás legnagyobb forrása. Az ONI az óceáni, az SOI a légköri állapotot követi; az IRI előrejelzés a következő évszakok valószínűségeit adja."
+              : "ENSO is the largest source of year-to-year swings in global temperature. ONI tracks its ocean state, SOI its atmospheric state, and the IRI outlook gives probabilities for the coming seasons.",
+            <>
+              <div className="summary-cards-section">
+                <div className="regional-summary-grid">
+                  {ensoIndexMetrics.map((metric) => renderVariabilityIndexCard(metric))}
+                  {ensoOverviewRows.map((row) => (
+                    <article
+                      className={`alert-card summary variability-index-card phase-tone-${ensoConditionTone(row.window.condition)}`}
+                      key={`${row.key}-enso-outlook-summary`}
+                    >
+                      <span className="alert-kicker">{language === "hu" ? "IRI előrejelzés" : "IRI outlook"}</span>
+                      <h2>{row.horizon}</h2>
+                      <p className="alert-emphasis">
+                        {runtimeDataReady ? `${row.window.probability ?? "-"}%` : renderLoadingValue("value-loading-skeleton detail-value-loading")}
+                      </p>
+                      <span className="variability-phase-label">{formatEnsoConditionLabel(row.window.condition, t)}</span>
+                      {runtimeDataReady ? <p>{formatEnsoTargetLabel(row.window.targetLabel, language)}</p> : null}
+                      {runtimeDataReady && ensoOutlookFreshness ? (
+                        <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span>
+                      ) : null}
+                      <div className="alert-meta">
+                        {ensoOutlook?.sourceUrl ? (
+                          <a className="alert-meta-chip confidence-medium" href={ensoOutlook.sourceUrl} target="_blank" rel="noreferrer">
+                            {ensoOutlook.sourceLabel || "IRI"} →
+                          </a>
+                        ) : (
+                          <span className="alert-meta-chip confidence-medium">{ensoOutlook?.sourceLabel || "IRI"}</span>
+                        )}
+                      </div>
+                    </article>
                   ))}
                 </div>
+              </div>
+              {runtimeDataReady && ensoOutlook ? (
+                <p className="variability-synopsis">
+                  <span>{formatEnsoStatusLabel(ensoOutlook, language, t)}</span>
+                  {ensoOutlook.synopsis}
+                </p>
               ) : null}
-            </div>
-          ) : null}
+              <div className="charts-grid climate-grid">
+                {variabilityChartPanels.filter(({ metric }) => ENSO_INDEX_KEYS.has(metric.key)).map(renderVariabilityPanel)}
+              </div>
+            </>
+          )}
+          {renderPageSubsection(
+            language === "hu" ? "Légköri cirkulációs módusok" : "Atmospheric circulation modes",
+            language === "hu"
+              ? "Az északi félteke időjárását alakító nyomásmintázatok. Pozitív és negatív fázisaik a jet stream helyzetét, a téli hideget és a csapadékpályákat befolyásolják."
+              : "Pressure patterns that steer Northern Hemisphere weather. Their positive and negative phases shift the jet stream, winter cold outbreaks and storm tracks.",
+            <>
+              <div className="summary-cards-section">
+                <div className="regional-summary-grid">
+                  {circulationIndexMetrics.map((metric) => renderVariabilityIndexCard(metric))}
+                </div>
+              </div>
+              <div className="charts-grid climate-grid">
+                {variabilityChartPanels.filter(({ metric }) => !ENSO_INDEX_KEYS.has(metric.key)).map(renderVariabilityPanel)}
+              </div>
+            </>
+          )}
         </section>
       ) : null}
 
       {activeView === "projections" && projectedAnnualGlobalMeanAnomaly ? (
-        <section className="collapsible-section detail-page-section detail-page-projections" id="projections">
-          <header className="section-header">
-            <div className="section-header-main">
-              <h2>{t.projectionsTitle}</h2>
-              <p>{t.projectionsNote}</p>
-            </div>
-            <button
-              type="button"
-              className="section-toggle"
-              aria-expanded={projectionsSectionOpen}
-              onClick={() => setProjectionsSectionOpen((open) => !open)}
-            >
-              <span className={`section-toggle-icon ${projectionsSectionOpen ? "open" : ""}`} aria-hidden="true" />
-              <span>{projectionsSectionOpen ? t.sectionCollapse : t.sectionExpand}</span>
-            </button>
-          </header>
+        <section className="collapsible-section detail-page-section detail-page-editorial detail-page-projections" id="projections">
+          {renderPageIntro(
+            t.projectionExperimentalLabel,
+            t.projectionsTitle,
+            language === "hu"
+              ? "Merre tart az idei év, merre haladhat az évszázad, és mely földrendszer-küszöbök esnek útba."
+              : "Where this year is heading, where the century could go, and which Earth-system thresholds lie along the way."
+          )}
 
-          {projectionsSectionOpen ? (
-            <div className="section-content">
-              <article className="overview-card overview-projection-card projections-outlook-card">
-                <div className="overview-card-header">
-                  <h2>{currentYear} {t.outlookTitle}</h2>
-                  <ToolkitIcon name="info" className="info-icon" />
-                </div>
-                {renderProjectionEstimate("overview")}
-                <div className="projection-chart-cell overview-current-year-chart">
-                  {projectedAnnualOverviewChartOption ? (
-                    <EChartsPanel
-                      title={t.projectedAnnualTemperatureAnomalyChartTitle}
-                      subtitle={t.projectedAnnualTemperatureAnomalyChartSubtitle}
-                      expandLabel={t.chartFullscreenEnter}
-                      collapseLabel={t.chartFullscreenExit}
-                      freshnessLabel={projectionFreshness?.label}
-                      freshnessTone={projectionFreshness?.tone}
-                      option={projectedAnnualOverviewChartOption}
-                    />
-                  ) : null}
-                </div>
-              </article>
-
-              <div className="regional-summary-grid projection-summary-grid projection-compact-grid">
-                <article className="alert-card summary topcat-anomaly projection-summary-card projection-compact-card">
-                  <h2>{t.projectionProbabilityAboveOnePointFiveTitle}</h2>
-                  <p className="alert-emphasis">
-                    {renderPrimaryValue(
-                      projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive),
-                      "value-loading-skeleton detail-value-loading"
-                    )}
-                  </p>
-                  {runtimeDataReady ? (
-                    <p>
-                      {t.projectionRangeLabel}: {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}-
-                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)} {projectionUnitLabel}
+          {renderPageSubsection(
+            `${currentYear} ${t.outlookTitle}`,
+            language === "hu"
+              ? "Az aktuális ENSO-előrejelzéssel súlyozott analóg évek alapján becsült éves globális átlaghőmérséklet. Kísérleti becslés, nem hivatalos előrejelzés."
+              : "Annual global mean temperature estimated from analog years weighted by the current ENSO forecast. An experimental estimate, not an official forecast.",
+            <>
+              <div className="summary-cards-section">
+                <div className="regional-summary-grid">
+                  <article className="alert-card summary">
+                    <span className="alert-kicker">{t.projectionEstimateLabel}</span>
+                    <h2>{t.outlookProjectedAnnualMeanLabel}</h2>
+                    <p className="alert-emphasis">
+                      {renderPrimaryValue(
+                        `${projectedAnnualGlobalMeanAnomaly.value > 0 ? "+" : ""}${projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.value)} ${projectionUnitLabel}`,
+                        "value-loading-skeleton detail-value-loading"
+                      )}
                     </p>
-                  ) : null}
-                  <div className="alert-meta">
-                    <span className="alert-meta-chip confidence-medium">{t.projectionProbabilityMethodLabel}</span>
-                    <span className="alert-meta-chip confidence-medium">
-                      {projectedAnnualGlobalMeanAnomaly.analogCount} {t.projectionAnalogsLabel}
-                    </span>
-                  </div>
-                </article>
-                <article className="alert-card summary topcat-anomaly projection-summary-card projection-compact-card">
-                  <h2>{t.projectionProbabilityWarmestRecordTitle}</h2>
-                  <p className="alert-emphasis">
-                    {renderPrimaryValue(
-                      projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord),
-                      "value-loading-skeleton detail-value-loading"
-                    )}
-                  </p>
-                  {runtimeDataReady ? (
-                    <p>
-                      {t.projectionRecordThresholdLabel}:{" "}
-                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.recordThreshold)} {projectionUnitLabel}
-                    </p>
-                  ) : null}
-                  <div className="alert-meta">
-                    <span className="alert-meta-chip confidence-medium">{t.projectionProbabilityMethodLabel}</span>
-                    <span className="alert-meta-chip confidence-medium">
-                      {projectedAnnualGlobalMeanAnomaly.analogCount} {t.projectionAnalogsLabel}
-                    </span>
-                  </div>
-                </article>
-              </div>
-
-              {longRangeTemperatureTrendOption ? (
-                <section className="overview-long-range-section projections-long-range-section">
-                  <article className="overview-card overview-temperature-trend-card">
-                    <div className="overview-card-header">
-                      <div>
-                        <h2>{t.longRangeTemperatureTrendTitle}</h2>
-                        <p>{t.longRangeTemperatureTrendSource}</p>
-                      </div>
-                      <a
-                        className="text-link-button"
-                        href={CMIP7_SCENARIOMIP_TEMPERATURE_SOURCE_URL}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {t.cmip7ScenarioSourceLabel} →
-                      </a>
-                    </div>
-                    <div className="long-range-temperature-chart">
-                      <EChartsPanel
-                        title={t.longRangeTemperatureTrendTitle}
-                        subtitle={t.longRangeTemperatureTrendSubtitle}
-                        expandLabel={t.chartFullscreenEnter}
-                        collapseLabel={t.chartFullscreenExit}
-                        option={longRangeTemperatureTrendOption}
-                      />
-                    </div>
-                    <div className="scenario-2100-values" aria-label={t.longRangeTemperatureTrendValueLabel}>
-                      {longRangeScenarioSummaries.map((scenario) => (
-                        <div
-                          className="scenario-2100-chip"
-                          key={scenario.key}
-                          style={{ "--scenario-color": scenario.color } as CSSProperties}
-                        >
-                          <span>{scenario.label}</span>
-                          <strong>
-                            {scenario.value2100 == null ? "-" : projectionNumberFormat.format(scenario.value2100)}{" "}
-                            {projectionUnitLabel}
-                          </strong>
-                          <small>{t.longRangeTemperatureTrendValueLabel}</small>
-                        </div>
-                      ))}
+                    <p>{t.overviewPreindustrialSubtitle}</p>
+                    <div className="alert-meta">
+                      <span className="alert-meta-chip confidence-medium">{t.projectionExperimentalLabel}</span>
                     </div>
                   </article>
-                </section>
-              ) : null}
-
-              <section className="overview-tipping-section">
-                <article className="overview-card overview-tipping-card">
-                  <div className="overview-card-header">
-                    <div>
-                      <h2>{t.tippingPointsTitle}</h2>
-                      <p>{t.tippingPointsSubtitle}</p>
+                  <article className="alert-card summary">
+                    <span className="alert-kicker">{t.projectionRangeLabel}</span>
+                    <h2>{t.projectionIntervalLabel}</h2>
+                    <p className="alert-emphasis">
+                      {renderPrimaryValue(
+                        `${projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}–${projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)} ${projectionUnitLabel}`,
+                        "value-loading-skeleton detail-value-loading"
+                      )}
+                    </p>
+                    {runtimeDataReady && projectionIntervalTrack ? (
+                      <div className="projection-mini-range" aria-hidden="true">
+                        <span className="projection-mini-range-threshold" style={{ left: `${((1.5 - PROJECTION_OVERVIEW_Y_MIN) / (PROJECTION_OVERVIEW_Y_MAX - PROJECTION_OVERVIEW_Y_MIN)) * 100}%` }} />
+                        <span className="projection-mini-range-fill" style={{ left: `${projectionIntervalTrack.start}%`, width: `${projectionIntervalTrack.width}%` }} />
+                        <span className="projection-mini-range-marker" style={{ left: `${projectionIntervalTrack.marker}%` }} />
+                        <small className="projection-mini-range-min">{PROJECTION_OVERVIEW_Y_MIN.toFixed(1)}</small>
+                        <small className="projection-mini-range-max">{PROJECTION_OVERVIEW_Y_MAX.toFixed(1)} {projectionUnitLabel}</small>
+                      </div>
+                    ) : null}
+                    <div className="alert-meta">
+                      {projectionSignalSummary ? <span className="alert-meta-chip confidence-medium">{projectionSignalSummary}</span> : null}
                     </div>
-                    <a className="text-link-button" href={MCKAY_TIPPING_POINTS_SOURCE_URL} target="_blank" rel="noreferrer">
-                      {t.tippingPointsSourceLabel} →
-                    </a>
+                  </article>
+                  <article className="alert-card summary">
+                    <span className="alert-kicker">{t.projectionProbabilityMethodLabel}</span>
+                    <h2>{t.projectionProbabilityAboveOnePointFiveTitle}</h2>
+                    <p className="alert-emphasis">
+                      {renderPrimaryValue(
+                        projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive),
+                        "value-loading-skeleton detail-value-loading"
+                      )}
+                    </p>
+                    <p>
+                      {t.projectionRangeLabel}: {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}–
+                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)} {projectionUnitLabel}
+                    </p>
+                    <div className="alert-meta">
+                      <span className="alert-meta-chip confidence-medium">
+                        {projectedAnnualGlobalMeanAnomaly.analogCount} {t.projectionAnalogsLabel}
+                      </span>
+                    </div>
+                  </article>
+                  <article className="alert-card summary">
+                    <span className="alert-kicker">{t.projectionProbabilityMethodLabel}</span>
+                    <h2>{t.projectionProbabilityWarmestRecordTitle}</h2>
+                    <p className="alert-emphasis">
+                      {renderPrimaryValue(
+                        projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord),
+                        "value-loading-skeleton detail-value-loading"
+                      )}
+                    </p>
+                    <p>
+                      {t.projectionRecordThresholdLabel}: {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.recordThreshold)}{" "}
+                      {projectionUnitLabel}
+                    </p>
+                    <div className="alert-meta">
+                      <span className="alert-meta-chip confidence-medium">
+                        {projectedAnnualGlobalMeanAnomaly.analogCount} {t.projectionAnalogsLabel}
+                      </span>
+                    </div>
+                  </article>
+                </div>
+              </div>
+              {projectedAnnualOverviewChartOption ? (
+                <div className="charts-grid climate-grid">
+                  <EChartsPanel
+                    title={t.projectedAnnualTemperatureAnomalyChartTitle}
+                    subtitle={t.projectedAnnualTemperatureAnomalyChartSubtitle}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
+                    freshnessLabel={projectionFreshness?.label}
+                    freshnessTone={projectionFreshness?.tone}
+                    option={projectedAnnualOverviewChartOption}
+                  />
+                </div>
+              ) : null}
+            </>
+          )}
+
+          {longRangeTemperatureTrendOption
+            ? renderPageSubsection(
+                t.longRangeTemperatureTrendTitle,
+                t.longRangeTemperatureTrendSource,
+                <>
+                  <div className="summary-cards-section">
+                    <div className="regional-summary-grid" aria-label={t.longRangeTemperatureTrendValueLabel}>
+                      {longRangeScenarioSummaries.map((scenario) => (
+                        <article
+                          className="alert-card summary projection-scenario-card"
+                          key={scenario.key}
+                          style={{ "--indicator-accent": scenario.color } as CSSProperties}
+                        >
+                          <span className="alert-kicker">{language === "hu" ? "Forgatókönyv" : "Scenario"}</span>
+                          <h2>{scenario.label}</h2>
+                          <p className="alert-emphasis">
+                            {scenario.value2100 == null ? "-" : `${projectionNumberFormat.format(scenario.value2100)} ${projectionUnitLabel}`}
+                          </p>
+                          <p>{t.longRangeTemperatureTrendValueLabel}</p>
+                        </article>
+                      ))}
+                    </div>
                   </div>
-                  <div className="tipping-current-pill">
-                    <span>{t.tippingCurrentWarmingLabel}</span>
-                    <strong>
-                      {currentTippingWarming == null ? "-" : projectionNumberFormat.format(currentTippingWarming)} {projectionUnitLabel}
-                    </strong>
-                    {annualGlobalMeanAnomalyIsYtd ? <small>{t.ytdLabel}</small> : null}
+                  <div className="charts-grid climate-grid">
+                    <EChartsPanel
+                      title={t.longRangeTemperatureTrendTitle}
+                      subtitle={t.longRangeTemperatureTrendSubtitle}
+                      expandLabel={t.chartFullscreenEnter}
+                      collapseLabel={t.chartFullscreenExit}
+                      option={longRangeTemperatureTrendOption}
+                    />
                   </div>
-                  <div className="tipping-card-grid">
-                    {tippingPointCards.map((card) => (
-                      <article
-                        className="tipping-point-card"
-                        key={card.key}
-                        style={{ "--tipping-accent": card.accent } as CSSProperties}
-                        aria-label={`${card.label}: ${card.state}`}
+                </>,
+                <a className="text-link-button subsection-source-link" href={CMIP7_SCENARIOMIP_TEMPERATURE_SOURCE_URL} target="_blank" rel="noreferrer">
+                  {t.cmip7ScenarioSourceLabel} →
+                </a>
+              )
+            : null}
+
+          {renderPageSubsection(
+            t.tippingPointsTitle,
+            t.tippingPointsSubtitle,
+            <>
+              <div className="summary-cards-section">
+                <div className="regional-summary-grid">
+                  <article className="alert-card summary">
+                    <span className="alert-kicker">{t.latestLabel}</span>
+                    <h2>{t.tippingCurrentWarmingLabel}</h2>
+                    <p className="alert-emphasis">
+                      {renderPrimaryValue(
+                        `${currentTippingWarming == null ? "-" : projectionNumberFormat.format(currentTippingWarming)} ${projectionUnitLabel}`,
+                        "value-loading-skeleton detail-value-loading"
+                      )}
+                    </p>
+                    <p>
+                      {t.overviewPreindustrialSubtitle}
+                      {annualGlobalMeanAnomalyIsYtd ? ` · ${t.ytdLabel}` : ""}
+                    </p>
+                  </article>
+                  <article className="alert-card summary">
+                    <span className="alert-kicker">{t.tippingStatePossible}</span>
+                    <h2>{language === "hu" ? "Küszöbök a becsült tartományon belül" : "Thresholds within their assessed range"}</h2>
+                    <p className="alert-emphasis">
+                      {renderPrimaryValue(
+                        `${tippingPointCards.filter((card) => card.stateKey !== "below").length} / ${tippingPointCards.length}`,
+                        "value-loading-skeleton detail-value-loading"
+                      )}
+                    </p>
+                    <p>
+                      {language === "hu"
+                        ? "Az aktuális melegedés elérte a becsült tartomány alsó határát."
+                        : "Current warming has reached the lower bound of the assessed range."}
+                    </p>
+                  </article>
+                  <article className="alert-card summary">
+                    <span className="alert-kicker">{language === "hu" ? "Párizsi cél" : "Paris goal"}</span>
+                    <h2>{language === "hu" ? "Központi küszöb legfeljebb 2 °C" : "Central threshold at or below 2 °C"}</h2>
+                    <p className="alert-emphasis">
+                      {`${tippingPointCards.filter((card) => card.centralThreshold <= 2).length} / ${tippingPointCards.length}`}
+                    </p>
+                    <p>
+                      {language === "hu"
+                        ? "Ennyi rendszer billenhet át a Párizsi Megállapodás felső határán belül."
+                        : "Systems that could tip within the Paris Agreement's upper limit."}
+                    </p>
+                  </article>
+                </div>
+              </div>
+              <article className="panel tipping-ladder-panel">
+                <header className="panel-header">
+                  <div className="panel-header-main">
+                    <h2>{language === "hu" ? "Billenési küszöbök közös skálán" : "Tipping thresholds on a shared scale"}</h2>
+                    <p>
+                      {language === "hu"
+                        ? "Sáv: becsült tartomány · pont: központi küszöb · függőleges vonal: aktuális melegedés"
+                        : "Band: assessed range · dot: central threshold · vertical line: current warming"}
+                    </p>
+                  </div>
+                </header>
+                <ol className="tipping-ladder" style={{ "--tipping-now": `${tippingAxisPercent(currentTippingWarming ?? 0)}%` } as CSSProperties}>
+                  <li className="tipping-ladder-axis" aria-hidden="true">
+                    <span />
+                    <div className="tipping-ladder-scale">
+                      {TIPPING_AXIS_TICKS.map((tick) => (
+                        <span key={tick} style={{ left: `${tippingAxisPercent(tick)}%` }}>
+                          {tick} {projectionUnitLabel}
+                        </span>
+                      ))}
+                      {currentTippingWarming != null ? (
+                        <strong className="tipping-ladder-now-label">
+                          {language === "hu" ? "Most" : "Now"} {projectionNumberFormat.format(currentTippingWarming)}
+                        </strong>
+                      ) : null}
+                    </div>
+                    <span />
+                  </li>
+                  {tippingPointCards.map((card) => (
+                    <li className={`tipping-ladder-row state-${card.stateKey}`} key={card.key}>
+                      <div className="tipping-ladder-label">
+                        <strong>{card.label}</strong>
+                        <span>{card.category}</span>
+                      </div>
+                      <div
+                        className="tipping-ladder-track"
+                        role="img"
+                        aria-label={`${card.label}: ${t.tippingCentralThresholdLabel} ${projectionNumberFormat.format(card.centralThreshold)} ${projectionUnitLabel}, ${t.tippingRangeLabel} ${projectionNumberFormat.format(card.minThreshold)}–${projectionNumberFormat.format(card.maxThreshold)} ${projectionUnitLabel}. ${card.state}.`}
                       >
-                        <div className="tipping-card-topline">
-                          <span>{card.category}</span>
-                        </div>
-                        <h3>{card.label}</h3>
-                        <div className="tipping-threshold-row">
-                          <span>{t.tippingCentralThresholdLabel}</span>
-                          <strong>
-                            {projectionNumberFormat.format(card.centralThreshold)} {projectionUnitLabel}
-                          </strong>
-                        </div>
-                        <div className="tipping-range-track" aria-hidden="true">
-                          <span
-                            className="tipping-current-marker"
-                            style={{
-                              left:
-                                currentTippingWarming == null
-                                  ? "0%"
-                                  : `${clamp((currentTippingWarming / card.maxThreshold) * 100, 0, 100)}%`,
-                            }}
-                          />
-                          <span
-                            className="tipping-central-marker"
-                            style={{ left: `${clamp((card.centralThreshold / card.maxThreshold) * 100, 0, 100)}%` }}
-                          />
-                        </div>
-                        <p>
-                          {t.tippingRangeLabel}: {projectionNumberFormat.format(card.minThreshold)}-
-                          {projectionNumberFormat.format(card.maxThreshold)} {projectionUnitLabel}
-                        </p>
-                      </article>
-                    ))}
-                  </div>
-                </article>
-              </section>
-            </div>
-          ) : null}
+                        <span className="tipping-ladder-guide" style={{ left: `${tippingAxisPercent(1.5)}%` }} />
+                        <span className="tipping-ladder-guide" style={{ left: `${tippingAxisPercent(2)}%` }} />
+                        <span
+                          className="tipping-ladder-range"
+                          style={{
+                            left: `${tippingAxisPercent(card.minThreshold)}%`,
+                            width: `${tippingAxisPercent(card.maxThreshold) - tippingAxisPercent(card.minThreshold)}%`,
+                          }}
+                        />
+                        <span className="tipping-ladder-central" style={{ left: `${tippingAxisPercent(card.centralThreshold)}%` }} />
+                        <span className="tipping-ladder-now" />
+                      </div>
+                      <div className="tipping-ladder-value">
+                        <strong>
+                          {projectionNumberFormat.format(card.centralThreshold)} {projectionUnitLabel}
+                        </strong>
+                        <small>
+                          {projectionNumberFormat.format(card.minThreshold)}–{projectionNumberFormat.format(card.maxThreshold)}
+                        </small>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                <div className="tipping-ladder-legend" aria-hidden="true">
+                  <span className="state-likely">{t.tippingStateLikely}</span>
+                  <span className="state-possible">{t.tippingStatePossible}</span>
+                  <span className="state-below">{t.tippingStateBelow}</span>
+                </div>
+              </article>
+            </>,
+            <a className="text-link-button subsection-source-link" href={MCKAY_TIPPING_POINTS_SOURCE_URL} target="_blank" rel="noreferrer">
+              {t.tippingPointsSourceLabel} →
+            </a>
+          )}
         </section>
       ) : null}
 
       {activeView === "sources" ? (
-      <footer className="dashboard-footer detail-page-section detail-page-sources" id="sources">
-        <div className="data-page-status-grid">
-          <article className={`data-status-card source ${snapshot.sourceMode === "live" ? "live" : "sample"}`}>
-            <span>{t.sourceStatusTitle}</span>
-            <strong>{sourceModeLabel}</strong>
-            <p>{sourceModeNote}</p>
-          </article>
-          <article className="data-status-card">
-            <span>{t.sourceUpdatedTitle}</span>
-            <strong>{formatDateTimeLabel(snapshot.updatedAtIso, language)}</strong>
-            <p>{t.sourceListNote}</p>
-          </article>
+      <section className="detail-page-section detail-page-editorial detail-page-sources" id="sources">
+        {renderPageIntro(
+          language === "hu" ? "Adatok és módszertan" : "Data & methods",
+          language === "hu" ? "Adatforrások" : "Data sources",
+          language === "hu"
+            ? "A dashboard minden idősora nyilvános elsődleges forrásból származik, amelyet egy automatizált folyamat naponta frissít. A frissességi címke azt mutatja, mennyire aktuális az egyes források legutóbbi értéke a várt ütemhez képest."
+            : "Every series on the dashboard comes from a public upstream feed, refreshed daily by an automated pipeline. Freshness shows how current each feed's latest value is against its expected cadence."
+        )}
+        <div className="summary-cards-section">
+          <div className="regional-summary-grid data-summary-grid">
+            <article className={`alert-card summary data-status-summary ${snapshot.sourceMode === "live" ? "live" : "sample"}`}>
+              <span className="alert-kicker">{t.sourceStatusTitle}</span>
+              <h2>{sourceModeLabel}</h2>
+              <p>{sourceModeNote}</p>
+            </article>
+            <article className="alert-card summary">
+              <span className="alert-kicker">{t.sourceUpdatedTitle}</span>
+              <h2>{formatDateTimeLabel(snapshot.updatedAtIso, language)}</h2>
+              <p>{language === "hu" ? "Napi automatikus frissítés" : "Automated daily refresh"}</p>
+            </article>
+            <article className="alert-card summary">
+              <span className="alert-kicker">{language === "hu" ? "Lefedettség" : "Coverage"}</span>
+              <p className="alert-emphasis">{uniqueFooterSources.length}</p>
+              <p>
+                {language === "hu"
+                  ? `adatforrás ${sourceProviderCount} szolgáltatótól`
+                  : `feeds from ${sourceProviderCount} providers`}
+              </p>
+            </article>
+            <article className="alert-card summary">
+              <span className="alert-kicker">{language === "hu" ? "Frissesség" : "Freshness"}</span>
+              <div className="data-freshness-breakdown">
+                {(["fresh", "warning", "stale"] as const).map((tone) => (
+                  <span className={`data-freshness-count ${tone}`} key={tone}>
+                    <strong>{sourceFreshnessCounts[tone]}</strong>
+                    <small>
+                      {tone === "fresh"
+                        ? language === "hu" ? "friss" : "current"
+                        : tone === "warning"
+                          ? t.freshnessLagging.toLocaleLowerCase()
+                          : t.freshnessStale.toLocaleLowerCase()}
+                    </small>
+                  </span>
+                ))}
+              </div>
+              <div className="data-freshness-bar" aria-hidden="true">
+                {(["fresh", "warning", "stale"] as const).map((tone) =>
+                  sourceFreshnessCounts[tone] ? (
+                    <span className={tone} key={tone} style={{ flexGrow: sourceFreshnessCounts[tone] }} />
+                  ) : null
+                )}
+              </div>
+            </article>
+          </div>
         </div>
         {footerWarnings.length ? (
           <details className="footer-warnings">
@@ -5775,34 +5810,53 @@ export function App() {
             </ul>
           </details>
         ) : null}
-        <label className="source-search">{language === "hu" ? "Adatforrások keresése" : "Find a data source"}
-          <input type="search" value={sourceQuery} onChange={(event) => setSourceQuery(event.target.value)} placeholder={language === "hu" ? "Név, szolgáltató vagy témakör…" : "Name, provider or topic…"} />
-        </label>
-        {sourceQuery && !footerSources.some((source) => `${source.title} ${source.provider}`.toLocaleLowerCase().includes(sourceQuery.toLocaleLowerCase())) ? <p role="status">{language === "hu" ? "Nincs találat." : "No matching sources."}</p> : null}
-        <div className="footer-sources">
-          <div className="footer-sources-header">
-            <strong className="footer-sources-title">{t.sourceListTitle}</strong>
-            <p>{t.sourceListNote}</p>
-          </div>
-          {groupedFooterSources.map((group) => ({...group, sources: group.sources.filter((source) => `${source.title} ${source.provider}`.toLocaleLowerCase().includes(sourceQuery.toLocaleLowerCase()))})).filter((group) => group.sources.length).map((group) => (
-            <section className="source-link-section" key={group.section}>
-              <h2>{dataSourceSectionTitle(group.section, t)}</h2>
-              <ul className="source-link-list">
-                {group.sources.map((source) => (
-                  <li key={source.key}>
-                    <a href={source.url} target="_blank" rel="noreferrer">
-                      {source.title}
-                    </a>
-                    <span>
-                      {t.sourceLabel}: {source.provider}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
+        <div className="source-toolbar">
+          <label className="source-search">
+            <span>{language === "hu" ? "Adatforrások keresése" : "Find a data source"}</span>
+            <input
+              type="search"
+              value={sourceQuery}
+              onChange={(event) => setSourceQuery(event.target.value)}
+              placeholder={language === "hu" ? "Név, szolgáltató vagy témakör…" : "Name, provider or topic…"}
+            />
+          </label>
+          <p className="source-result-count" role="status">
+            {filteredSourceCount
+              ? language === "hu"
+                ? `${filteredSourceCount} / ${uniqueFooterSources.length} forrás`
+                : `${filteredSourceCount} of ${uniqueFooterSources.length} sources`
+              : language === "hu"
+                ? "Nincs találat."
+                : "No matching sources."}
+          </p>
         </div>
-      </footer>
+        {filteredSourceGroups.map((group) => (
+          <section className="source-group" key={group.section}>
+            <header className="source-group-header">
+              <h2>{dataSourceSectionTitle(group.section, t)}</h2>
+              <span>{group.sources.length}</span>
+            </header>
+            <ul className="source-table">
+              {group.sources.map((source) => (
+                <li key={source.key}>
+                  <a href={source.url} target="_blank" rel="noreferrer">
+                    <strong>
+                      {source.title}
+                      <span className="source-table-arrow" aria-hidden="true"> ↗</span>
+                    </strong>
+                    <span className="source-table-provider">{source.provider}</span>
+                  </a>
+                  {runtimeDataReady && source.freshness ? (
+                    <span className={`freshness-chip ${source.freshness.tone}`}>{source.freshness.label}</span>
+                  ) : (
+                    <span />
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </section>
       ) : null}
       <footer className="overview-status-footer dashboard-status-footer" aria-label={t.dataStatusLabel}>
         <span className="overview-footer-credit">{t.footerCredit}</span>
