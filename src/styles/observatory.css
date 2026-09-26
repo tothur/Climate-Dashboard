@@ -77,11 +77,6 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .overview-hero-chip { padding: 0; background: none; border: 0; font: 12px/1.5 var(--font-sans); color: var(--muted); }
 .observatory .overview-hero-spark { margin-top: 24px; }
 .observatory .warming-stripes { height: 18px; border-radius: 2px; }
-.observatory .overview-primary-map .overview-card-header { display: flex; flex-wrap: wrap; gap: 10px; align-items: start; }
-.observatory .map-mode-switch { margin: 12px 0 4px; }
-.observatory .map-mode-switch button { font-size: 12px; padding-inline: 12px; }
-.observatory .overview-primary-map .panel { margin-top: auto; }
-.observatory .overview-primary-map .map-image { object-fit: contain; }
 .observatory .overview-ai-summary { background: var(--overview-ai-bg); }
 .observatory .ai-summary-label-row .alert-kicker { color: var(--accent); background: none; padding: 0; font: 600 15px var(--font-sans); }
 .observatory .ai-overview-signal { padding: 20px 0; }
@@ -526,7 +521,6 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .overview-secondary-grid .outlook-main-value { font-size: 44px; }
   .observatory .overview-regional-signals .regional-signal-grid { grid-template-columns: 1fr; grid-template-rows: none; min-height: 0; }
   .observatory .overview-regional-signals .regional-signal .sparkline { min-height: 42px; }
-  .observatory .map-mode-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
 }
 
 /* Editorial Overview outlook cards. */
@@ -1259,7 +1253,6 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .detail-page-maps .maps-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .observatory .detail-page-maps .map-panel { border-top: 1px solid var(--border); }
 .observatory .detail-page-maps .map-panel:not(.panel-expanded):not(:fullscreen) .map-panel-image-wrap { width: auto; height: auto; min-height: 0; }
-.observatory .detail-page-maps .map-panel:not(.panel-expanded):not(:fullscreen) .map-panel-image { display: block; width: 100%; height: auto; max-height: none; object-fit: contain; }
 .observatory .maps-source-note { margin: 18px 0 0; color: var(--muted); font-size: 12px; }
 .observatory .maps-source-note a { color: var(--accent); }
 
@@ -1337,4 +1330,106 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .dashboard-sidebar .preferences-control .language-switch button { flex: 1; }
   .observatory .dashboard-sidebar .theme-cycle-button { flex: 1; }
   .observatory .theme-cycle-label { display: inline; letter-spacing: 0; }
+}
+
+/* Climate Reanalyzer maps rendered without their title band and page background. */
+.observatory .climate-map { margin: 0; }
+.observatory .climate-map-image { display: block; width: 100%; height: auto; aspect-ratio: 1100 / 667; }
+.observatory .climate-map-placeholder {
+  width: 100%;
+  aspect-ratio: 1100 / 667;
+  border-radius: 50%;
+  background: var(--overview-paper-soft);
+}
+.observatory .climate-map-original-image { display: block; width: 100%; height: auto; border-radius: 6px; }
+.observatory .climate-map-empty {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1100 / 667;
+  color: var(--muted);
+  font-size: 13px;
+}
+.observatory .climate-map-scale { margin-top: 12px; }
+.observatory .climate-map-scale-bar {
+  display: block;
+  width: calc(1079 / 1100 * 100%);
+  height: 10px;
+  margin-left: calc(11 / 1100 * 100%);
+  border-radius: 3px;
+}
+.observatory .climate-map-scale-labels { display: block; width: 100%; height: auto; margin-top: 3px; }
+[data-theme="dark"] .observatory .climate-map-scale-labels { filter: invert(1) brightness(.85); }
+.observatory .climate-map-scale-ticks { position: relative; height: 16px; margin-top: 4px; }
+.observatory .climate-map-scale-ticks span {
+  position: absolute;
+  top: 0;
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.observatory .climate-map-scale-notes {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* Planet Now: one frame, Air/Ocean in the header, Anomaly/Absolute in the footer. */
+.observatory .planet-now-card { display: flex; flex-direction: column; }
+.observatory .planet-now-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.observatory .planet-now-switch { padding: 3px; border-radius: 9px; }
+.observatory .planet-now-switch button { min-height: 32px; padding: 0 12px; border-radius: 6px; font-size: 12px; }
+.observatory .planet-now-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.observatory .planet-now-caption strong { color: var(--text); font-weight: 600; }
+.observatory .planet-now-card .climate-map { margin: 14px -8px 16px; }
+.observatory .planet-now-card .climate-map-scale { margin-inline: 8px; }
+.observatory .planet-now-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.observatory .planet-now-credit { color: var(--muted); font-size: 10.5px; }
+.observatory .planet-now-footer .text-link-button { min-height: 0; white-space: nowrap; }
+
+/* Maps page panels use the same processed map. */
+.observatory .detail-page-maps .map-panel:not(.panel-expanded):not(:fullscreen) .map-panel-image-wrap { padding: 4px 8px 0; border: 0; background: none; }
+.observatory .map-panel:is(.panel-expanded, :fullscreen) .map-panel-image-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - 150px);
+  min-height: 0;
+  padding: 16px 0 8px;
+  overflow: hidden;
+  border: 0;
+  background: none;
+}
+.observatory .map-panel:is(.panel-expanded, :fullscreen) .climate-map {
+  width: min(100%, calc((100vh - 230px) * 1100 / 667));
+  margin: 0 auto;
+}
+
+@media(max-width: 600px) {
+  .observatory .planet-now-card .climate-map { margin-right: -4px; margin-left: -4px; }
+  .observatory .planet-now-credit { order: 3; flex-basis: 100%; }
+  .observatory .climate-map-scale-ticks span:nth-child(even) { display: none; }
 }

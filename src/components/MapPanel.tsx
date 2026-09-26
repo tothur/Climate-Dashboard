@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ClimateMapImage } from "./ClimateMapImage";
 
 type FreshnessTone = "fresh" | "warning" | "stale";
 
@@ -13,6 +14,9 @@ interface MapPanelProps {
   collapseLabel?: string;
   freshnessLabel?: string;
   freshnessTone?: FreshnessTone;
+  scaleStartLabel?: string;
+  scaleEndLabel?: string;
+  scaleTicks?: string[];
 }
 
 export function MapPanel({
@@ -26,26 +30,18 @@ export function MapPanel({
   collapseLabel,
   freshnessLabel,
   freshnessTone = "fresh",
+  scaleStartLabel,
+  scaleEndLabel,
+  scaleTicks,
 }: MapPanelProps) {
   const panelRef = useRef<HTMLElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFallbackExpanded, setIsFallbackExpanded] = useState(false);
-  const [hasError, setHasError] = useState(false);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-
   const expandText = expandLabel ?? "Full screen";
   const collapseText = collapseLabel ?? "Exit full screen";
   const expanded = isFullscreen || isFallbackExpanded;
   const missingImageText = noImageLabel ?? "Map unavailable";
-  const imageCandidates = [imageUrl, ...(fallbackImageUrls ?? [])].filter(
-    (candidate, index, list) => candidate.trim().length > 0 && list.indexOf(candidate) === index
-  );
-  const activeImageUrl = imageCandidates[Math.min(activeImageIndex, Math.max(0, imageCandidates.length - 1))] ?? "";
-
-  useEffect(() => {
-    setHasError(false);
-    setActiveImageIndex(0);
-  }, [imageUrl, fallbackImageUrls]);
+  const imageCandidates = [imageUrl, ...(fallbackImageUrls ?? [])];
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -129,25 +125,14 @@ export function MapPanel({
         </div>
       </header>
       <div className="map-panel-image-wrap">
-        {hasError ? (
-          <div className="map-panel-empty">{missingImageText}</div>
-        ) : (
-          <img
-            className="map-panel-image"
-            src={activeImageUrl}
-            alt={imageAlt}
-            loading="eager"
-            decoding="async"
-            referrerPolicy="no-referrer"
-            onError={() => {
-              if (activeImageIndex + 1 < imageCandidates.length) {
-                setActiveImageIndex((currentIndex) => currentIndex + 1);
-                return;
-              }
-              setHasError(true);
-            }}
-          />
-        )}
+        <ClimateMapImage
+          imageUrls={imageCandidates}
+          alt={imageAlt}
+          noImageLabel={missingImageText}
+          scaleStartLabel={scaleStartLabel}
+          scaleEndLabel={scaleEndLabel}
+          scaleTicks={scaleTicks}
+        />
       </div>
       {freshnessLabel ? (
         <div className="panel-chart-footer">

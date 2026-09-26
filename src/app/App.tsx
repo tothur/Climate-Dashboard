@@ -19,6 +19,7 @@ import { buildClimateMonthlyComparisonOption, buildClimateTrendOption } from "..
 import { buildForcingTrendOption } from "../charts/historicalTrend";
 import { buildVariabilityIndexOption } from "../charts/variabilityIndex";
 import { EChartsPanel } from "../components/EChartsPanel";
+import { ClimateMapImage } from "../components/ClimateMapImage";
 import { MapPanel } from "../components/MapPanel";
 import { Sparkline } from "../components/Sparkline";
 
@@ -3780,6 +3781,10 @@ export function App() {
     return [
       {
         key: "map-2m-temperature",
+        scaleTicks: ["-60", "-50", "-40", "-30", "-20", "-10", "0", "10", "20", "30", "40", "50"],
+        caption: language === "hu" ? "2 méteres léghőmérséklet" : "2 m air temperature",
+        product: "GFS",
+        baselineLabel: null,
         title: t.map2mTemperatureTitle,
         subtitle: surfaceSubtitle,
         imageUrl: surfaceImageCandidates.imageUrl,
@@ -3789,6 +3794,10 @@ export function App() {
       },
       {
         key: "map-2m-temperature-anomaly",
+        scaleTicks: ["-32", "-24", "-18", "-14", "-10", "-6", "-3", "-1", "0", "1", "3", "6", "10", "14", "18", "24", "32"],
+        caption: language === "hu" ? "2 méteres léghőmérséklet-anomália" : "2 m air temperature anomaly",
+        product: "GFS",
+        baselineLabel: language === "hu" ? "az 1979–2000-es átlaghoz képest" : "vs 1979–2000",
         title: t.map2mTemperatureAnomalyTitle,
         subtitle: surfaceSubtitle,
         imageUrl: surfaceAnomalyImageCandidates.imageUrl,
@@ -3798,6 +3807,10 @@ export function App() {
       },
       {
         key: "map-sst",
+        scaleTicks: ["0", "5", "10", "15", "20", "25", "30", "35"],
+        caption: language === "hu" ? "Tengerfelszíni hőmérséklet" : "Sea surface temperature",
+        product: "OISST",
+        baselineLabel: null,
         title: t.mapSstTitle,
         subtitle: sstSubtitle,
         imageUrl: sstImageCandidates.imageUrl,
@@ -3807,6 +3820,10 @@ export function App() {
       },
       {
         key: "map-sst-anomaly",
+        scaleTicks: ["-9", "-7", "-5", "-4", "-3", "-2", "-1", "-0.5", "0", "0.5", "1", "2", "3", "4", "5", "7", "9"],
+        caption: language === "hu" ? "Tengerfelszíni hőmérsékleti anomália" : "Sea surface temperature anomaly",
+        product: "OISST",
+        baselineLabel: language === "hu" ? "az 1971–2000-es átlaghoz képest" : "vs 1971–2000",
         title: t.mapSstAnomalyTitle,
         subtitle: sstSubtitle,
         imageUrl: sstAnomalyImageCandidates.imageUrl,
@@ -4348,6 +4365,10 @@ export function App() {
     sst: "map-sst",
     "sst-anomaly": "map-sst-anomaly",
   };
+  const overviewMapDomain: "air" | "ocean" = overviewMapMode === "sst" || overviewMapMode === "sst-anomaly" ? "ocean" : "air";
+  const overviewMapView: "anomaly" | "absolute" = overviewMapMode === "anomaly" || overviewMapMode === "sst-anomaly" ? "anomaly" : "absolute";
+  const overviewMapModeFor = (domain: "air" | "ocean", view: "anomaly" | "absolute"): OverviewMapMode =>
+    domain === "air" ? (view === "anomaly" ? "anomaly" : "temperature") : view === "anomaly" ? "sst-anomaly" : "sst";
   const overviewMapCard = mapCards.find((card) => card.key === overviewMapCardKey[overviewMapMode]) ?? null;
   const overviewRegionalSignals = regionalTemperatureAnomalyLines.slice(0, 4).map(({ metric }) => ({
     key: metric.key,
@@ -4729,37 +4750,54 @@ export function App() {
           <div className="overview-page">
             <section className="overview-lead-grid">
               {renderOverviewHero()}
-              <section className="overview-card overview-map-suite overview-primary-map" aria-label={t.mapsSectionTitle}>
+              <section className="overview-card overview-map-suite overview-primary-map planet-now-card" aria-label={t.planetNowTitle}>
                 <div className="overview-card-header planet-now-header">
-                  <div>
-                    <h2>{t.planetNowTitle}</h2>
-                    <div className="segmented-control map-mode-switch" role="group" aria-label={language === "hu" ? "Térképréteg" : "Map layer"}>
-                      <button type="button" aria-pressed={overviewMapMode === "temperature"} onClick={() => setOverviewMapMode("temperature")}>{language === "hu" ? "Hőmérséklet" : "Temperature"}</button>
-                      <button type="button" aria-pressed={overviewMapMode === "anomaly"} onClick={() => setOverviewMapMode("anomaly")}>{language === "hu" ? "Anomália" : "Anomaly"}</button>
-                      <button type="button" aria-pressed={overviewMapMode === "sst"} onClick={() => setOverviewMapMode("sst")}>SST</button>
-                      <button type="button" aria-pressed={overviewMapMode === "sst-anomaly"} onClick={() => setOverviewMapMode("sst-anomaly")}>{language === "hu" ? "SST-anomália" : "SST Anomaly"}</button>
-                    </div>
-                    <p>{overviewMapCard?.subtitle}</p>
+                  <h2>{t.planetNowTitle}</h2>
+                  <div className="segmented-control planet-now-switch" role="group" aria-label={language === "hu" ? "Térképréteg" : "Map layer"}>
+                    <button type="button" aria-pressed={overviewMapDomain === "air"} onClick={() => setOverviewMapMode(overviewMapModeFor("air", overviewMapView))}>
+                      {language === "hu" ? "Levegő" : "Air"}
+                    </button>
+                    <button type="button" aria-pressed={overviewMapDomain === "ocean"} onClick={() => setOverviewMapMode(overviewMapModeFor("ocean", overviewMapView))}>
+                      {language === "hu" ? "Óceán" : "Ocean"}
+                    </button>
                   </div>
-                  <button type="button" className="text-link-button" onClick={() => setDashboardView("maps")}>
-                    {t.viewAllMaps} →
-                  </button>
                 </div>
                 {overviewMapCard ? (
-                  <MapPanel
-                    key={overviewMapCard.key}
-                    title={overviewMapCard.title}
-                    subtitle={undefined}
-                    imageUrl={overviewMapCard.imageUrl}
-                    fallbackImageUrls={overviewMapCard.fallbackImageUrls}
-                    imageAlt={overviewMapCard.imageAlt}
-                    noImageLabel={t.mapUnavailable}
-                    expandLabel={t.chartFullscreenEnter}
-                    collapseLabel={t.chartFullscreenExit}
-                    freshnessLabel={overviewMapCard.freshness?.label}
-                    freshnessTone={overviewMapCard.freshness?.tone}
-                  />
+                  <>
+                    <p className="planet-now-caption">
+                      <strong>{overviewMapCard.caption}</strong>
+                      <span>
+                        {language === "hu" ? "napi átlag" : "1-day mean"} · {overviewMapCard.product}
+                      </span>
+                      {overviewMapCard.freshness ? (
+                        <span className={`freshness-chip ${overviewMapCard.freshness.tone}`}>{overviewMapCard.freshness.label}</span>
+                      ) : null}
+                    </p>
+                    <ClimateMapImage
+                      key={overviewMapCard.key}
+                      imageUrls={[overviewMapCard.imageUrl, ...overviewMapCard.fallbackImageUrls]}
+                      alt={overviewMapCard.imageAlt}
+                      noImageLabel={t.mapUnavailable}
+                      scaleStartLabel="°C"
+                      scaleEndLabel={overviewMapCard.baselineLabel ?? undefined}
+                      scaleTicks={overviewMapCard.scaleTicks}
+                    />
+                  </>
                 ) : null}
+                <div className="planet-now-footer">
+                  <div className="segmented-control planet-now-switch" role="group" aria-label={language === "hu" ? "Nézet" : "View"}>
+                    <button type="button" aria-pressed={overviewMapView === "anomaly"} onClick={() => setOverviewMapMode(overviewMapModeFor(overviewMapDomain, "anomaly"))}>
+                      {language === "hu" ? "Anomália" : "Anomaly"}
+                    </button>
+                    <button type="button" aria-pressed={overviewMapView === "absolute"} onClick={() => setOverviewMapMode(overviewMapModeFor(overviewMapDomain, "absolute"))}>
+                      {language === "hu" ? "Abszolút" : "Absolute"}
+                    </button>
+                  </div>
+                  <span className="planet-now-credit">Climate Reanalyzer · University of Maine</span>
+                  <button type="button" className="text-link-button" onClick={() => setDashboardView("maps")}>
+                    {language === "hu" ? "Minden térkép" : "All maps"} →
+                  </button>
+                </div>
               </section>
               {renderOverviewAiSummary()}
             </section>
@@ -5365,6 +5403,9 @@ export function App() {
               collapseLabel={t.chartFullscreenExit}
               freshnessLabel={mapCard.freshness?.label}
               freshnessTone={mapCard.freshness?.tone}
+              scaleStartLabel="°C"
+              scaleEndLabel={mapCard.baselineLabel ?? undefined}
+              scaleTicks={mapCard.scaleTicks}
             />
           ))}
         </div>
