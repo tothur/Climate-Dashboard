@@ -711,7 +711,7 @@ const STRINGS = {
     valueUnavailable: "No value",
     footerMode: "Mode",
     footerUpdated: "Updated",
-    footerCredit: "Made by András Tóth and GPT-5.6.",
+    footerCredit: "Made by András Tóth using ChatGPT and Claude.",
   },
   hu: {
     appTitle: "Klíma Dashboard",
@@ -933,7 +933,7 @@ const STRINGS = {
     valueUnavailable: "Nincs érték",
     footerMode: "Mód",
     footerUpdated: "Frissítve",
-    footerCredit: "Made by András Tóth and GPT-5.6.",
+    footerCredit: "Made by András Tóth using ChatGPT and Claude.",
   },
 } as const;
 
@@ -4198,6 +4198,8 @@ export function App() {
         };
       })()
     : null;
+  const nextThemeMode: ThemeMode = themeMode === "light" ? "dark" : themeMode === "dark" ? "system" : "light";
+  const themeModeLabel = (mode: ThemeMode) => (mode === "light" ? t.themeLight : mode === "dark" ? t.themeDark : t.themeSystem);
   const setDashboardView = (view: DashboardView) => {
     setActiveView(view);
     setMobileMenuOpen(false);
@@ -4670,24 +4672,44 @@ export function App() {
           })}
         </nav>
         <div className="sidebar-controls">
-          <div className="language-switch segmented-control" role="group" aria-label={t.language}>
-            {(["en", "hu"] as Language[]).map((languageOption) => (
-              <button
-                type="button"
-                key={languageOption}
-                aria-pressed={language === languageOption}
-                onClick={() => setLanguage(languageOption)}
-              >
-                {languageOption.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          <div className="theme-switch segmented-control" role="group" aria-label={t.theme}>
-            {(["light", "dark", "system"] as ThemeMode[]).map((mode) => (
-              <button type="button" key={mode} aria-pressed={themeMode === mode} onClick={() => setThemeMode(mode)}>
-                {mode === "light" ? t.themeLight : mode === "dark" ? t.themeDark : t.themeSystem}
-              </button>
-            ))}
+          <div className="preferences-control">
+            <div className="language-switch" role="group" aria-label={t.language}>
+              {(["en", "hu"] as Language[]).map((languageOption) => (
+                <button
+                  type="button"
+                  key={languageOption}
+                  aria-pressed={language === languageOption}
+                  onClick={() => setLanguage(languageOption)}
+                >
+                  {languageOption.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <span className="preferences-divider" aria-hidden="true" />
+            <button
+              type="button"
+              className="theme-cycle-button"
+              onClick={() => setThemeMode(nextThemeMode)}
+              aria-label={`${t.theme}: ${themeModeLabel(themeMode)}. ${language === "hu" ? "Váltás erre" : "Switch to"}: ${themeModeLabel(nextThemeMode)}`}
+              title={`${t.theme}: ${themeModeLabel(themeMode)} → ${themeModeLabel(nextThemeMode)}`}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                {themeMode === "light" ? (
+                  <>
+                    <circle cx="12" cy="12" r="4" />
+                    <path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" />
+                  </>
+                ) : themeMode === "dark" ? (
+                  <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
+                ) : (
+                  <>
+                    <rect x="3" y="4.5" width="18" height="12" rx="2" />
+                    <path d="M8.5 20h7M12 16.5V20" />
+                  </>
+                )}
+              </svg>
+              <span className="theme-cycle-label">{themeModeLabel(themeMode)}</span>
+            </button>
           </div>
         </div>
         <div className="sidebar-meta">
