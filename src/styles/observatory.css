@@ -141,7 +141,6 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .panel-chart-wrap { background: transparent; }
 .observatory .detail-page-section .charts-grid { gap: 20px; }
 .observatory .detail-page-section .panel-chart { height: 360px; }
-.observatory .panel-action-btn { background: var(--overview-paper-soft); color: var(--text); border-color: var(--border); min-width: 44px; min-height: 44px; }
 .observatory .section-toggle { background: var(--overview-paper-soft); color: var(--muted); border: 1px solid var(--border); box-shadow: none; min-height: 44px; }
 .observatory .freshness-chip { font-size: 10px; border: 0; border-radius: 4px; }
 
@@ -1433,3 +1432,134 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .planet-now-credit { order: 3; flex-basis: 100%; }
   .observatory .climate-map-scale-ticks span:nth-child(even) { display: none; }
 }
+
+/* Overview card headers: one inset, one title style, one subtitle style, actions on the title line. */
+.observatory .overview-page :is(.overview-hero, .overview-card, .overview-ai-summary, .overview-metric-card):not(.enso-outlook-card) { padding: 24px; }
+.observatory .overview-page :is(.overview-hero-title, .overview-card-header h2, .outlook-title-row h2),
+.observatory .overview-page .ai-summary-label-row h2.alert-kicker {
+  margin: 0;
+  color: var(--text);
+  font: 650 18px/1.25 var(--font-display);
+  letter-spacing: -.025em;
+  text-transform: none;
+}
+.observatory .overview-page .ai-summary-label-row { margin: 0; }
+.observatory .overview-page .ai-summary-label-row h2.alert-kicker { display: flex; align-items: center; gap: 8px; }
+.observatory .overview-page .ai-summary-label-row h2.alert-kicker svg { width: 16px; height: 16px; color: var(--accent); }
+.observatory .overview-page :is(.overview-hero-kicker, .outlook-title-row > div) { display: grid; gap: 4px; }
+.observatory .overview-page :is(.overview-hero-baseline, .outlook-title-row > div > span),
+.observatory .overview-page .overview-card-header p,
+.observatory .overview-page .overview-metric-copy .metric-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font: 12px/1.5 var(--font-sans);
+  letter-spacing: 0;
+}
+.observatory .overview-page .overview-card-header p,
+.observatory .overview-page .overview-metric-copy .metric-subtitle { margin-top: 4px; }
+.observatory .overview-page .overview-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.observatory .overview-page :is(.overview-card-header, .outlook-title-row) > .text-link-button {
+  flex-shrink: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  line-height: 22.5px;
+  white-space: nowrap;
+}
+.observatory .overview-page :is(.overview-card-header, .outlook-title-row) > .info-icon { flex-shrink: 0; margin-top: 3px; }
+.observatory .overview-page .planet-now-header .planet-now-switch { margin: -8px 0; }
+
+/* Full-screen toggle for chart and map panels. */
+.observatory .panel-header-actions { display: flex; align-items: center; justify-content: flex-end; }
+.observatory .panel-expand-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  min-width: 34px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: 600 12px/1 var(--font-sans);
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.observatory .panel-expand-control::before { position: absolute; inset: -5px; content: ""; }
+.observatory .panel:hover .panel-expand-control { border-color: var(--border); background: var(--panel); }
+.observatory .panel-expand-control:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: var(--overview-paper-soft);
+  color: var(--text);
+}
+.observatory .panel-expand-control:active { transform: translateY(1px); }
+.observatory .panel-expand-control:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.observatory .panel-expand-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 200ms ease;
+}
+.observatory .panel-expand-control:not(.is-expanded):hover .panel-expand-icon { transform: scale(1.1); }
+.observatory .panel-expand-label {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  transition: max-width 220ms ease, opacity 160ms ease, margin 220ms ease;
+}
+.observatory .panel-expand-control:focus-visible .panel-expand-label,
+.observatory .panel-expand-control.is-expanded .panel-expand-label { max-width: 180px; margin-left: 7px; opacity: 1; }
+@media (hover: hover) {
+  .observatory .panel-expand-control:hover .panel-expand-label { max-width: 180px; margin-left: 7px; opacity: 1; }
+}
+.observatory .panel-expand-control.is-expanded {
+  height: 36px;
+  padding: 0 10px 0 11px;
+  border-color: var(--border);
+  background: var(--overview-paper-soft);
+  color: var(--text);
+}
+.observatory .panel-expand-kbd {
+  margin-left: 9px;
+  padding: 3px 5px 2px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--muted);
+  font: 600 10px/1 var(--font-sans);
+}
+@media (hover: none) {
+  .observatory .panel-expand-kbd { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .observatory :is(.panel-expand-control, .panel-expand-icon, .panel-expand-label) { transition: none; }
+}
+
+/* Expanded panels: fill the screen, dim the page behind the in-page fallback. */
+.observatory .panel.panel-expanded {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--bg) 72%, transparent), 0 24px 60px rgba(2, 6, 23, .22);
+}
+.observatory .panel:is(.panel-expanded, :fullscreen) .panel-chart-wrap { flex: 1; height: auto; min-height: 0; }
+/* Grid rules set explicit chart heights; the expanded view must override all of them. */
+.observatory .panel.panel-expanded .panel-chart { height: calc(100vh - 200px) !important; }
+.observatory .panel:fullscreen .panel-chart { height: calc(100vh - 170px) !important; }
+/* Keep the full-screen control on the panel title line at every width. */
+.observatory .panel-header { flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.observatory .panel-header-main { min-width: 0; }
+.observatory .panel-header-actions { flex-shrink: 0; align-self: flex-start; margin-top: -5px; }

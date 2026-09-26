@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ClimateMapImage } from "./ClimateMapImage";
+import { PanelExpandButton } from "./PanelExpandButton";
 
 type FreshnessTone = "fresh" | "warning" | "stale";
 
@@ -65,8 +66,13 @@ export function MapPanel({
     }
 
     document.body.classList.add("panel-expanded-lock");
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsFallbackExpanded(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.body.classList.remove("panel-expanded-lock");
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isFallbackExpanded]);
 
@@ -103,25 +109,14 @@ export function MapPanel({
           {subtitle ? <p>{subtitle}</p> : null}
         </div>
         <div className="panel-header-actions">
-          <button
-            type="button"
-            className="panel-action-btn panel-expand-btn"
-            onClick={() => {
+          <PanelExpandButton
+            expanded={expanded}
+            expandLabel={expandText}
+            collapseLabel={collapseText}
+            onToggle={() => {
               void toggleExpanded();
             }}
-            aria-label={expanded ? collapseText : expandText}
-            title={expanded ? collapseText : expandText}
-          >
-            {expanded ? (
-              <svg className="panel-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M10 4v6H4M14 4v6h6M20 14h-6v6M4 14h6v6" />
-              </svg>
-            ) : (
-              <svg className="panel-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 10V4h6M14 4h6v6M20 14v6h-6M10 20H4v-6" />
-              </svg>
-            )}
-          </button>
+          />
         </div>
       </header>
       <div className="map-panel-image-wrap">
