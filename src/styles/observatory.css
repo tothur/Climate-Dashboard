@@ -1277,3 +1277,19 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory :is(.detail-page-indicators,.detail-page-editorial) .regional-summary-grid:has(> .alert-card:nth-child(5)) { grid-template-columns: 1fr; }
 }
 .observatory .detail-page-section .alert-card.summary h2 { max-width: none; }
+
+/* Overview polish. */
+.observatory .overview-card-header .overview-card-link { flex-shrink: 0; min-height: 0; white-space: nowrap; }
+.observatory .overview-regional-signals .regional-sparkline.warm { color: var(--domain-temperature); }
+.observatory .overview-regional-signals .regional-sparkline.cool { color: var(--domain-ocean); }
+.observatory .overview-metric-copy h2 sub {
+  position: relative;
+  bottom: -.1em;
+  font-size: .72em;
+  line-height: 0;
+  vertical-align: baseline;
+}
+@media(max-width: 520px) {
+  .observatory .overview-metric-grid { grid-template-columns: 1fr; }
+  .observatory .overview-metric-card { min-height: 0; }
+}

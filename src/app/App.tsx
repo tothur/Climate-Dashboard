@@ -4351,6 +4351,7 @@ export function App() {
     key: metric.key,
     title: metricTitle(metric, language),
     value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
+    tone: (metric.latestValue ?? 0) < 0 ? "cool" : "warm",
     points: metric.points,
   }));
   const ensoOverviewRows = [
@@ -4748,7 +4749,7 @@ export function App() {
                     <ToolkitIcon name={card.icon} />
                   </span>
                   <div className="overview-metric-copy">
-                    <h2>{card.title}</h2>
+                    <h2>{renderChemicalFormula(card.title)}</h2>
                     <p className="metric-subtitle">{card.subtitle}</p>
                     <strong>{renderPrimaryValue(card.value, "value-loading-skeleton overview-value-loading")}</strong>
                     {runtimeDataReady && card.points ? (
@@ -4776,8 +4777,8 @@ export function App() {
                     <h2>{t.regionalTemperatureAnomaliesSectionTitle}</h2>
                     <p>{t.regionalTemperatureAnomaliesSectionNote}</p>
                   </div>
-                  <button type="button" className="text-link-button" onClick={() => { setIndicatorTopic("regions"); setDashboardView("indicators"); }}>
-                    {t.sectionExpand} →
+                  <button type="button" className="text-link-button overview-card-link" onClick={() => { setIndicatorTopic("regions"); setDashboardView("indicators"); }}>
+                    {language === "hu" ? "Összes régió" : "All regions"} →
                   </button>
                 </div>
                 <div className="regional-signal-grid">
@@ -4785,7 +4786,7 @@ export function App() {
                     <article className="regional-signal" key={signal.key}>
                       <h3>{signal.title}</h3>
                       <strong>{renderPrimaryValue(signal.value, "value-loading-skeleton overview-value-loading")}</strong>
-                      {runtimeDataReady ? <Sparkline points={signal.points} /> : null}
+                      {runtimeDataReady ? <Sparkline className={`regional-sparkline ${signal.tone}`} points={signal.points} /> : null}
                     </article>
                   ))}
                 </div>
