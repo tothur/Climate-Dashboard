@@ -95,7 +95,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   global_mean_sea_level: {
     titleEn: "Global Mean Sea Level",
-    titleHu: "Globális átlagos tengerszint-növekedés (1993-tól)",
+    titleHu: "Globális átlagos tengerszint-emelkedés (1993 óta)",
     unit: "mm",
     decimals: 1,
     source: {
@@ -119,7 +119,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   earth_energy_imbalance: {
     titleEn: "Earth Energy Imbalance",
-    titleHu: "A Föld energiaegyensúlyának felborulása",
+    titleHu: "A Föld energiatöbblete",
     unit: "W/m²",
     decimals: 2,
     source: {
@@ -133,7 +133,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   incoming_solar_energy: {
     titleEn: "Incoming Solar Energy",
-    titleHu: "Beérkező napsugárzási energia",
+    titleHu: "Beérkező napsugárzás",
     unit: "W/m²",
     decimals: 2,
     source: {
@@ -403,7 +403,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   global_sea_ice_extent: {
     titleEn: "Global Sea Ice Extent",
-    titleHu: "Globális tengeri jégkiterjedés",
+    titleHu: "Globális tengerijég-kiterjedés",
     unit: "million km²",
     decimals: 2,
     source: {
@@ -415,7 +415,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   arctic_sea_ice_extent: {
     titleEn: "Arctic Sea Ice Extent",
-    titleHu: "Arktiszi tengeri jégkiterjedés",
+    titleHu: "Arktiszi tengerijég-kiterjedés",
     unit: "million km²",
     decimals: 2,
     source: {
@@ -427,7 +427,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   antarctic_sea_ice_extent: {
     titleEn: "Antarctic Sea Ice Extent",
-    titleHu: "Antarktiszi tengeri jégkiterjedés",
+    titleHu: "Antarktiszi tengerijég-kiterjedés",
     unit: "million km²",
     decimals: 2,
     source: {
@@ -439,7 +439,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   northern_hemisphere_snow_cover_extent: {
     titleEn: "Northern Hemisphere Snow Cover Extent",
-    titleHu: "Északi félteke hóborítottságának kiterjedése",
+    titleHu: "Az északi félteke hótakarójának kiterjedése",
     unit: "million km²",
     decimals: 2,
     source: {
@@ -501,7 +501,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   nino34_index: {
     titleEn: "Oceanic Niño Index",
-    titleHu: "Óceáni Niño Index",
+    titleHu: "Óceáni Niño-index",
     unit: "°C",
     decimals: 2,
     source: {
@@ -513,7 +513,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   nao_index: {
     titleEn: "North Atlantic Oscillation Index",
-    titleHu: "Észak-atlanti oszcilláció index",
+    titleHu: "Észak-atlanti oszcillációs index",
     unit: "index",
     decimals: 2,
     source: {
@@ -525,7 +525,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   pna_index: {
     titleEn: "Pacific-North American Index",
-    titleHu: "Csendes-óceáni-észak-amerikai index",
+    titleHu: "Csendes-óceáni–észak-amerikai index",
     unit: "index",
     decimals: 2,
     source: {
@@ -538,7 +538,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   soi_index: {
     titleEn: "Southern Oscillation Index",
-    titleHu: "Déli oszcilláció index",
+    titleHu: "Déli oszcillációs index",
     unit: "index",
     decimals: 2,
     source: {
@@ -550,7 +550,7 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
   arctic_oscillation_index: {
     titleEn: "Arctic Oscillation Index",
-    titleHu: "Arktikus oszcilláció index",
+    titleHu: "Arktikus oszcillációs index",
     unit: "index",
     decimals: 2,
     source: {

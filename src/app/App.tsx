@@ -121,7 +121,7 @@ const CMIP7_SCENARIOMIP_SCENARIOS: LongRangeScenarioDefinition[] = [
   {
     key: "mediumLow",
     labelEn: "Medium-Low",
-    labelHu: "Közepes-alacsony",
+    labelHu: "Közepesen alacsony",
     shortLabel: "ML",
     anchors: [
       [2025, 1.55],
@@ -162,7 +162,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "greenland-ice-sheet",
     labelEn: "Greenland Ice Sheet collapse",
-    labelHu: "Grönlandi jégtakaró összeomlása",
+    labelHu: "A grönlandi jégtakaró összeomlása",
     categoryEn: "Ice sheet",
     categoryHu: "Jégtakaró",
     centralThreshold: 1.5,
@@ -172,7 +172,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "west-antarctic-ice-sheet",
     labelEn: "West Antarctic Ice Sheet collapse",
-    labelHu: "Nyugat-antarktiszi jégtakaró összeomlása",
+    labelHu: "A nyugat-antarktiszi jégtakaró összeomlása",
     categoryEn: "Ice sheet",
     categoryHu: "Jégtakaró",
     centralThreshold: 1.5,
@@ -182,7 +182,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "coral-reefs",
     labelEn: "Low-latitude coral reef die-off",
-    labelHu: "Alacsony szélességi korallzátonyok pusztulása",
+    labelHu: "A trópusi korallzátonyok pusztulása",
     categoryEn: "Ecosystem",
     categoryHu: "Ökoszisztéma",
     centralThreshold: 1.5,
@@ -192,7 +192,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "abrupt-permafrost-thaw",
     labelEn: "Boreal permafrost abrupt thaw",
-    labelHu: "Boreális permafroszt hirtelen olvadása",
+    labelHu: "A boreális permafroszt hirtelen olvadása",
     categoryEn: "Permafrost",
     categoryHu: "Permafroszt",
     centralThreshold: 1.5,
@@ -202,7 +202,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "barents-sea-ice",
     labelEn: "Barents Sea ice abrupt loss",
-    labelHu: "Barents-tengeri jég hirtelen elvesztése",
+    labelHu: "A Barents-tenger jegének hirtelen eltűnése",
     categoryEn: "Sea ice",
     categoryHu: "Tengeri jég",
     centralThreshold: 1.6,
@@ -212,7 +212,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "labrador-irminger-convection",
     labelEn: "Labrador-Irminger Seas convection collapse",
-    labelHu: "Labrador-Irminger tengeri konvekció összeomlása",
+    labelHu: "A Labrador- és Irminger-tengeri konvekció összeomlása",
     categoryEn: "Ocean circulation",
     categoryHu: "Óceáni cirkuláció",
     centralThreshold: 1.8,
@@ -222,7 +222,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "mountain-glaciers",
     labelEn: "Mountain glacier loss",
-    labelHu: "Hegyi gleccserek elvesztése",
+    labelHu: "A hegyi gleccserek eltűnése",
     categoryEn: "Glaciers",
     categoryHu: "Gleccserek",
     centralThreshold: 2,
@@ -232,7 +232,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "sahel-greening",
     labelEn: "Sahel and West African monsoon greening",
-    labelHu: "Száhel és nyugat-afrikai monszun zöldülése",
+    labelHu: "A Száhel és a nyugat-afrikai monszunvidék kizöldülése",
     categoryEn: "Monsoon",
     categoryHu: "Monszun",
     centralThreshold: 2.8,
@@ -242,7 +242,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "east-antarctic-subglacial-basins",
     labelEn: "East Antarctic subglacial basins collapse",
-    labelHu: "Kelet-antarktiszi szubglaciális medencék összeomlása",
+    labelHu: "A kelet-antarktiszi szubglaciális medencék összeomlása",
     categoryEn: "Ice sheet",
     categoryHu: "Jégtakaró",
     centralThreshold: 3,
@@ -252,7 +252,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "amazon-rainforest",
     labelEn: "Amazon rainforest dieback",
-    labelHu: "Amazóniai esőerdő visszaszorulása",
+    labelHu: "Az amazóniai esőerdő pusztulása",
     categoryEn: "Ecosystem",
     categoryHu: "Ökoszisztéma",
     centralThreshold: 3.5,
@@ -262,7 +262,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "boreal-permafrost-collapse",
     labelEn: "Boreal permafrost collapse",
-    labelHu: "Boreális permafroszt összeomlása",
+    labelHu: "A boreális permafroszt összeomlása",
     categoryEn: "Permafrost",
     categoryHu: "Permafroszt",
     centralThreshold: 4,
@@ -272,7 +272,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "amoc",
     labelEn: "Atlantic Meridional Overturning Circulation collapse",
-    labelHu: "Atlanti meridionális áramlási rendszer összeomlása",
+    labelHu: "Az atlanti átfordító áramlás (AMOC) összeomlása",
     categoryEn: "Ocean circulation",
     categoryHu: "Óceáni cirkuláció",
     centralThreshold: 4,
@@ -282,7 +282,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "boreal-forest-south",
     labelEn: "Boreal forest southern dieback",
-    labelHu: "Boreális erdők déli visszaszorulása",
+    labelHu: "A boreális erdők déli peremének pusztulása",
     categoryEn: "Ecosystem",
     categoryHu: "Ökoszisztéma",
     centralThreshold: 4,
@@ -292,7 +292,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "boreal-forest-north",
     labelEn: "Boreal forest northern expansion",
-    labelHu: "Boreális erdők északi terjeszkedése",
+    labelHu: "A boreális erdők északi terjeszkedése",
     categoryEn: "Ecosystem",
     categoryHu: "Ökoszisztéma",
     centralThreshold: 4,
@@ -302,7 +302,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "arctic-winter-sea-ice",
     labelEn: "Arctic winter sea ice collapse",
-    labelHu: "Arktiszi téli tengeri jég összeomlása",
+    labelHu: "Az arktiszi téli tengeri jég eltűnése",
     categoryEn: "Sea ice",
     categoryHu: "Tengeri jég",
     centralThreshold: 6.3,
@@ -312,7 +312,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
   {
     key: "east-antarctic-ice-sheet",
     labelEn: "East Antarctic Ice Sheet collapse",
-    labelHu: "Kelet-antarktiszi jégtakaró összeomlása",
+    labelHu: "A kelet-antarktiszi jégtakaró összeomlása",
     categoryEn: "Ice sheet",
     categoryHu: "Jégtakaró",
     centralThreshold: 7.5,
@@ -719,37 +719,37 @@ const STRINGS = {
     appSubtitle: "Globális klímaindikátorok és éghajlati kényszerek",
     dashboardNavigationAria: "Irányítópult-navigáció",
     brandSubtitle: "Globális éghajlati irányítópult",
-    dataUpdatedLabel: "Adatok frissítve",
+    dataUpdatedLabel: "Adatfrissítés",
     dataStatusLabel: "Adatállapot",
     navOverview: "Áttekintés",
-    navIndicators: "Indikátorok",
+    navIndicators: "Mutatók",
     navVariability: "Változékonyság",
     overviewTitle: "Globális éghajlati áttekintés",
     overviewSubtitle: "Friss éghajlati jelzések",
     overviewDailyGlobalTemperatureAnomalyTitle: "Napi globális hőmérsékleti anomália",
-    overviewPreindustrialSubtitle: "az 1850-1900-as átlaghoz képest",
+    overviewPreindustrialSubtitle: "az 1850–1900-as átlaghoz képest",
     overviewSurfaceAnomalyTitle: "Felszíni hőmérsékleti anomália",
     overviewSstAnomalyTitle: "Tengerfelszíni hőmérsékleti anomália",
     overviewCo2Title: "CO₂-koncentráció",
-    overviewAtmosphericSubtitle: "Légköri",
-    overviewArcticSeaIceTitle: "Arktiszi tengeri jégkiterjedés",
-    overviewClimatologySubtitle: "az 1991-2020-as átlaghoz képest",
+    overviewAtmosphericSubtitle: "A légkörben",
+    overviewArcticSeaIceTitle: "Arktiszi tengerijég-kiterjedés",
+    overviewClimatologySubtitle: "az 1991–2020-as átlaghoz képest",
     planetNowTitle: "A bolygó most",
     heroSparklineLabel: "Elmúlt 365 nap",
-    heroRecordLabel: "Mindenkori csúcs",
-    warmingStripesAria: "Éves globális hőmérsékleti anomáliák 1940 óta, melegedési csíkokként ábrázolva",
+    heroRecordLabel: "Minden idők csúcsa",
+    warmingStripesAria: "Az éves globális hőmérsékleti anomáliák 1940 óta, melegedési csíkokként ábrázolva",
     navGroupMonitor: "Megfigyelés",
     navGroupExplore: "Felfedezés",
     navGroupSystem: "Rendszer",
     deltaSincePrevious: "az előző értékhez képest",
     recordReachedText: "elérte ezt az értéket:",
     ensoTargetConnector: "időszakra:",
-    viewAllForcing: "Minden kényszer megtekintése",
-    viewAllMaps: "Minden térkép megtekintése",
+    viewAllForcing: "Összes éghajlati kényszer",
+    viewAllMaps: "Összes térkép",
     recentHighlightsTitle: "Legfrissebb kiemelések",
-    ensoOutlookTitle: "ENSO kilátások",
+    ensoOutlookTitle: "ENSO-előrejelzés",
     ensoCardTitle: "El Niño és La Niña",
-    warmingEstimateTitle: "évi melegedési becslés",
+    warmingEstimateTitle: "Várható melegedés",
     ensoNextThreeMonths: "Következő 3 hónap",
     ensoNextSixMonths: "Következő 6 hónap",
     ensoStatusLabel: "Státusz",
@@ -757,90 +757,90 @@ const STRINGS = {
     ensoConditionLaNina: "La Niña",
     ensoConditionElNino: "El Niño",
     ensoAlertNeutral: "ENSO-semleges",
-    ensoAlertLaNinaAdvisory: "La Niña figyelmeztetés",
-    ensoAlertElNinoAdvisory: "El Niño figyelmeztetés",
-    ensoAlertLaNinaWatch: "Lehetséges La Niña",
-    ensoAlertElNinoWatch: "Lehetséges El Niño",
-    ensoAlertFinalLaNina: "Utolsó La Niña figyelmeztetés",
-    ensoAlertFinalElNino: "Utolsó El Niño figyelmeztetés",
+    ensoAlertLaNinaAdvisory: "La Niña-figyelmeztetés",
+    ensoAlertElNinoAdvisory: "El Niño-figyelmeztetés",
+    ensoAlertLaNinaWatch: "La Niña várható",
+    ensoAlertElNinoWatch: "El Niño várható",
+    ensoAlertFinalLaNina: "A La Niña-időszak véget ért",
+    ensoAlertFinalElNino: "Az El Niño-időszak véget ért",
     language: "Nyelv",
     theme: "Téma",
     themeSystem: "Rendszer",
     themeDark: "Sötét",
     themeLight: "Világos",
-    sectionExpand: "Kinyitás",
+    sectionExpand: "Kibontás",
     sectionCollapse: "Összecsukás",
     latestLabel: "Legfrissebb",
     latestAnnualLabel: "Legfrissebb éves érték",
-    latestSignalsAria: "Legfrissebb klímaindikátorok",
-    aiSummaryAria: "AI klímaösszefoglaló",
-    aiSummaryTitle: "AI összefoglaló",
-    aiSummaryKicker: "AI-összefoglaló",
-    aiGeneratedAria: "AI által készített",
-    aiSummaryLoading: "A legfrissebb AI-összefoglaló betöltése",
-    aiSummaryRecordHigh: "a legfrissebb érték eléri vagy meghaladja az azonos dátumú történeti rekordot",
-    aiSummaryNearRecordHigh: "a legfrissebb érték közel van az azonos dátumú történeti rekordhoz",
-    aiSummaryAboveMean: "az 1991-2020-as azonos dátumú átlag felett",
-    aiSummaryBelowMean: "az 1991-2020-as azonos dátumú átlag alatt",
-    aiSummaryComparedWithMean: "az 1991-2020-as átlaghoz képest",
-    aiSummaryComparedWithRecord: "az azonos dátumú rekordhoz képest",
-    aiSummaryRankLabel: "azonos dátumú rang",
-    aiSummaryNoWarnings: "A globális felszíni hőmérséklet és a globális tengerfelszíni hőmérséklet nem szokatlanul magas az azonos dátumú történeti rekordokhoz képest.",
+    latestSignalsAria: "A legfrissebb éghajlati mutatók",
+    aiSummaryAria: "MI-alapú éghajlati összefoglaló",
+    aiSummaryTitle: "MI-összefoglaló",
+    aiSummaryKicker: "MI-összefoglaló",
+    aiGeneratedAria: "MI által készített",
+    aiSummaryLoading: "A legfrissebb MI-összefoglaló betöltése…",
+    aiSummaryRecordHigh: "legfrissebb értéke eléri vagy meghaladja az erre a napra mért eddigi rekordot",
+    aiSummaryNearRecordHigh: "legfrissebb értéke megközelíti az erre a napra mért eddigi rekordot",
+    aiSummaryAboveMean: "meghaladja az erre a napra számított 1991–2020-as átlagot",
+    aiSummaryBelowMean: "elmarad az erre a napra számított 1991–2020-as átlagtól",
+    aiSummaryComparedWithMean: "az 1991–2020-as átlaghoz képest",
+    aiSummaryComparedWithRecord: "az erre a napra mért rekordhoz képest",
+    aiSummaryRankLabel: "helyezés ezen a napon",
+    aiSummaryNoWarnings: "Sem a globális felszíni, sem a tengerfelszíni hőmérséklet nem szokatlanul magas az erre a napra mért eddigi rekordokhoz képest.",
     aiSummaryMostImportantSignals: "Fő jelzések:",
-    aiSummaryHeatSignalTitle: "A bolygószintű meleg továbbra is rendkívül magas.",
+    aiSummaryHeatSignalTitle: "A bolygó továbbra is rendkívül meleg.",
     aiSummaryIceSignalTitle: "A sarkvidéki körülmények továbbra is aggasztóak.",
-    aiSummaryOceanSignalTitle: "Az óceánok diktálják továbbra is az ütemet.",
+    aiSummaryOceanSignalTitle: "Továbbra is az óceánok diktálják az ütemet.",
     aiSummaryRegionalSignalTitle: "A regionális szélsőségek erősítik a globális jelzést.",
     aiSummaryOtherSignalTitle: "Egy fontos éghajlati jelzés emelkedik ki.",
     aiSummaryMethodologyLabel: "Módszertan",
     aiSummaryGeneratedLabel: "Készült",
-    recordWarningsAria: "Rekord éghajlati figyelmeztetések",
+    recordWarningsAria: "Éghajlati rekordfigyelmeztetések",
     recordWarningKicker: "Rekordfigyelmeztetés",
     recordWarningDateMeta: "Dátum",
     highestEverGlobalSurfaceTemperatureAnomalyTitle: "Mindenkori legmagasabb globális felszíni hőmérsékleti anomália",
     highestEverGlobalSeaSurfaceTemperatureAnomalyTitle: "Mindenkori legmagasabb globális tengerfelszíni hőmérsékleti anomália",
-    climateIndicatorsTitle: "Éghajlati Indikátorok",
-    climateIndicatorsNote: "Fő klímaindikátorok.",
+    climateIndicatorsTitle: "Éghajlati mutatók",
+    climateIndicatorsNote: "A legfontosabb éghajlati mutatók.",
     globalTemperaturesSectionTitle: "Globális hőmérsékletek",
-    globalTemperaturesSectionNote: "Globális felszíni és tengerfelszíni hőmérsékletek január-decemberi napi összehasonlító nézetben.",
+    globalTemperaturesSectionNote: "A globális felszíni és tengerfelszíni hőmérséklet napi értékei, évenként egymásra vetítve (január–december).",
     oceansSectionTitle: "Óceánok",
-    oceansSectionNote: "Hosszú távú óceáni állapotmutatók: globális átlagos tengerszint és óceáni hőtartalom.",
-    earthEnergyImbalanceSectionTitle: "A Föld energiaegyensúlyának felborulása",
+    oceansSectionNote: "Hosszú távú óceáni mutatók: a globális átlagos tengerszint és az óceánok hőtartalma.",
+    earthEnergyImbalanceSectionTitle: "A Föld energiatöbblete",
     earthEnergyImbalanceSectionNote:
-      "A NASA CERES EBAF globális nettó légkör-teteji sugárzási fluxusa, 12 havi futóátlagként a havi zaj csökkentésére.",
-    earthEnergyImbalanceTitle: "A Föld energiaegyensúlyának felborulása",
-    earthEnergyImbalanceSubtitle: "NASA CERES EBAF havi globális nettó TOA fluxus · 12 havi futóátlag",
+      "A NASA CERES EBAF globális nettó sugárzási fluxusa a légkör tetején, 12 havi mozgóátlaggal simítva.",
+    earthEnergyImbalanceTitle: "A Föld energiatöbblete",
+    earthEnergyImbalanceSubtitle: "NASA CERES EBAF · nettó sugárzási fluxus a légkör tetején · 12 havi mozgóátlag",
     temperatureAnomalySectionTitle: "Hőmérsékleti anomáliák",
     temperatureAnomalySectionNote:
-      "A globális felszíni és tengerfelszíni anomáliák 1991-2020-as klimatológiára épülnek; a napi és éves globális átlaganomália-grafikonok ERA5-alapú, becsült 1850-1900-as bázishoz viszonyított értékeket mutatnak.",
+      "A globális felszíni és tengerfelszíni anomáliák az 1991–2020-as átlaghoz, a napi és éves globális átlaganomáliák pedig az ERA5 alapján becsült, iparosodás előtti 1850–1900-as szinthez viszonyítanak.",
     dailyGlobalTemperatureAnomalyTitle: "Napi globális átlaghőmérséklet-anomália",
     dailyGlobalTemperatureAnomaly365DayAverage: "365 napos átlag",
-    dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850-1900-as referencia)",
+    dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850–1900-as alapszint)",
     annualGlobalTemperatureAnomalyTitle: "Éves globális hőmérsékleti anomália",
-    annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850-1900-as referencia)",
-    annualGlobalTemperatureAnomalyMethod: "Az elérhető napi anomáliák átlaga (az aktuális évben évközi átlag).",
+    annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850–1900-as alapszint)",
+    annualGlobalTemperatureAnomalyMethod: "Az elérhető napi anomáliák átlaga (a folyó évben az év eleje óta eltelt napok átlaga).",
     projectedAnnualTemperatureAnomalyTitle: "Becsült éves hőmérsékleti anomália",
-    projectedAnnualTemperatureAnomalyChartTitle: "Éves globális hőmérsékleti anomália + előrejelzés",
+    projectedAnnualTemperatureAnomalyChartTitle: "Éves globális hőmérsékleti anomália és idei becslés",
     projectedAnnualTemperatureAnomalyChartSubtitle:
-      "Történeti éves átlagok az aktuális év becsült értékével és bizonytalansági tartományával.",
+      "A korábbi évek átlagai, valamint az idei év becsült értéke és bizonytalansági tartománya.",
     longRangeTemperatureTrendTitle: "Hőmérsékleti trend 2100-ig",
     longRangeTemperatureHorizonTitle: "Melegedési pályák 2100-ig",
-    longRangeTemperatureExploreLabel: "Forgatókönyvek megnyitása",
+    longRangeTemperatureExploreLabel: "Forgatókönyvek részletesen",
     longRangeTemperatureTrendSubtitle:
-      "Mért éves melegedés napjainkig, majd indikatív CMIP7 ScenarioMIP FaIR medián pályák.",
+      "A mért éves melegedés napjainkig, utána a CMIP7 ScenarioMIP FaIR-modell tájékoztató mediánpályái.",
     longRangeTemperatureTrendSource:
-      "A forgatókönyvértékek Van Vuuren et al. (2026) előzetes FaIR egyszerűklíma-modell mediánjai, nem végleges CMIP7 földrendszermodell-eredmények.",
+      "A forgatókönyvek értékei Van Vuuren és mtsai (2026) előzetes, egyszerű klímamodellel (FaIR) számolt mediánjai, nem végleges CMIP7 földrendszermodell-eredmények.",
     longRangeTemperatureTrendValueLabel: "2100-as érték",
     cmip7ScenarioSourceLabel: "CMIP7 ScenarioMIP",
     scenarioHighLabel: "Magas",
     scenarioMediumLabel: "Közepes",
-    scenarioMediumLowLabel: "Közepes-alacsony",
+    scenarioMediumLowLabel: "Közepesen alacsony",
     scenarioLowLabel: "Alacsony",
-    tippingPointsTitle: "Földrendszer billenőpontjai",
+    tippingPointsTitle: "A földrendszer billenőpontjai",
     tippingPointsSubtitle:
-      "A fő földrendszer-billenőelemek globális melegedési küszöbei Armstrong McKay et al. (2022) alapján, a dashboard aktuális éves melegedési becsléséhez viszonyítva.",
-    tippingPointsSourceLabel: "McKay et al. 2022",
-    tippingCurrentWarmingLabel: "Aktuális melegedési becslés",
+      "A földrendszer fő billenőelemeinek melegedési küszöbei Armstrong McKay és mtsai (2022) alapján, a jelenlegi éves melegedési becsléshez viszonyítva.",
+    tippingPointsSourceLabel: "McKay és mtsai, 2022",
+    tippingCurrentWarmingLabel: "Jelenlegi melegedés (becslés)",
     tippingCentralThresholdLabel: "központi küszöb",
     tippingRangeLabel: "becsült tartomány",
     tippingStateLikely: "A központi küszöb felett",
@@ -848,19 +848,19 @@ const STRINGS = {
     tippingStateBelow: "A becsült tartomány alatt",
     projectionExperimentalLabel: "Kísérleti",
     projectionEstimateLabel: "Becsült átlag",
-    projectionIntervalLabel: "15-85. percentilis tartomány",
+    projectionIntervalLabel: "15–85. percentilis tartomány",
     projectionRangeLabel: "Tartomány",
-    projectionMethodLabel: "Évközi + közeli analóg évek szezonális lefutása",
-    projectionSignalLabel: "ENSO jel",
-    projectionProbabilityAboveOnePointFiveTitle: "Annak esélye, hogy az éves átlag > 1,5°C",
-    projectionProbabilityWarmestRecordTitle: "Annak esélye, hogy ez legyen a legmelegebb év a mérésekben",
+    projectionMethodLabel: "Az év eddigi adatai és hasonló (analóg) évek szezonális lefutása",
+    projectionSignalLabel: "ENSO-jel",
+    projectionProbabilityAboveOnePointFiveTitle: "Esély, hogy az éves átlag meghaladja az 1,5 °C-ot",
+    projectionProbabilityWarmestRecordTitle: "Esély, hogy ez lesz a legmelegebb mért év",
     projectionProbabilityMethodLabel: "Súlyozott analóg évek",
     projectionAnalogsLabel: "analóg",
-    projectionRecordThresholdLabel: "Megközelítendő rekord",
+    projectionRecordThresholdLabel: "A megdöntendő rekord",
     outlookProjectedAnnualMeanLabel: "Becsült éves átlag",
-    outlookChanceAboveOnePointFiveLabel: "esély 1,5 °C felett",
+    outlookChanceAboveOnePointFiveLabel: "esély az 1,5 °C túllépésére",
     outlookChanceWarmestYearLabel: "esély rekordmeleg évre",
-    outlookChartCaption: "éves anomália, elmúlt öt év + 2026 becslés",
+    outlookChartCaption: "éves anomália: az elmúlt öt év és az idei becslés",
     outlookProjectionSuffix: "b",
     outlookRecordLabel: "rekord",
     projectionsTitle: "Előrejelzések",
@@ -868,58 +868,58 @@ const STRINGS = {
     yearLabel: "Év",
     regionalTemperaturesSectionTitle: "Regionális hőmérsékletek",
     regionalTemperaturesSectionNote:
-      "Napi január-decemberi összehasonlítás az északi félteke, a déli félteke, az Arktisz, az Antarktisz, az észak-atlanti SST és a Niño 3.4 SST adataival.",
+      "Napi értékek évenként egymásra vetítve (január–december): északi és déli félteke, Arktisz, Antarktisz, valamint az észak-atlanti és a Niño 3.4 terület tengerfelszíni hőmérséklete.",
     regionalTemperatureAnomaliesSectionTitle: "Regionális hőmérsékleti anomáliák",
     regionalTemperatureAnomaliesSectionNote:
-      "Napi regionális anomáliák az egyes adatforrások 1991-2020-as klimatológiájához viszonyítva: féltekék, sarkvidékek és Észak-Atlanti SST.",
-    climatologyMeanLabel: "1991-2020-as átlag",
+      "Napi regionális anomáliák az egyes adatforrások 1991–2020-as átlagához viszonyítva: féltekék, sarkvidékek és az észak-atlanti tengerfelszín.",
+    climatologyMeanLabel: "1991–2020-as átlag",
     seaIceSectionTitle: "Tengeri jég",
     seaIceSectionNote:
-      "Globális, arktiszi és antarktiszi jégkiterjedés napi adatokkal, január-decemberi összehasonlító nézetben.",
-    snowCoverSectionTitle: "Hóborítottság",
+      "A globális, az arktiszi és az antarktiszi tengerijég-kiterjedés napi értékei, évenként egymásra vetítve.",
+    snowCoverSectionTitle: "Hótakaró",
     snowCoverSectionNote:
-      "Havi északi féltekei szárazföldi hóborítottsági kiterjedés a Rutgers Global Snow Lab adatai alapján. Összehasonlítható déli féltekei/globális hóborítottsági idősor ugyanebben a klíma-adatforrásban nem érhető el.",
+      "Az északi félteke szárazföldi hótakarójának havi kiterjedése a Rutgers Global Snow Lab adatai alapján. A déli féltekére vagy az egész Földre ugyanebből a forrásból nincs összehasonlítható idősor.",
     iceSheetsAndGlaciersSectionTitle: "Jégtakarók és gleccserek",
     iceSheetsAndGlaciersSectionNote:
-      "A WGMS globális gleccser-tömegváltozása és referencia-gleccser tömegmérlege, valamint a NASA GRACE/GRACE-FO tömegváltozási adataiból származtatott kumulatív antarktiszi és grönlandi jégtakaró-tömegveszteség 2002 óta.",
+      "A WGMS adatai a gleccserek globális tömegváltozásáról és a referenciagleccserek tömegmérlegéről, valamint az antarktiszi és a grönlandi jégtakaró 2002 óta összesített tömegvesztesége a NASA GRACE/GRACE-FO méréseiből.",
     seaLevelEquivalentKicker: "Tengerszint-egyenérték",
-    seaLevelEquivalentSubtitle: "A teljes jégtakaró-veszteségből adódó lehetséges globális átlagos tengerszint-emelkedés.",
-    nino34IndexTitle: "Történeti Niño 3.4 index",
-    nino34IndexSubtitle: "NOAA CPC Óceáni Niño Index · középre igazított 3 havi Niño 3.4 SST-anomália",
-    naoIndexSubtitle: "NOAA CPC havi észak-atlanti oszcilláció index",
-    pnaIndexSubtitle: "NOAA CPC havi csendes-óceáni-észak-amerikai index",
-    soiIndexSubtitle: "NOAA PSL havi déli oszcilláció index · a negatív értékek El Niño-szerűek",
-    arcticOscillationIndexSubtitle: "NOAA CPC havi arktikus oszcilláció index",
+    seaLevelEquivalentSubtitle: "Ennyivel emelkedne a globális átlagos tengerszint, ha a jégtakaró teljesen elolvadna.",
+    nino34IndexTitle: "A Niño 3.4-index alakulása",
+    nino34IndexSubtitle: "NOAA CPC Óceáni Niño-index · a Niño 3.4 terület tengerfelszíni anomáliájának háromhavi mozgóátlaga",
+    naoIndexSubtitle: "NOAA CPC · havi észak-atlanti oszcillációs index",
+    pnaIndexSubtitle: "NOAA CPC · havi csendes-óceáni–észak-amerikai index",
+    soiIndexSubtitle: "NOAA PSL · havi déli oszcillációs index · a negatív értékek El Niño-szerű állapotot jeleznek",
+    arcticOscillationIndexSubtitle: "NOAA CPC · havi arktikus oszcillációs index",
     naturalVariabilityTitle: "Természetes változékonyság",
-    naturalVariabilityNote: "ENSO és klímaindexek.",
+    naturalVariabilityNote: "ENSO és éghajlati indexek.",
     mapsSectionTitle: "Térképek",
     mapsSectionNote: "Friss globális időjárási térképek.",
-    map2mTemperatureTitle: "Felszíni hőmérséklet (2m)",
-    map2mTemperatureAnomalyTitle: "Felszíni hőmérsékleti anomália (2m)",
+    map2mTemperatureTitle: "Felszínközeli hőmérséklet (2 m)",
+    map2mTemperatureAnomalyTitle: "Felszínközeli hőmérsékleti anomália (2 m)",
     mapSstTitle: "Tengerfelszíni hőmérséklet",
     mapSstAnomalyTitle: "Tengerfelszíni hőmérsékleti anomália",
-    mapGlobalSubtitle: "Aktuális napi térkép · Climate Reanalyzer Today’s Weather",
+    mapGlobalSubtitle: "Mai térkép · Climate Reanalyzer Today’s Weather",
     mapSstSubtitle: "Legfrissebb elérhető térkép · Climate Reanalyzer Today’s Weather",
     mapUnavailable: "A térkép nem érhető el",
     forcingTitle: "Éghajlati kényszerek",
-    forcingNote: "Üvegházgázok és napsugárzás.",
-    sourceTitle: "Adatforrás mód",
+    forcingNote: "Üvegházhatású gázok és napsugárzás.",
+    sourceTitle: "Adatforrás módja",
     sourceLive: "Élő adatforrások",
     sourceMixed: "Vegyes (élő + tartalék)",
     sourceBundled: "Beépített tartalékadatok",
     sourceLiveNote: "Minden adatsor távoli élő adatforrásból töltődött be.",
-    sourceMixedNote: "Egy vagy több élő adatforrás nem elérhető; a hiányt tartalék adatok pótolják.",
-    sourceBundledNote: "Minden élő adatforrás nem elérhető; minden grafikon tartalék adatokat használ.",
+    sourceMixedNote: "Egy vagy több élő adatforrás nem érhető el; a hiányzó adatokat tartalékadatok pótolják.",
+    sourceBundledNote: "Egyik élő adatforrás sem érhető el; minden grafikon tartalékadatokat használ.",
     sourceWarningsTitle: "Adatfigyelmeztetések",
-    sourceStatusTitle: "Adatkészlet státusza",
+    sourceStatusTitle: "Az adatok állapota",
     sourceUpdatedTitle: "Utolsó frissítés",
     sourceListTitle: "Forráshivatkozások",
     sourceListNote: "Elsődleges adatforrások.",
     sourceCardsTitle: "Adatok",
     sourceLabel: "Forrás",
     chartFullscreenEnter: "Teljes képernyő",
-    chartFullscreenExit: "Kilépés",
-    freshnessAsOf: "Dátum",
+    chartFullscreenExit: "Kilépés a teljes képernyőből",
+    freshnessAsOf: "Utolsó adat",
     freshnessDaily: "napi",
     freshnessMonthly: "havi",
     freshnessQuarterly: "negyedéves",
@@ -927,7 +927,7 @@ const STRINGS = {
     freshnessAssessment: "értékelési adatsor",
     freshnessLagging: "Késik",
     freshnessStale: "Elavult",
-    ytdLabel: "évközi",
+    ytdLabel: "év eleje óta",
     chartLatest: "Legfrissebb",
     noData: "Nincs adat",
     valuesLoading: "A legfrissebb értékek betöltése",
@@ -1255,12 +1255,12 @@ function formatMapImageAlt(title: string, mapDateIso: string | null, language: L
 
 function formatAnnualAnomalyTopMeta(year: number, language: Language, isYtd: boolean, ytdLabel: string): string {
   const ytdSuffix = isYtd ? ` (${ytdLabel})` : "";
-  if (language === "hu") return `Év: ${year}${ytdSuffix} · az 1850-1900-as referenciaidőszakhoz képest`;
+  if (language === "hu") return `${year}${ytdSuffix} · az 1850–1900-as átlaghoz képest`;
   return `Year: ${year}${ytdSuffix} vs 1850-1900`;
 }
 
 function formatProjectionTopMeta(year: number, language: Language): string {
-  if (language === "hu") return `Év: ${year} · becslés az 1850-1900-as referenciaidőszakhoz képest`;
+  if (language === "hu") return `${year} · becslés az 1850–1900-as átlaghoz képest`;
   return `Year: ${year} projection vs 1850-1900`;
 }
 
@@ -1497,7 +1497,14 @@ function buildAiDashboardSummary({
   const headline = generatedText
     ? generatedText
     : warningChecks.length > 0
-      ? `${warningChecks.map((check) => `${metricTitle(check.metric, language)} ${sameDateCheckReason(check, t)}`).join("; ")}.`
+      ? `${warningChecks
+          .map((check, index) => {
+            const title = metricTitle(check.metric, language);
+            // Hungarian needs the definite article and a possessive predicate ("A globális … legfrissebb értéke …").
+            const subject = language === "hu" ? `${index === 0 ? "A" : "a"} ${title.charAt(0).toLocaleLowerCase("hu")}${title.slice(1)}` : title;
+            return `${subject} ${sameDateCheckReason(check, t)}`;
+          })
+          .join("; ")}.`
       : t.aiSummaryNoWarnings;
 
   return {
@@ -1537,37 +1544,37 @@ function buildAiOverviewItems(
 }
 
 function buildMonthLabels(language: Language): string[] {
-  if (language === "hu") return ["Jan", "Febr", "Márc", "Ápr", "Máj", "Jún", "Júl", "Aug", "Szept", "Okt", "Nov", "Dec"];
+  if (language === "hu") return ["jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec."];
   return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 }
 
 const ENSO_TARGET_MONTH_LABELS: Record<string, { en: string; hu: string }> = {
-  January: { en: "January", hu: "Január" },
-  February: { en: "February", hu: "Február" },
-  March: { en: "March", hu: "Március" },
-  April: { en: "April", hu: "Április" },
-  May: { en: "May", hu: "Máj" },
-  June: { en: "June", hu: "Június" },
-  July: { en: "July", hu: "Július" },
-  August: { en: "August", hu: "Augusztus" },
-  September: { en: "September", hu: "Szeptember" },
-  October: { en: "October", hu: "Október" },
-  November: { en: "November", hu: "November" },
-  December: { en: "December", hu: "December" },
+  January: { en: "January", hu: "január" },
+  February: { en: "February", hu: "február" },
+  March: { en: "March", hu: "március" },
+  April: { en: "April", hu: "április" },
+  May: { en: "May", hu: "május" },
+  June: { en: "June", hu: "június" },
+  July: { en: "July", hu: "július" },
+  August: { en: "August", hu: "augusztus" },
+  September: { en: "September", hu: "szeptember" },
+  October: { en: "October", hu: "október" },
+  November: { en: "November", hu: "november" },
+  December: { en: "December", hu: "december" },
 };
 const ENSO_TARGET_SEASON_LABELS: Record<string, { en: string; hu: string }> = {
-  DJF: { en: "December-February", hu: "December-Február" },
-  JFM: { en: "January-March", hu: "Január-Március" },
-  FMA: { en: "February-April", hu: "Február-Április" },
-  MAM: { en: "March-May", hu: "Március-Máj" },
-  AMJ: { en: "April-June", hu: "Április-Június" },
-  MJJ: { en: "May-July", hu: "Máj-Július" },
-  JJA: { en: "June-August", hu: "Június-Augusztus" },
-  JAS: { en: "July-September", hu: "Július-Szeptember" },
-  ASO: { en: "August-October", hu: "Augusztus-Október" },
-  SON: { en: "September-November", hu: "Szeptember-November" },
-  OND: { en: "October-December", hu: "Október-December" },
-  NDJ: { en: "November-January", hu: "November-Január" },
+  DJF: { en: "December-February", hu: "december–február" },
+  JFM: { en: "January-March", hu: "január–március" },
+  FMA: { en: "February-April", hu: "február–április" },
+  MAM: { en: "March-May", hu: "március–május" },
+  AMJ: { en: "April-June", hu: "április–június" },
+  MJJ: { en: "May-July", hu: "május–július" },
+  JJA: { en: "June-August", hu: "június–augusztus" },
+  JAS: { en: "July-September", hu: "július–szeptember" },
+  ASO: { en: "August-October", hu: "augusztus–október" },
+  SON: { en: "September-November", hu: "szeptember–november" },
+  OND: { en: "October-December", hu: "október–december" },
+  NDJ: { en: "November-January", hu: "november–január" },
 };
 
 function formatEnsoConditionLabel(condition: EnsoCondition, t: (typeof STRINGS)[Language]): string {
@@ -1604,22 +1611,46 @@ function formatEnsoStatusLabel(ensoOutlook: EnsoOutlook | null, language: Langua
   return forecastWindow ? formatEnsoConditionLabel(forecastWindow.condition, t) : language === "hu" ? "Nincs adat" : "No data";
 }
 
+/** Hungarian inessive ending for a year as read aloud: 2026 → "ban" (hat), 2027 → "ben" (hét), 2030 → "ban" (harminc). */
+function hungarianInessiveSuffix(year: number): string {
+  const back = "ban";
+  const front = "ben";
+  const ones: Record<number, string> = { 1: front, 2: front, 3: back, 4: front, 5: front, 6: back, 7: front, 8: back, 9: front };
+  const tens: Record<number, string> = { 1: front, 2: back, 3: back, 4: front, 5: front, 6: back, 7: front, 8: back, 9: front };
+  if (year % 10 !== 0) return ones[year % 10];
+  if (year % 100 !== 0) return tens[(year % 100) / 10];
+  return year % 1000 === 0 ? front : back;
+}
+
 function formatEnsoTargetLabel(targetLabel: string | null, language: Language): string {
   if (!targetLabel) return "-";
   const seasonMatch = /^([A-Z]{3})\s+(\d{4})$/.exec(targetLabel.trim());
   if (seasonMatch) {
     const seasonLabel = ENSO_TARGET_SEASON_LABELS[seasonMatch[1]]?.[language] ?? seasonMatch[1];
-    return `${seasonLabel} ${seasonMatch[2]}`;
+    return language === "hu" ? `${seasonMatch[2]}. ${seasonLabel}` : `${seasonLabel} ${seasonMatch[2]}`;
   }
-  return targetLabel.replace(
+  const localized = targetLabel.replace(
     /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/g,
     (match) => ENSO_TARGET_MONTH_LABELS[match]?.[language] ?? match
   );
+  // Hungarian puts the year first and joins month ranges with an en dash: "2027. február–április".
+  const yearAtEnd = language === "hu" ? /^(.+?)\s+(\d{4})$/.exec(localized.trim()) : null;
+  return yearAtEnd ? `${yearAtEnd[2]}. ${yearAtEnd[1].replace(/\s*-\s*/g, "–")}` : localized;
 }
 
+const SOURCE_SHORT_NAMES_HU: Record<string, string> = {
+  "Climate Reanalyzer (ERA5, 1991-2020 baseline)": "Climate Reanalyzer (ERA5, 1991–2020-as alapidőszak)",
+  "Climate Reanalyzer (OISST v2.1, 1991-2020 baseline)": "Climate Reanalyzer (OISST v2.1, 1991–2020-as alapidőszak)",
+  "ECMWF ERA5 Climate Pulse (preindustrial estimate)": "ECMWF ERA5 Climate Pulse (iparosodás előtti becslés)",
+  "NASA GRACE/GRACE-FO (derived)": "NASA GRACE/GRACE-FO (származtatott)",
+  "NSIDC Sea Ice Index v4 (North)": "NSIDC Sea Ice Index v4 (északi)",
+  "NSIDC Sea Ice Index v4 (South)": "NSIDC Sea Ice Index v4 (déli)",
+  "WGMS annual estimates": "WGMS éves becslések",
+  "WGMS reference glaciers": "WGMS referenciagleccserek",
+};
+
 function formatSourceShortName(shortName: string, language: Language): string {
-  if (language === "hu" && shortName === "WGMS annual estimates") return "WGMS éves becslések";
-  return shortName;
+  return language === "hu" ? SOURCE_SHORT_NAMES_HU[shortName] ?? shortName : shortName;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -1993,9 +2024,9 @@ function buildLongRangeTemperatureTrendOption({
   const tippingThresholdMarkers =
     language === "hu"
       ? [
-          { threshold: 1.5, label: "1,5 °C · WAIS + GrIS összeomlás, korallzátonyok" },
+          { threshold: 1.5, label: "1,5 °C · nyugat-antarktiszi és grönlandi jégtakaró, korallzátonyok" },
           { threshold: 2, label: "2,0 °C · hegyi gleccserek, Száhel-monszun" },
-          { threshold: 3, label: "3,0 °C · Amazónia pusztulása, K-antarktiszi medencék" },
+          { threshold: 3, label: "3,0 °C · amazóniai esőerdő, kelet-antarktiszi medencék" },
         ]
       : [
           { threshold: 1.5, label: "1.5 °C · WAIS + GrIS collapse, coral reefs" },
@@ -3209,11 +3240,11 @@ export function App() {
   const [mapTopic, setMapTopic] = useState("surface");
   const [sourceQuery, setSourceQuery] = useState("");
   const indicatorTopics = [
-    {key: "temperature", en: "Temperature", hu: "Hőmérséklet", descriptionEn: "Track global heat from daily variability to the long-term warming signal.", descriptionHu: "Kövesd a globális hőt a napi ingadozástól a hosszú távú melegedési jelig.", sections: ["globalTemperatures", "temperatureAnomalies"]},
-    {key: "regions", en: "Regions", hu: "Régiók", descriptionEn: "Compare how warming is distributed across hemispheres and polar regions.", descriptionHu: "Hasonlítsd össze a melegedés eloszlását a féltekék és a sarkvidékek között.", sections: ["regionalTemperatures", "regionalTemperatureAnomalies"]},
-    {key: "oceans", en: "Oceans", hu: "Óceánok", descriptionEn: "Follow ocean surface warmth, sea level and the heat stored below the surface.", descriptionHu: "Kövesd az óceánfelszín melegedését, a tengerszintet és a mélyben tárolt hőt.", sections: ["oceans"]},
-    {key: "ice", en: "Ice & snow", hu: "Jég és hó", descriptionEn: "See the changing footprint of sea ice, snow cover, glaciers and ice sheets.", descriptionHu: "Lásd a tengeri jég, a hótakaró, a gleccserek és a jégtakarók változását.", sections: ["seaIce", "snowCover", "iceSheetsAndGlaciers"]},
-    {key: "energy", en: "Energy", hu: "Energia", descriptionEn: "Measure the planetary energy imbalance driving continued climate change.", descriptionHu: "Kövesd a további klímaváltozást hajtó bolygószintű energiaegyensúly-hiányt.", sections: ["earthEnergyImbalance"]},
+    {key: "temperature", en: "Temperature", hu: "Hőmérséklet", descriptionEn: "Track global heat from daily variability to the long-term warming signal.", descriptionHu: "A globális hőmérséklet a napi ingadozástól a hosszú távú melegedésig.", sections: ["globalTemperatures", "temperatureAnomalies"]},
+    {key: "regions", en: "Regions", hu: "Régiók", descriptionEn: "Compare how warming is distributed across hemispheres and polar regions.", descriptionHu: "Hogyan oszlik meg a melegedés a féltekék és a sarkvidékek között.", sections: ["regionalTemperatures", "regionalTemperatureAnomalies"]},
+    {key: "oceans", en: "Oceans", hu: "Óceánok", descriptionEn: "Follow ocean surface warmth, sea level and the heat stored below the surface.", descriptionHu: "Az óceánfelszín melegedése, a tengerszint és a mélyben tárolt hő.", sections: ["oceans"]},
+    {key: "ice", en: "Ice & snow", hu: "Jég és hó", descriptionEn: "See the changing footprint of sea ice, snow cover, glaciers and ice sheets.", descriptionHu: "A tengeri jég, a hótakaró, a gleccserek és a jégtakarók változása.", sections: ["seaIce", "snowCover", "iceSheetsAndGlaciers"]},
+    {key: "energy", en: "Energy", hu: "Energia", descriptionEn: "Measure the planetary energy imbalance driving continued climate change.", descriptionHu: "A Föld energiatöbblete, amely tovább hajtja az éghajlatváltozást.", sections: ["earthEnergyImbalance"]},
   ];
   const activeIndicatorTopic = indicatorTopics.find((topic) => topic.key === indicatorTopic) ?? indicatorTopics[0];
   const [activeView, setActiveView] = useState<DashboardView>(() => {
@@ -3804,6 +3835,7 @@ export function App() {
         imageUrl: surfaceImageCandidates.imageUrl,
         fallbackImageUrls: surfaceImageCandidates.fallbackImageUrls,
         imageAlt: formatMapImageAlt(t.map2mTemperatureTitle, surfaceMapDisplayDateIso, language),
+        dateIso: surfaceMapDisplayDateIso,
         freshness: surfaceFreshness,
       },
       {
@@ -3817,6 +3849,7 @@ export function App() {
         imageUrl: surfaceAnomalyImageCandidates.imageUrl,
         fallbackImageUrls: surfaceAnomalyImageCandidates.fallbackImageUrls,
         imageAlt: formatMapImageAlt(t.map2mTemperatureAnomalyTitle, surfaceAnomalyMapDisplayDateIso, language),
+        dateIso: surfaceAnomalyMapDisplayDateIso,
         freshness: surfaceAnomalyFreshness,
       },
       {
@@ -3830,6 +3863,7 @@ export function App() {
         imageUrl: sstImageCandidates.imageUrl,
         fallbackImageUrls: sstImageCandidates.fallbackImageUrls,
         imageAlt: formatMapImageAlt(t.mapSstTitle, sstMapDisplayDateIso, language),
+        dateIso: sstMapDisplayDateIso,
         freshness: sstFreshness,
       },
       {
@@ -3843,6 +3877,7 @@ export function App() {
         imageUrl: sstAnomalyImageCandidates.imageUrl,
         fallbackImageUrls: sstAnomalyImageCandidates.fallbackImageUrls,
         imageAlt: formatMapImageAlt(t.mapSstAnomalyTitle, sstAnomalyMapDisplayDateIso, language),
+        dateIso: sstAnomalyMapDisplayDateIso,
         freshness: sstAnomalyFreshness,
       },
     ];
@@ -4171,7 +4206,8 @@ export function App() {
     : null;
   const projectionFreshness = ensoOutlookFreshness ?? dailyGlobalMeanAnomalyFreshness;
   const currentYear = new Date().getFullYear();
-  const warmingEstimateHeading = language === "hu" ? `${currentYear}. ${t.warmingEstimateTitle}` : `${currentYear} ${t.warmingEstimateTitle}`;
+  const warmingEstimateHeading =
+    language === "hu" ? `${t.warmingEstimateTitle} ${currentYear}-${hungarianInessiveSuffix(currentYear)}` : `${currentYear} ${t.warmingEstimateTitle}`;
   const projectionNumberFormat = new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
     minimumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
     maximumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
@@ -4309,11 +4345,11 @@ export function App() {
   const heroDelta = dailyGlobalMeanAnomalyMetric ? formatMetricDelta(dailyGlobalMeanAnomalyMetric) : null;
   const heroRecordPoint = dailyGlobalMeanAnomalyMetric ? latestRecordHighPoint(dailyGlobalMeanAnomalyMetric) : null;
   const sparklineReadout = (metric: ClimateMetricSeries, label = metricTitle(metric, language)): SparklineReadout => ({
-    label: `${label}. ${language === "hu" ? "Nyilakkal léptethető" : "Use arrow keys to explore"}`,
+    label: `${label}. ${language === "hu" ? "A nyílbillentyűkkel léptethető" : "Use arrow keys to explore"}`,
     formatValue: (value) =>
       `${value > 0 && metric.key.includes("anomaly") ? "+" : ""}${formatNumericValue(value, metric.decimals, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
     formatDate: (dateIso) => formatDateLabel(dateIso, language),
-    previousYearLabel: language === "hu" ? "Egy éve" : "A year earlier",
+    previousYearLabel: language === "hu" ? "Egy évvel korábban" : "A year earlier",
   });
   const overviewMetricCards = [
     (() => {
@@ -4432,7 +4468,7 @@ export function App() {
     if (value == null || !Number.isFinite(value) || Math.abs(value) < 0.5) {
       return {
         tone: "neutral",
-        label: metric.key === "nino34_index" ? t.ensoConditionNeutral : language === "hu" ? "Semleges közeli" : "Near neutral",
+        label: metric.key === "nino34_index" ? t.ensoConditionNeutral : language === "hu" ? "Közel semleges" : "Near neutral",
       };
     }
     if (metric.key === "nino34_index") {
@@ -4501,7 +4537,7 @@ export function App() {
         <ToolkitIcon name="info" className="info-icon" />
       </div>
       <div className="enso-editorial-hero">
-        <span>{language === "hu" ? "Aktuális fázis" : "Current phase"}</span>
+        <span>{language === "hu" ? "Jelenlegi fázis" : "Current phase"}</span>
         <strong>
           {renderPrimaryValue(
             formatEnsoConditionLabel(ensoOverviewCondition, t),
@@ -4512,7 +4548,7 @@ export function App() {
       <div
         className={`enso-phase-continuum phase-${ensoOverviewCondition}`}
         role="img"
-        aria-label={`${language === "hu" ? "Aktuális fázis" : "Current phase"}: ${formatEnsoConditionLabel(ensoOverviewCondition, t)}`}
+        aria-label={`${language === "hu" ? "Jelenlegi fázis" : "Current phase"}: ${formatEnsoConditionLabel(ensoOverviewCondition, t)}`}
       >
         <div className="enso-phase-labels" aria-hidden="true">
           <span>{t.ensoConditionLaNina}</span>
@@ -4562,8 +4598,16 @@ export function App() {
             <div className="overview-hero-chips">
               {runtimeDataReady ? (
                 <>
-                  <span className="overview-hero-chip">
-                    {t.chartLatest}: {formatDateLabel(dailyGlobalMeanAnomalyMetric.latestDate, language)}
+                  <span
+                    className={`overview-hero-chip status-date tone-${dailyGlobalMeanAnomalyFreshness?.tone ?? "fresh"}`}
+                    title={dailyGlobalMeanAnomalyFreshness?.label}
+                  >
+                    <span className="status-dot" aria-hidden="true" />
+                    {dailyGlobalMeanAnomalyMetric.latestDate ? (
+                      <time dateTime={dailyGlobalMeanAnomalyMetric.latestDate}>
+                        {formatDateLabel(dailyGlobalMeanAnomalyMetric.latestDate, language)}
+                      </time>
+                    ) : null}
                   </span>
                   {heroDelta ? <span className="overview-hero-chip">{heroDelta.label}</span> : null}
                   {heroRecordPoint ? (
@@ -4572,16 +4616,16 @@ export function App() {
                       {t.heroRecordLabel}
                     </span>
                   ) : null}
-                  {dailyGlobalMeanAnomalyFreshness ? (
+                  {dailyGlobalMeanAnomalyFreshness && dailyGlobalMeanAnomalyFreshness.tone !== "fresh" ? (
                     <span className={`freshness-chip ${dailyGlobalMeanAnomalyFreshness.tone}`}>
-                      {dailyGlobalMeanAnomalyFreshness.label}
+                      {dailyGlobalMeanAnomalyFreshness.tone === "stale" ? t.freshnessStale : t.freshnessLagging}
                     </span>
                   ) : null}
                 </>
               ) : null}
             </div>
           </div>
-          <div className="overview-hero-spark" aria-hidden="true">
+          <div className="overview-hero-spark">
             <Sparkline
               points={dailyGlobalMeanAnomalyMetric.points}
               className="hero-sparkline"
@@ -4799,11 +4843,20 @@ export function App() {
                   <>
                     <p className="planet-now-caption">
                       <strong>{overviewMapCard.caption}</strong>
-                      <span>
-                        {language === "hu" ? "napi átlag" : "1-day mean"} · {overviewMapCard.product}
+                      <span className="planet-now-meta">
+                        {overviewMapCard.dateIso ? (
+                          <span className={`status-date tone-${overviewMapCard.freshness?.tone ?? "fresh"}`} title={overviewMapCard.freshness?.label}>
+                            <span className="status-dot" aria-hidden="true" />
+                            <time dateTime={overviewMapCard.dateIso}>{formatDateLabel(overviewMapCard.dateIso, language)}</time>
+                          </span>
+                        ) : null}
+                        <span>{language === "hu" ? "napi átlag" : "1-day mean"}</span>
+                        <span>{overviewMapCard.product}</span>
                       </span>
-                      {overviewMapCard.freshness ? (
-                        <span className={`freshness-chip ${overviewMapCard.freshness.tone}`}>{overviewMapCard.freshness.label}</span>
+                      {overviewMapCard.freshness && overviewMapCard.freshness.tone !== "fresh" ? (
+                        <span className={`freshness-chip ${overviewMapCard.freshness.tone}`}>
+                          {overviewMapCard.freshness.tone === "stale" ? t.freshnessStale : t.freshnessLagging}
+                        </span>
                       ) : null}
                     </p>
                     <ClimateMapImage
@@ -4828,7 +4881,7 @@ export function App() {
                   </div>
                   <span className="planet-now-credit">Climate Reanalyzer · University of Maine</span>
                   <button type="button" className="text-link-button" onClick={() => setDashboardView("maps")}>
-                    {language === "hu" ? "Minden térkép" : "All maps"} →
+                    {language === "hu" ? "Összes térkép" : "All maps"} →
                   </button>
                 </div>
               </section>
@@ -4884,7 +4937,7 @@ export function App() {
                   ))}
                 </div>
               </section>
-              <div className="overview-enso-with-link is-linked-card">{renderEnsoOutlookCard()}<button type="button" className="text-link-button card-stretched-link" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Szezonális kilátások" : "Explore seasonal outlook"} <span className="card-link-arrow" aria-hidden="true">→</span></button></div>
+              <div className="overview-enso-with-link is-linked-card">{renderEnsoOutlookCard()}<button type="button" className="text-link-button card-stretched-link" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Évszakos előrejelzés" : "Explore seasonal outlook"} <span className="card-link-arrow" aria-hidden="true">→</span></button></div>
               <article className="overview-card overview-projection-card outlook-featured is-linked-card">
                 <div className="outlook-card-grid">
                     <div className="outlook-card-copy">
@@ -5053,12 +5106,12 @@ export function App() {
       <section className={`collapsible-section detail-page-section detail-page-indicators indicator-topic-${indicatorTopic}`} id="indicators">
         <div className="indicator-page-intro">
           <div className="indicator-topic-copy">
-            <span className="indicator-topic-eyebrow">{language === "hu" ? "A klímarendszer állapota" : "State of the climate system"}</span>
+            <span className="indicator-topic-eyebrow">{language === "hu" ? "Az éghajlati rendszer állapota" : "State of the climate system"}</span>
             <h2>{language === "hu" ? activeIndicatorTopic.hu : activeIndicatorTopic.en}</h2>
             <p>{language === "hu" ? activeIndicatorTopic.descriptionHu : activeIndicatorTopic.descriptionEn}</p>
           </div>
         </div>
-        <div className="topic-navigation indicator-topic-navigation segmented-control" role="group" aria-label={language === "hu" ? "Indikátorcsoport" : "Indicator category"}>
+        <div className="topic-navigation indicator-topic-navigation segmented-control" role="group" aria-label={language === "hu" ? "Mutatócsoport" : "Indicator category"}>
           {indicatorTopics.map((topic) => <button type="button" key={topic.key} aria-pressed={indicatorTopic === topic.key} onClick={() => {setIndicatorTopic(topic.key); setClimateSectionOpen(true);}}>{language === "hu" ? topic.hu : topic.en}</button>)}
         </div>
         <header className="section-header">
@@ -5268,7 +5321,7 @@ export function App() {
                       </div>
                     </article>
                     <article className="alert-card summary">
-                      <span className="alert-kicker">{language === "hu" ? "Viszonyítás" : "Reference"}</span>
+                      <span className="alert-kicker">{language === "hu" ? "Összehasonlítás" : "Reference"}</span>
                       <h2>{language === "hu" ? "2001–2010-es átlag" : "2001–2010 average"}</h2>
                       <p className="alert-emphasis">
                         {renderPrimaryValue(
@@ -5279,7 +5332,7 @@ export function App() {
                       {runtimeDataReady && earthEnergyImbalanceLatestMean != null && earthEnergyImbalanceBaselineMean ? (
                         <p>
                           {language === "hu"
-                            ? `A jelenlegi érték ennek ${formatNumericValue(earthEnergyImbalanceLatestMean / earthEnergyImbalanceBaselineMean, 1, language, "-")}-szerese.`
+                            ? `Ez a mostani érték mintegy ${Math.round((earthEnergyImbalanceBaselineMean / earthEnergyImbalanceLatestMean) * 100)}%-a.`
                             : `Today's imbalance is ${formatNumericValue(earthEnergyImbalanceLatestMean / earthEnergyImbalanceBaselineMean, 1, language, "-")}× this level.`}
                         </p>
                       ) : null}
@@ -5416,19 +5469,19 @@ export function App() {
         {renderPageIntro(
           language === "hu" ? "Térképek" : "Maps",
           mapTopic === "surface"
-            ? language === "hu" ? "Felszíni hőmérséklet" : "Surface temperature"
-            : language === "hu" ? "Tengerfelszín-hőmérséklet" : "Sea surface temperature",
+            ? language === "hu" ? "Felszínközeli hőmérséklet" : "Surface temperature"
+            : language === "hu" ? "Tengerfelszíni hőmérséklet" : "Sea surface temperature",
           mapTopic === "surface"
             ? language === "hu"
-              ? "A GFS modell napi átlagos 2 méteres léghőmérséklete a Climate Reanalyzertől. Az abszolút térkép az időjárást, az anomáliatérkép azt mutatja, mennyire szokatlan az 1979–2000-es alaphoz képest."
+              ? "A GFS-modell 2 méteres magasságra számított napi középhőmérséklete a Climate Reanalyzer oldaláról. Az abszolút térkép az időjárást mutatja, az anomáliatérkép pedig azt, mennyire tér el ez az 1979–2000-es átlagtól."
               : "Daily mean 2-metre air temperature from the GFS model via Climate Reanalyzer. The absolute map shows the weather; the anomaly map shows how unusual it is against a 1979–2000 baseline."
             : language === "hu"
-              ? "A napi tengerfelszín-hőmérséklet és anomáliája a Climate Reanalyzertől. Az óceánok tárolják a többlethő nagy részét, ezért lassan, de tartósan reagálnak."
+              ? "A tengerfelszín napi hőmérséklete és annak anomáliája a Climate Reanalyzer oldaláról. A többlethő nagy részét az óceánok nyelik el, ezért lassan, de tartósan reagálnak."
               : "Daily sea surface temperature and its anomaly via Climate Reanalyzer. The oceans store most of the extra heat, so they respond slowly but persistently."
         )}
         <div className="topic-navigation indicator-topic-navigation segmented-control" role="group" aria-label={t.mapsSectionTitle}>
           <button type="button" aria-pressed={mapTopic === "surface"} onClick={() => setMapTopic("surface")}>
-            {language === "hu" ? "Felszíni hőmérséklet" : "Surface temperature"}
+            {language === "hu" ? "Felszínközeli hőmérséklet" : "Surface temperature"}
           </button>
           <button type="button" aria-pressed={mapTopic === "ocean"} onClick={() => setMapTopic("ocean")}>
             {language === "hu" ? "Óceánok" : "Oceans"}
@@ -5469,13 +5522,13 @@ export function App() {
           language === "hu" ? "Éghajlati kényszerek" : "Climate forcing",
           language === "hu" ? "Mi hajtja a melegedést" : "What drives the warming",
           language === "hu"
-            ? "A légköri üvegházgázok felhalmozódása csapdába ejti a hőt, míg a Nap sugárzása alig változik. Ezek az adatsorok mutatják a klímarendszert érő külső hatásokat."
+            ? "A légkörben felhalmozódó üvegházhatású gázok egyre több hőt tartanak vissza, miközben a Nap sugárzása alig változik. Ezek az adatsorok az éghajlati rendszert érő külső hatásokat mutatják."
             : "Greenhouse gases building up in the atmosphere trap more heat, while the Sun's output barely changes. These records track the external pushes on the climate system."
         )}
         {renderPageSubsection(
-          language === "hu" ? "Üvegházgázok" : "Greenhouse gases",
+          language === "hu" ? "Üvegházhatású gázok" : "Greenhouse gases",
           language === "hu"
-            ? "A három legfontosabb, hosszú élettartamú üvegházgáz légköri koncentrációja a NOAA globális megfigyelőhálózatából."
+            ? "A három legfontosabb, hosszú légköri élettartamú üvegházhatású gáz koncentrációja a NOAA globális mérőhálózatának adatai alapján."
             : "Atmospheric concentrations of the three most important long-lived greenhouse gases from NOAA's global monitoring network.",
           <>
             <div className="summary-cards-section">
@@ -5488,7 +5541,7 @@ export function App() {
           ? renderPageSubsection(
               language === "hu" ? "Összesített hatás és a Nap" : "Combined effect and the Sun",
               language === "hu"
-                ? "Az éves üvegházgáz-index az összes gáz melegítő hatását az 1990-es szinthez méri; a beérkező napenergia természetes változékonysága ehhez képest kicsi."
+                ? "Az éves üvegházhatásúgáz-index az összes gáz együttes melegítő hatását az 1990-es szinthez viszonyítja; a beérkező napsugárzás természetes ingadozása ehhez képest csekély."
                 : "The annual greenhouse gas index measures the combined heating effect of all gases against 1990; natural swings in incoming solar energy are small by comparison.",
               <>
                 <div className="summary-cards-section">
@@ -5507,13 +5560,13 @@ export function App() {
             language === "hu" ? "Természetes változékonyság" : "Natural variability",
             t.naturalVariabilityTitle,
             language === "hu"
-              ? "Óceán–légkör oszcillációk, amelyek évről évre a hosszú távú melegedési trend fölé vagy alá tolják a globális hőmérsékletet és a regionális időjárást."
+              ? "Az óceán és a légkör ingadozásai, amelyek évről évre a hosszú távú trend fölé vagy alá tolják a globális hőmérsékletet, és a regionális időjárást is alakítják."
               : "Ocean–atmosphere oscillations that push global temperature and regional weather above or below the long-term warming trend from one year to the next."
           )}
           {renderPageSubsection(
             language === "hu" ? "El Niño–déli oszcilláció" : "El Niño–Southern Oscillation",
             language === "hu"
-              ? "Az ENSO az éves globális hőmérséklet-ingadozás legnagyobb forrása. A napi Niño 3.4 tengerfelszín-hőmérséklet a legfrissebb óceáni állapotot mutatja, az ONI ennek háromhavi anomáliáját, az SOI a légköri állapotot követi; az IRI előrejelzés a következő évszakok valószínűségeit adja."
+              ? "Az ENSO az évről évre jelentkező globális hőmérséklet-ingadozás legfőbb forrása. A napi Niño 3.4 tengerfelszíni hőmérséklet a legfrissebb óceáni állapotot mutatja, az ONI ennek háromhavi anomáliáját, az SOI pedig a légkör válaszát; az IRI előrejelzése a következő évszakok valószínűségeit adja meg."
               : "ENSO is the largest source of year-to-year swings in global temperature. Daily Niño 3.4 sea surface temperature shows the latest ocean state, ONI its three-month anomaly and SOI the atmospheric response; the IRI outlook gives probabilities for the coming seasons.",
             <>
               <div className="summary-cards-section">
@@ -5524,7 +5577,7 @@ export function App() {
                       className={`alert-card summary variability-index-card phase-tone-${ensoConditionTone(row.window.condition)}`}
                       key={`${row.key}-enso-outlook-summary`}
                     >
-                      <span className="alert-kicker">{language === "hu" ? "IRI előrejelzés" : "IRI outlook"}</span>
+                      <span className="alert-kicker">{language === "hu" ? "IRI-előrejelzés" : "IRI outlook"}</span>
                       <h2>{row.horizon}</h2>
                       <p className="alert-emphasis">
                         {runtimeDataReady ? `${row.window.probability ?? "-"}%` : renderLoadingValue("value-loading-skeleton detail-value-loading")}
@@ -5562,9 +5615,9 @@ export function App() {
             </>
           )}
           {renderPageSubsection(
-            language === "hu" ? "Légköri cirkulációs módusok" : "Atmospheric circulation modes",
+            language === "hu" ? "Légköri cirkulációs mintázatok" : "Atmospheric circulation modes",
             language === "hu"
-              ? "Az északi félteke időjárását alakító nyomásmintázatok. Pozitív és negatív fázisaik a jet stream helyzetét, a téli hideget és a csapadékpályákat befolyásolják."
+              ? "Az északi félteke időjárását alakító légnyomási mintázatok. Pozitív és negatív fázisuk a futóáramlás helyzetét, a téli hidegbetöréseket és a ciklonok útvonalát befolyásolja."
               : "Pressure patterns that steer Northern Hemisphere weather. Their positive and negative phases shift the jet stream, winter cold outbreaks and storm tracks.",
             <>
               <div className="summary-cards-section">
@@ -5586,14 +5639,14 @@ export function App() {
             t.projectionExperimentalLabel,
             t.projectionsTitle,
             language === "hu"
-              ? "Merre tart az idei év, merre haladhat az évszázad, és mely földrendszer-küszöbök esnek útba."
+              ? "Merre tart az idei év, merre haladhat az évszázad, és milyen földrendszer-küszöbök kerülhetnek útba."
               : "Where this year is heading, where the century could go, and which Earth-system thresholds lie along the way."
           )}
 
           {renderPageSubsection(
             warmingEstimateHeading,
             language === "hu"
-              ? "Az aktuális ENSO-előrejelzéssel súlyozott analóg évek alapján becsült éves globális átlaghőmérséklet. Kísérleti becslés, nem hivatalos előrejelzés."
+              ? "Az idei év globális átlaghőmérséklete hasonló (analóg) évek alapján, az aktuális ENSO-előrejelzés szerint súlyozva. Kísérleti becslés, nem hivatalos előrejelzés."
               : "Annual global mean temperature estimated from analog years weighted by the current ENSO forecast. An experimental estimate, not an official forecast.",
             <>
               <div className="summary-cards-section">
@@ -5751,7 +5804,7 @@ export function App() {
                   </article>
                   <article className="alert-card summary">
                     <span className="alert-kicker">{t.tippingStatePossible}</span>
-                    <h2>{language === "hu" ? "Küszöbök a becsült tartományon belül" : "Thresholds within their assessed range"}</h2>
+                    <h2>{language === "hu" ? "Küszöbök, amelyek tartományát már elértük" : "Thresholds within their assessed range"}</h2>
                     <p className="alert-emphasis">
                       {renderPrimaryValue(
                         `${tippingPointCards.filter((card) => card.stateKey !== "below").length} / ${tippingPointCards.length}`,
@@ -5760,7 +5813,7 @@ export function App() {
                     </p>
                     <p>
                       {language === "hu"
-                        ? "Az aktuális melegedés elérte a becsült tartomány alsó határát."
+                        ? "A jelenlegi melegedés már elérte a becsült tartomány alsó határát."
                         : "Current warming has reached the lower bound of the assessed range."}
                     </p>
                   </article>
@@ -5772,7 +5825,7 @@ export function App() {
                     </p>
                     <p>
                       {language === "hu"
-                        ? "Ennyi rendszer billenhet át a Párizsi Megállapodás felső határán belül."
+                        ? "Ennyi rendszer billenhet át már a Párizsi Megállapodás felső határa alatt is."
                         : "Systems that could tip within the Paris Agreement's upper limit."}
                     </p>
                   </article>
@@ -5784,7 +5837,7 @@ export function App() {
                     <h2>{language === "hu" ? "Billenési küszöbök közös skálán" : "Tipping thresholds on a shared scale"}</h2>
                     <p>
                       {language === "hu"
-                        ? "Sáv: becsült tartomány · pont: központi küszöb · függőleges vonal: aktuális melegedés"
+                        ? "Sáv: becsült tartomány · pont: központi küszöb · függőleges vonal: jelenlegi melegedés"
                         : "Band: assessed range · dot: central threshold · vertical line: current warming"}
                     </p>
                   </div>
@@ -5860,7 +5913,7 @@ export function App() {
           language === "hu" ? "Adatok és módszertan" : "Data & methods",
           language === "hu" ? "Adatforrások" : "Data sources",
           language === "hu"
-            ? "A dashboard minden idősora nyilvános elsődleges forrásból származik, amelyet egy automatizált folyamat naponta frissít. A frissességi címke azt mutatja, mennyire aktuális az egyes források legutóbbi értéke a várt ütemhez képest."
+            ? "Az irányítópult minden idősora nyilvános elsődleges forrásból származik, és egy automatikus folyamat naponta frissíti. A frissességi jelzés azt mutatja, mennyire naprakész az egyes források legutóbbi értéke a várható frissítési ütemhez képest."
             : "Every series on the dashboard comes from a public upstream feed, refreshed daily by an automated pipeline. Freshness shows how current each feed's latest value is against its expected cadence."
         )}
         <div className="summary-cards-section">

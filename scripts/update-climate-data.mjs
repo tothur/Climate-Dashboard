@@ -1929,7 +1929,7 @@ function buildTemperatureSummaryTextEn(temperatureChecks, anomalySignals = []) {
 }
 
 function anomalySignalPhraseHu(signal) {
-  const recordText = signal.rank === 1 ? "rekordszinten van" : "rekordközeli szinten van";
+  const recordText = signal.rank === 1 ? "ezen a napon rekordszinten áll" : "ezen a napon rekordközeli szinten áll";
   return `${signal.label} ${recordText}`;
 }
 
@@ -1957,29 +1957,31 @@ function formatSummaryBullets(text) {
 function buildTemperatureSummaryTextHu(temperatureChecks, anomalySignals = []) {
   const warningChecks = temperatureChecks.filter((check) => check.tone !== "normal");
   const normalChecks = temperatureChecks.filter((check) => check.tone === "normal");
+  // Subjects carry the definite article; the first one in a sentence is capitalized.
   const names = {
-    global_surface_temperature: "Globális felszíni hőmérséklet",
-    global_sea_surface_temperature: "Globális tengerfelszíni hőmérséklet",
+    global_surface_temperature: "a globális felszíni hőmérséklet",
+    global_sea_surface_temperature: "a globális tengerfelszíni hőmérséklet",
   };
+  const capitalize = (text) => `${text.charAt(0).toLocaleUpperCase("hu")}${text.slice(1)}`;
   const reasons = {
-    critical: "a legfrissebb érték eléri vagy meghaladja az azonos dátumú történeti rekordot",
-    watch: "a legfrissebb érték közel van az azonos dátumú történeti rekordhoz",
+    critical: "legfrissebb értéke eléri vagy meghaladja az erre a napra mért eddigi rekordot",
+    watch: "legfrissebb értéke megközelíti az erre a napra mért eddigi rekordot",
   };
   const normalText = normalChecks.length
-    ? `${normalChecks.map((check) => names[check.key]).join(" és ")} nem szokatlanul magas az azonos dátumú történeti rekordhoz képest.`
-    : "A további hőmérsékleti ellenőrzések lent láthatók.";
+    ? `${capitalize(normalChecks.map((check) => names[check.key]).join(" és "))} nem szokatlanul magas az erre a napra mért eddigi rekordhoz képest.`
+    : "A további hőmérsékleti adatok lent láthatók.";
   const selectedAnomalies = anomalySignals.filter(isDailyRecordLeadSignal).slice(0, 2);
   const anomalyText = selectedAnomalies.length
     ? `További fontos jelzés: ${selectedAnomalies.map(anomalySignalPhraseHu).join("; ")}.`
     : warningChecks.length
-      ? "Jelenleg nincs a fenti hőmérsékleti státusznál fontosabb tengeri jég- vagy regionális hőmérsékleti rekordjelzés."
-      : "A lenti fő indikátorok a legfrissebb elérhető adatokat mutatják.";
+      ? "Jelenleg nincs ennél figyelemreméltóbb tengerijég- vagy regionális hőmérsékleti rekord."
+      : "Az alábbi fő mutatók a legfrissebb elérhető értékeket jelenítik meg.";
 
   return warningChecks.length
-    ? `${warningChecks.map((check) => `${names[check.key]} ${reasons[check.tone]}`).join("; ")}. ${
+    ? `${capitalize(warningChecks.map((check) => `${names[check.key]} ${reasons[check.tone]}`).join("; "))}. ${
         anomalySignals.length ? anomalyText : normalText
       }`
-    : `A globális felszíni hőmérséklet és a globális tengerfelszíni hőmérséklet nem szokatlanul magas az azonos dátumú történeti rekordokhoz képest. ${anomalyText}`;
+    : `Sem a globális felszíni, sem a tengerfelszíni hőmérséklet nem szokatlanul magas az erre a napra mért eddigi rekordokhoz képest. ${anomalyText}`;
 }
 
 function buildLocalAiSummary({ fingerprint, generatedAtIso, temperatureChecks, anomalySignals }) {

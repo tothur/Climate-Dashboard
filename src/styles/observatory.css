@@ -1783,3 +1783,12 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 
 .observatory .panel-header h2 { font-size: 18px; font-weight: 650; letter-spacing: -.025em; line-height: 1.25; }
 .observatory .detail-page-section .alert-card.summary h2:not(.forcing-gas-title) { font-weight: 650; }
+
+/* Planet Now caption: date folded into the meta line; a status tag only when the map is behind. */
+.observatory .planet-now-meta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 0; }
+.observatory .planet-now-meta > span + span::before { margin: 0 6px; color: color-mix(in srgb, var(--muted) 60%, transparent); content: "·"; }
+/* A date with a small freshness dot: green current, amber lagging, red stale (full label in the tooltip). */
+.observatory .status-date { display: inline-flex; align-items: center; gap: 6px; color: var(--text); font-weight: 500; }
+.observatory .status-dot { flex-shrink: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.observatory .status-date.tone-warning .status-dot { background: var(--domain-forcing); }
+.observatory .status-date.tone-stale .status-dot { background: var(--domain-temperature); }
