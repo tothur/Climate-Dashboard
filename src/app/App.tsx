@@ -603,7 +603,6 @@ const STRINGS = {
       "Historical annual means with the projected current-year value and confidence interval.",
     longRangeTemperatureTrendTitle: "Temperature Trend to 2100",
     longRangeTemperatureHorizonTitle: "Warming Pathways to 2100",
-    longRangeTemperatureExploreLabel: "Explore scenarios",
     longRangeTemperatureTrendSubtitle:
       "Measured annual warming to present, then indicative CMIP7 ScenarioMIP FaIR median pathways.",
     longRangeTemperatureTrendSource:
@@ -825,7 +824,6 @@ const STRINGS = {
       "A korábbi évek átlagai, valamint az idei év becsült értéke és bizonytalansági tartománya.",
     longRangeTemperatureTrendTitle: "Hőmérsékleti trend 2100-ig",
     longRangeTemperatureHorizonTitle: "Melegedési pályák 2100-ig",
-    longRangeTemperatureExploreLabel: "Forgatókönyvek részletesen",
     longRangeTemperatureTrendSubtitle:
       "A mért éves melegedés napjainkig, utána a CMIP7 ScenarioMIP FaIR-modell tájékoztató mediánpályái.",
     longRangeTemperatureTrendSource:
@@ -3646,7 +3644,17 @@ export function App() {
       dark: resolvedTheme === "dark",
     });
   }, [annualGlobalMeanAnomalyPoints, compact, dailyGlobalMeanAnomalyMetric, language, resolvedTheme]);
-  const [hiddenScenarioKeys, setHiddenScenarioKeys] = useState<ReadonlySet<string>>(() => new Set());
+  // Selected pathways; an empty selection shows every pathway.
+  const [selectedScenarioKeys, setSelectedScenarioKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const hiddenScenarioKeys = useMemo<ReadonlySet<string>>(
+    () =>
+      new Set(
+        selectedScenarioKeys.size
+          ? CMIP7_SCENARIOMIP_SCENARIOS.map((scenario) => scenario.key).filter((key) => !selectedScenarioKeys.has(key))
+          : []
+      ),
+    [selectedScenarioKeys]
+  );
   const overviewLongRangeOption = useMemo(() => {
     if (!dailyGlobalMeanAnomalyMetric || !annualGlobalMeanAnomalyPoints.length) return null;
     return buildLongRangeTemperatureTrendOption({
@@ -3658,8 +3666,9 @@ export function App() {
       hiddenScenarioKeys,
     });
   }, [annualGlobalMeanAnomalyPoints, compact, dailyGlobalMeanAnomalyMetric, hiddenScenarioKeys, language, resolvedTheme]);
+  // First click focuses on one pathway, further clicks add or remove pathways, and clearing the last one shows all again.
   const toggleScenario = (key: string) =>
-    setHiddenScenarioKeys((current) => {
+    setSelectedScenarioKeys((current) => {
       const next = new Set(current);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -5046,19 +5055,25 @@ export function App() {
 
             {longRangeTemperatureTrendOption ? (
               <section className="overview-long-range-section">
-                <article className="overview-card overview-temperature-trend-card">
+                <article
+                  className="overview-card overview-temperature-trend-card is-linked-card is-clickable-card"
+                  onClick={(event) => {
+                    const target = event.target as HTMLElement;
+                    // Controls keep their own behaviour; on touch screens a tap on the chart reads its tooltip instead.
+                    if (target.closest("button, a, .scenario-toggle-row")) return;
+                    if (target.closest(".long-range-temperature-chart") && window.matchMedia("(hover: none)").matches) return;
+                    setDashboardView("projections");
+                  }}
+                >
                   <div className="overview-card-header">
                     <div>
-                      <h2>{t.longRangeTemperatureHorizonTitle}</h2>
+                      <h2>
+                        <button type="button" className="card-title-link" onClick={() => setDashboardView("projections")}>
+                          {t.longRangeTemperatureHorizonTitle}
+                        </button>
+                      </h2>
                       <p>{t.longRangeTemperatureTrendSubtitle}</p>
                     </div>
-                    <button
-                      type="button"
-                      className="text-link-button"
-                      onClick={() => setDashboardView("projections")}
-                    >
-                      {t.longRangeTemperatureExploreLabel} →
-                    </button>
                   </div>
                   <div className="scenario-toggle-row" role="group" aria-label={language === "hu" ? "Forgatókönyvek megjelenítése" : "Show scenarios"}>
                     <span className="scenario-key-measured">
@@ -5067,13 +5082,20 @@ export function App() {
                     </span>
                     {longRangeScenarioSummaries.map((scenario) => {
                       const visible = !hiddenScenarioKeys.has(scenario.key);
+                      const selected = selectedScenarioKeys.has(scenario.key);
                       return (
                         <button
                           type="button"
-                          className="scenario-toggle"
+                          className={`scenario-toggle${selected ? " is-selected" : ""}`}
                           key={scenario.key}
                           aria-pressed={visible}
-                          title={visible ? (language === "hu" ? "Elrejtés" : "Hide") : language === "hu" ? "Megjelenítés" : "Show"}
+                          title={
+                            selected
+                              ? language === "hu" ? "Eltávolítás a kiválasztásból" : "Remove from selection"
+                              : selectedScenarioKeys.size
+                                ? language === "hu" ? "Hozzáadás a kiválasztáshoz" : "Add to selection"
+                                : language === "hu" ? "Csak ez a pálya" : "Show only this pathway"
+                          }
                           style={{ "--scenario-color": scenario.color } as CSSProperties}
                           onClick={() => toggleScenario(scenario.key)}
                         >
@@ -5086,6 +5108,17 @@ export function App() {
                         </button>
                       );
                     })}
+                    <button
+                      type="button"
+                      className="scenario-toggle scenario-toggle-all"
+                      aria-pressed={selectedScenarioKeys.size === 0}
+                      onClick={() => setSelectedScenarioKeys(new Set())}
+                    >
+                      <span className="scenario-toggle-label">{language === "hu" ? "Összes" : "All"}</span>
+                    </button>
+                    <span className="scenario-hint">
+                      {language === "hu" ? "Válassz pályát a szűréshez" : "Select pathways to compare"}
+                    </span>
                   </div>
                   <div className="long-range-temperature-chart">
                     <EChartsPanel

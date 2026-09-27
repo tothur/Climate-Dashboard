@@ -1792,3 +1792,43 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .status-dot { flex-shrink: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 .observatory .status-date.tone-warning .status-dot { background: var(--domain-forcing); }
 .observatory .status-date.tone-stale .status-dot { background: var(--domain-temperature); }
+
+/* Pathway filter helpers next to the scenario toggles. */
+.observatory .scenario-toggle.scenario-toggle-all {
+  --scenario-color: var(--accent);
+  grid-template-columns: auto;
+  grid-template-rows: auto;
+  align-content: center;
+  padding: 7px 14px;
+}
+.observatory .scenario-toggle-all .scenario-toggle-label { grid-column: 1; color: var(--text); font-size: 12px; }
+.observatory .scenario-toggle.scenario-toggle-all[aria-pressed="false"] { opacity: 1; }
+.observatory .scenario-toggle.scenario-toggle-all[aria-pressed="true"] .scenario-toggle-label { color: var(--accent); }
+.observatory .scenario-hint { align-self: center; margin-left: auto; color: var(--muted); font-size: 11px; }
+@media (max-width: 600px) {
+  .observatory .scenario-hint { grid-column: 1 / -1; justify-self: start; margin-left: 0; }
+  .observatory .scenario-toggle.scenario-toggle-all { grid-column: 1 / -1; justify-items: center; }
+}
+
+/* Cards whose whole surface navigates (click handled on the card, title is the keyboard link). */
+.observatory .overview-page .overview-temperature-trend-card.is-linked-card { --hover-accent: var(--domain-temperature); }
+.observatory .overview-page .is-clickable-card { cursor: pointer; }
+.observatory .overview-page .is-clickable-card .scenario-toggle-row { cursor: default; }
+.observatory .overview-page .card-title-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+}
+.observatory .overview-page .card-title-link:focus-visible { outline: none; }
+.observatory .overview-page .is-linked-card:has(.card-title-link:focus-visible) {
+  outline: 2px solid var(--hover-accent);
+  outline-offset: 3px;
+}
+@media (hover: hover) {
+  .observatory .overview-page .is-clickable-card:hover .card-title-link { color: var(--hover-accent); }
+}
