@@ -479,7 +479,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .overview-regional-signals .regional-signal:nth-child(n+3) { border-top: 1px solid var(--border); }
 .observatory .overview-regional-signals .regional-signal h3 { margin: 0 0 8px; }
 .observatory .overview-regional-signals .regional-signal strong { line-height: 1.1; }
-.observatory .overview-regional-signals .regional-signal .sparkline { width: 100%; height: 46px; min-height: 46px; margin-top: auto; }
+.observatory .overview-regional-signals .regional-signal .regional-sparkline { width: 100%; height: 46px; min-height: 46px; margin-top: auto; }
 
 .observatory .overview-secondary-grid .overview-projection-card.outlook-featured { padding: 24px; }
 .observatory .overview-secondary-grid .overview-enso-with-link .enso-outlook-card {
@@ -519,7 +519,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .overview-hero-title,.observatory .overview-card-header h2 { font-size: 17px; }
   .observatory .overview-secondary-grid .outlook-main-value { font-size: 44px; }
   .observatory .overview-regional-signals .regional-signal-grid { grid-template-columns: 1fr; grid-template-rows: none; min-height: 0; }
-  .observatory .overview-regional-signals .regional-signal .sparkline { min-height: 42px; }
+  .observatory .overview-regional-signals .regional-signal .regional-sparkline { min-height: 42px; }
 }
 
 /* Editorial Overview outlook cards. */
@@ -1563,3 +1563,126 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .panel-header { flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .observatory .panel-header-main { min-width: 0; }
 .observatory .panel-header-actions { flex-shrink: 0; align-self: flex-start; margin-top: -5px; }
+
+/* Scrubbable sparklines: crosshair, dot and readout on hover, touch-drag or arrow keys. */
+.observatory .sparkline-scrub {
+  position: relative;
+  display: block;
+  cursor: crosshair;
+  touch-action: pan-y;
+  border-radius: 4px;
+  outline: none;
+}
+.observatory .sparkline-scrub > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.observatory .sparkline-scrub:focus-visible { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
+.observatory .sparkline-scrub.is-active > svg { opacity: .9; }
+.observatory .sparkline-crosshair {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 0;
+  border-left: 1px dashed color-mix(in srgb, currentColor 55%, transparent);
+  pointer-events: none;
+}
+.observatory .sparkline-dot {
+  position: absolute;
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--panel);
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 1px currentColor;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+.observatory .sparkline-readout {
+  position: absolute;
+  z-index: 2;
+  bottom: calc(100% + 8px);
+  display: grid;
+  gap: 1px;
+  min-width: max-content;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgba(2, 6, 23, .12);
+  font: 11px/1.35 var(--font-sans);
+  pointer-events: none;
+  transform: translateX(-12px);
+}
+.observatory .sparkline-readout.is-left { transform: translateX(calc(-100% + 12px)); }
+.observatory .sparkline-readout strong { color: currentColor; font: 650 14px/1.25 var(--font-display); letter-spacing: -.01em; }
+.observatory .sparkline-readout .sparkline-readout-date,
+.observatory .sparkline-readout .sparkline-readout-previous { color: var(--muted); }
+.observatory .sparkline-readout .sparkline-readout-previous { font-size: 10.5px; }
+[data-theme="dark"] .observatory .sparkline-readout { box-shadow: 0 8px 24px rgba(0, 0, 0, .4); }
+
+/* Linked overview cards: the card's own link covers the card; hover and focus make that visible. */
+.observatory .overview-page .is-linked-card {
+  --hover-accent: var(--accent);
+  position: relative;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+.observatory .overview-page .overview-metric-card.is-linked-card { --hover-accent: var(--card-accent, var(--accent)); }
+.observatory .overview-page .overview-regional-signals.is-linked-card,
+.observatory .overview-page .outlook-featured.is-linked-card { --hover-accent: var(--domain-temperature); }
+.observatory .overview-page .overview-enso-with-link.is-linked-card { --hover-accent: var(--domain-ocean); }
+.observatory .overview-page .card-stretched-link { position: static; }
+.observatory .overview-page .card-stretched-link::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+  content: "";
+}
+.observatory .overview-page .is-linked-card :is(.sparkline-scrub, .info-icon) { z-index: 2; }
+.observatory .overview-page .is-linked-card .info-icon { position: relative; }
+.observatory .overview-page .card-link-arrow { display: inline-block; transition: transform 180ms ease; }
+.observatory .overview-page .card-stretched-link:focus-visible { outline: none; }
+.observatory .overview-page .is-linked-card:has(.card-stretched-link:focus-visible) {
+  outline: 2px solid var(--hover-accent);
+  outline-offset: 3px;
+}
+@media (hover: hover) {
+  .observatory .overview-page .is-linked-card:hover {
+    border-color: color-mix(in srgb, var(--hover-accent) 45%, var(--border));
+    box-shadow: 0 14px 32px -18px color-mix(in srgb, var(--hover-accent) 55%, transparent), 0 2px 6px rgba(2, 6, 23, .04);
+    transform: translateY(-2px);
+  }
+  .observatory .overview-page .is-linked-card:hover .card-stretched-link { color: var(--hover-accent); }
+  .observatory .overview-page .is-linked-card:hover .card-link-arrow { transform: translateX(3px); }
+}
+.observatory .overview-page .is-linked-card:active { transform: translateY(0); }
+
+/* Sparklines draw themselves in once when they first appear. */
+@keyframes sparkline-draw-in {
+  from { clip-path: inset(-10% 100% -10% 0); }
+  to { clip-path: inset(-10% 0 -10% 0); }
+}
+.observatory .overview-page .sparkline-scrub > svg { animation: sparkline-draw-in 900ms cubic-bezier(.2, .7, .2, 1) both; }
+.observatory .overview-page .overview-metric-card:nth-child(2) .sparkline-scrub > svg,
+.observatory .overview-page .regional-signal:nth-child(2) .sparkline-scrub > svg { animation-delay: 70ms; }
+.observatory .overview-page .overview-metric-card:nth-child(3) .sparkline-scrub > svg,
+.observatory .overview-page .regional-signal:nth-child(3) .sparkline-scrub > svg { animation-delay: 140ms; }
+.observatory .overview-page .overview-metric-card:nth-child(4) .sparkline-scrub > svg,
+.observatory .overview-page .regional-signal:nth-child(4) .sparkline-scrub > svg { animation-delay: 210ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .observatory .overview-page .is-linked-card,
+  .observatory .overview-page .card-link-arrow { transition: none; }
+  .observatory .overview-page .is-linked-card:hover { transform: none; }
+  .observatory .overview-page .is-linked-card:hover .card-link-arrow { transform: none; }
+  .observatory .overview-page .sparkline-scrub > svg { animation: none; }
+}
+.observatory .overview-page .is-linked-card .card-stretched-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .3em;
+  width: auto;
+  background: none;
+  box-shadow: none;
+  text-decoration: none;
+}
+.observatory .overview-page .is-linked-card .card-stretched-link:hover { background: none; }

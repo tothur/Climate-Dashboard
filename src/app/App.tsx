@@ -21,7 +21,7 @@ import { buildVariabilityIndexOption } from "../charts/variabilityIndex";
 import { EChartsPanel } from "../components/EChartsPanel";
 import { ClimateMapImage } from "../components/ClimateMapImage";
 import { MapPanel } from "../components/MapPanel";
-import { Sparkline } from "../components/Sparkline";
+import { Sparkline, type SparklineReadout } from "../components/Sparkline";
 
 const STORAGE_LANG_KEY = "climate-dashboard-lang";
 const STORAGE_THEME_KEY = "climate-dashboard-theme";
@@ -4293,6 +4293,13 @@ export function App() {
     );
   const heroDelta = dailyGlobalMeanAnomalyMetric ? formatMetricDelta(dailyGlobalMeanAnomalyMetric) : null;
   const heroRecordPoint = dailyGlobalMeanAnomalyMetric ? latestRecordHighPoint(dailyGlobalMeanAnomalyMetric) : null;
+  const sparklineReadout = (metric: ClimateMetricSeries, label = metricTitle(metric, language)): SparklineReadout => ({
+    label: `${label}. ${language === "hu" ? "Nyilakkal léptethető" : "Use arrow keys to explore"}`,
+    formatValue: (value) =>
+      `${value > 0 && metric.key.includes("anomaly") ? "+" : ""}${formatNumericValue(value, metric.decimals, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
+    formatDate: (dateIso) => formatDateLabel(dateIso, language),
+    previousYearLabel: language === "hu" ? "Egy éve" : "A year earlier",
+  });
   const overviewMetricCards = [
     (() => {
       const metric = metricByKey.get("global_surface_temperature_anomaly");
@@ -4308,6 +4315,7 @@ export function App() {
         icon: "temperature" as ToolkitIconName,
         tone: "temperature",
         points: metric.points,
+        metric,
       };
     })(),
     (() => {
@@ -4324,6 +4332,7 @@ export function App() {
         icon: "ocean" as ToolkitIconName,
         tone: "info",
         points: metric.points,
+        metric,
       };
     })(),
     (() => {
@@ -4340,6 +4349,7 @@ export function App() {
         icon: "snow" as ToolkitIconName,
         tone: "purple",
         points: metric.points,
+        metric,
       };
     })(),
     (() => {
@@ -4356,6 +4366,7 @@ export function App() {
         icon: "leaf" as ToolkitIconName,
         tone: "success",
         points: metric.points,
+        metric,
       };
     })(),
   ].filter((card): card is NonNullable<typeof card> => card != null);
@@ -4376,6 +4387,7 @@ export function App() {
     value: `${formatMetricValue(metric, language, t.valueUnavailable)} ${cardUnitLabel(metric.key, metric.unit, language)}`,
     tone: (metric.latestValue ?? 0) < 0 ? "cool" : "warm",
     points: metric.points,
+    metric,
   }));
   const ensoOverviewRows = [
     ensoOutlook?.nextThreeMonths
@@ -4555,7 +4567,12 @@ export function App() {
             </div>
           </div>
           <div className="overview-hero-spark" aria-hidden="true">
-            <Sparkline points={dailyGlobalMeanAnomalyMetric.points} className="hero-sparkline" strokeWidth={2.2} />
+            <Sparkline
+              points={dailyGlobalMeanAnomalyMetric.points}
+              className="hero-sparkline"
+              strokeWidth={2.2}
+              readout={sparklineReadout(dailyGlobalMeanAnomalyMetric, t.overviewDailyGlobalTemperatureAnomalyTitle)}
+            />
             <span>{t.heroSparklineLabel}</span>
           </div>
         </div>
@@ -4805,7 +4822,7 @@ export function App() {
 
             <section className="overview-metric-grid" aria-label={t.latestSignalsAria}>
               {overviewMetricCards.map((card) => (
-                <article className={`overview-metric-card tone-${card.tone}`} key={card.key}>
+                <article className={`overview-metric-card is-linked-card tone-${card.tone}`} key={card.key}>
                   <span className="metric-icon" aria-hidden="true">
                     <ToolkitIcon name={card.icon} />
                   </span>
@@ -4814,7 +4831,7 @@ export function App() {
                     <p className="metric-subtitle">{card.subtitle}</p>
                     <strong>{renderPrimaryValue(card.value, "value-loading-skeleton overview-value-loading")}</strong>
                     {runtimeDataReady && card.points ? (
-                      <Sparkline className="metric-sparkline" points={card.points} />
+                      <Sparkline className="metric-sparkline" points={card.points} readout={sparklineReadout(card.metric, card.title)} />
                     ) : null}
                     {runtimeDataReady ? (
                       <p className="metric-meta">{card.meta}</p>
@@ -4822,24 +4839,24 @@ export function App() {
                       <p className="metric-meta">{renderLoadingValue("value-loading-skeleton metric-meta-loading")}</p>
                     )}
                     {runtimeDataReady && card.delta ? <span className="metric-delta">{card.delta}</span> : null}
-                    <button type="button" className="text-link-button metric-explore" onClick={() => {
+                    <button type="button" className="text-link-button metric-explore card-stretched-link" onClick={() => {
                       setIndicatorTopic(card.key === "overview-sea-ice" ? "ice" : "temperature");
                       setDashboardView(card.key === "overview-co2" ? "forcing" : "indicators");
-                    }}>{language === "hu" ? "Részletes adatok" : "Explore indicator"} →</button>
+                    }}>{language === "hu" ? "Részletes adatok" : "Explore indicator"} <span className="card-link-arrow" aria-hidden="true">→</span></button>
                   </div>
                 </article>
               ))}
             </section>
 
             <section className="overview-main-grid overview-secondary-grid">
-              <section className="overview-card overview-regional-signals" aria-label={t.regionalTemperatureAnomaliesSectionTitle}>
+              <section className="overview-card overview-regional-signals is-linked-card" aria-label={t.regionalTemperatureAnomaliesSectionTitle}>
                 <div className="overview-card-header">
                   <div>
                     <h2>{t.regionalTemperatureAnomaliesSectionTitle}</h2>
                     <p>{t.regionalTemperatureAnomaliesSectionNote}</p>
                   </div>
-                  <button type="button" className="text-link-button overview-card-link" onClick={() => { setIndicatorTopic("regions"); setDashboardView("indicators"); }}>
-                    {language === "hu" ? "Összes régió" : "All regions"} →
+                  <button type="button" className="text-link-button overview-card-link card-stretched-link" onClick={() => { setIndicatorTopic("regions"); setDashboardView("indicators"); }}>
+                    {language === "hu" ? "Összes régió" : "All regions"} <span className="card-link-arrow" aria-hidden="true">→</span>
                   </button>
                 </div>
                 <div className="regional-signal-grid">
@@ -4847,13 +4864,13 @@ export function App() {
                     <article className="regional-signal" key={signal.key}>
                       <h3>{signal.title}</h3>
                       <strong>{renderPrimaryValue(signal.value, "value-loading-skeleton overview-value-loading")}</strong>
-                      {runtimeDataReady ? <Sparkline className={`regional-sparkline ${signal.tone}`} points={signal.points} /> : null}
+                      {runtimeDataReady ? <Sparkline className={`regional-sparkline ${signal.tone}`} points={signal.points} readout={sparklineReadout(signal.metric)} /> : null}
                     </article>
                   ))}
                 </div>
               </section>
-              <div className="overview-enso-with-link">{renderEnsoOutlookCard()}<button type="button" className="text-link-button" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Szezonális kilátások" : "Explore seasonal outlook"} →</button></div>
-              <article className="overview-card overview-projection-card outlook-featured">
+              <div className="overview-enso-with-link is-linked-card">{renderEnsoOutlookCard()}<button type="button" className="text-link-button card-stretched-link" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Szezonális kilátások" : "Explore seasonal outlook"} <span className="card-link-arrow" aria-hidden="true">→</span></button></div>
+              <article className="overview-card overview-projection-card outlook-featured is-linked-card">
                 <div className="outlook-card-grid">
                     <div className="outlook-card-copy">
                       <div className="outlook-title-row">
@@ -4914,7 +4931,7 @@ export function App() {
                         ) : null}
                       </>
                     ) : null}
-                    <button type="button" className="text-link-button outlook-details-link" onClick={() => setDashboardView("projections")}>{language === "hu" ? "Becslés és módszertan" : "View estimate & assumptions"} →</button>
+                    <button type="button" className="text-link-button outlook-details-link card-stretched-link" onClick={() => setDashboardView("projections")}>{language === "hu" ? "Becslés és módszertan" : "View estimate & assumptions"} <span className="card-link-arrow" aria-hidden="true">→</span></button>
                   </div>
                   {projectedAnnualGlobalMeanAnomaly && outlookMiniChartScale && outlookMiniChartBars.length ? (
                     <div className="outlook-mini-chart" role="img" aria-label={t.outlookChartCaption}>
