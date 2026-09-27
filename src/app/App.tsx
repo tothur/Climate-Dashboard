@@ -773,11 +773,11 @@ const STRINGS = {
     latestLabel: "Legfrissebb",
     latestAnnualLabel: "Legfrissebb éves érték",
     latestSignalsAria: "A legfrissebb éghajlati mutatók",
-    aiSummaryAria: "MI-alapú éghajlati összefoglaló",
-    aiSummaryTitle: "MI-összefoglaló",
-    aiSummaryKicker: "MI-összefoglaló",
-    aiGeneratedAria: "MI által készített",
-    aiSummaryLoading: "A legfrissebb MI-összefoglaló betöltése…",
+    aiSummaryAria: "AI-alapú éghajlati összefoglaló",
+    aiSummaryTitle: "AI-összefoglaló",
+    aiSummaryKicker: "AI-összefoglaló",
+    aiGeneratedAria: "AI által készített",
+    aiSummaryLoading: "A legfrissebb AI-összefoglaló betöltése…",
     aiSummaryRecordHigh: "legfrissebb értéke eléri vagy meghaladja az erre a napra mért eddigi rekordot",
     aiSummaryNearRecordHigh: "legfrissebb értéke megközelíti az erre a napra mért eddigi rekordot",
     aiSummaryAboveMean: "meghaladja az erre a napra számított 1991–2020-as átlagot",
@@ -3264,6 +3264,7 @@ export function App() {
 
   useEffect(() => {
     localStorage.setItem(STORAGE_LANG_KEY, language);
+    document.documentElement.lang = language;
   }, [language]);
 
   useEffect(() => {
