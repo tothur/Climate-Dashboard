@@ -30,7 +30,6 @@ interface BuildClimateTrendOptionArgs {
   referenceLines?: Array<{
     value: number;
     label: string;
-    color: string;
   }>;
   labels?: {
     noData: string;
@@ -516,20 +515,21 @@ export function buildClimateTrendOption({
 
   for (const line of referenceLines ?? []) {
     if (!Number.isFinite(line.value)) continue;
+    // Reference lines are quiet guides, styled the same on every chart.
     markLineData.push({
       yAxis: line.value,
       lineStyle: {
-        color: line.color,
-        width: 1.2,
-        type: "dashed",
+        color: dark ? "rgba(165, 180, 176, 0.45)" : "rgba(25, 39, 34, 0.32)",
+        width: 1,
+        type: [4, 4],
       },
       label: {
         show: true,
         formatter: line.label,
-        position: "start",
-        offset: [36, 0],
-        color: line.color,
-        fontWeight: 700,
+        position: "insideEndTop",
+        color: dark ? "#a5b4b0" : "#59665f",
+        fontSize: 10,
+        fontWeight: 600,
       },
     });
   }

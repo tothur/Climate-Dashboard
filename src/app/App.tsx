@@ -2464,7 +2464,6 @@ function buildAnnualProjectionBarOption({
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
-  const textColor = dark ? "#dbe7f6" : "#33415c";
   const mutedTextColor = dark ? "#91a0b8" : "#66728a";
   const axisColor = dark ? "rgba(203, 214, 232, 0.22)" : "rgba(51, 65, 85, 0.16)";
   const splitLineColor = dark ? "rgba(203, 214, 232, 0.12)" : "rgba(51, 65, 85, 0.09)";
@@ -2556,14 +2555,16 @@ function buildAnnualProjectionBarOption({
         markLine: {
           silent: true,
           symbol: "none",
-          lineStyle: { type: "dashed" as const, width: 1.3 },
+          lineStyle: { type: [4, 4], width: 1, color: dark ? "rgba(165, 180, 176, 0.45)" : "rgba(25, 39, 34, 0.32)" },
           label: {
-            color: textColor,
-            fontSize: compact ? 10 : 11,
+            position: "insideEndTop" as const,
+            color: dark ? "#a5b4b0" : "#59665f",
+            fontSize: 10,
+            fontWeight: 600,
           },
           data: [
-            { yAxis: 1.5, label: { formatter: "1.5°C" }, lineStyle: { color: dark ? "#fbbf24" : "#f59e0b" } },
-            { yAxis: 2, label: { formatter: "2.0°C" }, lineStyle: { color: dark ? "#f87171" : "#dc2626" } },
+            { yAxis: 1.5, label: { formatter: "1.5 °C" } },
+            { yAxis: 2, label: { formatter: "2.0 °C" } },
           ],
         },
       },
@@ -5140,8 +5141,8 @@ export function App() {
                         },
                       ],
                       referenceLines: [
-                        { value: 1.5, label: "1.5°C", color: resolvedTheme === "dark" ? "#fbbf24" : "#f59e0b" },
-                        { value: 2, label: "2.0°C", color: resolvedTheme === "dark" ? "#f87171" : "#dc2626" },
+                        { value: 1.5, label: "1.5 °C" },
+                        { value: 2, label: "2.0 °C" },
                       ],
                       labels: {
                         noData: t.noData,
@@ -5174,8 +5175,8 @@ export function App() {
                       dark: resolvedTheme === "dark",
                       color: topicChartColor(dailyGlobalMeanAnomalyMetric.key, resolvedTheme === "dark"),
                       referenceLines: [
-                        { value: 1.5, label: "1.5°C", color: resolvedTheme === "dark" ? "#fbbf24" : "#f59e0b" },
-                        { value: 2, label: "2.0°C", color: resolvedTheme === "dark" ? "#f87171" : "#dc2626" },
+                        { value: 1.5, label: "1.5 °C" },
+                        { value: 2, label: "2.0 °C" },
                       ],
                       labels: {
                         noData: t.noData,
@@ -5310,7 +5311,7 @@ export function App() {
                       dark: resolvedTheme === "dark",
                       color: topicChartColor(earthEnergyImbalanceMetric.key, resolvedTheme === "dark"),
                       referenceLines: [
-                        { value: 0, label: "0 W/m²", color: resolvedTheme === "dark" ? "#fef3c7" : "#92400e" },
+                        { value: 0, label: "0 W/m²" },
                       ],
                       labels: {
                         noData: t.noData,

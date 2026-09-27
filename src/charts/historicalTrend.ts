@@ -157,7 +157,9 @@ export function buildForcingTrendOption({
   const maxYear = hasData ? monthly[monthly.length - 1].year : new Date().getUTCFullYear();
   const axisMin = Math.max(xAxisStartYear ?? DEFAULT_FORCING_AXIS_MIN_YEAR, Math.floor(minYear / 10) * 10);
   const axisMax = Math.ceil(maxYear / 10) * 10;
-  const labelStep = compact ? 20 : 10;
+  // Pick a year step that gives roughly 3-8 labels for the visible span.
+  const yearSpan = axisMax - axisMin;
+  const labelStep = [2, 5, 10, 20].find((step) => yearSpan / step <= (compact ? 4 : 7)) ?? 20;
   const latestX = hasData ? monthly[monthly.length - 1].x : null;
 
   return {

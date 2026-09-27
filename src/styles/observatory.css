@@ -278,7 +278,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 }
 .observatory :is(.detail-page-indicators,.detail-page-editorial) .panel:hover { border-color: color-mix(in srgb,var(--indicator-accent) 55%,var(--border)); }
 .observatory :is(.detail-page-indicators,.detail-page-editorial) .panel-header { min-height: 94px; }
-.observatory :is(.detail-page-indicators,.detail-page-editorial) .panel-header h2 { font-size: 17px; letter-spacing: -.018em; }
+.observatory :is(.detail-page-indicators,.detail-page-editorial) .panel-header h2 { font-size: 18px; letter-spacing: -.025em; }
 .observatory :is(.detail-page-indicators,.detail-page-editorial) .panel-chart-wrap { padding: 2px 8px 8px; }
 .observatory .detail-page-forcing .forcing-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .observatory .detail-page-forcing { --indicator-accent: var(--domain-forcing); }
@@ -1752,3 +1752,34 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 @media (prefers-reduced-motion: reduce) {
   .observatory .scenario-toggle { transition: none; }
 }
+
+/* Consistency pass: one corner radius, one freshness tag, one micro-label style, one title weight. */
+.observatory .panel:not(.panel-expanded):not(:fullscreen),
+.observatory .detail-page-section :is(.regional-summary-grid, .footer-warnings),
+.observatory .tipping-ladder-panel { border-radius: 12px; }
+.observatory .variability-synopsis { border-radius: 0 12px 12px 0; }
+
+.observatory :is(.freshness-chip, .panel-freshness-chip) {
+  display: inline-block;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.4;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.observatory .detail-page-section .alert-card.summary .alert-kicker {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.observatory .panel-header h2 { font-size: 18px; font-weight: 650; letter-spacing: -.025em; line-height: 1.25; }
+.observatory .detail-page-section .alert-card.summary h2:not(.forcing-gas-title) { font-weight: 650; }
