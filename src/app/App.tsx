@@ -96,8 +96,8 @@ const CMIP7_SCENARIOMIP_SCENARIOS: LongRangeScenarioDefinition[] = [
       [2090, 3.3],
       [2100, 3.5],
     ],
-    colorLight: "#dc1f2f",
-    colorDark: "#fb7185",
+    colorLight: "#b8392d",
+    colorDark: "#f28273",
   },
   {
     key: "medium",
@@ -115,8 +115,8 @@ const CMIP7_SCENARIOMIP_SCENARIOS: LongRangeScenarioDefinition[] = [
       [2090, 2.68],
       [2100, 2.75],
     ],
-    colorLight: "#e96a00",
-    colorDark: "#fbbf24",
+    colorLight: "#d0764a",
+    colorDark: "#f2a77f",
   },
   {
     key: "mediumLow",
@@ -134,8 +134,8 @@ const CMIP7_SCENARIOMIP_SCENARIOS: LongRangeScenarioDefinition[] = [
       [2090, 2.12],
       [2100, 2.1],
     ],
-    colorLight: "#7c3aed",
-    colorDark: "#a78bfa",
+    colorLight: "#a8781f",
+    colorDark: "#e9b75f",
   },
   {
     key: "low",
@@ -153,8 +153,8 @@ const CMIP7_SCENARIOMIP_SCENARIOS: LongRangeScenarioDefinition[] = [
       [2090, 1.78],
       [2100, 1.74],
     ],
-    colorLight: "#008b81",
-    colorDark: "#34d399",
+    colorLight: "#25827d",
+    colorDark: "#89cfc2",
   },
 ];
 
@@ -525,8 +525,9 @@ const STRINGS = {
     viewAllForcing: "View all forcing",
     viewAllMaps: "View all maps",
     recentHighlightsTitle: "Recent Highlights",
-    outlookTitle: "Outlook",
     ensoOutlookTitle: "ENSO Outlook",
+    ensoCardTitle: "El Niño & La Niña",
+    warmingEstimateTitle: "Warming Estimate",
     ensoNextThreeMonths: "Next 3 months",
     ensoNextSixMonths: "Next 6 months",
     ensoStatusLabel: "Status",
@@ -601,8 +602,7 @@ const STRINGS = {
     projectedAnnualTemperatureAnomalyChartSubtitle:
       "Historical annual means with the projected current-year value and confidence interval.",
     longRangeTemperatureTrendTitle: "Temperature Trend to 2100",
-    longRangeTemperatureTrendShortTitle: "2100 Trend",
-    longRangeTemperatureHorizonTitle: "The Climate Horizon to 2100",
+    longRangeTemperatureHorizonTitle: "Warming Pathways to 2100",
     longRangeTemperatureExploreLabel: "Explore scenarios",
     longRangeTemperatureTrendSubtitle:
       "Measured annual warming to present, then indicative CMIP7 ScenarioMIP FaIR median pathways.",
@@ -747,8 +747,9 @@ const STRINGS = {
     viewAllForcing: "Minden kényszer megtekintése",
     viewAllMaps: "Minden térkép megtekintése",
     recentHighlightsTitle: "Legfrissebb kiemelések",
-    outlookTitle: "Kilátások",
     ensoOutlookTitle: "ENSO kilátások",
+    ensoCardTitle: "El Niño és La Niña",
+    warmingEstimateTitle: "évi melegedési becslés",
     ensoNextThreeMonths: "Következő 3 hónap",
     ensoNextSixMonths: "Következő 6 hónap",
     ensoStatusLabel: "Státusz",
@@ -823,8 +824,7 @@ const STRINGS = {
     projectedAnnualTemperatureAnomalyChartSubtitle:
       "Történeti éves átlagok az aktuális év becsült értékével és bizonytalansági tartományával.",
     longRangeTemperatureTrendTitle: "Hőmérsékleti trend 2100-ig",
-    longRangeTemperatureTrendShortTitle: "2100-as trend",
-    longRangeTemperatureHorizonTitle: "Éghajlati horizont 2100-ig",
+    longRangeTemperatureHorizonTitle: "Melegedési pályák 2100-ig",
     longRangeTemperatureExploreLabel: "Forgatókönyvek megnyitása",
     longRangeTemperatureTrendSubtitle:
       "Mért éves melegedés napjainkig, majd indikatív CMIP7 ScenarioMIP FaIR medián pályák.",
@@ -1925,12 +1925,14 @@ function buildLongRangeTemperatureTrendOption({
   unit,
   compact,
   dark,
+  hiddenScenarioKeys,
 }: {
   observedPoints: DailyPoint[];
   language: Language;
   unit: string;
   compact: boolean;
   dark: boolean;
+  hiddenScenarioKeys?: ReadonlySet<string>;
 }): EChartsOption | null {
   const observedByYear = new Map<number, number>();
   for (const point of observedPoints) {
@@ -1949,28 +1951,32 @@ function buildLongRangeTemperatureTrendOption({
     maximumFractionDigits: 2,
     minimumFractionDigits: 1,
   });
+  const endValueFormatter = new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
   const palette = dark
     ? {
-        axis: "rgba(148, 163, 184, 0.45)",
-        label: "#cbd5e1",
-        text: "#f1f5fb",
-        grid: "rgba(148, 163, 184, 0.16)",
-        tooltipBg: "rgba(15, 23, 42, 0.96)",
+        axis: "rgba(165, 180, 176, 0.42)",
+        label: "#a5b4b0",
+        grid: "rgba(165, 180, 176, 0.14)",
+        guide: "rgba(165, 180, 176, 0.42)",
+        guideLabel: "#a5b4b0",
+        latest: "rgba(238, 243, 239, 0.28)",
+        tooltipBg: "rgba(20, 30, 30, 0.96)",
         tooltipBorder: "rgba(148, 163, 184, 0.48)",
-        observed: "#7db0ff",
-        legendBg: "rgba(15, 23, 42, 0.82)",
-        legendBorder: "rgba(148, 163, 184, 0.32)",
+        observed: "#eef3ef",
       }
     : {
-        axis: "rgba(15, 23, 42, 0.20)",
-        label: "#334155",
-        text: "#0f172a",
-        grid: "rgba(15, 23, 42, 0.1)",
+        axis: "rgba(25, 39, 34, 0.22)",
+        label: "#59665f",
+        grid: "rgba(25, 39, 34, 0.08)",
+        guide: "rgba(25, 39, 34, 0.30)",
+        guideLabel: "#59665f",
+        latest: "rgba(25, 39, 34, 0.22)",
         tooltipBg: "rgba(15, 23, 42, 0.94)",
         tooltipBorder: "rgba(30, 41, 59, 0.24)",
-        observed: "#0b69ff",
-        legendBg: "rgba(248, 250, 252, 0.92)",
-        legendBorder: "rgba(148, 163, 184, 0.38)",
+        observed: "#192722",
       };
 
   const observedSeriesName = language === "hu" ? "Mért éves érték" : "Measured annual";
@@ -1981,10 +1987,9 @@ function buildLongRangeTemperatureTrendOption({
     value2100: scenario.anchors.find(([year]) => year === LONG_RANGE_SCENARIO_END_YEAR)?.[1] ?? null,
     color: dark ? scenario.colorDark : scenario.colorLight,
     points: buildScenarioAnnualPoints(scenario),
-  })).sort((left, right) => (left.value2100 ?? Number.POSITIVE_INFINITY) - (right.value2100 ?? Number.POSITIVE_INFINITY));
-  const scenarioValueByLabel = new Map(
-    scenarioPoints.map(({ label, value2100 }) => [label, value2100] as const)
-  );
+  }))
+    .filter(({ scenario }) => !hiddenScenarioKeys?.has(scenario.key))
+    .sort((left, right) => (left.value2100 ?? Number.POSITIVE_INFINITY) - (right.value2100 ?? Number.POSITIVE_INFINITY));
   const tippingThresholdMarkers =
     language === "hu"
       ? [
@@ -2002,7 +2007,7 @@ function buildLongRangeTemperatureTrendOption({
     animation: false,
     aria: { enabled: true },
     grid: {
-      top: compact ? 54 : 74,
+      top: compact ? 18 : 22,
       right: compact ? 28 : 86,
       bottom: compact ? 44 : 42,
       left: compact ? 54 : 66,
@@ -2027,26 +2032,7 @@ function buildLongRangeTemperatureTrendOption({
         return lines.join("<br/>");
       },
     },
-    legend: {
-      show: true,
-      top: 4,
-      left: 8,
-      right: 8,
-      itemWidth: 14,
-      itemHeight: 8,
-      itemGap: compact ? 8 : 12,
-      padding: [6, 10],
-      backgroundColor: palette.legendBg,
-      borderColor: palette.legendBorder,
-      borderWidth: 1,
-      borderRadius: 10,
-      textStyle: { color: palette.text, fontWeight: 650, fontSize: compact ? 10 : 12, lineHeight: 16 },
-      formatter: (name: string) => {
-        const value2100 = scenarioValueByLabel.get(name);
-        if (value2100 == null) return name;
-        return `${name} · 2100: ${formatter.format(value2100)}${unit}`;
-      },
-    },
+    legend: { show: false },
     xAxis: {
       type: "category",
       data: xLabels,
@@ -2054,7 +2040,6 @@ function buildLongRangeTemperatureTrendOption({
       axisTick: { show: false },
       axisLabel: {
         color: palette.label,
-        fontWeight: 600,
         formatter: (value: string) => {
           const year = Number(value);
           if (!Number.isFinite(year)) return "";
@@ -2071,7 +2056,8 @@ function buildLongRangeTemperatureTrendOption({
       nameLocation: "middle",
       nameRotate: 90,
       nameGap: compact ? 40 : 48,
-      nameTextStyle: { color: palette.label, fontWeight: 700, fontSize: compact ? 11 : 12 },
+      nameTextStyle: { color: palette.label, fontWeight: 650, fontSize: 11 },
+      interval: 1,
       axisLabel: {
         color: palette.label,
         formatter: (value: number) => formatter.format(value),
@@ -2087,23 +2073,30 @@ function buildLongRangeTemperatureTrendOption({
         showSymbol: false,
         connectNulls: false,
         z: 5,
-        lineStyle: { color: palette.observed, width: compact ? 2.6 : 3.2, cap: "round" },
+        lineStyle: { color: palette.observed, width: compact ? 2 : 2.4, cap: "round" },
         markLine: {
           silent: true,
           symbol: "none",
-          lineStyle: { type: "dashed", width: 1.3, color: dark ? "rgba(248, 113, 113, 0.55)" : "rgba(220, 38, 38, 0.45)" },
+          lineStyle: { type: [4, 4], width: 1, color: palette.guide },
           label: {
             show: !compact,
             position: "insideStartTop" as const,
-            color: dark ? "#fca5a5" : "#a32d2d",
-            fontSize: 10.5,
-            fontWeight: 700,
-            padding: [0, 0, 2, 2],
+            color: palette.guideLabel,
+            fontSize: 10,
+            fontWeight: 600,
+            padding: [0, 0, 3, 2],
           },
-          data: tippingThresholdMarkers.map((marker) => ({
-            yAxis: marker.threshold,
-            label: { formatter: marker.label },
-          })),
+          data: [
+            ...tippingThresholdMarkers.map((marker) => ({
+              yAxis: marker.threshold,
+              label: { formatter: marker.label },
+            })),
+            {
+              xAxis: String(latestObservedYear),
+              lineStyle: { type: "solid" as const, width: 1, color: palette.latest },
+              label: { show: false },
+            },
+          ],
         },
       },
       ...scenarioPoints.map(({ label, color, points }) => {
@@ -2116,7 +2109,7 @@ function buildLongRangeTemperatureTrendOption({
           showSymbol: false,
           connectNulls: false,
           z: 4,
-          lineStyle: { color, width: compact ? 2.1 : 2.6, cap: "round" as const },
+          lineStyle: { color, width: compact ? 1.8 : 2.2, cap: "round" as const },
         };
       }),
       ...scenarioPoints.map(({ label, color, scenario, value2100 }) => {
@@ -2131,8 +2124,9 @@ function buildLongRangeTemperatureTrendOption({
             show: !compact,
             position: "right" as const,
             color,
-            fontWeight: 800,
-            formatter: () => `${scenario.shortLabel} ${value2100 == null ? "" : formatter.format(value2100)}${unit}`,
+            fontSize: 11,
+            fontWeight: 700,
+            formatter: () => `${value2100 == null ? "" : endValueFormatter.format(value2100)} ${unit}`,
           },
           z: 8,
         };
@@ -3619,6 +3613,25 @@ export function App() {
       dark: resolvedTheme === "dark",
     });
   }, [annualGlobalMeanAnomalyPoints, compact, dailyGlobalMeanAnomalyMetric, language, resolvedTheme]);
+  const [hiddenScenarioKeys, setHiddenScenarioKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const overviewLongRangeOption = useMemo(() => {
+    if (!dailyGlobalMeanAnomalyMetric || !annualGlobalMeanAnomalyPoints.length) return null;
+    return buildLongRangeTemperatureTrendOption({
+      observedPoints: annualGlobalMeanAnomalyPoints,
+      language,
+      unit: cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language),
+      compact,
+      dark: resolvedTheme === "dark",
+      hiddenScenarioKeys,
+    });
+  }, [annualGlobalMeanAnomalyPoints, compact, dailyGlobalMeanAnomalyMetric, hiddenScenarioKeys, language, resolvedTheme]);
+  const toggleScenario = (key: string) =>
+    setHiddenScenarioKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const longRangeScenarioSummaries = useMemo(
     () =>
       CMIP7_SCENARIOMIP_SCENARIOS.map((scenario) => ({
@@ -4157,6 +4170,7 @@ export function App() {
     : null;
   const projectionFreshness = ensoOutlookFreshness ?? dailyGlobalMeanAnomalyFreshness;
   const currentYear = new Date().getFullYear();
+  const warmingEstimateHeading = language === "hu" ? `${currentYear}. ${t.warmingEstimateTitle}` : `${currentYear} ${t.warmingEstimateTitle}`;
   const projectionNumberFormat = new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
     minimumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
     maximumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
@@ -4480,7 +4494,7 @@ export function App() {
     <article className="overview-card enso-outlook-card enso-outlook-card-editorial">
       <div className="overview-card-header">
         <div>
-          <h2>{t.ensoOutlookTitle}</h2>
+          <h2>{t.ensoCardTitle}</h2>
           {runtimeDataReady && ensoOutlook?.issuedDate ? <p>{formatDateLabel(ensoOutlook.issuedDate, language)}</p> : null}
         </div>
         <ToolkitIcon name="info" className="info-icon" />
@@ -4875,7 +4889,7 @@ export function App() {
                     <div className="outlook-card-copy">
                       <div className="outlook-title-row">
                         <div>
-                          <h2>{currentYear} {t.outlookTitle}</h2>
+                          <h2>{warmingEstimateHeading}</h2>
                           <span>{t.projectionExperimentalLabel.toLowerCase()} · {t.projectionProbabilityMethodLabel.toLowerCase()}</span>
                         </div>
                         <ToolkitIcon name="info" className="info-icon" />
@@ -4991,29 +5005,41 @@ export function App() {
                       {t.longRangeTemperatureExploreLabel} →
                     </button>
                   </div>
+                  <div className="scenario-toggle-row" role="group" aria-label={language === "hu" ? "Forgatókönyvek megjelenítése" : "Show scenarios"}>
+                    <span className="scenario-key-measured">
+                      <span className="scenario-toggle-swatch" aria-hidden="true" />
+                      {language === "hu" ? "Mért" : "Measured"}
+                    </span>
+                    {longRangeScenarioSummaries.map((scenario) => {
+                      const visible = !hiddenScenarioKeys.has(scenario.key);
+                      return (
+                        <button
+                          type="button"
+                          className="scenario-toggle"
+                          key={scenario.key}
+                          aria-pressed={visible}
+                          title={visible ? (language === "hu" ? "Elrejtés" : "Hide") : language === "hu" ? "Megjelenítés" : "Show"}
+                          style={{ "--scenario-color": scenario.color } as CSSProperties}
+                          onClick={() => toggleScenario(scenario.key)}
+                        >
+                          <span className="scenario-toggle-swatch" aria-hidden="true" />
+                          <span className="scenario-toggle-label">{scenario.label}</span>
+                          <strong>
+                            {scenario.value2100 == null ? "-" : projectionNumberFormat.format(scenario.value2100)} {projectionUnitLabel}
+                          </strong>
+                          <small>{language === "hu" ? "2100-ban" : "in 2100"}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
                   <div className="long-range-temperature-chart">
                     <EChartsPanel
-                      title={t.longRangeTemperatureTrendShortTitle}
+                      title={t.longRangeTemperatureHorizonTitle}
                       subtitle={t.longRangeTemperatureTrendSubtitle}
                       expandLabel={t.chartFullscreenEnter}
                       collapseLabel={t.chartFullscreenExit}
-                      option={longRangeTemperatureTrendOption}
+                      option={overviewLongRangeOption ?? longRangeTemperatureTrendOption}
                     />
-                  </div>
-                  <div className="scenario-2100-values" aria-label={t.longRangeTemperatureTrendValueLabel}>
-                    {longRangeScenarioSummaries.map((scenario) => (
-                      <div
-                        className="scenario-2100-chip"
-                        key={scenario.key}
-                        style={{ "--scenario-color": scenario.color } as CSSProperties}
-                      >
-                        <span>{scenario.label}</span>
-                        <strong>
-                          {scenario.value2100 == null ? "-" : projectionNumberFormat.format(scenario.value2100)} {projectionUnitLabel}
-                        </strong>
-                        <small>{t.longRangeTemperatureTrendValueLabel}</small>
-                      </div>
-                    ))}
                   </div>
                 </article>
               </section>
@@ -5564,7 +5590,7 @@ export function App() {
           )}
 
           {renderPageSubsection(
-            `${currentYear} ${t.outlookTitle}`,
+            warmingEstimateHeading,
             language === "hu"
               ? "Az aktuális ENSO-előrejelzéssel súlyozott analóg évek alapján becsült éves globális átlaghőmérséklet. Kísérleti becslés, nem hivatalos előrejelzés."
               : "Annual global mean temperature estimated from analog years weighted by the current ENSO forecast. An experimental estimate, not an official forecast.",
@@ -5665,7 +5691,7 @@ export function App() {
 
           {longRangeTemperatureTrendOption
             ? renderPageSubsection(
-                t.longRangeTemperatureTrendTitle,
+                t.longRangeTemperatureHorizonTitle,
                 t.longRangeTemperatureTrendSource,
                 <>
                   <div className="summary-cards-section">

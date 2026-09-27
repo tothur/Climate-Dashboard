@@ -1686,3 +1686,69 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   text-decoration: none;
 }
 .observatory .overview-page .is-linked-card .card-stretched-link:hover { background: none; }
+
+/* Warming pathways: scenario toggles in the site's control language instead of a canvas legend. */
+.observatory .scenario-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  margin: 18px 0 6px;
+}
+.observatory .scenario-key-measured,
+.observatory .scenario-toggle {
+  --scenario-color: var(--text);
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  padding: 7px 12px 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--muted);
+  font: 600 11px/1.25 var(--font-sans);
+  text-align: left;
+}
+.observatory .scenario-key-measured {
+  grid-template-rows: auto;
+  border-style: dashed;
+  background: transparent;
+}
+.observatory .scenario-toggle-swatch {
+  grid-row: 1 / span 2;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--scenario-color);
+}
+.observatory .scenario-key-measured .scenario-toggle-swatch { grid-row: auto; height: 2.5px; }
+.observatory .scenario-toggle { cursor: pointer; transition: border-color 160ms ease, background-color 160ms ease, opacity 160ms ease, transform 160ms ease; }
+.observatory .scenario-toggle-label { grid-column: 2; color: var(--muted); }
+.observatory .scenario-toggle strong {
+  grid-column: 2;
+  color: var(--scenario-color);
+  font: 650 17px/1.15 var(--font-display);
+  letter-spacing: -.02em;
+}
+.observatory .scenario-toggle small { display: none; }
+.observatory .scenario-toggle[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--scenario-color) 45%, var(--border));
+  background: color-mix(in srgb, var(--scenario-color) 7%, var(--panel));
+}
+.observatory .scenario-toggle[aria-pressed="false"] { opacity: .55; }
+.observatory .scenario-toggle[aria-pressed="false"] .scenario-toggle-swatch { background: transparent; box-shadow: inset 0 0 0 1.5px var(--scenario-color); height: 6px; }
+.observatory .scenario-toggle[aria-pressed="false"] strong { color: var(--muted); }
+.observatory .scenario-toggle:hover { border-color: color-mix(in srgb, var(--scenario-color) 70%, var(--border)); opacity: 1; }
+.observatory .scenario-toggle:active { transform: translateY(1px); }
+.observatory .scenario-toggle:focus-visible { outline: 2px solid var(--scenario-color); outline-offset: 2px; }
+.observatory .overview-temperature-trend-card .long-range-temperature-chart { margin-top: 4px; }
+@media (max-width: 600px) {
+  .observatory .scenario-toggle-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .observatory .scenario-key-measured { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .observatory .scenario-toggle { transition: none; }
+}
