@@ -1832,3 +1832,22 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 @media (hover: hover) {
   .observatory .overview-page .is-clickable-card:hover .card-title-link { color: var(--hover-accent); }
 }
+
+/* Mobile top bar and drawer controls use the site palette (the legacy styles assumed a dark bar). */
+@media (max-width: 900px) {
+  .observatory :is(.mobile-menu-button, .drawer-close-button) {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel);
+    color: var(--text);
+    box-shadow: none;
+    transition: border-color 160ms ease, background-color 160ms ease;
+  }
+  .observatory :is(.mobile-menu-button, .drawer-close-button):hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    background: var(--overview-paper-soft);
+  }
+  .observatory :is(.mobile-menu-button, .drawer-close-button):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .observatory .mobile-menu-button span { width: 18px; }
+  .observatory .mobile-brand small { color: var(--muted); }
+}
