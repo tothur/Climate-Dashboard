@@ -522,6 +522,33 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .overview-regional-signals .regional-signal .regional-sparkline { min-height: 42px; }
 }
 
+/* Overview: regional signals take a full-width row; the Niño 3.4 anomaly chart takes the wide slot beside the ENSO and warming cards. */
+.observatory .overview-secondary-grid .overview-regional-signals { grid-column: 1/-1; min-height: 0; }
+.observatory .overview-nino-anomaly {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.observatory .overview-nino-anomaly .panel { flex: 1; display: flex; flex-direction: column; min-height: 0; border: 0; border-radius: 0; background: transparent; }
+.observatory .overview-nino-anomaly .panel-header { padding: 24px 24px 8px; }
+.observatory .overview-nino-anomaly .panel-chart-wrap { flex: 0 0 auto; height: 300px; min-height: 0; padding: 0 16px; border: 0; border-radius: 0; }
+.observatory .overview-nino-anomaly .panel-chart-footer { padding: 0 24px; margin-top: auto; }
+.observatory .overview-nino-anomaly > button { align-self: flex-start; margin: 0 24px 18px; }
+.observatory .overview-page .overview-nino-anomaly.is-linked-card { --hover-accent: var(--domain-ocean); }
+@media(min-width: 901px) {
+  .observatory .overview-regional-signals .regional-signal-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: none; margin-top: 12px; }
+  .observatory .overview-regional-signals .regional-signal:nth-child(n) { border-top: 0; border-left: 1px solid var(--border); padding: 4px 18px; }
+  .observatory .overview-regional-signals .regional-signal:first-child { border-left: 0; padding-left: 0; }
+  .observatory .overview-regional-signals .regional-signal:last-child { padding-right: 0; }
+}
+@media(max-width: 1250px) and (min-width: 601px) {
+  .observatory .overview-nino-anomaly { grid-column: 1/-1; }
+}
+
 /* Editorial Overview outlook cards. */
 .observatory .overview-enso-with-link {
   overflow: hidden;
@@ -1851,3 +1878,16 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .mobile-menu-button span { width: 18px; }
   .observatory .mobile-brand small { color: var(--muted); }
 }
+
+/* Legacy app.css turns the sidebar into a hidden drawer below 1020px, but the observatory layout keeps the
+   desktop top bar down to 901px; keep it visible there (the mobile bar and drawer take over at 900px). */
+@media (min-width: 901px) {
+  .observatory .dashboard-sidebar { visibility: visible; }
+  .observatory .dashboard-sidebar .sidebar-controls { width: auto; margin: 0; }
+}
+
+/* Grid cards must be allowed to shrink below a chart canvas's current pixel width, otherwise a canvas
+   holds its column open after the window narrows and the chart overflows the card. */
+.observatory .overview-card { grid-template-columns: minmax(0, 1fr); }
+.observatory :is(.overview-card, .panel, .long-range-temperature-chart, .panel-chart-wrap) > * { min-width: 0; }
+.observatory :is(.long-range-temperature-chart, .panel-chart-wrap) { min-width: 0; }
