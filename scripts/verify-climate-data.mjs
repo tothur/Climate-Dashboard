@@ -237,6 +237,7 @@ function verifyTemperatureAnomalyAlignment(series, errors, warnings) {
     ["arctic_surface_temperature", "arctic_surface_temperature_anomaly"],
     ["antarctic_surface_temperature", "antarctic_surface_temperature_anomaly"],
     ["north_atlantic_sea_surface_temperature", "north_atlantic_sea_surface_temperature_anomaly"],
+    ["daily_nino34_sea_surface_temperature", "daily_nino34_sea_surface_temperature_anomaly"],
   ];
 
   for (const [absoluteKey, anomalyKey] of pairs) {

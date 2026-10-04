@@ -27,6 +27,7 @@ export type ClimateMetricKey =
   | "arctic_surface_temperature_anomaly"
   | "antarctic_surface_temperature_anomaly"
   | "north_atlantic_sea_surface_temperature_anomaly"
+  | "daily_nino34_sea_surface_temperature_anomaly"
   | "daily_global_mean_temperature_anomaly"
   | "global_sea_ice_extent"
   | "arctic_sea_ice_extent"

@@ -38,6 +38,7 @@ const INDICATOR_KEYS: ClimateMetricKey[] = [
   "northern_hemisphere_surface_temperature_anomaly",
   "arctic_surface_temperature_anomaly",
   "north_atlantic_sea_surface_temperature_anomaly",
+  "daily_nino34_sea_surface_temperature_anomaly",
   "southern_hemisphere_surface_temperature_anomaly",
   "antarctic_surface_temperature_anomaly",
   "daily_global_mean_temperature_anomaly",
@@ -385,6 +386,20 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
       descriptionHu:
         "Napi észak-atlanti tengerfelszíni hőmérséklet-anomália a NOAA OISST v2.1 napi értékei és az ugyanebben az adatforrásban szereplő 1991-2020-as klimatológia különbségeként.",
       url: "https://climatereanalyzer.org/clim/sst_daily/",
+    },
+  },
+  daily_nino34_sea_surface_temperature_anomaly: {
+    titleEn: "Daily Sea Surface Temperature Anomaly, Niño 3.4",
+    titleHu: "Napi tengerfelszíni hőmérsékleti anomália, Niño 3.4",
+    unit: "°C",
+    decimals: 2,
+    source: {
+      shortName: "Climate Reanalyzer (OISST v2.1, 1991-2020 baseline)",
+      descriptionEn:
+        "Daily Niño 3.4 SST anomaly (5°S-5°N, 120-170°W) derived from NOAA OISST v2.1 daily values relative to the 1991-2020 climatology in the same feed.",
+      descriptionHu:
+        "Napi Niño 3.4 tengerfelszíni hőmérséklet-anomália (5°D-5°É, 120-170°Ny) a NOAA OISST v2.1 napi értékei és az ugyanebben az adatforrásban szereplő 1991-2020-as klimatológia különbségeként.",
+      url: "https://climatereanalyzer.org/clim/sst_daily/?dm_id=nino3.4",
     },
   },
   daily_global_mean_temperature_anomaly: {

@@ -86,6 +86,7 @@ const SERIES_KEYS: (keyof ClimateSeriesBundle)[] = [
   "arctic_surface_temperature_anomaly",
   "antarctic_surface_temperature_anomaly",
   "north_atlantic_sea_surface_temperature_anomaly",
+  "daily_nino34_sea_surface_temperature_anomaly",
   "daily_global_mean_temperature_anomaly",
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",
@@ -132,6 +133,7 @@ const LOCAL_GENERATED_SERIES_MAX_AGE_DAYS: Record<keyof ClimateSeriesBundle, num
   arctic_surface_temperature_anomaly: 20,
   antarctic_surface_temperature_anomaly: 20,
   north_atlantic_sea_surface_temperature_anomaly: 45,
+  daily_nino34_sea_surface_temperature_anomaly: 45,
   daily_global_mean_temperature_anomaly: 20,
   global_sea_ice_extent: 20,
   arctic_sea_ice_extent: 20,
@@ -1615,6 +1617,7 @@ interface RegionalTemperatureSeriesBundle {
   arcticAnomaly: DailyPoint[] | null;
   antarcticAnomaly: DailyPoint[] | null;
   northAtlanticSstAnomaly: DailyPoint[] | null;
+  nino34SstAnomaly: DailyPoint[] | null;
 }
 
 async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatureSeriesBundle> {
@@ -1723,6 +1726,16 @@ async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatur
         maxAgeDays: 45,
       })
     : [];
+  const nino34SstAnomaly = nino34SstPayload
+    ? filterSeriesToReferenceDates(
+        sanitizeSeries(parseReanalyzerDailyAnomalyJson(nino34SstPayload, "1991-2020"), {
+          minValue: -10,
+          maxValue: 10,
+          maxAgeDays: 45,
+        }),
+        nino34Sst
+      )
+    : [];
 
   return {
     northernHemisphere: northernHemisphere.length ? northernHemisphere : null,
@@ -1736,6 +1749,7 @@ async function loadRegionalTemperatureSeriesBundle(): Promise<RegionalTemperatur
     arcticAnomaly: arcticAnomaly.length ? arcticAnomaly : null,
     antarcticAnomaly: antarcticAnomaly.length ? antarcticAnomaly : null,
     northAtlanticSstAnomaly: northAtlanticSstAnomaly.length ? northAtlanticSstAnomaly : null,
+    nino34SstAnomaly: nino34SstAnomaly.length ? nino34SstAnomaly : null,
   };
 }
 
@@ -2177,6 +2191,12 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     } else {
       warnings.push("Live North Atlantic Sea Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
     }
+
+    if (regionalResult.value.nino34SstAnomaly?.length) {
+      liveSeries.daily_nino34_sea_surface_temperature_anomaly = regionalResult.value.nino34SstAnomaly;
+    } else {
+      warnings.push("Live Daily Sea Surface Temperature Anomaly, Niño 3.4 feed was unavailable or stale; using bundled fallback.");
+    }
   } else {
     warnings.push("Live Northern Hemisphere Surface Temperature feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live Southern Hemisphere Surface Temperature feed was unavailable or stale; using bundled fallback.");
@@ -2189,6 +2209,7 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     warnings.push("Live Arctic Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live Antarctic Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
     warnings.push("Live North Atlantic Sea Surface Temperature Anomaly feed was unavailable or stale; using bundled fallback.");
+    warnings.push("Live Daily Sea Surface Temperature Anomaly, Niño 3.4 feed was unavailable or stale; using bundled fallback.");
   }
 
   if (seaIceResult.status === "fulfilled") {

@@ -167,6 +167,13 @@ const VALIDATION_RULES = {
     minPoints: 8_000,
     minPointsLastYear: 250,
   },
+  daily_nino34_sea_surface_temperature_anomaly: {
+    minValue: -10,
+    maxValue: 10,
+    maxAgeDays: 10,
+    minPoints: 8_000,
+    minPointsLastYear: 250,
+  },
   daily_global_mean_temperature_anomaly: {
     minValue: -10,
     maxValue: 10,
@@ -289,6 +296,7 @@ const LATEST_SNAPSHOT_FIELDS = {
   arctic_surface_temperature_anomaly: { label: "Arctic Surface Temperature Anomaly", unit: "°C" },
   antarctic_surface_temperature_anomaly: { label: "Antarctic Surface Temperature Anomaly", unit: "°C" },
   north_atlantic_sea_surface_temperature_anomaly: { label: "North Atlantic Sea Surface Temperature Anomaly", unit: "°C" },
+  daily_nino34_sea_surface_temperature_anomaly: { label: "Daily Sea Surface Temperature Anomaly, Niño 3.4", unit: "°C" },
   daily_global_mean_temperature_anomaly: { label: "Daily Global Mean Temperature Anomaly", unit: "°C" },
   global_sea_ice_extent: { label: "Global Sea Ice Extent", unit: "million km²" },
   arctic_sea_ice_extent: { label: "Arctic Sea Ice Extent", unit: "million km²" },

@@ -194,6 +194,7 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
   const antarcticSurfaceTemperature = generateSeries("1979-01-01", endDateIso, -23.8, 0.0017, 8.8, 365.25, 0.2, 182.625);
   const northAtlanticSeaSurfaceTemperature = generateSeries("1982-01-01", endDateIso, 21.2, 0.0006, 2.45, 365.25, 0.06);
   const dailyNino34SeaSurfaceTemperature = generateSeries("1982-01-01", endDateIso, 26.7, 0.00008, 0.75, 365.25, 0.08, 40);
+  const dailyNino34SeaSurfaceTempClimatology = climatologyByDayOfYear(dailyNino34SeaSurfaceTemperature, 1991, 2020);
   const globalSurfaceTempClimatology = climatologyByDayOfYear(globalSurfaceTemperature, 1991, 2020);
   const globalSeaSurfaceTempClimatology = climatologyByDayOfYear(globalSeaSurfaceTemperature, 1991, 2020);
   const northernHemisphereSurfaceTempClimatology = climatologyByDayOfYear(northernHemisphereSurfaceTemperature, 1991, 2020);
@@ -216,6 +217,10 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
   const northAtlanticSeaSurfaceTemperatureAnomaly = deriveAnomalySeries(
     northAtlanticSeaSurfaceTemperature,
     northAtlanticSeaSurfaceTempClimatology
+  );
+  const dailyNino34SeaSurfaceTemperatureAnomaly = deriveAnomalySeries(
+    dailyNino34SeaSurfaceTemperature,
+    dailyNino34SeaSurfaceTempClimatology
   );
   const dailyGlobalMeanTemperatureAnomaly = generateSeries("1940-01-01", endDateIso, -0.65, 0.00005, 0.42, 365.25, 0.05).map(
     (point) => ({
@@ -262,6 +267,7 @@ function buildBundledSeries(today = new Date()): ClimateSeriesBundle {
     arctic_surface_temperature_anomaly: arcticSurfaceTemperatureAnomaly,
     antarctic_surface_temperature_anomaly: antarcticSurfaceTemperatureAnomaly,
     north_atlantic_sea_surface_temperature_anomaly: northAtlanticSeaSurfaceTemperatureAnomaly,
+    daily_nino34_sea_surface_temperature_anomaly: dailyNino34SeaSurfaceTemperatureAnomaly,
     daily_global_mean_temperature_anomaly: dailyGlobalMeanTemperatureAnomaly,
     global_sea_ice_extent: globalSeaIce,
     arctic_sea_ice_extent: arcticSeaIce,
@@ -308,6 +314,7 @@ export const CLIMATE_METRIC_KEYS: ClimateMetricKey[] = [
   "arctic_surface_temperature_anomaly",
   "antarctic_surface_temperature_anomaly",
   "north_atlantic_sea_surface_temperature_anomaly",
+  "daily_nino34_sea_surface_temperature_anomaly",
   "daily_global_mean_temperature_anomaly",
   "global_sea_ice_extent",
   "arctic_sea_ice_extent",

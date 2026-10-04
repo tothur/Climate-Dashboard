@@ -197,6 +197,7 @@ const AI_SUMMARY_SIGNAL_LABELS = {
   arctic_surface_temperature_anomaly: "Arctic Surface Temperature Anomaly",
   antarctic_surface_temperature_anomaly: "Antarctic Surface Temperature Anomaly",
   north_atlantic_sea_surface_temperature_anomaly: "North Atlantic Sea Surface Temperature Anomaly",
+  daily_nino34_sea_surface_temperature_anomaly: "Daily Sea Surface Temperature Anomaly, Niño 3.4",
   daily_global_mean_temperature_anomaly: "Daily Global Mean Temperature Anomaly",
   global_mean_sea_level: "Global Mean Sea Level",
   ocean_heat_content: "Ocean Heat Content",
@@ -2667,6 +2668,13 @@ async function updateOnce() {
     "daily_nino34_sea_surface_temperature",
     parseReanalyzerDailyJson(nino34SstPayload)
   );
+  const dailyNino34SeaSurfaceTemperatureAnomaly = filterSeriesToReferenceDates(
+    sanitizeMetricSeries(
+      "daily_nino34_sea_surface_temperature_anomaly",
+      parseReanalyzerDailyAnomalyJson(nino34SstPayload, "1991-2020")
+    ),
+    dailyNino34SeaSurfaceTemperature
+  );
   const arcticSeaIceExtent = sanitizeMetricSeries("arctic_sea_ice_extent", parseNsidcDailyExtentCsv(northCsv));
   const antarcticSeaIceExtent = sanitizeMetricSeries(
     "antarctic_sea_ice_extent",
@@ -2953,6 +2961,7 @@ async function updateOnce() {
     arctic_surface_temperature_anomaly: arcticSurfaceTemperatureAnomaly,
     antarctic_surface_temperature_anomaly: antarcticSurfaceTemperatureAnomaly,
     north_atlantic_sea_surface_temperature_anomaly: northAtlanticSeaSurfaceTemperatureAnomaly,
+    daily_nino34_sea_surface_temperature_anomaly: dailyNino34SeaSurfaceTemperatureAnomaly,
     daily_global_mean_temperature_anomaly: dailyGlobalMeanTemperatureAnomaly,
     global_sea_ice_extent: globalSeaIceExtent,
     arctic_sea_ice_extent: arcticSeaIceExtent,
@@ -3028,6 +3037,8 @@ async function updateOnce() {
         "Derived from ERA5 daily Antarctic surface temperature minus 1991-2020 daily climatology from the same feed.",
       north_atlantic_sea_surface_temperature_anomaly:
         "Derived from OISST v2.1 daily North Atlantic SST minus 1991-2020 daily climatology from the same feed.",
+      daily_nino34_sea_surface_temperature_anomaly:
+        "Derived from OISST v2.1 daily Niño 3.4 SST minus 1991-2020 daily climatology from the same feed.",
       daily_global_mean_temperature_anomaly: `${ECMWF_CLIMATE_PULSE_GLOBAL_2T_DAILY_URL} (ano_91-20 adjusted by +${ECMWF_PREINDUSTRIAL_OFFSET_C}C to approximate 1850-1900 preindustrial baseline)`,
       global_sea_ice_extent: "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files.",
       arctic_sea_ice_extent: NSIDC_NORTH_DAILY_EXTENT_URL,

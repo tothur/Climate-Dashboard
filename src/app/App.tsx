@@ -382,6 +382,7 @@ const ICE_SHEET_LOSS_KEYS = new Set([
 const EARTH_ENERGY_IMBALANCE_KEY: ClimateMetricSeries["key"] = "earth_energy_imbalance";
 const TEMPERATURE_ANOMALY_KEYS = new Set(["global_surface_temperature_anomaly", "global_sea_surface_temperature_anomaly"]);
 const DAILY_GLOBAL_MEAN_ANOMALY_KEY: ClimateMetricSeries["key"] = "daily_global_mean_temperature_anomaly";
+const NINO34_SST_ANOMALY_KEY: ClimateMetricSeries["key"] = "daily_nino34_sea_surface_temperature_anomaly";
 const GLOBAL_TEMPERATURE_KEYS = new Set(["global_surface_temperature", "global_sea_surface_temperature"]);
 const REGIONAL_TEMPERATURE_ANOMALY_KEYS = new Set([
   "northern_hemisphere_surface_temperature_anomaly",
@@ -2867,6 +2868,8 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
       return { min: -8, max: 8 };
     case "north_atlantic_sea_surface_temperature_anomaly":
       return { min: -3, max: 3 };
+    case "daily_nino34_sea_surface_temperature_anomaly":
+      return { min: -4, max: 4 };
     case "daily_global_mean_temperature_anomaly":
       return { min: -1, max: 2.5 };
     case "global_mean_sea_level":
@@ -2925,6 +2928,7 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
     case "arctic_surface_temperature_anomaly":
     case "antarctic_surface_temperature_anomaly":
     case "north_atlantic_sea_surface_temperature_anomaly":
+    case "daily_nino34_sea_surface_temperature_anomaly":
     case "daily_global_mean_temperature_anomaly":
       return "°C";
     case "global_mean_sea_level":
@@ -2993,6 +2997,7 @@ function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, lang
     TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
     REGIONAL_TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
     metricKey === DAILY_GLOBAL_MEAN_ANOMALY_KEY ||
+    metricKey === NINO34_SST_ANOMALY_KEY ||
     metricKey === "nino34_index"
   ) {
     return "°C";
@@ -3024,6 +3029,7 @@ function topSummaryCategoryClass(metricKey: ClimateMetricSeries["key"]): string 
     metricKey === "global_surface_temperature_anomaly" ||
     metricKey === "global_sea_surface_temperature_anomaly" ||
     REGIONAL_TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
+    metricKey === NINO34_SST_ANOMALY_KEY ||
     metricKey === "daily_global_mean_temperature_anomaly"
   ) {
     return "topcat-anomaly";
@@ -3071,6 +3077,7 @@ function sourceSectionForMetric(metricKey: ClimateMetricSeries["key"]): DataSour
     TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
     REGIONAL_TEMPERATURE_KEYS.has(metricKey) ||
     REGIONAL_TEMPERATURE_ANOMALY_KEYS.has(metricKey) ||
+    metricKey === NINO34_SST_ANOMALY_KEY ||
     metricKey === DAILY_GLOBAL_MEAN_ANOMALY_KEY
   ) {
     return "temperature";
@@ -3105,6 +3112,7 @@ function freshnessPolicyForMetric(metricKey: ClimateMetricSeries["key"]): Freshn
     case "north_atlantic_sea_surface_temperature":
     case "daily_nino34_sea_surface_temperature":
     case "north_atlantic_sea_surface_temperature_anomaly":
+    case "daily_nino34_sea_surface_temperature_anomaly":
       return { cadence: "daily", warningDays: 21, staleDays: 45 };
     case "atmospheric_co2":
       return { cadence: "daily", warningDays: 14, staleDays: 35 };
@@ -4469,6 +4477,7 @@ export function App() {
   const ensoOverviewCondition =
     ensoOutlook?.nextThreeMonths?.condition ?? ensoOutlook?.nextSixMonths?.condition ?? "neutral";
   const dailyNino34Line = regionalTemperatureLines.find(({ metric }) => metric.key === "daily_nino34_sea_surface_temperature") ?? null;
+  const dailyNino34AnomalyLine = indicatorLines.find(({ metric }) => metric.key === NINO34_SST_ANOMALY_KEY) ?? null;
   const ensoIndexMetrics = variabilityMetrics.filter((metric) => ENSO_INDEX_KEYS.has(metric.key));
   const circulationIndexMetrics = variabilityMetrics.filter((metric) => !ENSO_INDEX_KEYS.has(metric.key));
   const ensoConditionTone = (condition: EnsoCondition) =>
@@ -5600,8 +5609,8 @@ export function App() {
           {renderPageSubsection(
             language === "hu" ? "El Niño–déli oszcilláció" : "El Niño–Southern Oscillation",
             language === "hu"
-              ? "Az ENSO az évről évre jelentkező globális hőmérséklet-ingadozás legfőbb forrása. A napi Niño 3.4 tengerfelszíni hőmérséklet a legfrissebb óceáni állapotot mutatja, az ONI ennek háromhavi anomáliáját, az SOI pedig a légkör válaszát; az IRI előrejelzése a következő évszakok valószínűségeit adja meg."
-              : "ENSO is the largest source of year-to-year swings in global temperature. Daily Niño 3.4 sea surface temperature shows the latest ocean state, ONI its three-month anomaly and SOI the atmospheric response; the IRI outlook gives probabilities for the coming seasons.",
+              ? "Az ENSO az évről évre jelentkező globális hőmérséklet-ingadozás legfőbb forrása. A napi Niño 3.4 tengerfelszíni hőmérséklet a legfrissebb óceáni állapotot, alatta az 1991–2020-as átlaghoz mért napi anomáliája mutatja, az ONI ennek háromhavi anomáliáját, az SOI pedig a légkör válaszát; az IRI előrejelzése a következő évszakok valószínűségeit adja meg."
+              : "ENSO is the largest source of year-to-year swings in global temperature. Daily Niño 3.4 sea surface temperature shows the latest ocean state, with its daily anomaly against the 1991-2020 baseline below it, ONI its three-month anomaly and SOI the atmospheric response; the IRI outlook gives probabilities for the coming seasons.",
             <>
               <div className="summary-cards-section">
                 <div className="regional-summary-grid">
@@ -5640,10 +5649,22 @@ export function App() {
                   {ensoOutlook.synopsis}
                 </p>
               ) : null}
+              {dailyNino34Line ? (
+                <div className="charts-grid climate-grid">
+                  {renderIndicatorPanel(dailyNino34Line.metric, dailyNino34Line.lines, dailyNino34Line.currentYear, dailyNino34Line.climatology)}
+                </div>
+              ) : null}
+              {dailyNino34AnomalyLine ? (
+                <div className="charts-grid climate-grid">
+                  {renderIndicatorPanel(
+                    dailyNino34AnomalyLine.metric,
+                    dailyNino34AnomalyLine.lines,
+                    dailyNino34AnomalyLine.currentYear,
+                    dailyNino34AnomalyLine.climatology
+                  )}
+                </div>
+              ) : null}
               <div className="charts-grid climate-grid">
-                {dailyNino34Line
-                  ? renderIndicatorPanel(dailyNino34Line.metric, dailyNino34Line.lines, dailyNino34Line.currentYear, dailyNino34Line.climatology)
-                  : null}
                 {variabilityChartPanels.filter(({ metric }) => ENSO_INDEX_KEYS.has(metric.key)).map(renderVariabilityPanel)}
               </div>
             </>
