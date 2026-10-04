@@ -1860,9 +1860,6 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   outline: 2px solid var(--hover-accent);
   outline-offset: 3px;
 }
-@media (hover: hover) {
-  .observatory .overview-page .is-clickable-card:hover .card-title-link { color: var(--hover-accent); }
-}
 
 /* Mobile top bar and drawer controls use the site palette (the legacy styles assumed a dark bar). */
 @media (max-width: 900px) {
