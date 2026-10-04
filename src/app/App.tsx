@@ -3905,20 +3905,36 @@ export function App() {
     metric: ClimateMetricSeries,
     lines: Array<{ year: number; points: Array<[number, number]> }>,
     currentYear: number,
-    climatology: DailyClimatologyEnvelope | null
+    climatology: DailyClimatologyEnvelope | null,
+    variant: "detail" | "overview" = "detail"
   ) => {
     const bounds = indicatorYAxisBounds(metric.key);
     const yAxisLabel = indicatorYAxisUnitLabel(metric.key, language);
     const freshness = metricFreshnessBadge(metric, language, t);
+    const isOverview = variant === "overview";
+    const latestDateIso = metric.points[metric.points.length - 1]?.date ?? null;
+    const overviewMeta =
+      isOverview && latestDateIso ? (
+        <p className="panel-status-line">
+          <span className={`status-date tone-${freshness.tone}`} title={freshness.label}>
+            <span className="status-dot" aria-hidden="true" />
+            <time dateTime={latestDateIso}>{formatDateLabel(latestDateIso, language)}</time>
+          </span>
+          <span>{language === "hu" ? "napi" : "daily"}</span>
+          <span>{t.overviewClimatologySubtitle}</span>
+        </p>
+      ) : undefined;
 
     return (
       <EChartsPanel
         key={metric.key}
         title={metricTitle(metric, language)}
-        subtitle={formatSourceShortName(metric.source.shortName, language)}
+        subtitle={isOverview ? undefined : formatSourceShortName(metric.source.shortName, language)}
+        meta={overviewMeta}
+        showExpand={!isOverview}
         expandLabel={t.chartFullscreenEnter}
         collapseLabel={t.chartFullscreenExit}
-        freshnessLabel={freshness.label}
+        freshnessLabel={isOverview ? undefined : freshness.label}
         freshnessTone={freshness.tone}
         option={buildClimateMonthlyComparisonOption({
           monthLabels: monthlyLabels,
@@ -3928,13 +3944,15 @@ export function App() {
           yAxisMin: bounds.min,
           yAxisMax: bounds.max,
           yAxisUnitLabel: yAxisLabel,
-          climatology: climatology
-            ? {
-                ...climatology,
-                meanLabel: t.climatologyMeanLabel,
-              }
-            : undefined,
+          climatology:
+            climatology && !isOverview
+              ? {
+                  ...climatology,
+                  meanLabel: t.climatologyMeanLabel,
+                }
+              : undefined,
           compact,
+          showLegend: !isOverview,
           dark: resolvedTheme === "dark",
           yearColors: buildIndicatorYearColors(currentYear, metric.key, resolvedTheme === "dark"),
           labels: {
@@ -4962,7 +4980,8 @@ export function App() {
                     dailyNino34AnomalyLine.metric,
                     dailyNino34AnomalyLine.lines,
                     dailyNino34AnomalyLine.currentYear,
-                    dailyNino34AnomalyLine.climatology
+                    dailyNino34AnomalyLine.climatology,
+                    "overview"
                   )}
                   <button type="button" className="text-link-button card-stretched-link" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Természetes változékonyság" : "Explore natural variability"} <span className="card-link-arrow" aria-hidden="true">→</span></button>
                 </div>

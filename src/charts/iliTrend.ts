@@ -157,6 +157,8 @@ interface BuildClimateMonthlyComparisonOptionArgs {
     noData: string;
   };
   yearColors?: Record<number, string>;
+  /** Defaults to true. The legend doubles as a year selector, so minimal cards turn it off. */
+  showLegend?: boolean;
 }
 
 function monthlyLineColor(lineYear: number, latestYear: number, dark: boolean, yearColors?: Record<number, string>): string {
@@ -222,6 +224,7 @@ export function buildClimateMonthlyComparisonOption({
   climatology,
   labels,
   yearColors,
+  showLegend = true,
 }: BuildClimateMonthlyComparisonOptionArgs): EChartsOption {
   const palette = dark
     ? {
@@ -276,7 +279,7 @@ export function buildClimateMonthlyComparisonOption({
     animation: false,
     aria: { enabled: true },
     grid: {
-      top: compact ? 40 : 82,
+      top: showLegend ? (compact ? 40 : 82) : 20,
       right: 18,
       bottom: 38,
       left: yAxisName ? (compact ? 78 : 84) : 58,
@@ -309,7 +312,7 @@ export function buildClimateMonthlyComparisonOption({
       },
     },
     legend: {
-      show: true,
+      show: showLegend,
       top: 4,
       left: 8,
       right: 8,

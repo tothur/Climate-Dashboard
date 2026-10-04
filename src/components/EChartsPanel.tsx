@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { EChartsOption } from "echarts";
 import { init, use, type EChartsType } from "echarts/core";
 import { LineChart, BarChart, ScatterChart, CustomChart, GaugeChart } from "echarts/charts";
@@ -13,6 +13,9 @@ type FreshnessTone = "fresh" | "warning" | "stale";
 interface EChartsPanelProps {
   title: string;
   subtitle?: string;
+  /** Replaces the subtitle line with custom content, e.g. a dated status line. */
+  meta?: ReactNode;
+  showExpand?: boolean;
   option: EChartsOption;
   expandLabel?: string;
   collapseLabel?: string;
@@ -23,6 +26,8 @@ interface EChartsPanelProps {
 export function EChartsPanel({
   title,
   subtitle,
+  meta,
+  showExpand = true,
   option,
   expandLabel,
   collapseLabel,
@@ -140,18 +145,20 @@ export function EChartsPanel({
       <header className="panel-header">
         <div className="panel-header-main">
           <h2>{title}</h2>
-          {subtitle ? <p>{subtitle}</p> : null}
+          {meta ?? (subtitle ? <p>{subtitle}</p> : null)}
         </div>
-        <div className="panel-header-actions">
-          <PanelExpandButton
-            expanded={expanded}
-            expandLabel={expandText}
-            collapseLabel={collapseText}
-            onToggle={() => {
-              void toggleExpanded();
-            }}
-          />
-        </div>
+        {showExpand ? (
+          <div className="panel-header-actions">
+            <PanelExpandButton
+              expanded={expanded}
+              expandLabel={expandText}
+              collapseLabel={collapseText}
+              onToggle={() => {
+                void toggleExpanded();
+              }}
+            />
+          </div>
+        ) : null}
       </header>
       <div className="panel-chart-wrap">
         <div className="panel-chart" ref={containerRef} />
