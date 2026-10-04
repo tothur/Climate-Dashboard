@@ -2897,7 +2897,7 @@ function indicatorYAxisBounds(metricKey: ClimateMetricSeries["key"]): { min?: nu
     case "north_atlantic_sea_surface_temperature":
       return { min: 18, max: 26 };
     case "daily_nino34_sea_surface_temperature":
-      return { min: 24, max: 30 };
+      return { min: 24, max: 31 };
     case "global_sea_ice_extent":
       return { min: 10, max: 30 };
     case "arctic_sea_ice_extent":
