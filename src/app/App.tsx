@@ -4956,6 +4956,17 @@ export function App() {
                   ))}
                 </div>
               </section>
+              {dailyNino34AnomalyLine ? (
+                <div className="overview-nino-anomaly is-linked-card">
+                  {renderIndicatorPanel(
+                    dailyNino34AnomalyLine.metric,
+                    dailyNino34AnomalyLine.lines,
+                    dailyNino34AnomalyLine.currentYear,
+                    dailyNino34AnomalyLine.climatology
+                  )}
+                  <button type="button" className="text-link-button card-stretched-link" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Természetes változékonyság" : "Explore natural variability"} <span className="card-link-arrow" aria-hidden="true">→</span></button>
+                </div>
+              ) : null}
               <div className="overview-enso-with-link is-linked-card">{renderEnsoOutlookCard()}<button type="button" className="text-link-button card-stretched-link" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Évszakos előrejelzés" : "Explore seasonal outlook"} <span className="card-link-arrow" aria-hidden="true">→</span></button></div>
               <article className="overview-card overview-projection-card outlook-featured is-linked-card">
                 <div className="outlook-card-grid">
