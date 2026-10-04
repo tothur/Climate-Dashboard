@@ -266,6 +266,8 @@ export function buildClimateMonthlyComparisonOption({
   const hasAnyValue = lines.some((line) => line.points.length > 0);
   const monthTickInterval = compact ? 92 : 61;
   const yAxisName = yAxisUnitLabel?.trim() || undefined;
+  // Short unit names such as "°C" need far less room than "CO2 parts per million (ppm)".
+  const shortAxisName = yAxisName != null && yAxisName.length <= 4;
   const climatologyMean =
     climatology == null
       ? []
@@ -279,10 +281,11 @@ export function buildClimateMonthlyComparisonOption({
     animation: false,
     aria: { enabled: true },
     grid: {
-      top: showLegend ? (compact ? 40 : 82) : 20,
-      right: 18,
+      top: showLegend ? (compact ? 40 : 82) : shortAxisName ? 30 : 20,
+      right: 26,
       bottom: 38,
-      left: yAxisName ? (compact ? 78 : 84) : 58,
+      left: shortAxisName ? 12 : yAxisName ? (compact ? 78 : 84) : 58,
+      containLabel: shortAxisName,
     },
     tooltip: {
       trigger: "axis",
@@ -348,13 +351,15 @@ export function buildClimateMonthlyComparisonOption({
       max: typeof yAxisMax === "number" ? yAxisMax : undefined,
       interval: yAxisInterval,
       name: yAxisName,
-      nameLocation: "middle",
-      nameRotate: 90,
-      nameGap: compact ? 52 : 58,
+      // Short units sit above the axis, clear of the tick labels; long descriptive names stay rotated alongside.
+      nameLocation: shortAxisName ? "end" : "middle",
+      nameRotate: shortAxisName ? 0 : 90,
+      nameGap: shortAxisName ? 10 : compact ? 52 : 58,
       nameTextStyle: {
         color: palette.axisLabel,
         fontWeight: 650,
         fontSize: compact ? 11 : 12,
+        align: shortAxisName ? "right" : undefined,
       },
       axisLabel: {
         color: palette.axisLabel,
@@ -514,6 +519,8 @@ export function buildClimateTrendOption({
   const yAxisTickFormatter = formatterFor(Math.min(decimals, axisStepDecimals(yAxisInterval, decimals)));
   const xAxisYearLabels = buildYearAxisLabelMap(xLabels, xAxisYearLabelStep);
   const yAxisName = yAxisUnitLabel?.trim() || undefined;
+  // Short unit names such as "°C" need far less room than "CO2 parts per million (ppm)".
+  const shortAxisName = yAxisName != null && yAxisName.length <= 4;
   const markLineData: Array<Record<string, unknown>> = [];
 
   for (const line of referenceLines ?? []) {
@@ -542,9 +549,10 @@ export function buildClimateTrendOption({
     aria: { enabled: true },
     grid: {
       top: compact ? 40 : 86,
-      right: 18,
+      right: 26,
       bottom: compact && dataZoom ? 58 : 38,
-      left: yAxisName ? (compact ? 78 : 84) : 58,
+      left: shortAxisName ? 12 : yAxisName ? (compact ? 78 : 84) : 58,
+      containLabel: shortAxisName,
     },
     tooltip: {
       trigger: "axis",
@@ -615,13 +623,15 @@ export function buildClimateTrendOption({
       interval: yAxisInterval,
       inverse: yAxisInverse,
       name: yAxisName,
-      nameLocation: "middle",
-      nameRotate: 90,
-      nameGap: compact ? 52 : 58,
+      // Short units sit above the axis, clear of the tick labels; long descriptive names stay rotated alongside.
+      nameLocation: shortAxisName ? "end" : "middle",
+      nameRotate: shortAxisName ? 0 : 90,
+      nameGap: shortAxisName ? 10 : compact ? 52 : 58,
       nameTextStyle: {
         color: palette.axisLabel,
         fontWeight: 650,
         fontSize: compact ? 11 : 12,
+        align: shortAxisName ? "right" : undefined,
       },
       axisLabel: {
         color: palette.axisLabel,
