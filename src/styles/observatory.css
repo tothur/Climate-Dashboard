@@ -1895,3 +1895,8 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .overview-card { grid-template-columns: minmax(0, 1fr); }
 .observatory :is(.overview-card, .panel, .long-range-temperature-chart, .panel-chart-wrap) > * { min-width: 0; }
 .observatory :is(.long-range-temperature-chart, .panel-chart-wrap) { min-width: 0; }
+
+/* Negative temperature anomalies read as cool everywhere: value (and mini chart) in ocean blue. */
+.observatory .overview-regional-signals .regional-signal.cool strong { color: var(--domain-ocean); }
+.observatory .overview-metric-card.is-negative-anomaly { --card-accent: var(--domain-ocean); }
+.observatory .detail-page-section .alert-card.summary.is-negative-anomaly .alert-emphasis { color: var(--domain-ocean); }

@@ -4051,10 +4051,16 @@ export function App() {
     );
   };
 
+  // Temperature anomalies below the baseline read as cool: shown in the ocean blue instead of the warm accent.
+  const isNegativeAnomaly = (metric: ClimateMetricSeries | null | undefined) =>
+    metric != null && metric.key.includes("anomaly") && metric.latestValue != null && metric.latestValue < 0;
   const renderMetricSummaryCard = (metric: ClimateMetricSeries, keySuffix: string) => {
     const freshness = metricFreshnessBadge(metric, language, t);
     return (
-      <article className={`alert-card summary ${topSummaryCategoryClass(metric.key)}`} key={`${metric.key}-${keySuffix}`}>
+      <article
+        className={`alert-card summary ${topSummaryCategoryClass(metric.key)}${isNegativeAnomaly(metric) ? " is-negative-anomaly" : ""}`}
+        key={`${metric.key}-${keySuffix}`}
+      >
         <span className="alert-kicker">{t.latestLabel}</span>
         <h2>{metricTitle(metric, language)}</h2>
         <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
@@ -4927,7 +4933,10 @@ export function App() {
 
             <section className="overview-metric-grid" aria-label={t.latestSignalsAria}>
               {overviewMetricCards.map((card) => (
-                <article className={`overview-metric-card is-linked-card tone-${card.tone}`} key={card.key}>
+                <article
+                  className={`overview-metric-card is-linked-card tone-${card.tone}${isNegativeAnomaly(card.metric) ? " is-negative-anomaly" : ""}`}
+                  key={card.key}
+                >
                   <span className="metric-icon" aria-hidden="true">
                     <ToolkitIcon name={card.icon} />
                   </span>
@@ -4966,7 +4975,7 @@ export function App() {
                 </div>
                 <div className="regional-signal-grid">
                   {overviewRegionalSignals.map((signal) => (
-                    <article className="regional-signal" key={signal.key}>
+                    <article className={`regional-signal ${signal.tone}`} key={signal.key}>
                       <h3>{signal.title}</h3>
                       <strong>{renderPrimaryValue(signal.value, "value-loading-skeleton overview-value-loading")}</strong>
                       {runtimeDataReady ? <Sparkline className={`regional-sparkline ${signal.tone}`} points={signal.points} readout={sparklineReadout(signal.metric)} /> : null}
