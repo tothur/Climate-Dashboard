@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
 
 import { loadPublishedDataset, roundSeriesPoints, writeDatasetArtifacts } from "./dataset-format.mjs";
-import { METRIC_KEYS, metricSanitizeLimits } from "./metric-registry.mjs";
+import { METRIC_KEYS, METRIC_REGISTRY, metricSanitizeLimits } from "./metric-registry.mjs";
 import {
   parseNoaaCh4MonthlyCsv,
   parseNoaaCo2DailyCsv,
@@ -141,7 +141,7 @@ const DEFAULT_OPENAI_SUMMARY_MODEL = "gpt-5.4-mini";
 const OPENAI_SUMMARY_ALLOWED_MODELS = new Set([DEFAULT_OPENAI_SUMMARY_MODEL]);
 const OPENAI_SUMMARY_MAX_OUTPUT_TOKENS = 700;
 const OPENAI_SUMMARY_TIMEOUT_MS = 20_000;
-const AI_SUMMARY_PROMPT_VERSION = 6;
+const AI_SUMMARY_PROMPT_VERSION = 7;
 const AI_SUMMARY_FINGERPRINT_KEYS = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
@@ -1635,6 +1635,15 @@ function latestFinitePoint(series) {
   return null;
 }
 
+function metricUnit(key) {
+  return METRIC_REGISTRY[key]?.latestSnapshot?.unit ?? null;
+}
+
+function firstPointYear(points) {
+  const years = points.map((point) => Number(String(point?.date ?? "").slice(0, 4))).filter(Number.isFinite);
+  return years.length ? Math.min(...years) : null;
+}
+
 function sameDateTemperatureCheck(key, series) {
   const latestPoint = latestFinitePoint(series);
   if (!latestPoint || !/^\d{4}-\d{2}-\d{2}$/.test(latestPoint.date)) return null;
@@ -1642,9 +1651,11 @@ function sameDateTemperatureCheck(key, series) {
   const monthDay = latestPoint.date.slice(5);
   const historicalValues = [];
   const baselineValues = [];
+  const sameDatePoints = [];
 
   for (const point of series) {
     if (!point?.date || point.date.slice(5) !== monthDay || !Number.isFinite(point.value)) continue;
+    sameDatePoints.push(point);
     const year = Number(point.date.slice(0, 4));
     if (point.date < latestPoint.date) historicalValues.push(point.value);
     if (year >= 1991 && year <= 2020) baselineValues.push(point.value);
@@ -1669,6 +1680,8 @@ function sameDateTemperatureCheck(key, series) {
     key,
     latestDate: latestPoint.date,
     latestValue: Math.round(latestPoint.value * 1000) / 1000,
+    unit: metricUnit(key),
+    recordSinceYear: firstPointYear(sameDatePoints),
     baselineMean: baselineMean == null ? null : Math.round(baselineMean * 1000) / 1000,
     differenceFromMean: differenceFromMean == null ? null : Math.round(differenceFromMean * 1000) / 1000,
     previousRecord: Math.round(previousRecord * 1000) / 1000,
@@ -1684,12 +1697,10 @@ function sameDateRankSignal(key, series, { direction = "high", watchRank = 3, ne
   if (!latestPoint || !/^\d{4}-\d{2}-\d{2}$/.test(latestPoint.date)) return null;
 
   const monthDay = latestPoint.date.slice(5);
-  const historicalValues = [];
-
-  for (const point of series) {
-    if (!point?.date || point.date.slice(5) !== monthDay || !Number.isFinite(point.value) || point.date >= latestPoint.date) continue;
-    historicalValues.push(point.value);
-  }
+  const historicalPoints = series.filter(
+    (point) => point?.date && point.date.slice(5) === monthDay && Number.isFinite(point.value) && point.date < latestPoint.date
+  );
+  const historicalValues = historicalPoints.map((point) => point.value);
 
   if (historicalValues.length < 20) return null;
 
@@ -1718,6 +1729,8 @@ function sameDateRankSignal(key, series, { direction = "high", watchRank = 3, ne
     basis: "same-date historical rank",
     latestDate: latestPoint.date,
     latestValue: Math.round(latestPoint.value * 1000) / 1000,
+    unit: metricUnit(key),
+    recordSinceYear: firstPointYear(historicalPoints),
     recordValue: Math.round(record * 1000) / 1000,
     differenceFromRecord: Math.round(differenceFromRecord * 1000) / 1000,
     rank,
@@ -1762,6 +1775,8 @@ function historicalRankSignal(key, series, { direction = "high", watchRank = 3, 
     basis: "full-record historical rank",
     latestDate: latestPoint.date,
     latestValue: Math.round(latestPoint.value * 1000) / 1000,
+    unit: metricUnit(key),
+    recordSinceYear: firstPointYear(series.filter((point) => Number.isFinite(point?.value))),
     recordValue: Math.round(record * 1000) / 1000,
     differenceFromRecord: Math.round((latestPoint.value - record) * 1000) / 1000,
     zScore: zScore == null ? null : Math.round(zScore * 100) / 100,
@@ -2031,7 +2046,7 @@ function buildAllowedContextSignals(summary, ensoOutlook) {
       {
         signalKey: "daily_global_mean_temperature_anomaly",
         tone: "heat",
-        fact: `Daily global mean temperature anomaly is ${dailyAnomaly.latestValue}C versus the approximate 1850-1900 baseline as of ${dailyAnomaly.latestDate}.`,
+        fact: `Daily global mean temperature anomaly is ${dailyAnomaly.latestValue} °C versus the approximate 1850-1900 baseline as of ${dailyAnomaly.latestDate}.`,
       }
     );
   }
@@ -2087,7 +2102,7 @@ function buildAiSummaryContextSignals(summary, ensoOutlook, anomalySignals) {
   const anomalyContext = anomalySignals.slice(0, 3).map((signal) => ({
     signalKey: signal.key,
     tone: signal.category === "sea ice" ? "ice" : signal.category === "oceanic" ? "ocean" : "heat",
-    fact: `${anomalySignalPhrase(signal)} at ${signal.latestValue} as of ${signal.latestDate} (rank ${signal.rank}).`,
+    fact: `${anomalySignalPhrase(signal)} at ${signal.latestValue}${signal.unit ? ` ${signal.unit}` : ""} as of ${signal.latestDate} (rank ${signal.rank}${signal.recordSinceYear ? `; records since ${signal.recordSinceYear}` : ""}).`,
   }));
   return [...anomalyContext, ...buildAllowedContextSignals(summary, ensoOutlook)].slice(0, 8);
 }
@@ -2109,7 +2124,7 @@ async function requestOpenAiSummary(summaryInput, model) {
       body: JSON.stringify({
         model,
         instructions:
-          'Create exactly three bilingual climate-watch items from the supplied facts. Select the three most important distinct current climate events or indicators, prioritizing critical over watch signals, same-date temperature or sea-ice records over slow background indicators, and newer observations over older ones. For each selected signal, write a specific short editorial title in English and natural Hungarian; the title must describe that signal rather than use a generic category heading. Then write one complete short sentence in each language describing its current value, rank, record status, date, or probability. Keep English titles at 52 characters or fewer and Hungarian titles at 60 characters or fewer. Keep English detail sentences at 120 characters or fewer and Hungarian detail sentences at 140 characters or fewer. Use the exact supplied signalKey once and choose the matching tone: heat, ice, ocean, or signal. Fully translate Hungarian titles, indicator names, and sentences; retain only standard acronyms such as CO2 or ENSO. Use only supplied JSON facts. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.',
+          'Create exactly three bilingual climate-watch items from the supplied facts. Select the three most important distinct current climate events or indicators, prioritizing critical over watch signals, same-date temperature or sea-ice records over slow background indicators, and newer observations over older ones. For each selected signal, write a specific short editorial title in English and natural Hungarian; the title must describe that signal rather than use a generic category heading. Then write one complete short sentence in each language describing its current value, rank, record status, date, or probability. Write like a science journalist, not a data table: always give the unit after a value (for example °C or million km²), round to two decimals, and use a decimal comma and a space before units in Hungarian. Write dates naturally, such as "Oct 3" in English and "okt. 3." in Hungarian, never as ISO dates, and omit the year when it is the current year. Do not write "rank 1", "rank 2" or "1. hely"; say "the warmest on record for the date", "the second-highest", "the lowest since records began in 1979" and so on, using recordSinceYear for the start of the record. For a temperature below its record, say how far below the record it is. Keep English titles at 52 characters or fewer and Hungarian titles at 60 characters or fewer. Keep English detail sentences at 120 characters or fewer and Hungarian detail sentences at 140 characters or fewer. Use the exact supplied signalKey once and choose the matching tone: heat, ice, ocean, or signal. Fully translate Hungarian titles, indicator names, and sentences; retain only standard acronyms such as CO2 or ENSO. Use only supplied JSON facts. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.',
         input: JSON.stringify(summaryInput),
         text: {
           format: {
