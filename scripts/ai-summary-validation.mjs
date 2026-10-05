@@ -50,6 +50,11 @@ export function sentenceCount(text) {
     .reduce((count, line) => count + lineSentenceCount(line), 0);
 }
 
+// The model sometimes leaves English unit words in Hungarian text.
+export function localizeHungarianUnits(text) {
+  return text.replace(/\bmillion(?=\s*km)/g, "millió").replace(/\bbillion(?=\s*(?:t|tonna)\b)/g, "milliárd");
+}
+
 export function parseAiSummaryJson(rawText) {
   const trimmed = String(rawText ?? "").trim();
   const jsonText = trimmed.startsWith("{") ? trimmed : trimmed.match(/\{[\s\S]*\}/)?.[0] ?? "";
@@ -79,7 +84,7 @@ export function parseAiSummaryJson(rawText) {
       ) {
         return null;
       }
-      return { signalKey, tone, titleEn, detailEn, titleHu, detailHu };
+      return { signalKey, tone, titleEn, detailEn, titleHu: localizeHungarianUnits(titleHu), detailHu: localizeHungarianUnits(detailHu) };
     });
     if (items.some((item) => item == null)) return null;
     const textEn = items.map((item) => `- ${item.detailEn}`).join("\n");

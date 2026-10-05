@@ -163,10 +163,12 @@ test("AI summary prompt prioritizes daily records over slow background indicator
   const updateScript =
     (await readProjectFile("scripts/update-climate-data.mjs")) + (await readProjectFile("scripts/ai-summary-validation.mjs"));
 
-  assert.match(updateScript, /const AI_SUMMARY_PROMPT_VERSION = 7/);
+  assert.match(updateScript, /const AI_SUMMARY_PROMPT_VERSION = 8/);
   assert.match(updateScript, /always give the unit after a value/);
   assert.match(updateScript, /never as ISO dates/);
   assert.match(updateScript, /using recordSinceYear for the start of the record/);
+  assert.match(updateScript, /always name that start year/);
+  assert.match(updateScript, /never "million km²"/);
   assert.match(updateScript, /Create exactly three bilingual climate-watch items/);
   assert.match(updateScript, /Select the three most important distinct current climate events or indicators/);
   assert.match(updateScript, /write a specific short editorial title in English and natural Hungarian/);

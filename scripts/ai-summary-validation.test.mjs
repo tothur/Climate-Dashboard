@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseAiSummaryJson, sentenceCount, validateOpenAiSummaryText } from "./ai-summary-validation.mjs";
+import { localizeHungarianUnits, parseAiSummaryJson, sentenceCount, validateOpenAiSummaryText } from "./ai-summary-validation.mjs";
 
 const warmChecks = [
   { key: "global_surface_temperature", tone: "record" },
@@ -107,4 +107,12 @@ test("normal temperatures must be stated as not unusually high", () => {
   const result = validateOpenAiSummaryText(missingStatus, normalChecks, anomalySignals, contextSignals);
   assert.equal(result.ok, false);
   assert.match(result.reason, /not unusually high/);
+});
+
+test("English unit words are translated in Hungarian text", () => {
+  assert.equal(localizeHungarianUnits("A kiterjedés 16,74 million km² volt."), "A kiterjedés 16,74 millió km² volt.");
+  const parsed = parseAiSummaryJson(
+    chatGptAnswer([{ ...warmItems[1], detailHu: "Okt. 3-án a kiterjedés 16,74 million km² volt, 1979 óta a legalacsonyabb." }, warmItems[0], warmItems[2]])
+  );
+  assert.match(parsed.items[0].detailHu, /16,74 millió km²/);
 });
