@@ -2,6 +2,7 @@ import { access, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { sentenceCount } from "./ai-summary-validation.mjs";
 import { loadPublishedDataset } from "./dataset-format.mjs";
 import { SERIES_RULES } from "./metric-registry.mjs";
 
@@ -330,13 +331,6 @@ function buildTemperatureSummaryTextEn(temperatureChecks) {
     : "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records. Key climate indicators below show the latest available readings.";
 }
 
-function sentenceCount(text) {
-  return String(text ?? "")
-    .replace(/^\s*[-*]\s+/gm, "")
-    .split(/[.!?]+(?:\s|$)/)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean).length;
-}
 
 function verifyAiSummary(payload, series, nowMidnight, errors) {
   const aiSummary = isRecord(payload) ? payload.aiSummary : null;
@@ -422,7 +416,14 @@ function verifyAiSummary(payload, series, nowMidnight, errors) {
 
   const hasTemperatureWarning = expectedChecks.some((check) => check.tone !== "normal");
   const expectedText = buildTemperatureSummaryTextEn(expectedChecks);
-  if (hasTemperatureWarning && !normalizedTextEn.startsWith(expectedText.split(".")[0])) {
+  if (hasTemperatureWarning && aiSummary.source === "openai") {
+    // OpenAI summaries word the warning themselves; one item must cover a flagged temperature series.
+    const warningKeys = new Set(expectedChecks.filter((check) => check.tone !== "normal").map((check) => check.key));
+    const items = Array.isArray(aiSummary.items) ? aiSummary.items : [];
+    if (!items.some((item) => isRecord(item) && warningKeys.has(item.signalKey))) {
+      errors.push("aiSummary.items do not cover the computed temperature warning");
+    }
+  } else if (hasTemperatureWarning && !normalizedTextEn.startsWith(expectedText.split(".")[0])) {
     errors.push("aiSummary.textEn does not begin with the computed temperature warning");
   }
   if (!hasTemperatureWarning && !/not unusually high/i.test(normalizedTextEn)) {

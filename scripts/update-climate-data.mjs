@@ -15,6 +15,7 @@ import {
   parseReanalyzerDailyAnomalyJson,
   parseReanalyzerDailyJson,
 } from "./source-parsers.mjs";
+import { isDailyRecordLeadSignal, parseAiSummaryJson, validateOpenAiSummaryText } from "./ai-summary-validation.mjs";
 import { loadSourceOrFallback, retainPreviousSeries } from "./update-resilience.mjs";
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -140,7 +141,7 @@ const DEFAULT_OPENAI_SUMMARY_MODEL = "gpt-5.4-mini";
 const OPENAI_SUMMARY_ALLOWED_MODELS = new Set([DEFAULT_OPENAI_SUMMARY_MODEL]);
 const OPENAI_SUMMARY_MAX_OUTPUT_TOKENS = 700;
 const OPENAI_SUMMARY_TIMEOUT_MS = 20_000;
-const AI_SUMMARY_PROMPT_VERSION = 5;
+const AI_SUMMARY_PROMPT_VERSION = 6;
 const AI_SUMMARY_FINGERPRINT_KEYS = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
@@ -180,8 +181,6 @@ const AI_SUMMARY_FINGERPRINT_KEYS = [
   "soi_index",
   "arctic_oscillation_index",
 ];
-const AI_SUMMARY_DISALLOWED_TEXT_PATTERN = /\brecord\s+lows?\b|\brecord\s+cold\b|\bcoldest\b|\bcooling\b/i;
-const AI_SUMMARY_STALE_TEXT_PATTERN = /\bhistorical rank\b/i;
 const AI_SUMMARY_SIGNAL_LABELS = {
   global_surface_temperature: "Global Surface Temperature",
   global_sea_surface_temperature: "Global Sea Surface Temperature",
@@ -256,15 +255,6 @@ const AI_SUMMARY_SIGNAL_CATEGORIES = {
   soi_index: "ocean-atmosphere variability",
   arctic_oscillation_index: "atmospheric variability",
 };
-const AI_SUMMARY_BACKGROUND_SIGNAL_KEYS = new Set([
-  "global_mean_sea_level",
-  "ocean_heat_content",
-  "earth_energy_imbalance",
-  "atmospheric_co2",
-  "atmospheric_ch4",
-  "atmospheric_n2o",
-  "atmospheric_aggi",
-]);
 
 function toFiniteNumber(value) {
   const numeric = typeof value === "number" ? value : Number(value);
@@ -1818,12 +1808,6 @@ function signalPriority(signal) {
   );
 }
 
-function isDailyRecordLeadSignal(signal) {
-  if (!signal || AI_SUMMARY_BACKGROUND_SIGNAL_KEYS.has(signal.key)) return false;
-  if (signal.category === "sea ice") return true;
-  return signal.basis === "same-date historical rank";
-}
-
 function buildAiSummaryAnomalySignals(series) {
   const signalBuilders = [
     () => sameDateRankSignal("northern_hemisphere_surface_temperature", series.northern_hemisphere_surface_temperature, { nearRecordMargin: 0.12 }),
@@ -1942,12 +1926,6 @@ function splitSummarySentences(text) {
     .filter(Boolean) ?? [];
 }
 
-function stripBulletMarkers(text) {
-  return String(text ?? "")
-    .replace(/^\s*[-*]\s+/gm, "")
-    .trim();
-}
-
 function formatSummaryBullets(text) {
   return splitSummarySentences(text)
     .slice(0, 3)
@@ -2039,53 +2017,6 @@ function openAiResponseDiagnostic(responsePayload) {
     .join(", ");
 }
 
-function parseAiSummaryJson(rawText) {
-  const trimmed = String(rawText ?? "").trim();
-  const jsonText = trimmed.startsWith("{") ? trimmed : trimmed.match(/\{[\s\S]*\}/)?.[0] ?? "";
-  if (!jsonText) return null;
-  try {
-    const parsed = JSON.parse(jsonText);
-    if (!isRecord(parsed) || !Array.isArray(parsed.items) || parsed.items.length !== 3) return null;
-    const items = parsed.items.map((entry) => {
-      if (!isRecord(entry)) return null;
-      const signalKey = typeof entry.signalKey === "string" ? entry.signalKey.trim() : "";
-      const tone = ["heat", "ice", "ocean", "signal"].includes(entry.tone) ? entry.tone : null;
-      const titleEn = typeof entry.titleEn === "string" ? entry.titleEn.trim() : "";
-      const detailEn = typeof entry.detailEn === "string" ? entry.detailEn.trim() : "";
-      const titleHu = typeof entry.titleHu === "string" ? entry.titleHu.trim() : "";
-      const detailHu = typeof entry.detailHu === "string" ? entry.detailHu.trim() : "";
-      if (
-        !signalKey ||
-        !tone ||
-        titleEn.length < 4 ||
-        titleEn.length > 52 ||
-        detailEn.length < 12 ||
-        detailEn.length > 120 ||
-        titleHu.length < 4 ||
-        titleHu.length > 60 ||
-        detailHu.length < 12 ||
-        detailHu.length > 140
-      ) {
-        return null;
-      }
-      return { signalKey, tone, titleEn, detailEn, titleHu, detailHu };
-    });
-    if (items.some((item) => item == null)) return null;
-    const textEn = items.map((item) => `- ${item.detailEn}`).join("\n");
-    const textHu = items.map((item) => `- ${item.detailHu}`).join("\n");
-    return { items, textEn, textHu };
-  } catch {
-    return null;
-  }
-}
-
-function sentenceCount(text) {
-  return stripBulletMarkers(text)
-    .split(/[.!?]+(?:\s|$)/)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean).length;
-}
-
 function buildAllowedContextSignals(summary, ensoOutlook) {
   const signals = [];
   const dailyAnomaly = summary.daily_global_mean_temperature_anomaly;
@@ -2159,69 +2090,6 @@ function buildAiSummaryContextSignals(summary, ensoOutlook, anomalySignals) {
     fact: `${anomalySignalPhrase(signal)} at ${signal.latestValue} as of ${signal.latestDate} (rank ${signal.rank}).`,
   }));
   return [...anomalyContext, ...buildAllowedContextSignals(summary, ensoOutlook)].slice(0, 8);
-}
-
-function validateOpenAiSummaryText(openAiSummary, temperatureChecks, anomalySignals = [], contextSignals = []) {
-  const items = Array.isArray(openAiSummary.items) ? openAiSummary.items : [];
-  const textEn = openAiSummary.textEn.trim();
-  const textHu = openAiSummary.textHu?.trim() || "";
-  const normalizedTextEn = stripBulletMarkers(textEn);
-  const textEnSentenceCount = sentenceCount(textEn);
-  if (
-    items.length !== 3 ||
-    new Set(items.map((item) => item.signalKey)).size !== 3 ||
-    !textEn ||
-    !textHu ||
-    textEn.length > 430 ||
-    textHu.length > 500 ||
-    textEnSentenceCount !== 3 ||
-    sentenceCount(textHu) !== 3 ||
-    AI_SUMMARY_DISALLOWED_TEXT_PATTERN.test(textEn) ||
-    AI_SUMMARY_STALE_TEXT_PATTERN.test(textEn)
-  ) {
-    return null;
-  }
-
-  const allowedSignalKeys = new Set([
-    ...temperatureChecks.map((check) => check.key),
-    ...anomalySignals.map((signal) => signal.key),
-    ...contextSignals.map((signal) => signal.signalKey),
-  ]);
-  if (items.some((item) => !allowedSignalKeys.has(item.signalKey))) return null;
-
-  if (
-    items.some(
-      (item) =>
-        sentenceCount(item.detailEn) !== 1 ||
-        sentenceCount(item.detailHu) !== 1 ||
-        !/(\d|record|near|highest|lowest|above|below)/i.test(item.detailEn) ||
-        !/(\d|rekord|közel|legmagasabb|legalacsonyabb|felett|alatt)/i.test(item.detailHu)
-    )
-  ) {
-    return null;
-  }
-
-  const hasTemperatureWarning = temperatureChecks.some((check) => check.tone !== "normal");
-  if (hasTemperatureWarning) {
-    const warningKeys = new Set(temperatureChecks.filter((check) => check.tone !== "normal").map((check) => check.key));
-    if (!items.some((item) => warningKeys.has(item.signalKey))) return null;
-    const requiredTemperatureLead = buildTemperatureSummaryTextEn(temperatureChecks).split(".")[0];
-    if (!normalizedTextEn.startsWith(requiredTemperatureLead)) return null;
-  } else if (!/not unusually high/i.test(normalizedTextEn)) {
-    return null;
-  }
-
-  const dailyRecordSignals = anomalySignals.filter(isDailyRecordLeadSignal);
-  if (dailyRecordSignals.length) {
-    const requiredSignalKeys = new Set(dailyRecordSignals.slice(0, 3).map((signal) => signal.key));
-    if (!items.some((item) => requiredSignalKeys.has(item.signalKey))) return null;
-  }
-
-  return {
-    items,
-    textEn,
-    textHu,
-  };
 }
 
 async function requestOpenAiSummary(summaryInput, model) {
@@ -2311,7 +2179,8 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
   const model = aiSummaryModel(warnings);
 
   if (shouldReusePreviousAiSummary(previousAiSummary, fingerprint, new Date(generatedAtIso))) {
-    const validatedPreviousSummary = validateOpenAiSummaryText(previousAiSummary, temperatureChecks, anomalySignals, contextSignals);
+    const previousValidation = validateOpenAiSummaryText(previousAiSummary, temperatureChecks, anomalySignals, contextSignals);
+    const validatedPreviousSummary = previousValidation.ok ? previousValidation.summary : null;
     const canReusePreviousSummary =
       !hasOpenAiApiKey || (previousAiSummary.source === "openai" && previousAiSummary.model === model);
     if (validatedPreviousSummary && canReusePreviousSummary) {
@@ -2326,7 +2195,7 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
     warnings.push(
       validatedPreviousSummary
         ? "Previous AI summary cache skipped; refreshing summary text with the configured OpenAI model."
-        : "Previous AI summary failed validation; refreshing summary text."
+        : `Previous AI summary failed validation (${previousValidation.reason}); refreshing summary text.`
     );
   }
 
@@ -2335,8 +2204,6 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
     generatedAtIso,
     temperatureBrief: {
       hasWarning: hasTemperatureWarning,
-      requiredSentenceEn: localSummary.textEn,
-      requiredSentenceHu: localSummary.textHu,
       rules: hasTemperatureWarning
         ? "At least one selected item must use the signalKey of a warning temperature check and accurately describe its status."
         : "One selected item must clearly state that both global surface and sea-surface temperature are not unusually high versus same-date records.",
@@ -2351,11 +2218,13 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
   try {
     const openAiSummary = await requestOpenAiSummary(summaryInput, model);
     if (!openAiSummary) return localSummary;
-    const validatedSummary = validateOpenAiSummaryText(openAiSummary, temperatureChecks, anomalySignals, contextSignals);
-    if (!validatedSummary) {
-      warnings.push("OpenAI daily summary failed validation; using local summary fallback.");
+    const validation = validateOpenAiSummaryText(openAiSummary, temperatureChecks, anomalySignals, contextSignals);
+    if (!validation.ok) {
+      console.warn(`[ai-summary] Rejected OpenAI summary: ${validation.reason}`);
+      warnings.push(`OpenAI daily summary failed validation (${validation.reason}); using local summary fallback.`);
       return localSummary;
     }
+    const validatedSummary = validation.summary;
     return {
       items: validatedSummary.items,
       textEn: validatedSummary.textEn,

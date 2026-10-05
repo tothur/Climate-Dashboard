@@ -160,9 +160,10 @@ test("ENSO outlook staleness warns before it blocks daily publication", async ()
 });
 
 test("AI summary prompt prioritizes daily records over slow background indicators", async () => {
-  const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
+  const updateScript =
+    (await readProjectFile("scripts/update-climate-data.mjs")) + (await readProjectFile("scripts/ai-summary-validation.mjs"));
 
-  assert.match(updateScript, /const AI_SUMMARY_PROMPT_VERSION = 5/);
+  assert.match(updateScript, /const AI_SUMMARY_PROMPT_VERSION = 6/);
   assert.match(updateScript, /Create exactly three bilingual climate-watch items/);
   assert.match(updateScript, /Select the three most important distinct current climate events or indicators/);
   assert.match(updateScript, /write a specific short editorial title in English and natural Hungarian/);
@@ -171,9 +172,8 @@ test("AI summary prompt prioritizes daily records over slow background indicator
   assert.match(updateScript, /minItems: 3/);
   assert.match(updateScript, /maxItems: 3/);
   assert.match(updateScript, /required: \["signalKey", "tone", "titleEn", "detailEn", "titleHu", "detailHu"\]/);
-  assert.match(updateScript, /items\.some\(\(item\) => !allowedSignalKeys\.has\(item\.signalKey\)\)/);
-  assert.match(updateScript, /const requiredTemperatureLead = buildTemperatureSummaryTextEn\(temperatureChecks\)\.split\("\."\)\[0\]/);
-  assert.match(updateScript, /normalizedTextEn\.startsWith\(requiredTemperatureLead\)/);
+  assert.match(updateScript, /items\.find\(\(item\) => !allowedSignalKeys\.has\(item\.signalKey\)\)/);
+  assert.doesNotMatch(updateScript, /requiredSentence(?:En|Hu)/);
   assert.match(updateScript, /Use CO2, CH4, AGGI, sea level, or ocean heat content only when they genuinely belong in the three strongest current signals/);
   assert.match(updateScript, /const dailyRecordSignals = anomalySignals\.filter\(isDailyRecordLeadSignal\)/);
   assert.match(updateScript, /const AI_SUMMARY_BACKGROUND_SIGNAL_KEYS = new Set/);
