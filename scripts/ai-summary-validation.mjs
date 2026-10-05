@@ -34,12 +34,20 @@ export function stripBulletMarkers(text) {
     .trim();
 }
 
+function lineSentenceCount(line) {
+  const sentenceEnds = line.match(SENTENCE_END_PATTERN)?.length ?? 0;
+  // A line without closing punctuation still holds one (unterminated) sentence.
+  return /[.!?]\s*$/.test(line) ? sentenceEnds : sentenceEnds + 1;
+}
+
+// Each bullet line is counted on its own, so a line that starts with a number or lacks a final period is still
+// a separate sentence.
 export function sentenceCount(text) {
-  const stripped = stripBulletMarkers(text);
-  if (!stripped) return 0;
-  const sentenceEnds = stripped.match(SENTENCE_END_PATTERN)?.length ?? 0;
-  // Text without closing punctuation still holds one (unterminated) sentence.
-  return /[.!?]\s*$/.test(stripped) ? sentenceEnds : sentenceEnds + 1;
+  return stripBulletMarkers(text)
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .reduce((count, line) => count + lineSentenceCount(line), 0);
 }
 
 export function parseAiSummaryJson(rawText) {

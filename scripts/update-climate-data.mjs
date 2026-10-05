@@ -2221,6 +2221,7 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
     const validation = validateOpenAiSummaryText(openAiSummary, temperatureChecks, anomalySignals, contextSignals);
     if (!validation.ok) {
       console.warn(`[ai-summary] Rejected OpenAI summary: ${validation.reason}`);
+      console.warn(`[ai-summary] Rejected text (en):\n${openAiSummary.textEn}\n[ai-summary] Rejected text (hu):\n${openAiSummary.textHu}`);
       warnings.push(`OpenAI daily summary failed validation (${validation.reason}); using local summary fallback.`);
       return localSummary;
     }

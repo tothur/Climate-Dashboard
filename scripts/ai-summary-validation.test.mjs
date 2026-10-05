@@ -53,6 +53,7 @@ test("sentence counter ignores Hungarian dates, decimals and lower-case abbrevia
   assert.equal(sentenceCount("Global air was 1.56 °C above 1850–1900 on Oct. 4."), 1);
   assert.equal(sentenceCount("- First sentence.\n- Második mondat.\n- Third one!"), 3);
   assert.equal(sentenceCount("Két mondat. Ez a második."), 2);
+  assert.equal(sentenceCount("- 1,56 °C-kal melegebb a levegő\n- 2026. okt. 4-én rekord\n- 62% az El Niño esélye"), 3);
 });
 
 test("a realistic ChatGPT answer with flagged temperatures passes validation", () => {
