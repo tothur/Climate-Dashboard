@@ -571,8 +571,6 @@ const STRINGS = {
     aiSummaryOceanSignalTitle: "Oceans keep setting the pace.",
     aiSummaryRegionalSignalTitle: "Regional extremes reinforce the global signal.",
     aiSummaryOtherSignalTitle: "A major climate signal stands out.",
-    aiSummaryMethodologyLabel: "Methodology",
-    aiSummaryGeneratedLabel: "Generated",
     recordWarningsAria: "Record climate warnings",
     recordWarningKicker: "Record warning",
     recordWarningDateMeta: "Date",
@@ -792,8 +790,6 @@ const STRINGS = {
     aiSummaryOceanSignalTitle: "Továbbra is az óceánok diktálják az ütemet.",
     aiSummaryRegionalSignalTitle: "A regionális szélsőségek erősítik a globális jelzést.",
     aiSummaryOtherSignalTitle: "Egy fontos éghajlati jelzés emelkedik ki.",
-    aiSummaryMethodologyLabel: "Módszertan",
-    aiSummaryGeneratedLabel: "Készült",
     recordWarningsAria: "Éghajlati rekordfigyelmeztetések",
     recordWarningKicker: "Rekordfigyelmeztetés",
     recordWarningDateMeta: "Dátum",
@@ -4691,6 +4687,11 @@ export function App() {
         ) : null}
       </section>
     ) : null;
+  // The summary is regenerated with each daily data update; older than that means the update stalled.
+  const aiSummaryFreshnessTone = (generatedAtIso: string): FreshnessTone => {
+    const ageDays = utcDayAge(extractIsoDate(generatedAtIso));
+    return ageDays == null || ageDays > 7 ? "stale" : ageDays > 2 ? "warning" : "fresh";
+  };
   const renderOverviewAiSummary = () => (
     <section className={`ai-summary-panel overview-ai-summary ${aiDashboardSummary.tone}`} aria-label={t.aiSummaryAria}>
       <div className="ai-summary-label-row">
@@ -4720,12 +4721,19 @@ export function App() {
         </div>
       )}
       {runtimeDataReady && dataSource.aiSummary ? (
-        <details className="ai-summary-methodology">
-          <summary>{t.aiSummaryMethodologyLabel}</summary>
-          <p>
-            {t.aiSummaryGeneratedLabel}: {formatDateLabel(extractIsoDate(dataSource.aiSummary.generatedAtIso), language)} · {dataSource.aiSummary.model}
-          </p>
-        </details>
+        <p className="ai-summary-meta">
+          <span className={`status-date tone-${aiSummaryFreshnessTone(dataSource.aiSummary.generatedAtIso)}`}>
+            <span className="status-dot" aria-hidden="true" />
+            <time dateTime={dataSource.aiSummary.generatedAtIso}>
+              {formatDateLabel(extractIsoDate(dataSource.aiSummary.generatedAtIso), language)}
+            </time>
+          </span>
+          <span>
+            {dataSource.aiSummary.source === "openai"
+              ? language === "hu" ? "ChatGPT-vel készült" : "via ChatGPT"
+              : language === "hu" ? "automatikus összefoglaló" : "automatic summary"}
+          </span>
+        </p>
       ) : null}
     </section>
   );
