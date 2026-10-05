@@ -82,6 +82,10 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .ai-overview-signal { padding: 20px 0; }
 .observatory .ai-overview-signal h3 { font-size: 16px; }
 .observatory .ai-overview-signal p { color: var(--muted); font: 14px/1.65 var(--font-sans); }
+.observatory .ai-overview-signal { grid-template-columns: 36px minmax(0, 1fr); gap: 12px; }
+.observatory .ai-overview-signal-icon { width: 34px; height: 34px; }
+.observatory .ai-overview-signal-icon svg { width: 19px; height: 19px; }
+.observatory .ai-overview-signal.tone-signal .ai-overview-signal-icon { color: #7a5a9e; background: color-mix(in srgb, #a487c6 16%, var(--overview-ai-bg)); }
 .observatory .text-link-button { color: var(--accent); font: 500 12px/1.5 var(--font-sans); min-height: 44px; }
 .observatory .overview-metric-grid { gap: 18px; }
 .observatory .overview-metric-card { padding: 22px; min-height: 230px; }

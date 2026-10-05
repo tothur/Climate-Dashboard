@@ -21,6 +21,7 @@ import { buildVariabilityIndexOption } from "../charts/variabilityIndex";
 import { EChartsPanel } from "../components/EChartsPanel";
 import { ClimateMapImage } from "../components/ClimateMapImage";
 import { MapPanel } from "../components/MapPanel";
+import { SignalIcon, signalTopic, type SignalTopic } from "../components/SignalIcon";
 import { Sparkline, type SparklineReadout } from "../components/Sparkline";
 
 const STORAGE_LANG_KEY = "climate-dashboard-lang";
@@ -1321,7 +1322,7 @@ interface AiOverviewItem {
   key: string;
   title: string;
   detail: string;
-  icon: ToolkitIconName;
+  icon: SignalTopic;
   tone: "heat" | "ice" | "ocean" | "signal";
 }
 
@@ -1475,8 +1476,7 @@ function buildAiDashboardSummary({
     aiSummary?.items?.map((item, index) => {
       const title = language === "hu" ? item.titleHu : item.titleEn;
       const detail = language === "hu" ? item.detailHu : item.detailEn;
-      const icon: ToolkitIconName =
-        item.tone === "ice" ? "snow" : item.tone === "ocean" ? "ocean" : item.tone === "heat" ? "trend" : "up";
+      const icon = signalTopic(item.signalKey, item.tone);
       return {
         key: `${item.signalKey}-${index}`,
         title: localizeMetricMentions(title, [...snapshot.indicators, ...snapshot.forcing], language),
@@ -1523,13 +1523,13 @@ function buildAiOverviewItems(
     const normalized = detail.toLocaleLowerCase();
     let item: AiOverviewItem;
     if (/arctic|antarctic|polar|sea ice|arkt|antarkt|sarkvid/.test(normalized)) {
-      item = { key: `ice-${index}`, title: t.aiSummaryIceSignalTitle, detail, icon: "snow", tone: "ice" };
+      item = { key: `ice-${index}`, title: t.aiSummaryIceSignalTitle, detail, icon: "sea-ice", tone: "ice" };
     } else if (/ocean|sea level|ocean heat|óceán|tengerszint|tengerfelszín/.test(normalized)) {
-      item = { key: `ocean-${index}`, title: t.aiSummaryOceanSignalTitle, detail, icon: "ocean", tone: "ocean" };
+      item = { key: `ocean-${index}`, title: t.aiSummaryOceanSignalTitle, detail, icon: "sea-surface", tone: "ocean" };
     } else if (/temperature|warm|heat|hőmérsék|meleg/.test(normalized)) {
-      item = { key: `heat-${index}`, title: t.aiSummaryHeatSignalTitle, detail, icon: "trend", tone: "heat" };
+      item = { key: `heat-${index}`, title: t.aiSummaryHeatSignalTitle, detail, icon: "air-temperature", tone: "heat" };
     } else {
-      item = { key: `signal-${index}`, title: t.aiSummaryOtherSignalTitle, detail, icon: "up", tone: "signal" };
+      item = { key: `signal-${index}`, title: t.aiSummaryOtherSignalTitle, detail, icon: "signal", tone: "signal" };
     }
 
     const toneCount = toneCounts.get(item.tone) ?? 0;
@@ -4705,7 +4705,7 @@ export function App() {
           {aiOverviewItems.map((item) => (
             <article className={`ai-overview-signal tone-${item.tone}`} key={item.key}>
               <span className="ai-overview-signal-icon" aria-hidden="true">
-                <ToolkitIcon name={item.icon} />
+                <SignalIcon topic={item.icon} />
               </span>
               <div>
                 <h3>{item.title}</h3>
