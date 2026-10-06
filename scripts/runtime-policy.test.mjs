@@ -44,13 +44,15 @@ test("runtime fallback can recover ice-sheet and glacier metrics from live sourc
   assert.doesNotMatch(runtimeSource, /only available through the generated local dataset snapshot/);
 });
 
-test("map panels prefer remote candidates when generated map metadata is unavailable", async () => {
+test("map panels load the same-origin published map before cross-origin fallbacks", async () => {
   const appSource = await readProjectFile("src/app/App.tsx");
 
+  // Climate Reanalyzer sends Cross-Origin-Resource-Policy: same-origin, so
+  // remote map URLs can only ever be a last resort.
   assert.match(appSource, /function buildMapImageCandidates/);
-  assert.match(appSource, /const hasGeneratedMapMetadata = typeof path === "string" && path\.trim\(\)\.length > 0/);
-  assert.match(appSource, /imageUrl: remoteImageUrls\[0\]/);
-  assert.match(appSource, /fallbackImageUrls: \[\.\.\.remoteImageUrls\.slice\(1\), localImageUrl\]/);
+  assert.match(appSource, /imageUrl: buildMapAssetUrl\(path, fallbackFileName, versionToken\)/);
+  assert.match(appSource, /fallbackImageUrls: uniqueNonEmptyStrings\(remoteUrls\)/);
+  assert.doesNotMatch(appSource, /imageUrl: remoteImageUrls\[0\]/);
 });
 
 test("runtime fallback warnings are visible in the dashboard footer", async () => {

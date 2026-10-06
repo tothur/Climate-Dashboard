@@ -204,6 +204,8 @@ interface ClimateMapImageProps {
   scaleEndLabel?: string;
   /** Tick values printed under the colour bar, left to right; rendered as text when they match the image. */
   scaleTicks?: string[];
+  /** Shows the loading placeholder without requesting an image, e.g. until the dataset (and its map URLs) arrives. */
+  loading?: boolean;
 }
 
 /**
@@ -211,8 +213,8 @@ interface ClimateMapImageProps {
  * directly on the card in light and dark themes. Falls back to the original image for cross-origin sources
  * or an unexpected layout, and to the next URL when an image fails to load.
  */
-export function ClimateMapImage({ imageUrls, alt, noImageLabel, scaleStartLabel, scaleEndLabel, scaleTicks }: ClimateMapImageProps) {
-  const candidates = imageUrls.filter((url, index, list) => url.trim().length > 0 && list.indexOf(url) === index);
+export function ClimateMapImage({ imageUrls, alt, noImageLabel, scaleStartLabel, scaleEndLabel, scaleTicks, loading = false }: ClimateMapImageProps) {
+  const candidates = (loading ? [] : imageUrls).filter((url, index, list) => url.trim().length > 0 && list.indexOf(url) === index);
   const candidateKey = candidates.join("|");
   const [activeIndex, setActiveIndex] = useState(0);
   const [processed, setProcessed] = useState<ProcessedMap | null | undefined>(() =>
@@ -242,9 +244,9 @@ export function ClimateMapImage({ imageUrls, alt, noImageLabel, scaleStartLabel,
     };
   }, [activeUrl]);
 
-  if (!activeUrl || failed) return <div className="climate-map-empty">{noImageLabel}</div>;
+  if (!loading && (!activeUrl || failed)) return <div className="climate-map-empty">{noImageLabel}</div>;
 
-  if (processed === undefined) {
+  if (loading || processed === undefined) {
     return (
       <figure className="climate-map is-loading" aria-busy="true">
         <div className="climate-map-placeholder" />

@@ -944,6 +944,24 @@ function resolveTheme(mode: ThemeMode): ResolvedTheme {
   return mode;
 }
 
+// Storage access throws when the browser blocks site data (e.g. Safari with
+// "Block all cookies"); preferences then simply don't persist.
+function readStoredPreference(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredPreference(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Ignore: the preference stays in effect for this session only.
+  }
+}
+
 function safeLanguage(raw: string | null): Language {
   return raw === "hu" ? "hu" : "en";
 }
@@ -1215,33 +1233,23 @@ function buildMapAssetUrl(path: string | null | undefined, fallbackFileName: str
   return `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}v=${versionToken}`;
 }
 
+// Climate Reanalyzer serves its maps with Cross-Origin-Resource-Policy:
+// same-origin, so remote URLs never load in the browser. The published local
+// copy always goes first (even when stale); remote URLs remain a last resort.
 function buildMapImageCandidates({
   path,
   fallbackFileName,
   versionToken,
   remoteUrls,
-  preferGeneratedMap = true,
 }: {
   path: string | null | undefined;
   fallbackFileName: string;
   versionToken: string;
   remoteUrls: Array<string | null | undefined>;
-  preferGeneratedMap?: boolean;
 }): { imageUrl: string; fallbackImageUrls: string[] } {
-  const hasGeneratedMapMetadata = typeof path === "string" && path.trim().length > 0;
-  const localImageUrl = buildMapAssetUrl(path, fallbackFileName, versionToken);
-  const remoteImageUrls = uniqueNonEmptyStrings(remoteUrls);
-
-  if ((hasGeneratedMapMetadata && preferGeneratedMap) || !remoteImageUrls.length) {
-    return {
-      imageUrl: localImageUrl,
-      fallbackImageUrls: remoteImageUrls,
-    };
-  }
-
   return {
-    imageUrl: remoteImageUrls[0],
-    fallbackImageUrls: [...remoteImageUrls.slice(1), localImageUrl],
+    imageUrl: buildMapAssetUrl(path, fallbackFileName, versionToken),
+    fallbackImageUrls: uniqueNonEmptyStrings(remoteUrls),
   };
 }
 
@@ -3214,9 +3222,9 @@ function ensoFreshnessBadge(
 }
 
 export function App() {
-  const [language, setLanguage] = useState<Language>(() => safeLanguage(localStorage.getItem(STORAGE_LANG_KEY)));
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => safeTheme(localStorage.getItem(STORAGE_THEME_KEY)));
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(safeTheme(localStorage.getItem(STORAGE_THEME_KEY))));
+  const [language, setLanguage] = useState<Language>(() => safeLanguage(readStoredPreference(STORAGE_LANG_KEY)));
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => safeTheme(readStoredPreference(STORAGE_THEME_KEY)));
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(safeTheme(readStoredPreference(STORAGE_THEME_KEY))));
   const [compact, setCompact] = useState<boolean>(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
     return window.matchMedia("(max-width: 980px)").matches;
@@ -3265,12 +3273,12 @@ export function App() {
   const ensoOutlook = dataSource.ensoOutlook ?? null;
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_LANG_KEY, language);
+    writeStoredPreference(STORAGE_LANG_KEY, language);
     document.documentElement.lang = language;
   }, [language]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_THEME_KEY, themeMode);
+    writeStoredPreference(STORAGE_THEME_KEY, themeMode);
 
     const apply = () => {
       const nextResolved = resolveTheme(themeMode);
@@ -3510,6 +3518,14 @@ export function App() {
     if (!dailyGlobalMeanAnomalyMetric || !annualGlobalMeanAnomalyIsYtd) return null;
     return buildAnnualProjectionEstimate(dailyGlobalMeanAnomalyMetric.points, ensoOutlook);
   }, [dailyGlobalMeanAnomalyMetric, annualGlobalMeanAnomalyIsYtd, ensoOutlook]);
+  // The projections page has no content without an estimate (e.g. early
+  // January, before any year-to-date data). Once data has loaded, send deep
+  // links there to the overview instead of leaving an empty page.
+  useEffect(() => {
+    if (!runtimeDataReady || activeView !== "projections" || projectedAnnualGlobalMeanAnomaly) return;
+    setActiveView("overview");
+    window.history.replaceState(null, "", "#overview");
+  }, [runtimeDataReady, activeView, projectedAnnualGlobalMeanAnomaly]);
   const aiDashboardSummary = useMemo(
     () =>
       buildAiDashboardSummary({
@@ -3813,28 +3829,24 @@ export function App() {
       fallbackFileName: LOCAL_MAP_FILENAMES.global_2m_temperature,
       versionToken: mapVersion,
       remoteUrls: [mapAssets.global_2m_temperature?.sourceUrl, CURRENT_MAP_REMOTE_URLS.global_2m_temperature],
-      preferGeneratedMap: surfaceFreshness?.tone !== "stale",
     });
     const surfaceAnomalyImageCandidates = buildMapImageCandidates({
       path: mapAssets.global_2m_temperature_anomaly?.path,
       fallbackFileName: LOCAL_MAP_FILENAMES.global_2m_temperature_anomaly,
       versionToken: mapVersion,
       remoteUrls: [mapAssets.global_2m_temperature_anomaly?.sourceUrl, CURRENT_MAP_REMOTE_URLS.global_2m_temperature_anomaly],
-      preferGeneratedMap: surfaceAnomalyFreshness?.tone !== "stale",
     });
     const sstImageCandidates = buildMapImageCandidates({
       path: mapAssets.global_sst?.path,
       fallbackFileName: LOCAL_MAP_FILENAMES.global_sst,
       versionToken: mapVersion,
       remoteUrls: [mapAssets.global_sst?.sourceUrl, CURRENT_MAP_REMOTE_URLS.global_sst],
-      preferGeneratedMap: sstFreshness?.tone !== "stale",
     });
     const sstAnomalyImageCandidates = buildMapImageCandidates({
       path: mapAssets.global_sst_anomaly?.path,
       fallbackFileName: LOCAL_MAP_FILENAMES.global_sst_anomaly,
       versionToken: mapVersion,
       remoteUrls: [mapAssets.global_sst_anomaly?.sourceUrl, CURRENT_MAP_REMOTE_URLS.global_sst_anomaly],
-      preferGeneratedMap: sstAnomalyFreshness?.tone !== "stale",
     });
 
     return [
@@ -4918,6 +4930,7 @@ export function App() {
                       scaleStartLabel="°C"
                       scaleEndLabel={overviewMapCard.baselineLabel ?? undefined}
                       scaleTicks={overviewMapCard.scaleTicks}
+                      loading={!runtimeDataReady}
                     />
                   </>
                 ) : null}
@@ -5594,6 +5607,7 @@ export function App() {
               scaleStartLabel="°C"
               scaleEndLabel={mapCard.baselineLabel ?? undefined}
               scaleTicks={mapCard.scaleTicks}
+              loading={!runtimeDataReady}
             />
           ))}
         </div>
@@ -5735,7 +5749,14 @@ export function App() {
         </section>
       ) : null}
 
-      {activeView === "projections" && projectedAnnualGlobalMeanAnomaly ? (
+      {activeView === "projections" && !runtimeDataReady ? (
+        <section className="collapsible-section detail-page-section detail-page-editorial detail-page-projections" id="projections" aria-busy="true">
+          {renderPageIntro(t.projectionExperimentalLabel, t.projectionsTitle, t.projectionsNote)}
+          {renderLoadingValue("value-loading-skeleton detail-value-loading")}
+        </section>
+      ) : null}
+
+      {activeView === "projections" && runtimeDataReady && projectedAnnualGlobalMeanAnomaly ? (
         <section className="collapsible-section detail-page-section detail-page-editorial detail-page-projections" id="projections">
           {renderPageIntro(
             t.projectionExperimentalLabel,

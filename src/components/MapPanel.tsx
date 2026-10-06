@@ -18,6 +18,7 @@ interface MapPanelProps {
   scaleStartLabel?: string;
   scaleEndLabel?: string;
   scaleTicks?: string[];
+  loading?: boolean;
 }
 
 export function MapPanel({
@@ -34,6 +35,7 @@ export function MapPanel({
   scaleStartLabel,
   scaleEndLabel,
   scaleTicks,
+  loading,
 }: MapPanelProps) {
   const panelRef = useRef<HTMLElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -122,6 +124,7 @@ export function MapPanel({
       <div className="map-panel-image-wrap">
         <ClimateMapImage
           imageUrls={imageCandidates}
+          loading={loading}
           alt={imageAlt}
           noImageLabel={missingImageText}
           scaleStartLabel={scaleStartLabel}
