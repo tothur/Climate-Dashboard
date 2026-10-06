@@ -1,4 +1,4 @@
-import { createDataSourceFromSeries } from "./adapter";
+import { createDataSourceFromSeries, normalizePoints } from "./adapter";
 import type {
   ClimateMapAsset,
   ClimateMapAssets,
@@ -253,21 +253,6 @@ function buildGlobalMeanSeaLevelCandidateUrls(homepageHtml: string | null | unde
   }
 
   return Array.from(new Set(candidateUrls));
-}
-
-function normalizePoints(points: DailyPoint[]): DailyPoint[] {
-  const map = new Map<string, number>();
-  for (const point of points) {
-    const date = String(point.date ?? "").trim();
-    const value = Number(point.value);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-    if (!Number.isFinite(value)) continue;
-    map.set(date, value);
-  }
-
-  return Array.from(map.entries())
-    .sort((a, b) => Date.parse(`${a[0]}T00:00:00Z`) - Date.parse(`${b[0]}T00:00:00Z`))
-    .map(([date, value]) => ({ date, value }));
 }
 
 function filterSeriesToReferenceDates(points: DailyPoint[], referencePoints: DailyPoint[]): DailyPoint[] {

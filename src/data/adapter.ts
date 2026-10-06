@@ -577,12 +577,13 @@ const METRIC_METADATA: Record<ClimateMetricKey, ClimateMetricMetadata> = {
   },
 };
 
-function parseDate(input: string): number | null {
-  const timestamp = Date.parse(`${input}T00:00:00Z`);
-  return Number.isFinite(timestamp) ? timestamp : null;
-}
-
-function normalizePoints(points: DailyPoint[]): DailyPoint[] {
+/**
+ * De-duplicates points by date (last value wins), drops invalid dates and
+ * values, and returns them in chronological order. YYYY-MM-DD strings sort
+ * chronologically as plain text, and published series are almost always
+ * already in order, so the sort is skipped when it isn't needed.
+ */
+export function normalizePoints(points: DailyPoint[]): DailyPoint[] {
   const bucket = new Map<string, number>();
   for (const point of points) {
     const date = String(point.date ?? "").trim();
@@ -592,14 +593,15 @@ function normalizePoints(points: DailyPoint[]): DailyPoint[] {
     bucket.set(date, value);
   }
 
-  return Array.from(bucket.entries())
-    .sort((a, b) => {
-      const left = parseDate(a[0]);
-      const right = parseDate(b[0]);
-      if (left == null || right == null) return 0;
-      return left - right;
-    })
-    .map(([date, value]) => ({ date, value }));
+  const entries = Array.from(bucket.entries());
+  for (let index = 1; index < entries.length; index += 1) {
+    if (entries[index - 1][0] > entries[index][0]) {
+      entries.sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0));
+      break;
+    }
+  }
+
+  return entries.map(([date, value]) => ({ date, value }));
 }
 
 function buildSeriesForKey(key: ClimateMetricKey, points: DailyPoint[]): ClimateMetricSeries {
