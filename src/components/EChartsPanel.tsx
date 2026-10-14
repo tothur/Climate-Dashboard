@@ -15,6 +15,9 @@ interface EChartsPanelProps {
   subtitle?: string;
   /** Replaces the subtitle line with custom content, e.g. a dated status line. */
   meta?: ReactNode;
+  /** Content between the header and the chart, e.g. a headline value and chart controls. */
+  intro?: ReactNode;
+  className?: string;
   showExpand?: boolean;
   option: EChartsOption;
   expandLabel?: string;
@@ -27,6 +30,8 @@ export function EChartsPanel({
   title,
   subtitle,
   meta,
+  intro,
+  className,
   showExpand = true,
   option,
   expandLabel,
@@ -141,7 +146,7 @@ export function EChartsPanel({
   };
 
   return (
-    <article className={`panel ${isFallbackExpanded ? "panel-expanded" : ""}`} ref={panelRef}>
+    <article className={["panel", className, isFallbackExpanded ? "panel-expanded" : ""].filter(Boolean).join(" ")} ref={panelRef}>
       <header className="panel-header">
         <div className="panel-header-main">
           <h2>{title}</h2>
@@ -160,6 +165,7 @@ export function EChartsPanel({
           </div>
         ) : null}
       </header>
+      {intro}
       <div className="panel-chart-wrap">
         <div className="panel-chart" ref={containerRef} />
       </div>

@@ -23,6 +23,8 @@ import { ClimateMapImage } from "../components/ClimateMapImage";
 import { MapPanel } from "../components/MapPanel";
 import { SignalIcon, signalTopic, type SignalTopic } from "../components/SignalIcon";
 import { Sparkline, type SparklineReadout } from "../components/Sparkline";
+import { DailyContextPanel } from "../components/DailyContextPanel";
+import { buildDailyContextData, type DailyContextData } from "../charts/dailyContext";
 
 const STORAGE_LANG_KEY = "climate-dashboard-lang";
 const STORAGE_THEME_KEY = "climate-dashboard-theme";
@@ -417,6 +419,10 @@ const REGIONAL_TEMPERATURE_KEYS = new Set([
   "north_atlantic_sea_surface_temperature",
   "daily_nino34_sea_surface_temperature",
 ]);
+// Absolute daily temperature series drawn as the current year against the
+// normal range, recent years and daily records (see charts/dailyContext.ts).
+const DAILY_CONTEXT_KEYS = new Set<string>([...GLOBAL_TEMPERATURE_KEYS, ...REGIONAL_TEMPERATURE_KEYS]);
+const DAILY_CONTEXT_PAST_YEARS = 3;
 const REGIONAL_TEMPERATURE_ORDER: ClimateMetricSeries["key"][] = [
   "northern_hemisphere_surface_temperature",
   "southern_hemisphere_surface_temperature",
@@ -3439,6 +3445,19 @@ export function App() {
         }),
     [snapshot.indicators]
   );
+  const dailyContextByKey = useMemo(() => {
+    const contexts = new Map<string, DailyContextData>();
+    for (const metric of snapshot.indicators) {
+      if (!DAILY_CONTEXT_KEYS.has(metric.key)) continue;
+      const context = buildDailyContextData(metric.points, {
+        baselineStartYear: CLIMATOLOGY_BASELINE_START_YEAR,
+        baselineEndYear: CLIMATOLOGY_BASELINE_END_YEAR,
+        pastYearCount: DAILY_CONTEXT_PAST_YEARS,
+      });
+      if (context) contexts.set(metric.key, context);
+    }
+    return contexts;
+  }, [snapshot.indicators]);
   const oceanMetrics = useMemo(
     () =>
       snapshot.indicators
@@ -3921,6 +3940,29 @@ export function App() {
     const freshness = metricFreshnessBadge(metric, language, t);
     const isOverview = variant === "overview";
     const latestDateIso = metric.points[metric.points.length - 1]?.date ?? null;
+    const dailyContext = isOverview ? undefined : dailyContextByKey.get(metric.key);
+    if (dailyContext) {
+      return (
+        <DailyContextPanel
+          key={metric.key}
+          title={metricTitle(metric, language)}
+          subtitle={formatSourceShortName(metric.source.shortName, language)}
+          data={dailyContext}
+          unit={cardUnitLabel(metric.key, metric.unit, language)}
+          decimals={metric.decimals}
+          language={language}
+          monthLabels={monthlyLabels}
+          compact={compact}
+          dark={resolvedTheme === "dark"}
+          ready={runtimeDataReady}
+          latestDateLabel={formatDateLabel(latestDateIso, language)}
+          freshnessLabel={freshness.label}
+          freshnessTone={freshness.tone}
+          expandLabel={t.chartFullscreenEnter}
+          collapseLabel={t.chartFullscreenExit}
+        />
+      );
+    }
     const overviewMeta =
       isOverview && latestDateIso ? (
         <p className="panel-status-line">
