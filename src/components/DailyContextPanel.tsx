@@ -7,6 +7,7 @@ import {
   pastYearColor,
   type DailyContextData,
   type DailyContextRange,
+  type DailyContextRecordDirection,
 } from "../charts/dailyContext";
 import { EChartsPanel } from "./EChartsPanel";
 
@@ -17,6 +18,8 @@ interface DailyContextPanelProps {
   subtitle?: string;
   data: DailyContextData;
   unit: string;
+  /** Shorter unit for the y-axis name when the full unit is long. */
+  axisUnit?: string;
   decimals: number;
   language: Language;
   monthLabels: string[];
@@ -37,8 +40,41 @@ function englishOrdinal(value: number): string {
   return `${value}${["th", "st", "nd", "rd"][value % 10] ?? "th"}`;
 }
 
-const COPY = {
+const EXTREMES = {
   en: {
+    high: { extreme: "warmest", opposite: "coldest", recordAdjective: "record-warm" },
+    low: { extreme: "lowest", opposite: "highest", recordAdjective: "record-low" },
+  },
+  hu: {
+    high: { extreme: "legmelegebb", opposite: "leghidegebb", recordAdjective: "rekordmeleg" },
+    low: { extreme: "legalacsonyabb", opposite: "legmagasabb", recordAdjective: "rekordalacsony" },
+  },
+} as const;
+
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+function copyFor(language: Language, direction: DailyContextRecordDirection) {
+  const { extreme, opposite, recordAdjective } = EXTREMES[language][direction];
+  if (language === "hu") {
+    return {
+      year: "Év",
+      recent: "Utolsó 3 hónap",
+      rangeGroup: "Időtartomány",
+      yearsGroup: "Összehasonlító évek",
+      normal: "Normál",
+      normalRange: (baseline: string) => `Normál tartomány, ${baseline}`,
+      record: "Rekord",
+      recordForDate: "Rekord erre a napra",
+      rankForDate: (rank: number, total: number) => `${total} évből ${rank}.`,
+      annualRank: (rank: number) => (rank === 1 ? `a ${extreme} év` : `${rank}. ${extreme} év`),
+      vsNormal: "a normálishoz képest",
+      recordOnDate: (day: string) => `Az eddigi ${extreme} ${day}`,
+      oppositeOnDate: (day: string) => `Az eddigi ${opposite} ${day}`,
+      rankedDay: (rank: number, total: number, day: string) => `${day}: ${rank}. ${extreme} ${total} év közül`,
+      recordDays: (count: number, year: number) => `${year}: ${count} ${recordAdjective} nap`,
+    };
+  }
+  return {
     year: "Year",
     recent: "Last 3 months",
     rangeGroup: "Time range",
@@ -48,31 +84,14 @@ const COPY = {
     record: "Record",
     recordForDate: "Record for this date",
     rankForDate: (rank: number, total: number) => `Rank ${rank} of ${total}`,
-    annualRank: (rank: number) => (rank === 1 ? "warmest year on record" : `${englishOrdinal(rank)} warmest year`),
+    annualRank: (rank: number) => (rank === 1 ? `${extreme} year on record` : `${englishOrdinal(rank)} ${extreme} year`),
     vsNormal: "vs normal",
-    warmestOnRecord: (day: string) => `Warmest ${day} on record`,
-    coldestOnRecord: (day: string) => `Coldest ${day} on record`,
-    rankedDay: (rank: number, total: number, day: string) => `${englishOrdinal(rank)} warmest ${day} of ${total}`,
-    recordDays: (count: number, year: number) => `${count} record-warm ${count === 1 ? "day" : "days"} in ${year}`,
-  },
-  hu: {
-    year: "Év",
-    recent: "Utolsó 3 hónap",
-    rangeGroup: "Időtartomány",
-    yearsGroup: "Összehasonlító évek",
-    normal: "Normál",
-    normalRange: (baseline: string) => `Normál tartomány, ${baseline}`,
-    record: "Rekord",
-    recordForDate: "Rekord erre a napra",
-    rankForDate: (rank: number, total: number) => `${total} évből ${rank}.`,
-    annualRank: (rank: number) => (rank === 1 ? "a legmelegebb év" : `${rank}. legmelegebb év`),
-    vsNormal: "a normálishoz képest",
-    warmestOnRecord: (day: string) => `Az eddigi legmelegebb ${day}`,
-    coldestOnRecord: (day: string) => `Az eddigi leghidegebb ${day}`,
-    rankedDay: (rank: number, total: number, day: string) => `${day}: ${rank}. legmelegebb ${total} év közül`,
-    recordDays: (count: number, year: number) => `${year}: ${count} rekordmeleg nap`,
-  },
-} as const;
+    recordOnDate: (day: string) => `${capitalize(extreme)} ${day} on record`,
+    oppositeOnDate: (day: string) => `${capitalize(opposite)} ${day} on record`,
+    rankedDay: (rank: number, total: number, day: string) => `${englishOrdinal(rank)} ${extreme} ${day} of ${total}`,
+    recordDays: (count: number, year: number) => `${count} ${recordAdjective} ${count === 1 ? "day" : "days"} in ${year}`,
+  };
+}
 
 const numberFormats = new Map<string, Intl.NumberFormat>();
 function numberFormat(language: Language, decimals: number): Intl.NumberFormat {
@@ -93,6 +112,7 @@ export function DailyContextPanel({
   subtitle,
   data,
   unit,
+  axisUnit,
   decimals,
   language,
   monthLabels,
@@ -107,7 +127,7 @@ export function DailyContextPanel({
 }: DailyContextPanelProps) {
   const [range, setRange] = useState<DailyContextRange>("year");
   const [hiddenYears, setHiddenYears] = useState<ReadonlySet<number>>(() => new Set());
-  const copy = COPY[language];
+  const copy = copyFor(language, data.direction);
 
   const formatNumber = (value: number, digits: number) => {
     const formatted = numberFormat(language, digits).format(value);
@@ -125,6 +145,7 @@ export function DailyContextPanel({
         range,
         hiddenYears,
         unit,
+        axisUnit,
         decimals,
         compact,
         dark,
@@ -141,7 +162,7 @@ export function DailyContextPanel({
         },
       }),
     // formatNumber, formatDay and copy derive from language and monthLabels.
-    [data, range, hiddenYears, unit, decimals, compact, dark, monthLabels, language]
+    [data, range, hiddenYears, unit, axisUnit, decimals, compact, dark, monthLabels, language]
   );
 
   const toggleYear = (year: number) =>
@@ -159,11 +180,13 @@ export function DailyContextPanel({
   const rankText = !rank
     ? null
     : rank.rank === 1
-      ? copy.warmestOnRecord(latestDay)
+      ? copy.recordOnDate(latestDay)
       : rank.rank === rank.total
-        ? copy.coldestOnRecord(latestDay)
+        ? copy.oppositeOnDate(latestDay)
         : copy.rankedDay(rank.rank, rank.total, latestDay);
   const recordDaysText = data.recordDays.length ? copy.recordDays(data.recordDays.length, data.currentYear) : null;
+  // Highlight a departure from normal in the direction records are set (warmer, or less ice).
+  const anomalyIsAlert = anomaly != null && (data.direction === "high" ? anomaly >= 0 : anomaly < 0);
   const skeleton = <span className="value-loading-skeleton daily-context-value-loading" aria-hidden="true" />;
 
   const intro = (
@@ -183,11 +206,11 @@ export function DailyContextPanel({
         {ready ? (
           <div className="daily-context-chips">
             {anomaly != null ? (
-              <span className={`daily-context-chip ${anomaly >= 0 ? "is-warm" : "is-cool"}`}>
+              <span className={`daily-context-chip ${anomalyIsAlert ? "is-alert" : "is-calm"}`}>
                 {`${anomaly >= 0 ? "+" : "−"}${formatNumber(Math.abs(anomaly), decimals)} ${unit} ${copy.vsNormal}`}
               </span>
             ) : null}
-            {rankText ? <span className={`daily-context-chip ${rank?.rank === 1 ? "is-warm" : ""}`}>{rankText}</span> : null}
+            {rankText ? <span className={`daily-context-chip ${rank?.rank === 1 ? "is-alert" : ""}`}>{rankText}</span> : null}
             {recordDaysText ? <span className="daily-context-chip">{recordDaysText}</span> : null}
           </div>
         ) : null}

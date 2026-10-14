@@ -19,6 +19,8 @@ const RECENT_WINDOW_DAYS = 92;
 const RECENT_WINDOW_AHEAD_DAYS = 21;
 
 export type DailyContextRange = "year" | "recent";
+/** Which extreme counts as a record: highs for temperature, lows for sea ice. */
+export type DailyContextRecordDirection = "high" | "low";
 
 export interface DailyContextRank {
   rank: number;
@@ -26,13 +28,14 @@ export interface DailyContextRank {
 }
 
 export interface DailyContextData {
+  direction: DailyContextRecordDirection;
   currentYear: number;
   latest: { date: string; axisDay: number; value: number } | null;
   /** Middle 80% (10th–90th percentile) of the baseline years, plus their mean. */
   normal: Map<number, { low: number; high: number; mean: number }>;
   current: Array<[number, number]>;
   pastYears: Array<{ year: number; points: Array<[number, number]>; annualRank: number | null }>;
-  /** The current year's rank among all years for each calendar day (1 = warmest). */
+  /** The current year's rank among all years for each calendar day (1 = the record extreme). */
   ranks: Map<number, DailyContextRank>;
   recordDays: number[];
   latestRank: DailyContextRank | null;
@@ -65,8 +68,10 @@ function percentile(sorted: number[], fraction: number): number {
 
 export function buildDailyContextData(
   points: DailyPoint[],
-  options: { baselineStartYear: number; baselineEndYear: number; pastYearCount: number }
+  options: { baselineStartYear: number; baselineEndYear: number; pastYearCount: number; recordDirection?: DailyContextRecordDirection }
 ): DailyContextData | null {
+  const direction = options.recordDirection ?? "high";
+  const beats = (other: number, value: number) => (direction === "high" ? other > value : other < value);
   const byYear = new Map<number, Map<number, number>>();
   let latest: DailyContextData["latest"] = null;
 
@@ -106,7 +111,7 @@ export function buildDailyContextData(
       const values = Array.from(byYear.get(year)?.values() ?? []);
       return { year, mean: values.reduce((sum, value) => sum + value, 0) / values.length };
     })
-    .sort((a, b) => b.mean - a.mean);
+    .sort((a, b) => (direction === "high" ? b.mean - a.mean : a.mean - b.mean));
   const annualRankByYear = new Map(annualMeans.map((entry, index) => [entry.year, index + 1]));
 
   const toSortedPoints = (days: Map<number, number> | undefined): Array<[number, number]> =>
@@ -130,7 +135,7 @@ export function buildDailyContextData(
       const other = byYear.get(year)?.get(axisDay);
       if (other == null) continue;
       total += 1;
-      if (other > value) rank += 1;
+      if (beats(other, value)) rank += 1;
     }
     // A record needs a real history to beat, not just a handful of years.
     if (total < MIN_BASELINE_YEARS) continue;
@@ -140,6 +145,7 @@ export function buildDailyContextData(
 
   const latestNormal = normal.get(latest.axisDay);
   return {
+    direction,
     currentYear,
     latest,
     normal,
@@ -158,6 +164,8 @@ export interface DailyContextOptionArgs {
   range: DailyContextRange;
   hiddenYears: ReadonlySet<number>;
   unit: string;
+  /** Shorter unit for the y-axis name when the full unit is long. */
+  axisUnit?: string;
   decimals: number;
   compact: boolean;
   dark: boolean;
@@ -252,6 +260,7 @@ export function buildDailyContextOption({
   range,
   hiddenYears,
   unit,
+  axisUnit,
   decimals,
   compact,
   dark,
@@ -309,7 +318,7 @@ export function buildDailyContextOption({
         note: entry.annualRank != null && entry.annualRank <= 3 ? labels.annualRank(entry.annualRank) : undefined,
       });
     }
-    lines.sort((a, b) => b.value - a.value);
+    lines.sort((a, b) => (data.direction === "high" ? b.value - a.value : a.value - b.value));
     const normal = data.normal.get(axisDay);
     const rank = data.ranks.get(axisDay);
     const muted = (text: string) => `<span style="color:${palette.tooltipMuted};font-weight:400">${text}</span>`;
@@ -375,7 +384,7 @@ export function buildDailyContextOption({
         min: yMin,
         max: yMax,
         interval: step,
-        name: unit,
+        name: axisUnit ?? unit,
         nameLocation: "end",
         nameGap: 10,
         nameTextStyle: { color: palette.axisLabel, fontSize: 11, align: "right", padding: [0, 6, 0, 0] },

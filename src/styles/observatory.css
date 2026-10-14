@@ -1915,7 +1915,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 }
 .observatory .ai-summary-meta > span + span::before { margin: 0 6px; color: color-mix(in srgb, var(--muted) 60%, transparent); content: "·"; }
 
-/* Daily context charts: headline value, comparison chips and chart controls above the plot. */
+/* Daily context charts (temperature and sea ice): headline value, comparison chips and chart controls above the plot. */
 .observatory .daily-context-intro { display: flex; flex-direction: column; gap: 14px; padding: 2px 22px 10px; }
 .observatory .daily-context-headline { min-width: 0; }
 .observatory .daily-context-kicker { margin: 0 0 2px; color: var(--muted); font-size: 12px; line-height: 1.4; }
@@ -1924,8 +1924,8 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .daily-context-value-loading { width: 6ch; height: .9em; vertical-align: middle; }
 .observatory .daily-context-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .observatory .daily-context-chip { padding: 3px 9px; border-radius: 999px; background: var(--overview-paper-soft); color: var(--muted); font-size: 12px; font-weight: 550; line-height: 1.45; }
-.observatory .daily-context-chip.is-warm { background: color-mix(in srgb, var(--domain-temperature) 13%, transparent); color: var(--domain-temperature); }
-.observatory .daily-context-chip.is-cool { background: color-mix(in srgb, var(--domain-ocean) 14%, transparent); color: var(--domain-ocean); }
+.observatory .daily-context-chip.is-alert { background: color-mix(in srgb, var(--domain-temperature) 13%, transparent); color: var(--domain-temperature); }
+.observatory .daily-context-chip.is-calm { background: color-mix(in srgb, var(--domain-ocean) 14%, transparent); color: var(--domain-ocean); }
 .observatory .daily-context-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
 .observatory .daily-context-range { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--overview-paper-soft); }
 .observatory .daily-context-range button { min-height: 30px; padding: 4px 11px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
