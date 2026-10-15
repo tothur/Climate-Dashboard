@@ -24,6 +24,8 @@ import { MapPanel } from "../components/MapPanel";
 import { SignalIcon, signalTopic, type SignalTopic } from "../components/SignalIcon";
 import { Sparkline, type SparklineReadout } from "../components/Sparkline";
 import { DailyContextPanel } from "../components/DailyContextPanel";
+import { TrendContextPanel, type TrendContextVariant } from "../components/TrendContextPanel";
+import { buildTrendContextData, meanBetweenYears, type TrendContextData } from "../charts/trendContext";
 import { buildDailyContextData, type DailyContextData } from "../charts/dailyContext";
 
 const STORAGE_LANG_KEY = "climate-dashboard-lang";
@@ -3571,6 +3573,25 @@ export function App() {
       return year != null && year >= 2001 && year <= 2010;
     })
   );
+  // Long-record charts: running totals, cumulative ice loss, annual glacier
+  // balances and the energy imbalance's 12-month mean (charts/trendContext.ts).
+  const trendContextByKey = useMemo(() => {
+    const contexts = new Map<string, { data: TrendContextData; variant: TrendContextVariant }>();
+    for (const metric of snapshot.indicators) {
+      let variant: TrendContextVariant | null = null;
+      if (OCEAN_KEYS.has(metric.key)) variant = "rise";
+      else if (ICE_SHEET_LOSS_KEYS.has(metric.key)) variant = "loss";
+      else if (ICE_SHEET_AND_GLACIER_KEYS.has(metric.key)) variant = "annual";
+      if (!variant) continue;
+      const data = buildTrendContextData(metric.points, { kind: variant === "annual" ? "annual-bars" : "line" });
+      if (data) contexts.set(metric.key, { data, variant });
+    }
+    if (earthEnergyImbalanceMetric && earthEnergyImbalanceTrendPoints.length) {
+      const data = buildTrendContextData(earthEnergyImbalanceTrendPoints, { kind: "line", rawPoints: earthEnergyImbalanceMetric.points });
+      if (data) contexts.set(earthEnergyImbalanceMetric.key, { data, variant: "imbalance" });
+    }
+    return contexts;
+  }, [snapshot.indicators, earthEnergyImbalanceMetric, earthEnergyImbalanceTrendPoints]);
   const variabilityChartPanels = useMemo(
     () =>
       variabilityMetrics
@@ -4018,57 +4039,37 @@ export function App() {
     );
   };
 
-  const renderTrendPanel = (
-    metric: ClimateMetricSeries,
-    options?: {
-      xAxisYearLabelStep?: number;
-      lineWidth?: number;
-      color?: string;
-      showArea?: boolean;
-      yAxisInverse?: boolean;
-    }
-  ) => {
-    const bounds = indicatorYAxisBounds(metric.key);
-    const yAxisLabel = indicatorYAxisUnitLabel(metric.key, language);
+  const renderTrendContextPanel = (metric: ClimateMetricSeries, overrides?: { title?: string; subtitle?: string }) => {
+    const context = trendContextByKey.get(metric.key);
+    if (!context) return null;
     const freshness = metricFreshnessBadge(metric, language, t);
-
+    const unit = cardUnitLabel(metric.key, metric.unit, language);
     return (
-      <EChartsPanel
+      <TrendContextPanel
         key={metric.key}
-        title={metricTitle(metric, language)}
-        subtitle={formatSourceShortName(metric.source.shortName, language)}
-        expandLabel={t.chartFullscreenEnter}
-        collapseLabel={t.chartFullscreenExit}
+        title={overrides?.title ?? metricTitle(metric, language)}
+        subtitle={overrides?.subtitle ?? formatSourceShortName(metric.source.shortName, language)}
+        data={context.data}
+        variant={context.variant}
+        unit={unit}
+        axisUnit={unit.replace(/^× /, "")}
+        decimals={metric.decimals}
+        language={language}
+        compact={compact}
+        dark={resolvedTheme === "dark"}
+        ready={runtimeDataReady}
+        baseline={
+          context.variant === "imbalance"
+            ? { label: "2001–2010", mean: meanBetweenYears(context.data, 2001, 2010) }
+            : undefined
+        }
         freshnessLabel={freshness.label}
         freshnessTone={freshness.tone}
-        option={buildClimateTrendOption({
-          points: metric.points,
-          seriesName: metricTitle(metric, language),
-          unit: cardUnitLabel(metric.key, metric.unit, language),
-          decimals: metric.decimals,
-          lineWidth: options?.lineWidth ?? 2.1,
-          yAxisMin: bounds.min,
-          yAxisMax: bounds.max,
-          yAxisInverse: options?.yAxisInverse ?? false,
-          yAxisUnitLabel: yAxisLabel,
-          xAxisYearLabelStep: options?.xAxisYearLabelStep ?? 10,
-          disableDataZoom: true,
-          forceMappedYearLabels: true,
-          showLegend: false,
-          compact,
-          dark: resolvedTheme === "dark",
-          color: options?.color ?? topicChartColor(metric.key, resolvedTheme === "dark"),
-          showArea: options?.showArea ?? true,
-          labels: {
-            noData: t.noData,
-            latest: t.chartLatest,
-          },
-        })}
+        expandLabel={t.chartFullscreenEnter}
+        collapseLabel={t.chartFullscreenExit}
       />
     );
   };
-
-  const renderOceanPanel = (metric: ClimateMetricSeries) => renderTrendPanel(metric);
 
   const renderIndicatorSubsection = (
     key: IndicatorSubsectionKey,
@@ -5439,7 +5440,7 @@ export function App() {
                 </div>
               </div>
               <div className="charts-grid climate-grid">
-                {oceanMetrics.map((metric) => renderOceanPanel(metric))}
+                {oceanMetrics.map((metric) => renderTrendContextPanel(metric))}
               </div>
               </>
             )}
@@ -5490,38 +5491,10 @@ export function App() {
                   </div>
                 </div>
                 <div className="charts-grid climate-grid climate-grid-single">
-                  <EChartsPanel
-                    title={t.earthEnergyImbalanceTitle}
-                    subtitle={t.earthEnergyImbalanceSubtitle}
-                    expandLabel={t.chartFullscreenEnter}
-                    collapseLabel={t.chartFullscreenExit}
-                    freshnessLabel={earthEnergyImbalanceFreshness?.label}
-                    freshnessTone={earthEnergyImbalanceFreshness?.tone}
-                    option={buildClimateTrendOption({
-                      points: earthEnergyImbalanceTrendPoints,
-                      seriesName: t.earthEnergyImbalanceTitle,
-                      unit: cardUnitLabel(earthEnergyImbalanceMetric.key, earthEnergyImbalanceMetric.unit, language),
-                      decimals: earthEnergyImbalanceMetric.decimals,
-                      lineWidth: 2.2,
-                      yAxisMin: indicatorYAxisBounds(earthEnergyImbalanceMetric.key).min,
-                      yAxisMax: indicatorYAxisBounds(earthEnergyImbalanceMetric.key).max,
-                      yAxisUnitLabel: indicatorYAxisUnitLabel(earthEnergyImbalanceMetric.key, language),
-                      xAxisYearLabelStep: 2,
-                      disableDataZoom: true,
-                      forceMappedYearLabels: true,
-                      showLegend: false,
-                      compact,
-                      dark: resolvedTheme === "dark",
-                      color: topicChartColor(earthEnergyImbalanceMetric.key, resolvedTheme === "dark"),
-                      referenceLines: [
-                        { value: 0, label: "0 W/m²" },
-                      ],
-                      labels: {
-                        noData: t.noData,
-                        latest: t.chartLatest,
-                      },
-                    })}
-                  />
+                  {renderTrendContextPanel(earthEnergyImbalanceMetric, {
+                    title: t.earthEnergyImbalanceTitle,
+                    subtitle: t.earthEnergyImbalanceSubtitle,
+                  })}
                 </div>
                 </>
               )
@@ -5597,14 +5570,7 @@ export function App() {
                   </div>
                 </div>
                 <div className="charts-grid climate-grid">
-                  {iceSheetAndGlacierMetrics.map((metric) =>
-                    renderTrendPanel(metric, {
-                      xAxisYearLabelStep: 5,
-                      showArea: false,
-                      yAxisInverse: ICE_SHEET_LOSS_KEYS.has(metric.key),
-                      color: topicChartColor(metric.key, resolvedTheme === "dark"),
-                    })
-                  )}
+                  {iceSheetAndGlacierMetrics.map((metric) => renderTrendContextPanel(metric))}
                 </div>
                 </>
               )

@@ -1947,3 +1947,4 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .daily-context-value { font-size: 30px; }
   .observatory :is(.daily-context-legend, .daily-context-years) { justify-content: flex-start; }
 }
+.observatory .trend-context-key i { width: 14px; height: 10px; border-radius: 2px; box-shadow: none; }
