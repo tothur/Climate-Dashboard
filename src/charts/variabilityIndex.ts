@@ -1,5 +1,6 @@
 import type { EChartsOption } from "echarts";
 import type { DailyPoint } from "../domain/model";
+import { divergingColors } from "../theme/domainColors";
 
 interface BuildVariabilityIndexOptionArgs {
   points: DailyPoint[];
@@ -77,8 +78,7 @@ export function buildVariabilityIndexOption({
 }: BuildVariabilityIndexOptionArgs): EChartsOption {
   const palette = dark
     ? {
-        warm: "#f28273",
-        cool: "#7ab9dc",
+        ...divergingColors(true),
         mean: "#eef3ef",
         axisLine: "rgba(165, 180, 176, 0.42)",
         axisLabel: "#a5b4b0",
@@ -90,8 +90,7 @@ export function buildVariabilityIndexOption({
         tooltipText: "#e2e8f0",
       }
     : {
-        warm: "#c54c40",
-        cool: "#26769c",
+        ...divergingColors(false),
         mean: "#192722",
         axisLine: "rgba(25, 39, 34, 0.22)",
         axisLabel: "#59665f",

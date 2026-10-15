@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import type { Language } from "../domain/model";
 import { buildTrendContextOption, trendContextPalette, type TrendContextData, type TrendContextRange } from "../charts/trendContext";
+import type { ChartDomain } from "../theme/domainColors";
 import { EChartsPanel } from "./EChartsPanel";
 
 type FreshnessTone = "fresh" | "warning" | "stale";
@@ -22,6 +23,8 @@ interface TrendContextPanelProps {
   subtitle?: string;
   data: TrendContextData;
   variant: TrendContextVariant;
+  /** Topic colour of the line (bars are sign-coded). */
+  domain: ChartDomain;
   unit: string;
   axisUnit?: string;
   decimals: number;
@@ -124,6 +127,7 @@ export function TrendContextPanel({
   subtitle,
   data,
   variant,
+  domain,
   unit,
   axisUnit,
   decimals,
@@ -141,7 +145,7 @@ export function TrendContextPanel({
   const copy = COPY[language];
   const isLine = data.kind === "line";
   const startYear = new Date(data.first.time).getUTCFullYear();
-  const palette = trendContextPalette(dark);
+  const palette = trendContextPalette(dark, domain);
 
   const formatNumber = (value: number, digits: number, signed = false) => {
     const formatted = numberFormat(language, digits).format(Math.abs(value));
@@ -160,6 +164,7 @@ export function TrendContextPanel({
         decimals,
         compact,
         dark,
+        domain,
         inverse: variant === "loss",
         zeroArea: variant === "imbalance",
         showTrend: isLine,
@@ -180,7 +185,7 @@ export function TrendContextPanel({
         },
       }),
     // formatNumber, copy and the tooltip text derive from language.
-    [data, range, unit, axisUnit, decimals, compact, dark, variant, isLine, language, startYear]
+    [data, range, unit, axisUnit, decimals, compact, dark, domain, variant, isLine, language, startYear]
   );
 
   const latest = data.latest;
@@ -236,13 +241,15 @@ export function TrendContextPanel({
         },
       ]
     : [
-        { key: "loss", icon: swatch({ background: palette.signal }), label: copy.loss },
+        { key: "loss", icon: swatch({ background: palette.loss }), label: copy.loss },
         { key: "gain", icon: swatch({ background: palette.gain }), label: copy.gain },
         { key: "mean", icon: swatch({ background: palette.context, height: 3 }), label: copy.runningMean },
       ];
 
+  // Alert chips take the topic colour, like the line (glacier bars report losses, so they stay red).
+  const chipAccent = variant === "annual" ? "var(--domain-temperature)" : `var(--domain-${domain})`;
   const intro = (
-    <div className="daily-context-intro">
+    <div className="daily-context-intro" style={{ "--chip-accent": chipAccent } as CSSProperties}>
       <div className="daily-context-headline">
         <p className="daily-context-kicker">{ready ? kicker : " "}</p>
         <p className="daily-context-value">

@@ -26,6 +26,7 @@ import { Sparkline, type SparklineReadout } from "../components/Sparkline";
 import { DailyContextPanel } from "../components/DailyContextPanel";
 import { TrendContextPanel, type TrendContextVariant } from "../components/TrendContextPanel";
 import { buildTrendContextData, meanBetweenYears, type TrendContextData } from "../charts/trendContext";
+import { domainColor, domainColorAlpha, type ChartDomain } from "../theme/domainColors";
 import { buildDailyContextData, type DailyContextData } from "../charts/dailyContext";
 
 const STORAGE_LANG_KEY = "climate-dashboard-lang";
@@ -2646,39 +2647,29 @@ function pickYearsForMetric(metricKey: ClimateMetricSeries["key"], points: Daily
   return pickComparisonYears(points);
 }
 
-function topicChartColor(metricKey: ClimateMetricSeries["key"], dark: boolean): string {
-  const category = topSummaryCategoryClass(metricKey);
-  switch (category) {
+/**
+ * Domain of a metric for single-series chart colours, matching the topic
+ * accents on the Indicators page: temperature, oceans, ice and snow, and
+ * greenhouse gases / energy (forcing).
+ */
+function metricChartDomain(metricKey: ClimateMetricSeries["key"]): ChartDomain {
+  if (metricKey === EARTH_ENERGY_IMBALANCE_KEY) return "forcing";
+  switch (topSummaryCategoryClass(metricKey)) {
     case "topcat-temperature":
     case "topcat-anomaly":
-      return dark ? "#f08a8a" : "#c55353";
+      return "temperature";
     case "topcat-sea-ice":
-      return dark ? "#94b4df" : "#4f86bf";
+      return "ice";
     case "topcat-forcing":
     case "topcat-enso":
-      return dark ? "#9ab47a" : "#78945b";
-    case "topcat-ocean":
-    case "topcat-neutral":
+      return "forcing";
     default:
-      return dark ? "#91b7e4" : "#4f86bf";
+      return "ocean";
   }
 }
 
-function forcingMetricColor(metricKey: ClimateMetricSeries["key"], dark: boolean): string {
-  switch (metricKey) {
-    case "atmospheric_co2":
-      return dark ? "#e9b75f" : "#a66d16";
-    case "atmospheric_ch4":
-      return dark ? "#c0a5e8" : "#7956a8";
-    case "atmospheric_n2o":
-      return dark ? "#79c7b0" : "#257d69";
-    case "atmospheric_aggi":
-      return dark ? "#f28273" : "#b4533f";
-    case "incoming_solar_energy":
-      return dark ? "#f2c75c" : "#b88700";
-    default:
-      return topicChartColor(metricKey, dark);
-  }
+function topicChartColor(metricKey: ClimateMetricSeries["key"], dark: boolean): string {
+  return domainColor(metricChartDomain(metricKey), dark);
 }
 
 function forcingGasLabel(metricKey: ClimateMetricSeries["key"]): string | null {
@@ -2695,21 +2686,7 @@ function forcingGasLabel(metricKey: ClimateMetricSeries["key"]): string | null {
 }
 
 function topicChartSoftColor(metricKey: ClimateMetricSeries["key"], dark: boolean): string {
-  const category = topSummaryCategoryClass(metricKey);
-  switch (category) {
-    case "topcat-temperature":
-    case "topcat-anomaly":
-      return dark ? "rgba(240, 138, 138, 0.42)" : "rgba(197, 83, 83, 0.34)";
-    case "topcat-sea-ice":
-      return dark ? "rgba(148, 180, 223, 0.42)" : "rgba(79, 134, 191, 0.34)";
-    case "topcat-forcing":
-    case "topcat-enso":
-      return dark ? "rgba(154, 180, 122, 0.42)" : "rgba(120, 148, 91, 0.34)";
-    case "topcat-ocean":
-    case "topcat-neutral":
-    default:
-      return dark ? "rgba(145, 183, 228, 0.42)" : "rgba(79, 134, 191, 0.34)";
-  }
+  return domainColorAlpha(metricChartDomain(metricKey), dark, dark ? 0.42 : 0.34);
 }
 
 function buildIndicatorYearColors(currentYear: number, metricKey: ClimateMetricSeries["key"], dark: boolean): Record<number, string> {
@@ -3274,6 +3251,9 @@ export function App() {
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const topicNavRef = useRef<HTMLDivElement>(null);
+  const topicNavSentinelRef = useRef<HTMLDivElement>(null);
+  const [topicNavStuck, setTopicNavStuck] = useState(false);
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
@@ -3340,6 +3320,45 @@ export function App() {
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
+
+  // The Indicators topic bar sticks under the site header. Track the header's
+  // height (desktop bar or mobile app bar) for the sticky offset, and whether
+  // the bar is currently stuck so it can condense.
+  useEffect(() => {
+    if (activeView !== "indicators") return;
+    let observer: IntersectionObserver | null = null;
+    const observe = () => {
+      observer?.disconnect();
+      const mobileBar = document.querySelector<HTMLElement>(".mobile-app-bar");
+      const header = mobileBar && mobileBar.offsetHeight > 0 ? mobileBar : document.querySelector<HTMLElement>(".dashboard-sidebar");
+      const headerHeight = header?.offsetHeight ?? 0;
+      document.documentElement.style.setProperty("--app-header-height", `${headerHeight}px`);
+      const sentinel = topicNavSentinelRef.current;
+      if (!sentinel || typeof IntersectionObserver === "undefined") return;
+      const offset = headerHeight + 8;
+      observer = new IntersectionObserver(
+        ([entry]) => setTopicNavStuck(!entry.isIntersecting && entry.boundingClientRect.top < offset),
+        { rootMargin: `-${offset}px 0px 0px 0px` }
+      );
+      observer.observe(sentinel);
+    };
+    observe();
+    window.addEventListener("resize", observe);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", observe);
+      setTopicNavStuck(false);
+    };
+  }, [activeView]);
+
+  // Keep the active topic in view when the bar scrolls sideways on phones.
+  useEffect(() => {
+    const nav = topicNavRef.current;
+    const active = nav?.querySelector<HTMLElement>('button[aria-pressed="true"]');
+    if (!nav || !active || nav.scrollWidth <= nav.clientWidth) return;
+    const target = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
+    nav.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+  }, [indicatorTopic, topicNavStuck]);
 
   useEffect(() => {
     let active = true;
@@ -4051,6 +4070,7 @@ export function App() {
         subtitle={overrides?.subtitle ?? formatSourceShortName(metric.source.shortName, language)}
         data={context.data}
         variant={context.variant}
+        domain={metricChartDomain(metric.key)}
         unit={unit}
         axisUnit={unit.replace(/^× /, "")}
         decimals={metric.decimals}
@@ -4141,7 +4161,7 @@ export function App() {
   const renderForcingSummaryCard = (metric: ClimateMetricSeries) => {
     const freshness = metricFreshnessBadge(metric, language, t);
     const gasLabel = forcingGasLabel(metric.key);
-    const accentColor = forcingMetricColor(metric.key, resolvedTheme === "dark");
+    const accentColor = topicChartColor(metric.key, resolvedTheme === "dark");
     return (
       <article
         className={`alert-card summary ${topSummaryCategoryClass(metric.key)}${gasLabel ? " forcing-gas-card" : ""}`}
@@ -4186,7 +4206,7 @@ export function App() {
             showLegend: false,
             compact,
             dark: resolvedTheme === "dark",
-            color: forcingMetricColor(metric.key, resolvedTheme === "dark"),
+            color: topicChartColor(metric.key, resolvedTheme === "dark"),
             labels: {
               noData: t.noData,
               latest: t.chartLatest,
@@ -4203,7 +4223,7 @@ export function App() {
             decimals: metric.decimals,
             compact,
             dark: resolvedTheme === "dark",
-            color: forcingMetricColor(metric.key, resolvedTheme === "dark"),
+            color: topicChartColor(metric.key, resolvedTheme === "dark"),
             labels: {
               noData: t.noData,
               latest: t.chartLatest,
@@ -5262,8 +5282,31 @@ export function App() {
             <p>{language === "hu" ? activeIndicatorTopic.descriptionHu : activeIndicatorTopic.descriptionEn}</p>
           </div>
         </div>
-        <div className="topic-navigation indicator-topic-navigation segmented-control" role="group" aria-label={language === "hu" ? "Mutatócsoport" : "Indicator category"}>
-          {indicatorTopics.map((topic) => <button type="button" key={topic.key} aria-pressed={indicatorTopic === topic.key} onClick={() => {setIndicatorTopic(topic.key); setClimateSectionOpen(true);}}>{language === "hu" ? topic.hu : topic.en}</button>)}
+        <div className="indicator-topic-sentinel" ref={topicNavSentinelRef} aria-hidden="true" />
+        <div
+          ref={topicNavRef}
+          className={`topic-navigation indicator-topic-navigation segmented-control${topicNavStuck ? " is-stuck" : ""}`}
+          role="group"
+          aria-label={language === "hu" ? "Mutatócsoport" : "Indicator category"}
+        >
+          {indicatorTopics.map((topic) => (
+            <button
+              type="button"
+              key={topic.key}
+              aria-pressed={indicatorTopic === topic.key}
+              onClick={() => {
+                setIndicatorTopic(topic.key);
+                setClimateSectionOpen(true);
+                // Switching from the condensed bar deep in the page starts the new topic at its top.
+                if (topicNavStuck) {
+                  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                  document.getElementById("indicators")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+                }
+              }}
+            >
+              {language === "hu" ? topic.hu : topic.en}
+            </button>
+          ))}
         </div>
         <header className="section-header">
           <button

@@ -1924,7 +1924,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .daily-context-value-loading { width: 6ch; height: .9em; vertical-align: middle; }
 .observatory .daily-context-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .observatory .daily-context-chip { padding: 3px 9px; border-radius: 999px; background: var(--overview-paper-soft); color: var(--muted); font-size: 12px; font-weight: 550; line-height: 1.45; }
-.observatory .daily-context-chip.is-alert { background: color-mix(in srgb, var(--domain-temperature) 13%, transparent); color: var(--domain-temperature); }
+.observatory .daily-context-chip.is-alert { background: color-mix(in srgb, var(--chip-accent, var(--domain-temperature)) 13%, transparent); color: var(--chip-accent, var(--domain-temperature)); }
 .observatory .daily-context-chip.is-calm { background: color-mix(in srgb, var(--domain-ocean) 14%, transparent); color: var(--domain-ocean); }
 .observatory .daily-context-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
 .observatory .daily-context-range { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--overview-paper-soft); }
@@ -1948,3 +1948,35 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory :is(.daily-context-legend, .daily-context-years) { justify-content: flex-start; }
 }
 .observatory .trend-context-key i { width: 14px; height: 10px; border-radius: 2px; box-shadow: none; }
+
+/* Indicators topic bar: sticks under the site header and condenses into a slim frosted bar while stuck. */
+/* "clip" keeps the section's clipping without becoming a scroll container, which would stop the bar sticking. */
+.observatory #indicators { overflow: clip; scroll-margin-top: var(--app-header-height, 76px); }
+.observatory .detail-page-indicators .indicator-topic-sentinel { height: 1px; margin-bottom: -1px; }
+.observatory .detail-page-indicators .indicator-topic-navigation {
+  position: sticky;
+  top: calc(var(--app-header-height, 76px) + 8px);
+  z-index: 40;
+  transition: padding .18s ease, background-color .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.observatory .detail-page-indicators .indicator-topic-navigation button { transition: min-height .18s ease, font-size .18s ease, background-color .18s ease, color .18s ease; }
+.observatory .detail-page-indicators .indicator-topic-navigation.is-stuck {
+  padding: 4px;
+  border-color: color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  backdrop-filter: saturate(1.4) blur(14px);
+  box-shadow: 0 12px 30px rgba(2, 6, 23, .10);
+}
+[data-theme="dark"] .observatory .detail-page-indicators .indicator-topic-navigation.is-stuck { box-shadow: 0 12px 30px rgba(0, 0, 0, .35); }
+.observatory .detail-page-indicators .indicator-topic-navigation.is-stuck button { min-height: 36px; font-size: 12.5px; }
+.observatory .detail-page-indicators .indicator-topic-navigation.is-stuck button[aria-pressed="true"] { box-shadow: none; }
+@media (max-width: 900px) {
+  .observatory .detail-page-indicators .indicator-topic-navigation { scrollbar-width: none; }
+  .observatory .detail-page-indicators .indicator-topic-navigation::-webkit-scrollbar { display: none; }
+  .observatory .detail-page-indicators .indicator-topic-navigation.is-stuck button { min-width: 0; padding-inline: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .observatory .detail-page-indicators .indicator-topic-navigation,
+  .observatory .detail-page-indicators .indicator-topic-navigation button { transition: none; }
+}

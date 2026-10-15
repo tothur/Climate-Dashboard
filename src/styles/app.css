@@ -5907,9 +5907,12 @@ body {
 }
 
 @media (max-width: 560px) {
+  /* "clip" stops sideways overflow without turning body into a scroll
+     container, which would break sticky headers; "hidden" is the fallback. */
   html,
   body {
     overflow-x: hidden;
+    overflow-x: clip;
   }
 
   .collapsible-subsection-header {

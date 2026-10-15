@@ -1,5 +1,6 @@
 import type { EChartsOption } from "echarts";
 import type { DailyPoint } from "../domain/model";
+import { divergingColors, domainColor, domainColorAlpha, type ChartDomain } from "../theme/domainColors";
 
 /**
  * Long-term trend charts in the same visual language as the daily context
@@ -143,12 +144,14 @@ function niceScale(min: number, max: number, maxTicks = 6): { min: number; max: 
   return { min: Math.floor(min / step) * step, max: Math.ceil(max / step) * step, step, decimals };
 }
 
-export function trendContextPalette(dark: boolean) {
-  return dark
+/**
+ * Line charts take their topic's domain colour; annual balance bars are
+ * sign-coded with the shared diverging pair (loss red, gain blue).
+ */
+export function trendContextPalette(dark: boolean, domain: ChartDomain = "temperature") {
+  const { warm, cool } = divergingColors(dark);
+  const base = dark
     ? {
-        signal: "#f08a8a",
-        signalArea: "rgba(240, 138, 138, 0.14)",
-        gain: "#91b7e4",
         context: "#a9b4b0",
         trend: "rgba(165, 180, 176, 0.75)",
         axisLabel: "#a5b4b0",
@@ -161,9 +164,6 @@ export function trendContextPalette(dark: boolean) {
         tooltipMuted: "#a5b4b0",
       }
     : {
-        signal: "#c55353",
-        signalArea: "rgba(197, 83, 83, 0.10)",
-        gain: "#4f86bf",
         context: "#4a4945",
         trend: "rgba(89, 102, 95, 0.7)",
         axisLabel: "#59665f",
@@ -175,6 +175,13 @@ export function trendContextPalette(dark: boolean) {
         tooltipText: "#192722",
         tooltipMuted: "#59665f",
       };
+  return {
+    ...base,
+    signal: domainColor(domain, dark),
+    signalArea: domainColorAlpha(domain, dark, dark ? 0.14 : 0.1),
+    loss: warm,
+    gain: cool,
+  };
 }
 
 export interface TrendContextOptionArgs {
@@ -185,6 +192,8 @@ export interface TrendContextOptionArgs {
   decimals: number;
   compact: boolean;
   dark: boolean;
+  /** Topic colour for line charts; bars always use the diverging pair. */
+  domain: ChartDomain;
   /** Plot larger values lower, e.g. cumulative ice loss so the line falls as ice is lost. */
   inverse?: boolean;
   /** Shade between the line and zero (energy imbalance). */
@@ -225,6 +234,7 @@ function buildLineOption({
   decimals,
   compact,
   dark,
+  domain,
   inverse = false,
   zeroArea = false,
   showTrend = true,
@@ -232,7 +242,7 @@ function buildLineOption({
   formatTooltipDate,
   labels,
 }: TrendContextOptionArgs): EChartsOption {
-  const palette = trendContextPalette(dark);
+  const palette = trendContextPalette(dark, domain);
   const xMax = data.latest.time;
   const xMin = range === "recent" ? Math.max(data.first.time, xMax - RECENT_YEARS * YEAR_MS) : data.first.time;
   const fit = showTrend ? data.fullFit : null;
@@ -354,8 +364,8 @@ function buildLineOption({
   } as EChartsOption;
 }
 
-function buildAnnualBarsOption({ data, unit, axisUnit, decimals, compact, dark, formatNumber, labels }: TrendContextOptionArgs): EChartsOption {
-  const palette = trendContextPalette(dark);
+function buildAnnualBarsOption({ data, unit, axisUnit, decimals, compact, dark, domain, formatNumber, labels }: TrendContextOptionArgs): EChartsOption {
+  const palette = trendContextPalette(dark, domain);
   const years = data.points.map(([time]) => String(new Date(time).getUTCFullYear()));
   const values = data.points.map(([, value]) => value);
   const runningMean = new Map(data.annual?.runningMean ?? []);
@@ -385,7 +395,7 @@ function buildAnnualBarsOption({ data, unit, axisUnit, decimals, compact, dark, 
         const extra = labels.tooltipExtra(data.points[index][0], value);
         return (
           `<b>${years[index]}</b><br/>` +
-          `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${value < 0 ? palette.signal : palette.gain}"></span>` +
+          `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${value < 0 ? palette.loss : palette.gain}"></span>` +
           `<b>${formatNumber(value, decimals, true)} ${unit}</b>` +
           (mean != null ? `<br/>${muted(`${labels.runningMean}: ${formatNumber(mean, decimals, true)} ${unit}`)}` : "") +
           (extra ? `<br/>${muted(extra)}` : "")
@@ -423,7 +433,7 @@ function buildAnnualBarsOption({ data, unit, axisUnit, decimals, compact, dark, 
         data: values.map((value, index) => ({
           value,
           itemStyle: {
-            color: value < 0 ? palette.signal : palette.gain,
+            color: value < 0 ? palette.loss : palette.gain,
             opacity: index === lastIndex ? 1 : 0.72,
             borderRadius: value < 0 ? [0, 0, 2, 2] : [2, 2, 0, 0],
           },
