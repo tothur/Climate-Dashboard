@@ -16,7 +16,6 @@ import type {
 } from "../domain/model";
 import { loadRuntimeDataSource } from "../data/runtime-source";
 import { buildClimateMonthlyComparisonOption, buildClimateTrendOption } from "../charts/iliTrend";
-import { buildVariabilityIndexOption } from "../charts/variabilityIndex";
 import { EChartsPanel } from "../components/EChartsPanel";
 import { ClimateMapImage } from "../components/ClimateMapImage";
 import { MapPanel } from "../components/MapPanel";
@@ -440,6 +439,7 @@ const PREINDUSTRIAL_LEVELS: Partial<Record<string, number>> = {
   atmospheric_n2o: 270,
 };
 const SOLAR_CYCLE_DAYS = 11 * 365.25;
+const VARIABILITY_START_YEAR = 1950;
 
 // Niño 3.4 anomalies of ±0.5 °C mark El Niño and La Niña conditions.
 const ENSO_ANOMALY_THRESHOLD = 0.5;
@@ -3649,51 +3649,28 @@ export function App() {
     }
     return contexts;
   }, [snapshot.forcing]);
+  // Variability indices since 1950: monthly values shaded by sign under a
+  // 12-month mean (charts/trendContext.ts, "index" form).
   const variabilityChartPanels = useMemo(
     () =>
-      variabilityMetrics
-        .flatMap((metric) => {
-          if (!metric.points.length) return [];
-          const isTemperatureIndex = metric.key === "nino34_index";
-          const subtitle: string =
-            metric.key === "nino34_index"
-              ? t.nino34IndexSubtitle
-              : metric.key === "nao_index"
-                ? t.naoIndexSubtitle
-                : metric.key === "pna_index"
-                  ? t.pnaIndexSubtitle
-                  : metric.key === "soi_index"
-                    ? t.soiIndexSubtitle
-                    : t.arcticOscillationIndexSubtitle;
-          return [{
-            metric,
-            subtitle,
-            option: buildVariabilityIndexOption({
-              points: metric.points,
-              title: metricTitle(metric, language),
-              unit: cardUnitLabel(metric.key, metric.unit, language),
-              decimals: metric.decimals,
-              yAxisLimit: isTemperatureIndex ? 3 : 4,
-              yAxisUnitLabel: isTemperatureIndex ? "°C" : "index",
-              startYear: 1950,
-              threshold: isTemperatureIndex
-                ? { value: 0.5, positiveLabel: t.ensoConditionElNino, negativeLabel: t.ensoConditionLaNina }
-                : undefined,
-              invertColors: metric.key === "soi_index",
-              runningMeanLabel: language === "hu" ? "12 havi átlag" : "12-month mean",
-              compact,
-              dark: resolvedTheme === "dark",
-              language,
-            }),
-          }];
-        }),
+      variabilityMetrics.flatMap((metric) => {
+        const points = metric.points.filter((point) => point.date >= `${VARIABILITY_START_YEAR}-01-01`);
+        const data = points.length ? buildTrendContextData(trailingMeanByDays(points, 365), { kind: "line", rawPoints: points }) : null;
+        if (!data) return [];
+        const subtitle: string =
+          metric.key === "nino34_index"
+            ? t.nino34IndexSubtitle
+            : metric.key === "nao_index"
+              ? t.naoIndexSubtitle
+              : metric.key === "pna_index"
+                ? t.pnaIndexSubtitle
+                : metric.key === "soi_index"
+                  ? t.soiIndexSubtitle
+                  : t.arcticOscillationIndexSubtitle;
+        return [{ metric, subtitle, data }];
+      }),
     [
-      compact,
-      language,
-      resolvedTheme,
       t.arcticOscillationIndexSubtitle,
-      t.ensoConditionElNino,
-      t.ensoConditionLaNina,
       t.naoIndexSubtitle,
       t.nino34IndexSubtitle,
       t.pnaIndexSubtitle,
@@ -4022,7 +3999,7 @@ export function App() {
     const freshness = metricFreshnessBadge(metric, language, t);
     const isOverview = variant === "overview";
     const latestDateIso = metric.points[metric.points.length - 1]?.date ?? null;
-    const dailyContext = isOverview ? undefined : dailyContextByKey.get(metric.key);
+    const dailyContext = dailyContextByKey.get(metric.key);
     if (dailyContext) {
       return (
         <DailyContextPanel
@@ -4044,6 +4021,7 @@ export function App() {
           extraChip={
             metric.key === NINO34_SST_ANOMALY_KEY && dailyContext.latest ? ensoPhaseChip(dailyContext.latest.value, language) : null
           }
+          summary={isOverview}
           freshnessLabel={freshness.label}
           freshnessTone={freshness.tone}
           expandLabel={t.chartFullscreenEnter}
@@ -4645,18 +4623,44 @@ export function App() {
       </article>
     );
   };
-  const renderVariabilityPanel = ({ metric, subtitle, option }: (typeof variabilityChartPanels)[number]) => {
+  const variabilitySignLabels = (key: ClimateMetricSeries["key"]): { warm: string; cool: string } => {
+    if (key === "nino34_index") return { warm: t.ensoConditionElNino, cool: t.ensoConditionLaNina };
+    if (key === "soi_index") {
+      return language === "hu"
+        ? { warm: "Negatív (El Niño felé)", cool: "Pozitív (La Niña felé)" }
+        : { warm: "Negative (El Niño-like)", cool: "Positive (La Niña-like)" };
+    }
+    return language === "hu" ? { warm: "Pozitív fázis", cool: "Negatív fázis" } : { warm: "Positive phase", cool: "Negative phase" };
+  };
+  const renderVariabilityPanel = ({ metric, subtitle, data }: (typeof variabilityChartPanels)[number]) => {
     const freshness = metricFreshnessBadge(metric, language, t);
+    const isOni = metric.key === "nino34_index";
+    const signLabels = variabilitySignLabels(metric.key);
     return (
-      <EChartsPanel
+      <TrendContextPanel
         key={metric.key}
         title={metricTitle(metric, language)}
         subtitle={subtitle}
-        expandLabel={t.chartFullscreenEnter}
-        collapseLabel={t.chartFullscreenExit}
+        data={data}
+        variant="index"
+        domain="temperature"
+        unit={isOni ? "°C" : ""}
+        decimals={metric.decimals}
+        language={language}
+        compact={compact}
+        dark={resolvedTheme === "dark"}
+        ready={runtimeDataReady}
+        index={{
+          invert: metric.key === "soi_index",
+          warmLabel: signLabels.warm,
+          coolLabel: signLabels.cool,
+          phase: { text: variabilityIndexPhase(metric).label, tone: variabilityIndexPhase(metric).tone },
+          thresholds: isOni ? NINO34_THRESHOLDS[language] : undefined,
+        }}
         freshnessLabel={freshness.label}
         freshnessTone={freshness.tone}
-        option={option}
+        expandLabel={t.chartFullscreenEnter}
+        collapseLabel={t.chartFullscreenExit}
       />
     );
   };

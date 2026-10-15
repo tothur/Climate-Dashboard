@@ -37,6 +37,11 @@ interface DailyContextPanelProps {
   thresholds?: Array<{ value: number; label: string }>;
   /** An extra headline chip, e.g. the ENSO phase for Niño 3.4. */
   extraChip?: { text: string; alert?: boolean } | null;
+  /**
+   * Summary card (Overview): headline and at most two chips, no controls or
+   * full-screen button, since the whole card links to the detail page.
+   */
+  summary?: boolean;
   freshnessLabel?: string;
   freshnessTone?: FreshnessTone;
   expandLabel?: string;
@@ -147,6 +152,7 @@ export function DailyContextPanel({
   anomaly: anomalyMode = false,
   thresholds,
   extraChip,
+  summary = false,
   freshnessLabel,
   freshnessTone,
   expandLabel,
@@ -246,15 +252,16 @@ export function DailyContextPanel({
               </span>
             ) : null}
             {rankText ? <span className={`daily-context-chip ${rank?.rank === 1 ? "is-alert" : ""}`}>{rankText}</span> : null}
-            {anomalyMode && data.yearToDate ? (
+            {!summary && anomalyMode && data.yearToDate ? (
               <span className={`daily-context-chip ${data.yearToDate.rank === 1 ? "is-alert" : ""}`}>
                 {copy.yearToDate(data.currentYear, `${formatSigned(data.yearToDate.mean, decimals)} ${unit}`, data.yearToDate.rank, data.yearToDate.total)}
               </span>
             ) : null}
-            {recordDaysText ? <span className="daily-context-chip">{recordDaysText}</span> : null}
+            {!summary && recordDaysText ? <span className="daily-context-chip">{recordDaysText}</span> : null}
           </div>
         ) : null}
       </div>
+      {summary ? null : (
       <div className="daily-context-controls">
         {/* Three monthly values are too few for a zoomed view. */}
         {monthly ? null : (
@@ -283,14 +290,16 @@ export function DailyContextPanel({
           ) : null}
         </div>
       </div>
+      )}
     </div>
   );
 
   return (
     <EChartsPanel
-      className="daily-context-panel"
+      className={`daily-context-panel${summary ? " is-summary" : ""}`}
       title={title}
       subtitle={subtitle}
+      showExpand={!summary}
       intro={intro}
       option={option}
       expandLabel={expandLabel}

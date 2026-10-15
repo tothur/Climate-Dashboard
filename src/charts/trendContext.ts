@@ -246,6 +246,12 @@ export interface TrendContextOptionArgs {
   /** Line charts: draw a dot on every value (sparse annual records). */
   showSymbols?: boolean;
   /**
+   * Index charts: shade the raw values by sign with the diverging pair (warm
+   * above zero, cool below; swapped when `invert`), draw the running mean in
+   * neutral ink, and keep the axis symmetric around zero.
+   */
+  divergingRaw?: { invert: boolean };
+  /**
    * Bars: whether a positive value is the warm side (warming) rather than a
    * gain (glacier balance). Decides which side of zero is red and which blue.
    */
@@ -303,19 +309,22 @@ function buildLineOption({
   references = [],
   signed = false,
   showSymbols = false,
+  divergingRaw,
   formatNumber,
   formatTooltipDate,
   labels,
 }: TrendContextOptionArgs): EChartsOption {
   const palette = trendContextPalette(dark, domain);
+  const lineColor = divergingRaw ? palette.context : palette.signal;
   const formatTick = (value: number, digits: number) => formatNumber(value, digits, signed && value > 0);
-  const xMax = data.latest.time;
+  // Index shading is stepped around each month, so leave half a month for the latest one.
+  const xMax = data.latest.time + (divergingRaw ? 16 * 86_400_000 : 0);
   const xMin = range === "recent" ? Math.max(data.first.time, xMax - RECENT_YEARS * YEAR_MS) : data.first.time;
   const fit = showTrend ? data.fullFit : null;
   const trendLine: Array<[number, number]> = fit ? [data.first.time, xMax].map((time) => [time, fit.slope * time + fit.intercept] as [number, number]) : [];
 
   const visible = data.points.filter(([time]) => time >= xMin).map(([, value]) => value);
-  const rawInView = showRaw && data.rawSeries ? data.rawSeries.filter(([time]) => time >= xMin) : [];
+  const rawInView = (showRaw || divergingRaw) && data.rawSeries ? data.rawSeries.filter(([time]) => time >= xMin) : [];
   for (const [, value] of rawInView) visible.push(value);
   for (const reference of references) visible.push(reference.value);
   if (fit) visible.push(fit.slope * xMin + fit.intercept, fit.slope * xMax + fit.intercept);
@@ -325,7 +334,10 @@ function buildLineOption({
   const pad = Math.max((rawMax - rawMin) * 0.06, 1e-6);
   // A record that never goes negative (cumulative loss) shouldn't be padded below zero.
   const neverNegative = data.points.every(([, value]) => value >= 0);
-  const scale = niceScale(neverNegative ? Math.max(0, rawMin - pad) : rawMin - pad, rawMax + pad);
+  const extent = Math.max(Math.abs(rawMin), Math.abs(rawMax)) + pad;
+  const scale = divergingRaw
+    ? niceScale(-extent, extent)
+    : niceScale(neverNegative ? Math.max(0, rawMin - pad) : rawMin - pad, rawMax + pad);
 
   const muted = (text: string) => `<span style="color:${palette.tooltipMuted};font-weight:400">${text}</span>`;
   const lastPoint = data.points[data.points.length - 1];
@@ -341,11 +353,24 @@ function buildLineOption({
         const row = rows.find((entry) => entry.seriesId === "signal");
         if (!row?.value) return "";
         const [time, value] = row.value;
+        const unitSuffix = unit ? ` ${unit}` : "";
+        const monthly = divergingRaw ? data.raw?.get(time) : undefined;
+        if (divergingRaw && monthly != null) {
+          // Index charts: the month's value first, coloured by its sign, then the 12-month mean.
+          const { warm, cool } = divergingColors(dark);
+          const color = (monthly >= 0) !== divergingRaw.invert ? warm : cool;
+          return (
+            `<b>${formatTooltipDate(time)}</b><br/>` +
+            `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${color}"></span>` +
+            `<b>${formatTick(monthly, decimals)}${unitSuffix}</b>` +
+            `<br/>${muted(`${labels.trend}: ${formatTick(value, decimals)}${unitSuffix}`)}`
+          );
+        }
         const extra = labels.tooltipExtra(time, value);
         return (
           `<b>${formatTooltipDate(time)}</b><br/>` +
           `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${palette.signal}"></span>` +
-          `<b>${formatTick(value, decimals)} ${unit}</b>` +
+          `<b>${formatTick(value, decimals)}${unitSuffix}</b>` +
           (extra ? `<br/>${muted(extra)}` : "")
         );
       },
@@ -376,6 +401,29 @@ function buildLineOption({
       splitLine: { lineStyle: { color: palette.grid, width: 1 } },
     },
     series: [
+      ...(divergingRaw && rawInView.length
+        ? (() => {
+            const { warm, cool } = divergingColors(dark);
+            const alpha = (color: string) => color + (dark ? "a6" : "b3");
+            const positive = alpha(divergingRaw.invert ? cool : warm);
+            const negative = alpha(divergingRaw.invert ? warm : cool);
+            return [
+              { color: positive, clamp: (value: number) => Math.max(value, 0) },
+              { color: negative, clamp: (value: number) => Math.min(value, 0) },
+            ].map(({ color, clamp }) => ({
+              type: "line" as const,
+              data: rawInView.map(([time, value]) => [time, clamp(value)]),
+              step: "middle" as const,
+              silent: true,
+              showSymbol: false,
+              z: 1,
+              tooltip: { show: false },
+              lineStyle: { width: 0 },
+              areaStyle: { color, origin: 0 },
+              emphasis: { disabled: true },
+            }));
+          })()
+        : []),
       ...(rawInView.length
         ? [
             {
@@ -387,15 +435,26 @@ function buildLineOption({
               sampling: "lttb" as const,
               z: 2,
               tooltip: { show: false },
-              lineStyle: { color: domainColorAlpha(domain, dark, dark ? 0.4 : 0.32), width: 0.8 },
+              lineStyle: divergingRaw ? { width: 0 } : { color: domainColorAlpha(domain, dark, dark ? 0.4 : 0.32), width: 0.8 },
               emphasis: { disabled: true },
               // The latest single measurement, which the headline reports; the bold line is its running mean.
               markPoint: {
                 silent: true,
                 symbol: "circle",
                 symbolSize: 8,
-                itemStyle: { color: palette.surface, borderColor: palette.signal, borderWidth: 2 },
-                label: { show: false },
+                itemStyle: { color: palette.surface, borderColor: lineColor, borderWidth: 2 },
+                // On index charts the monthly value is the main reading, so it carries the label.
+                label: divergingRaw
+                  ? {
+                      show: true,
+                      position: "right" as const,
+                      distance: 6,
+                      formatter: () => formatTick(rawInView[rawInView.length - 1][1], decimals),
+                      color: palette.tooltipText,
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }
+                  : { show: false },
                 data: [{ coord: rawInView[rawInView.length - 1] }],
               },
             },
@@ -426,12 +485,12 @@ function buildLineOption({
         symbol: "circle",
         symbolSize: 5,
         z: 3,
-        lineStyle: { color: palette.signal, width: 2.4, cap: "round", join: "round" },
-        itemStyle: { color: palette.signal },
+        lineStyle: { color: lineColor, width: divergingRaw ? 1.8 : 2.4, cap: "round", join: "round" },
+        itemStyle: { color: lineColor },
         areaStyle: zeroArea ? { color: palette.signalArea, origin: 0 } : undefined,
         emphasis: { disabled: true },
         endLabel: {
-          show: true,
+          show: !divergingRaw,
           formatter: () => formatTick(lastPoint[1], decimals),
           color: palette.tooltipText,
           fontSize: 12,
@@ -442,18 +501,18 @@ function buildLineOption({
           silent: true,
           symbol: "circle",
           symbolSize: 10,
-          itemStyle: { color: palette.signal, borderColor: palette.surface, borderWidth: 2 },
+          itemStyle: { color: lineColor, borderColor: palette.surface, borderWidth: 2 },
           label: { show: false },
           data: [{ coord: lastPoint }],
         },
         markLine:
-          zeroArea || references.length
+          zeroArea || divergingRaw || references.length
             ? {
                 silent: true,
                 symbol: ["none", "none"],
                 label: { show: false },
                 lineStyle: { color: palette.zero, type: "solid", width: 1 },
-                data: [...(zeroArea ? [{ yAxis: 0 }] : []), ...referenceLines(references, palette)],
+                data: [...(zeroArea || divergingRaw ? [{ yAxis: 0 }] : []), ...referenceLines(references, palette)],
               }
             : undefined,
       },
