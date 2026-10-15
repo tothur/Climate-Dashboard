@@ -1981,9 +1981,11 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .detail-page-indicators .indicator-topic-navigation button { transition: none; }
 }
 
-/* Context panels side by side share one height: when one panel's controls
-   wrap onto an extra line, its neighbour's chart grows to match instead of
-   leaving the two cards uneven. */
-.observatory .charts-grid:has(> .daily-context-panel) { align-items: stretch; }
-.observatory .daily-context-panel .panel-chart-wrap { flex: 1 1 auto; display: flex; flex-direction: column; }
-.observatory .daily-context-panel .panel-chart { flex: 1 1 auto; }
+/* Chart cards side by side share one height: when one card's headline or
+   controls wrap onto an extra line, its neighbour's chart grows to match
+   instead of leaving the cards uneven. Avoids :has() so older Safari gets it
+   too; map cards keep their own sizing. */
+.observatory .charts-grid:not(.maps-grid) { align-items: stretch; }
+.observatory .charts-grid:not(.maps-grid) > .panel { display: flex; flex-direction: column; }
+.observatory .charts-grid:not(.maps-grid) > .panel > .panel-chart-wrap { flex: 1 1 auto; display: flex; flex-direction: column; }
+.observatory .charts-grid:not(.maps-grid) > .panel > .panel-chart-wrap > .panel-chart { flex: 1 1 auto; }
