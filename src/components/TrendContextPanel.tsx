@@ -16,6 +16,8 @@ type FreshnessTone = "fresh" | "warning" | "stale";
  *   365-day mean over the faint daily values, against the 1.5 °C and 2 °C levels
  * - warming-annual: annual global warming above pre-industrial, the current
  *   year drawn as provisional (year to date)
+ * - warming-estimate: the same record with the current year replaced by its
+ *   projected annual mean and likely range (Projections page)
  * - concentration: a greenhouse gas, its 12-month mean over the measurements,
  *   compared with the pre-industrial level
  * - aggi: NOAA's Annual Greenhouse Gas Index (1990 = 1)
@@ -30,6 +32,7 @@ export type TrendContextVariant =
   | "annual"
   | "warming-daily"
   | "warming-annual"
+  | "warming-estimate"
   | "concentration"
   | "aggi"
   | "solar"
@@ -78,6 +81,20 @@ interface TrendContextPanelProps {
     coolLabel: string;
     phase: { text: string; tone: "warm" | "cool" | "neutral" };
     thresholds?: Array<{ value: number; label: string }>;
+  };
+  /**
+   * Warming-estimate only: the current year's projected annual mean (the
+   * latest point), its 15th–85th percentile range, the chances behind it and
+   * the year-to-date mean it starts from.
+   */
+  estimate?: {
+    low: number;
+    high: number;
+    yearToDate: number | null;
+    probabilityAbove: number;
+    probabilityRecord: number;
+    analogCount: number;
+    signal?: string | null;
   };
   freshnessLabel?: string;
   freshnessTone?: FreshnessTone;
@@ -151,6 +168,15 @@ const COPY = {
     lowestSince: (date: string) => `Lowest since ${date}`,
     highestOnRecord: "Highest on record",
     lowestOnRecord: "Lowest on record",
+    projectedMean: "projected annual mean",
+    estimateShort: "est.",
+    estimateKey: (year: number) => `${year} estimate, 15th–85th percentile range`,
+    likelyRange: (range: string) => `Likely range ${range} (15th–85th percentile)`,
+    chanceAbove: (pct: string, level: string) => `${pct} chance of a year above ${level}`,
+    chanceRecord: (pct: string, year: number, value: string) => `${pct} chance of beating the record (${year}, ${value})`,
+    soFarThisYear: (value: string) => `So far this year: ${value}`,
+    analogs: (count: number) => `From ${count} weighted analog years`,
+    estimateTooltip: (range: string, ytd: string | null) => `Likely range ${range}${ytd ? ` · so far ${ytd}` : ""}`,
   },
   hu: {
     all: "Teljes",
@@ -212,6 +238,15 @@ const COPY = {
     lowestSince: (date: string) => `${date} óta a legalacsonyabb`,
     highestOnRecord: "Rekordmagas",
     lowestOnRecord: "Rekordalacsony",
+    projectedMean: "várható éves átlag",
+    estimateShort: "becsl.",
+    estimateKey: (year: number) => `${year}: becslés, 15–85. percentilis tartomány`,
+    likelyRange: (range: string) => `Valószínű tartomány: ${range} (15–85. percentilis)`,
+    chanceAbove: (pct: string, level: string) => `${pct} esély, hogy az év ${level} feletti lesz`,
+    chanceRecord: (pct: string, year: number, value: string) => `${pct} esély új rekordra (${year}: ${value})`,
+    soFarThisYear: (value: string) => `Eddig az idén: ${value}`,
+    analogs: (count: number) => `${count} súlyozott analóg év alapján`,
+    estimateTooltip: (range: string, ytd: string | null) => `Valószínű tartomány: ${range}${ytd ? ` · eddig ${ytd}` : ""}`,
   },
 } as const;
 
@@ -263,6 +298,7 @@ export function TrendContextPanel({
   partialLatest = false,
   preindustrial,
   index,
+  estimate,
   freshnessLabel,
   freshnessTone,
   expandLabel,
@@ -280,7 +316,10 @@ export function TrendContextPanel({
     return signed ? `+${formatted}` : formatted;
   };
   const seaLevelMm = (gigatonnes: number) => formatNumber(gigatonnes / GT_PER_MM_SEA_LEVEL, 1);
-  const warming = variant === "warming-daily" || variant === "warming-annual";
+  const signedValueOf = (value: number) => `${formatNumber(value, decimals, value > 0)} ${unit}`;
+  const warming = variant === "warming-daily" || variant === "warming-annual" || variant === "warming-estimate";
+  const isEstimate = variant === "warming-estimate" && estimate != null;
+  const formatRange = (low: number, high: number) => `${formatNumber(low, decimals, low > 0)}–${formatNumber(high, decimals)} ${unit}`;
   const levelLabel = (level: number) => `${formatNumber(level, Number.isInteger(level) ? 0 : 1)} °C`;
   const references = warming
     ? WARMING_LEVELS.map((level) => ({ value: level, label: levelLabel(level) }))
@@ -312,7 +351,8 @@ export function TrendContextPanel({
         showSymbols: variant === "aggi",
         divergingRaw: variant === "index" ? { invert: index?.invert ?? false } : undefined,
         references,
-        partialLatest: variant === "warming-annual" && partialLatest,
+        partialLatest: (variant === "warming-annual" && partialLatest) || isEstimate,
+        estimate: isEstimate ? { low: estimate.low, high: estimate.high } : undefined,
         signed: warming || variant === "index",
         positiveIsWarm: warming,
         formatNumber,
@@ -332,8 +372,14 @@ export function TrendContextPanel({
                   ? copy.solarMean
                   : copy.trendSince(startYear),
           runningMean: copy.runningMean,
-          partial: copy.partial,
+          partial: isEstimate ? copy.estimateShort : copy.partial,
           tooltipExtra: (time, value) => {
+            if (isEstimate && time === data.latest.time) {
+              return copy.estimateTooltip(
+                formatRange(estimate.low, estimate.high),
+                estimate.yearToDate == null ? null : signedValueOf(estimate.yearToDate)
+              );
+            }
             if (variant === "warming-daily") {
               const raw = data.raw?.get(time);
               return raw == null ? null : copy.dailyValue(`${formatNumber(raw, decimals, raw > 0)} ${unit}`);
@@ -353,7 +399,7 @@ export function TrendContextPanel({
         },
       }),
     // formatNumber, copy and the tooltip text derive from language.
-    [data, range, unit, axisUnit, decimals, compact, dark, domain, variant, isLine, language, startYear, partialLatest, meanOverRaw, index?.invert, index?.thresholds]
+    [data, range, unit, axisUnit, decimals, compact, dark, domain, variant, isLine, language, startYear, partialLatest, meanOverRaw, index?.invert, index?.thresholds, estimate]
   );
 
   const latest = data.latest;
@@ -373,6 +419,8 @@ export function TrendContextPanel({
         return `${fullDateFormats[language].format(rawDate)} · ${copy.dailyValue2} · ${copy.vsReference(referenceLabel)}`;
       case "warming-annual":
         return `${latestYear}${partialLatest ? ` · ${copy.yearToDate}` : ""} · ${copy.vsReference(referenceLabel)}`;
+      case "warming-estimate":
+        return `${latestYear} · ${copy.projectedMean} · ${copy.vsReference(referenceLabel)}`;
       case "index":
         return `${monthYearFormats[language].format(rawDate)} · ${copy.monthlyValueLabel}`;
       case "concentration":
@@ -471,6 +519,21 @@ export function TrendContextPanel({
           ? copy.highestOnRecord
           : copy.lowestOnRecord,
     });
+  } else if (isEstimate) {
+    const complete = data.points.slice(0, -1);
+    const record = complete.reduce<[number, number] | null>((best, point) => (!best || point[1] > best[1] ? point : best), null);
+    const percent = (value: number) => new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", { style: "percent", maximumFractionDigits: 0 }).format(value);
+    chips.push({ text: copy.likelyRange(formatRange(estimate.low, estimate.high)) });
+    chips.push({ text: copy.chanceAbove(percent(estimate.probabilityAbove), levelLabel(WARMING_LEVELS[0])), alert: estimate.probabilityAbove >= 0.5 });
+    if (record) {
+      chips.push({
+        text: copy.chanceRecord(percent(estimate.probabilityRecord), new Date(record[0]).getUTCFullYear(), signedValue(record[1])),
+        alert: estimate.probabilityRecord >= 0.5,
+      });
+    }
+    if (estimate.yearToDate != null) chips.push({ text: copy.soFarThisYear(signedValue(estimate.yearToDate)) });
+    chips.push({ text: copy.analogs(estimate.analogCount) });
+    if (estimate.signal) chips.push({ text: estimate.signal });
   } else if (variant === "warming-annual") {
     // Rank complete years only; a year in progress isn't comparable yet.
     const complete = (partialLatest ? data.points.slice(0, -1) : data.points).map(([time, value]) => ({ year: new Date(time).getUTCFullYear(), value }));
@@ -530,6 +593,17 @@ export function TrendContextPanel({
             { key: "index", icon: swatch({ background: palette.signal, height: 3 }), label: copy.aggiIndex },
             { key: "ref", icon: dashedSwatch, label: copy.aggiReference },
           ]
+    : isEstimate
+      ? [
+          { key: "year", icon: swatch({ background: palette.loss }), label: copy.annualMean },
+          {
+            key: "estimate",
+            icon: swatch({ background: palette.signalArea, boxShadow: `inset 0 0 0 1.5px ${palette.loss}` }),
+            label: copy.estimateKey(latestYear),
+          },
+          { key: "mean", icon: swatch({ background: palette.context, height: 3 }), label: copy.runningMean },
+          { key: "levels", icon: dashedSwatch, label: copy.warmingLevels },
+        ]
     : variant === "warming-annual"
       ? [
           { key: "year", icon: swatch({ background: palette.loss }), label: copy.annualMean },
@@ -584,7 +658,7 @@ export function TrendContextPanel({
         ) : null}
       </div>
       <div className="daily-context-controls">
-        {isLine ? (
+        {isLine || isEstimate ? (
           <div className="daily-context-range" role="group" aria-label={copy.rangeGroup}>
             {(["all", "recent"] as const).map((value) => (
               <button key={value} type="button" aria-pressed={range === value} onClick={() => setRange(value)}>

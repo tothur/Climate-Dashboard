@@ -256,6 +256,8 @@ export interface TrendContextOptionArgs {
    * gain (glacier balance). Decides which side of zero is red and which blue.
    */
   positiveIsWarm?: boolean;
+  /** Bars: the latest bar is an estimate, drawn with its likely range as a whisker. */
+  estimate?: { low: number; high: number };
   formatNumber: (value: number, decimals: number, signed?: boolean) => string;
   formatTooltipDate: (time: number) => string;
   labels: {
@@ -522,6 +524,7 @@ function buildLineOption({
 
 function buildAnnualBarsOption({
   data,
+  range,
   unit,
   axisUnit,
   decimals,
@@ -532,15 +535,18 @@ function buildAnnualBarsOption({
   partialLatest = false,
   signed = false,
   positiveIsWarm = false,
+  estimate,
   formatNumber,
   labels,
 }: TrendContextOptionArgs): EChartsOption {
   const palette = trendContextPalette(dark, domain);
   const formatTick = (value: number, digits: number) => formatNumber(value, digits, signed && value > 0);
-  const years = data.points.map(([time]) => String(new Date(time).getUTCFullYear()));
-  const values = data.points.map(([, value]) => value);
-  const runningMean = new Map(data.annual?.runningMean ?? []);
-  const visible = [...values, ...runningMean.values(), 0, ...references.map((reference) => reference.value)];
+  const points = range === "recent" ? data.points.slice(-RECENT_YEARS) : data.points;
+  const years = points.map(([time]) => String(new Date(time).getUTCFullYear()));
+  const values = points.map(([, value]) => value);
+  const allMeans = new Map(data.annual?.runningMean ?? []);
+  const runningMean = new Map(years.filter((year) => allMeans.has(year)).map((year) => [year, allMeans.get(year) as number]));
+  const visible = [...values, ...runningMean.values(), 0, ...references.map((reference) => reference.value), ...(estimate ? [estimate.low, estimate.high] : [])];
   const rawMin = Math.min(...visible);
   const rawMax = Math.max(...visible);
   const pad = Math.max((rawMax - rawMin) * 0.06, 1e-6);
@@ -548,7 +554,7 @@ function buildAnnualBarsOption({
   const lastIndex = values.length - 1;
   const isWarmSide = (value: number) => (positiveIsWarm ? value >= 0 : value < 0);
   // Long records in narrow panels need sparser year labels.
-  const labelEvery = compact || years.length > 60 ? 10 : 5;
+  const labelEvery = years.length <= 12 ? (compact ? 2 : 1) : compact || years.length > 60 ? 10 : 5;
   const muted = (text: string) => `<span style="color:${palette.tooltipMuted};font-weight:400">${text}</span>`;
 
   return {
@@ -565,7 +571,7 @@ function buildAnnualBarsOption({
         if (index == null) return "";
         const value = values[index];
         const mean = runningMean.get(years[index]);
-        const extra = labels.tooltipExtra(data.points[index][0], value);
+        const extra = labels.tooltipExtra(points[index][0], value);
         const partial = partialLatest && index === lastIndex && labels.partial ? ` ${muted(labels.partial)}` : "";
         return (
           `<b>${years[index]}</b>${partial}<br/>` +
@@ -618,7 +624,8 @@ function buildAnnualBarsOption({
           label:
             index === lastIndex
               ? {
-                  show: true,
+                  // An estimate's label sits above its whisker instead (drawn with it).
+                  show: !estimate,
                   position: value < 0 ? "bottom" : "top",
                   formatter: () => `${formatNumber(value, decimals, true)}${provisional && labels.partial ? ` ${labels.partial}` : ""}`,
                   color: palette.tooltipText,
@@ -650,6 +657,44 @@ function buildAnnualBarsOption({
         emphasis: { disabled: true },
         tooltip: { show: false },
       },
+      ...(estimate
+        ? [
+            {
+              id: "estimate-range",
+              type: "custom" as const,
+              silent: true,
+              z: 4,
+              tooltip: { show: false },
+              data: [[years[lastIndex], estimate.low, estimate.high]],
+              renderItem: (_params: unknown, api: any) => {
+                const low = api.coord([api.value(0), api.value(1)]) as [number, number];
+                const high = api.coord([api.value(0), api.value(2)]) as [number, number];
+                const cap = Math.max(3, Math.min(8, (api.size([1, 0]) as [number, number])[0] * 0.3));
+                const style = { stroke: palette.tooltipText, lineWidth: 1.5 };
+                return {
+                  type: "group",
+                  children: [
+                    { type: "line", shape: { x1: low[0], y1: low[1], x2: high[0], y2: high[1] }, style },
+                    { type: "line", shape: { x1: low[0] - cap, y1: low[1], x2: low[0] + cap, y2: low[1] }, style },
+                    { type: "line", shape: { x1: high[0] - cap, y1: high[1], x2: high[0] + cap, y2: high[1] }, style },
+                    {
+                      type: "text",
+                      x: high[0],
+                      y: high[1] - 6,
+                      style: {
+                        text: `${formatNumber(values[lastIndex], decimals, true)}${labels.partial ? ` ${labels.partial}` : ""}`,
+                        fill: palette.tooltipText,
+                        font: "600 12px sans-serif",
+                        align: "center",
+                        verticalAlign: "bottom",
+                      },
+                    },
+                  ],
+                };
+              },
+            },
+          ]
+        : []),
     ],
   } as EChartsOption;
 }

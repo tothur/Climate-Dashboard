@@ -23,6 +23,9 @@ import { SignalIcon, signalTopic, type SignalTopic } from "../components/SignalI
 import { Sparkline, type SparklineReadout } from "../components/Sparkline";
 import { DailyContextPanel } from "../components/DailyContextPanel";
 import { TrendContextPanel, type TrendContextVariant } from "../components/TrendContextPanel";
+import { PathwaysPanel } from "../components/PathwaysPanel";
+import { TippingLadderPanel, type TippingLadderItem } from "../components/TippingLadderPanel";
+import { buildPathwaysData } from "../charts/pathways";
 import {
   IndicatorLocator,
   IndicatorRail,
@@ -41,8 +44,6 @@ const PROJECTION_ANALOG_POOL_SIZE = 12;
 const PROJECTION_MAX_ANALOGS = 8;
 const PROJECTION_YTD_SIGMA = 0.16;
 const PROJECTION_RECENCY_SCALE_YEARS = 6;
-const PROJECTION_OVERVIEW_Y_MIN = 1;
-const PROJECTION_OVERVIEW_Y_MAX = 2;
 const LONG_RANGE_SCENARIO_START_YEAR = 2025;
 const LONG_RANGE_SCENARIO_END_YEAR = 2100;
 const PROJECTION_DELTA_SCALE = 0.18;
@@ -646,7 +647,6 @@ const STRINGS = {
     annualGlobalTemperatureAnomalyTitle: "Annual Global Temperature Anomaly",
     annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, estimated 1850-1900 baseline)",
     annualGlobalTemperatureAnomalyMethod: "Mean of available daily anomalies (year-to-date for the current year).",
-    projectedAnnualTemperatureAnomalyTitle: "Projected Annual Temperature Anomaly",
     projectedAnnualTemperatureAnomalyChartTitle: "Annual Global Temperature Anomaly + Projection",
     projectedAnnualTemperatureAnomalyChartSubtitle:
       "Historical annual means with the projected current-year value and confidence interval.",
@@ -656,7 +656,6 @@ const STRINGS = {
       "Measured annual warming to present, then indicative CMIP7 ScenarioMIP FaIR median pathways.",
     longRangeTemperatureTrendSource:
       "Scenario values are preliminary FaIR simple-climate-model medians from Van Vuuren et al. (2026), not final CMIP7 Earth system model output.",
-    longRangeTemperatureTrendValueLabel: "2100 value",
     cmip7ScenarioSourceLabel: "CMIP7 ScenarioMIP",
     scenarioHighLabel: "High",
     scenarioMediumLabel: "Medium",
@@ -666,23 +665,11 @@ const STRINGS = {
     tippingPointsSubtitle:
       "Global-warming thresholds for major Earth-system tipping elements from Armstrong McKay et al. (2022), set against the dashboard's current annual warming estimate.",
     tippingPointsSourceLabel: "McKay et al. 2022",
-    tippingCurrentWarmingLabel: "Current warming estimate",
-    tippingCentralThresholdLabel: "central threshold",
-    tippingRangeLabel: "assessed range",
-    tippingStateLikely: "Above central threshold",
-    tippingStatePossible: "Inside uncertainty range",
-    tippingStateBelow: "Below assessed range",
     projectionExperimentalLabel: "Experimental",
-    projectionEstimateLabel: "Projected mean",
     projectionIntervalLabel: "15th-85th percentile interval",
-    projectionRangeLabel: "Range",
     projectionMethodLabel: "YTD + recent analog seasonal paths",
     projectionSignalLabel: "ENSO signal",
-    projectionProbabilityAboveOnePointFiveTitle: "Chance of annual mean > 1.5°C",
-    projectionProbabilityWarmestRecordTitle: "Chance of warmest year on record",
     projectionProbabilityMethodLabel: "Weighted analog years",
-    projectionAnalogsLabel: "analogs",
-    projectionRecordThresholdLabel: "Record to beat",
     outlookProjectedAnnualMeanLabel: "Projected annual mean",
     outlookChanceAboveOnePointFiveLabel: "chance above 1.5 °C",
     outlookChanceWarmestYearLabel: "chance warmest year",
@@ -862,7 +849,6 @@ const STRINGS = {
     annualGlobalTemperatureAnomalyTitle: "Éves globális hőmérsékleti anomália",
     annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850–1900-as alapszint)",
     annualGlobalTemperatureAnomalyMethod: "Az elérhető napi anomáliák átlaga (a folyó évben az év eleje óta eltelt napok átlaga).",
-    projectedAnnualTemperatureAnomalyTitle: "Becsült éves hőmérsékleti anomália",
     projectedAnnualTemperatureAnomalyChartTitle: "Éves globális hőmérsékleti anomália és idei becslés",
     projectedAnnualTemperatureAnomalyChartSubtitle:
       "A korábbi évek átlagai, valamint az idei év becsült értéke és bizonytalansági tartománya.",
@@ -872,7 +858,6 @@ const STRINGS = {
       "A mért éves melegedés napjainkig, utána a CMIP7 ScenarioMIP FaIR-modell tájékoztató mediánpályái.",
     longRangeTemperatureTrendSource:
       "A forgatókönyvek értékei Van Vuuren és mtsai (2026) előzetes, egyszerű klímamodellel (FaIR) számolt mediánjai, nem végleges CMIP7 földrendszermodell-eredmények.",
-    longRangeTemperatureTrendValueLabel: "2100-as érték",
     cmip7ScenarioSourceLabel: "CMIP7 ScenarioMIP",
     scenarioHighLabel: "Magas",
     scenarioMediumLabel: "Közepes",
@@ -882,23 +867,11 @@ const STRINGS = {
     tippingPointsSubtitle:
       "A földrendszer fő billenőelemeinek melegedési küszöbei Armstrong McKay és mtsai (2022) alapján, a jelenlegi éves melegedési becsléshez viszonyítva.",
     tippingPointsSourceLabel: "McKay és mtsai, 2022",
-    tippingCurrentWarmingLabel: "Jelenlegi melegedés (becslés)",
-    tippingCentralThresholdLabel: "központi küszöb",
-    tippingRangeLabel: "becsült tartomány",
-    tippingStateLikely: "A központi küszöb felett",
-    tippingStatePossible: "A bizonytalansági tartományban",
-    tippingStateBelow: "A becsült tartomány alatt",
     projectionExperimentalLabel: "Kísérleti",
-    projectionEstimateLabel: "Becsült átlag",
     projectionIntervalLabel: "15–85. percentilis tartomány",
-    projectionRangeLabel: "Tartomány",
     projectionMethodLabel: "Az év eddigi adatai és hasonló (analóg) évek szezonális lefutása",
     projectionSignalLabel: "ENSO-jel",
-    projectionProbabilityAboveOnePointFiveTitle: "Esély, hogy az éves átlag meghaladja az 1,5 °C-ot",
-    projectionProbabilityWarmestRecordTitle: "Esély, hogy ez lesz a legmelegebb mért év",
     projectionProbabilityMethodLabel: "Súlyozott analóg évek",
-    projectionAnalogsLabel: "analóg",
-    projectionRecordThresholdLabel: "A megdöntendő rekord",
     outlookProjectedAnnualMeanLabel: "Becsült éves átlag",
     outlookChanceAboveOnePointFiveLabel: "esély az 1,5 °C túllépésére",
     outlookChanceWarmestYearLabel: "esély rekordmeleg évre",
@@ -1948,710 +1921,11 @@ function tippingPointCategory(tippingPoint: TippingPointDefinition, language: La
   return language === "hu" ? tippingPoint.categoryHu : tippingPoint.categoryEn;
 }
 
-const TIPPING_AXIS_MAX = 10;
-const TIPPING_AXIS_TICKS = [0, 2, 4, 6, 8, 10];
-
-function tippingAxisPercent(value: number): number {
-  return clamp((value / TIPPING_AXIS_MAX) * 100, 0, 100);
-}
-
 function tippingPointStateKey(tippingPoint: TippingPointDefinition, currentWarming: number | null): "likely" | "possible" | "below" {
   if (currentWarming == null || !Number.isFinite(currentWarming)) return "below";
   if (currentWarming >= tippingPoint.centralThreshold) return "likely";
   if (currentWarming >= tippingPoint.minThreshold) return "possible";
   return "below";
-}
-
-function tippingPointState(
-  tippingPoint: TippingPointDefinition,
-  currentWarming: number | null,
-  t: (typeof STRINGS)[Language]
-): string {
-  const stateKey = tippingPointStateKey(tippingPoint, currentWarming);
-  return stateKey === "likely" ? t.tippingStateLikely : stateKey === "possible" ? t.tippingStatePossible : t.tippingStateBelow;
-}
-
-function interpolateScenarioValue(anchors: Array<[number, number]>, year: number): number | null {
-  if (!anchors.length) return null;
-  const sortedAnchors = [...anchors].sort((left, right) => left[0] - right[0]);
-  const first = sortedAnchors[0];
-  const last = sortedAnchors[sortedAnchors.length - 1];
-  if (year < first[0] || year > last[0]) return null;
-  const exact = sortedAnchors.find(([anchorYear]) => anchorYear === year);
-  if (exact) return exact[1];
-
-  for (let index = 1; index < sortedAnchors.length; index += 1) {
-    const previous = sortedAnchors[index - 1];
-    const next = sortedAnchors[index];
-    if (year < previous[0] || year > next[0]) continue;
-    const fraction = (year - previous[0]) / (next[0] - previous[0]);
-    return Math.round((previous[1] + (next[1] - previous[1]) * fraction) * 1000) / 1000;
-  }
-
-  return null;
-}
-
-function buildScenarioAnnualPoints(scenario: LongRangeScenarioDefinition): DailyPoint[] {
-  const points: DailyPoint[] = [];
-  for (let year = LONG_RANGE_SCENARIO_START_YEAR; year <= LONG_RANGE_SCENARIO_END_YEAR; year += 1) {
-    const value = interpolateScenarioValue(scenario.anchors, year);
-    if (value == null) continue;
-    points.push({ date: `${year}-01-01`, value });
-  }
-  return points;
-}
-
-function buildLongRangeTemperatureTrendOption({
-  observedPoints,
-  language,
-  unit,
-  compact,
-  dark,
-  hiddenScenarioKeys,
-}: {
-  observedPoints: DailyPoint[];
-  language: Language;
-  unit: string;
-  compact: boolean;
-  dark: boolean;
-  hiddenScenarioKeys?: ReadonlySet<string>;
-}): EChartsOption | null {
-  const observedByYear = new Map<number, number>();
-  for (const point of observedPoints) {
-    const year = parseYearFromDateIso(point.date);
-    if (year == null || !Number.isFinite(point.value)) continue;
-    observedByYear.set(year, point.value);
-  }
-  if (!observedByYear.size) return null;
-
-  const firstObservedYear = Math.min(...observedByYear.keys());
-  const latestObservedYear = Math.max(...observedByYear.keys());
-  const years: number[] = [];
-  for (let year = firstObservedYear; year <= LONG_RANGE_SCENARIO_END_YEAR; year += 1) years.push(year);
-
-  const formatter = new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 1,
-  });
-  const endValueFormatter = new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  const palette = dark
-    ? {
-        axis: "rgba(165, 180, 176, 0.42)",
-        label: "#a5b4b0",
-        grid: "rgba(165, 180, 176, 0.14)",
-        guide: "rgba(165, 180, 176, 0.42)",
-        guideLabel: "#a5b4b0",
-        latest: "rgba(238, 243, 239, 0.28)",
-        tooltipBg: "rgba(20, 30, 30, 0.96)",
-        tooltipBorder: "rgba(148, 163, 184, 0.48)",
-        observed: "#eef3ef",
-      }
-    : {
-        axis: "rgba(25, 39, 34, 0.22)",
-        label: "#59665f",
-        grid: "rgba(25, 39, 34, 0.08)",
-        guide: "rgba(25, 39, 34, 0.30)",
-        guideLabel: "#59665f",
-        latest: "rgba(25, 39, 34, 0.22)",
-        tooltipBg: "rgba(15, 23, 42, 0.94)",
-        tooltipBorder: "rgba(30, 41, 59, 0.24)",
-        observed: "#192722",
-      };
-
-  const observedSeriesName = language === "hu" ? "Mért éves érték" : "Measured annual";
-  const xLabels = years.map(String);
-  const scenarioPoints = CMIP7_SCENARIOMIP_SCENARIOS.map((scenario) => ({
-    scenario,
-    label: scenarioDisplayLabel(scenario, language),
-    value2100: scenario.anchors.find(([year]) => year === LONG_RANGE_SCENARIO_END_YEAR)?.[1] ?? null,
-    color: dark ? scenario.colorDark : scenario.colorLight,
-    points: buildScenarioAnnualPoints(scenario),
-  }))
-    .filter(({ scenario }) => !hiddenScenarioKeys?.has(scenario.key))
-    .sort((left, right) => (left.value2100 ?? Number.POSITIVE_INFINITY) - (right.value2100 ?? Number.POSITIVE_INFINITY));
-  const tippingThresholdMarkers =
-    language === "hu"
-      ? [
-          { threshold: 1.5, label: "1,5 °C · nyugat-antarktiszi és grönlandi jégtakaró, korallzátonyok" },
-          { threshold: 2, label: "2,0 °C · hegyi gleccserek, Száhel-monszun" },
-          { threshold: 3, label: "3,0 °C · amazóniai esőerdő, kelet-antarktiszi medencék" },
-        ]
-      : [
-          { threshold: 1.5, label: "1.5 °C · WAIS + GrIS collapse, coral reefs" },
-          { threshold: 2, label: "2.0 °C · mountain glaciers, Sahel monsoon" },
-          { threshold: 3, label: "3.0 °C · Amazon dieback, E. Antarctic basins" },
-        ];
-
-  return {
-    animation: false,
-    aria: { enabled: true },
-    grid: {
-      top: compact ? 18 : 22,
-      right: compact ? 28 : 86,
-      bottom: compact ? 44 : 42,
-      left: compact ? 54 : 66,
-    },
-    tooltip: {
-      trigger: "axis",
-      confine: true,
-      backgroundColor: palette.tooltipBg,
-      borderColor: palette.tooltipBorder,
-      borderWidth: 1,
-      textStyle: { color: "#f8fafc", fontWeight: 600 },
-      extraCssText: "box-shadow: 0 14px 30px rgba(2, 6, 23, 0.28); max-width: min(360px, 78vw); white-space: normal;",
-      formatter: (params: unknown) => {
-        const rows = Array.isArray(params) ? params : [];
-        if (!rows.length) return "";
-        const axisLabel = (rows[0] as { axisValueLabel?: string }).axisValueLabel ?? "";
-        const lines = [axisLabel];
-        for (const row of rows as Array<{ marker?: string; seriesName?: string; data?: number | null }>) {
-          if (typeof row.data !== "number" || !Number.isFinite(row.data)) continue;
-          lines.push(`${row.marker ?? ""} ${row.seriesName ?? ""}: ${formatter.format(row.data)} ${unit}`);
-        }
-        return lines.join("<br/>");
-      },
-    },
-    legend: { show: false },
-    xAxis: {
-      type: "category",
-      data: xLabels,
-      axisLine: { lineStyle: { color: palette.axis } },
-      axisTick: { show: false },
-      axisLabel: {
-        color: palette.label,
-        formatter: (value: string) => {
-          const year = Number(value);
-          if (!Number.isFinite(year)) return "";
-          if (year === firstObservedYear || year === latestObservedYear || year === 2050 || year === 2100) return value;
-          return year % 20 === 0 ? value : "";
-        },
-      },
-    },
-    yAxis: {
-      type: "value",
-      min: 0,
-      max: 4,
-      name: unit,
-      nameLocation: "middle",
-      nameRotate: 90,
-      nameGap: compact ? 40 : 48,
-      nameTextStyle: { color: palette.label, fontWeight: 650, fontSize: 11 },
-      interval: 1,
-      axisLabel: {
-        color: palette.label,
-        formatter: (value: number) => formatter.format(value),
-      },
-      splitLine: { lineStyle: { color: palette.grid, type: [4, 5] } },
-    },
-    series: [
-      {
-        name: observedSeriesName,
-        type: "line",
-        data: years.map((year) => observedByYear.get(year) ?? null),
-        smooth: 0.18,
-        showSymbol: false,
-        connectNulls: false,
-        z: 5,
-        lineStyle: { color: palette.observed, width: compact ? 2 : 2.4, cap: "round" },
-        markLine: {
-          silent: true,
-          symbol: "none",
-          lineStyle: { type: [4, 4], width: 1, color: palette.guide },
-          label: {
-            show: !compact,
-            position: "insideStartTop" as const,
-            color: palette.guideLabel,
-            fontSize: 10,
-            fontWeight: 600,
-            padding: [0, 0, 3, 2],
-          },
-          data: [
-            ...tippingThresholdMarkers.map((marker) => ({
-              yAxis: marker.threshold,
-              label: { formatter: marker.label },
-            })),
-            {
-              xAxis: String(latestObservedYear),
-              lineStyle: { type: "solid" as const, width: 1, color: palette.latest },
-              label: { show: false },
-            },
-          ],
-        },
-      },
-      ...scenarioPoints.map(({ label, color, points }) => {
-        const valuesByYear = new Map(points.map((point) => [parseYearFromDateIso(point.date), point.value] as const));
-        return {
-          name: label,
-          type: "line" as const,
-          data: years.map((year) => valuesByYear.get(year) ?? null),
-          smooth: 0.22,
-          showSymbol: false,
-          connectNulls: false,
-          z: 4,
-          lineStyle: { color, width: compact ? 1.8 : 2.2, cap: "round" as const },
-        };
-      }),
-      ...scenarioPoints.map(({ label, color, scenario, value2100 }) => {
-        return {
-          name: label,
-          type: "scatter" as const,
-          data: value2100 == null ? [] : [[String(LONG_RANGE_SCENARIO_END_YEAR), value2100]],
-          symbolSize: compact ? 6 : 8,
-          itemStyle: { color },
-          tooltip: { show: false },
-          label: {
-            show: !compact,
-            position: "right" as const,
-            color,
-            fontSize: 11,
-            fontWeight: 700,
-            formatter: () => `${value2100 == null ? "" : endValueFormatter.format(value2100)} ${unit}`,
-          },
-          z: 8,
-        };
-      }),
-    ],
-  };
-}
-
-function buildAnnualProjectionTrendOption({
-  points,
-  projection,
-  seriesName,
-  projectionSeriesName,
-  rangeLabel,
-  unit,
-  decimals = 2,
-  compact,
-  dark = false,
-  yAxisMin,
-  yAxisMax,
-  yAxisUnitLabel,
-  xAxisYearLabelStep = 1,
-  disableDataZoom = false,
-  forceMappedYearLabels = false,
-  showLegend = false,
-  color,
-  referenceLines,
-  labels,
-}: {
-  points: DailyPoint[];
-  projection: AnnualProjectionEstimate | null;
-  seriesName: string;
-  projectionSeriesName: string;
-  rangeLabel: string;
-  unit: string;
-  decimals?: number;
-  compact: boolean;
-  dark?: boolean;
-  yAxisMin?: number;
-  yAxisMax?: number;
-  yAxisUnitLabel?: string;
-  xAxisYearLabelStep?: number;
-  disableDataZoom?: boolean;
-  forceMappedYearLabels?: boolean;
-  showLegend?: boolean;
-  color?: string;
-  referenceLines?: Array<{
-    value: number;
-    label: string;
-    color: string;
-  }>;
-  labels?: {
-    noData: string;
-    latest: string;
-  };
-}) {
-  const option = buildClimateTrendOption({
-    points,
-    seriesName,
-    unit,
-    decimals,
-    yAxisMin,
-    yAxisMax,
-    yAxisUnitLabel,
-    xAxisYearLabelStep,
-    disableDataZoom,
-    forceMappedYearLabels,
-    showLegend,
-    compact,
-    dark,
-    color,
-    referenceLines,
-    labels,
-  });
-
-  if (!projection || !points.length) return option;
-
-  const projectionDate = `${projection.year}-01-01`;
-  const projectionIndex = points.findIndex((point) => point.date === projectionDate);
-  if (projectionIndex < 0) return option;
-
-  const historicalLineColor = topicChartColor(DAILY_GLOBAL_MEAN_ANOMALY_KEY, dark);
-  const historicalAreaColor = dark ? "rgba(251, 113, 133, 0.12)" : "rgba(225, 29, 47, 0.12)";
-  const projectionLineColor = dark ? "#fda4af" : "#be123c";
-  const projectionBandFill = dark ? "rgba(251, 113, 133, 0.20)" : "rgba(225, 29, 47, 0.16)";
-  const projectionBandStroke = dark ? "#fda4af" : "#be123c";
-  const intervalMarkerFill = dark ? "#fff1f2" : "#fff1f2";
-  const historicalLineData = points.map((point) => point.value);
-  const projectedScatterData = points.map((point, index) => (index === projectionIndex ? projection.value : null));
-  const projectedLowScatterData = points.map((point, index) => (index === projectionIndex ? projection.low : null));
-  const projectedHighScatterData = points.map((point, index) => (index === projectionIndex ? projection.high : null));
-  const tooltipNumberFormat = new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-  const baseTooltip =
-    option.tooltip && typeof option.tooltip === "object" && !Array.isArray(option.tooltip) ? option.tooltip : {};
-
-  return {
-    ...option,
-    tooltip: {
-      ...baseTooltip,
-      formatter: (params: unknown) => {
-        const rows = Array.isArray(params) ? params : [];
-        if (!rows.length) return "";
-
-        const firstRow = rows[0] as { axisValue?: string; axisValueLabel?: string };
-        const rawAxisValue =
-          typeof firstRow.axisValue === "string"
-            ? firstRow.axisValue
-            : typeof firstRow.axisValueLabel === "string"
-              ? firstRow.axisValueLabel
-              : "";
-        const axisYear = parseYearFromDateIso(rawAxisValue);
-        const tooltipLines = [Number.isFinite(axisYear) ? String(axisYear) : rawAxisValue];
-
-        const actualRow = rows.find(
-          (row) =>
-            (row as { seriesName?: string; data?: number | null }).seriesName === seriesName &&
-            typeof (row as { data?: number | null }).data === "number"
-        ) as { marker?: string; data?: number | null } | undefined;
-        const projectedRow = rows.find(
-          (row) => (row as { seriesName?: string }).seriesName === projectionSeriesName
-        ) as { marker?: string; data?: number | null } | undefined;
-
-        if (typeof actualRow?.data === "number" && Number.isFinite(actualRow.data)) {
-          tooltipLines.push(`${actualRow.marker ?? ""} ${seriesName}: ${tooltipNumberFormat.format(actualRow.data)} ${unit}`);
-        }
-        if (typeof projectedRow?.data === "number" && Number.isFinite(projectedRow.data)) {
-          tooltipLines.push(
-            `${projectedRow.marker ?? ""} ${projectionSeriesName}: ${tooltipNumberFormat.format(projectedRow.data)} ${unit}`
-          );
-          tooltipLines.push(
-            `${rangeLabel}: ${tooltipNumberFormat.format(projection.low)}-${tooltipNumberFormat.format(projection.high)} ${unit}`
-          );
-        }
-
-        return tooltipLines.join("<br/>");
-      },
-    },
-    series: [
-      {
-        name: seriesName,
-        type: "line" as const,
-        data: historicalLineData,
-        z: 2,
-        smooth: 0.16,
-        showSymbol: false,
-        symbol: "circle",
-        symbolSize: compact ? 5 : 6,
-        lineStyle: {
-          color: historicalLineColor,
-          width: 2.4,
-        },
-        itemStyle: {
-          color: historicalLineColor,
-        },
-        areaStyle: {
-          color: historicalAreaColor,
-        },
-      },
-      {
-        name: rangeLabel,
-        type: "custom" as const,
-        silent: true,
-        tooltip: { show: false },
-        z: 4,
-        data: [[projectionDate, projection.low, projection.high]],
-        renderItem: (_params: unknown, api: any) => {
-          const xValue = String(api.value(0));
-          const lowValue = Number(api.value(1));
-          const highValue = Number(api.value(2));
-          const lowPoint = api.coord([xValue, lowValue]) as [number, number];
-          const highPoint = api.coord([xValue, highValue]) as [number, number];
-          const x = lowPoint[0];
-          const topY = highPoint[1];
-          const bottomY = lowPoint[1];
-          const halfWidth = compact ? 11 : 13;
-          const bodyWidth = compact ? 8 : 10;
-
-          return {
-            type: "group",
-            children: [
-              {
-                type: "rect",
-                shape: {
-                  x: x - bodyWidth / 2,
-                  y: topY,
-                  width: bodyWidth,
-                  height: Math.max(bottomY - topY, 1),
-                },
-                style: {
-                  fill: projectionBandFill,
-                  stroke: projectionBandStroke,
-                  lineWidth: 1,
-                },
-              },
-              {
-                type: "line",
-                shape: { x1: x, y1: topY, x2: x, y2: bottomY },
-                style: {
-                  stroke: projectionBandStroke,
-                  lineWidth: 2.1,
-                },
-              },
-              {
-                type: "line",
-                shape: { x1: x - halfWidth, y1: topY, x2: x + halfWidth, y2: topY },
-                style: {
-                  stroke: projectionBandStroke,
-                  lineWidth: 2.1,
-                },
-              },
-              {
-                type: "line",
-                shape: { x1: x - halfWidth, y1: bottomY, x2: x + halfWidth, y2: bottomY },
-                style: {
-                  stroke: projectionBandStroke,
-                  lineWidth: 2.1,
-                },
-              },
-            ],
-          };
-        },
-      },
-      {
-        name: rangeLabel,
-        type: "scatter" as const,
-        data: projectedLowScatterData,
-        tooltip: { show: false },
-        z: 5,
-        symbol: "circle",
-        symbolSize: compact ? 8 : 9,
-        itemStyle: {
-          color: intervalMarkerFill,
-          borderColor: projectionBandStroke,
-          borderWidth: 1.4,
-        },
-      },
-      {
-        name: rangeLabel,
-        type: "scatter" as const,
-        data: projectedHighScatterData,
-        tooltip: { show: false },
-        z: 5,
-        symbol: "circle",
-        symbolSize: compact ? 8 : 9,
-        itemStyle: {
-          color: intervalMarkerFill,
-          borderColor: projectionBandStroke,
-          borderWidth: 1.4,
-        },
-      },
-      {
-        name: projectionSeriesName,
-        type: "scatter" as const,
-        data: projectedScatterData,
-        z: 6,
-        symbol: "diamond",
-        symbolSize: compact ? 13 : 15,
-        itemStyle: {
-          color: projectionLineColor,
-          borderColor: dark ? "#f8fafc" : "#ffffff",
-          borderWidth: 1.7,
-        },
-      },
-    ],
-  } as ReturnType<typeof buildClimateTrendOption>;
-}
-
-function buildAnnualProjectionBarOption({
-  points,
-  projection,
-  observedSeriesName,
-  projectionSeriesName,
-  intervalLabel,
-  unit,
-  decimals = 2,
-  compact,
-  dark = false,
-  yAxisMin,
-  yAxisMax,
-  yAxisUnitLabel,
-}: {
-  points: DailyPoint[];
-  projection: AnnualProjectionEstimate | null;
-  observedSeriesName: string;
-  projectionSeriesName: string;
-  intervalLabel: string;
-  unit: string;
-  decimals?: number;
-  compact: boolean;
-  dark?: boolean;
-  yAxisMin: number;
-  yAxisMax: number;
-  yAxisUnitLabel?: string;
-}) {
-  if (!projection) return null;
-
-  const historicalPoints = points
-    .map((point) => ({ year: parseYearFromDateIso(point.date), value: point.value }))
-    .filter((point): point is { year: number; value: number } => point.year != null && point.year < projection.year)
-    .slice(-6);
-  if (!historicalPoints.length) return null;
-
-  const categories = [...historicalPoints.map((point) => String(point.year)), String(projection.year)];
-  const historicalBarTopColor = topicChartColor(DAILY_GLOBAL_MEAN_ANOMALY_KEY, dark);
-  const historicalBarBottomColor = dark ? "rgba(251, 113, 133, 0.16)" : "rgba(225, 29, 47, 0.14)";
-  const projectedBarColor = dark ? "#fda4af" : "#be123c";
-  const observedBarStyle = {
-    borderRadius: [7, 7, 2, 2],
-    color: {
-      type: "linear" as const,
-      x: 0,
-      y: 0,
-      x2: 0,
-      y2: 1,
-      colorStops: [
-        { offset: 0, color: historicalBarTopColor },
-        { offset: 1, color: historicalBarBottomColor },
-      ],
-    },
-  };
-  const barData = [
-    ...historicalPoints.map((point) => ({ value: point.value })),
-    {
-      value: projection.value,
-      itemStyle: {
-        borderRadius: [7, 7, 2, 2],
-        color: projectedBarColor,
-      },
-    },
-  ];
-  const tooltipNumberFormat = new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-  const mutedTextColor = dark ? "#91a0b8" : "#66728a";
-  const axisColor = dark ? "rgba(203, 214, 232, 0.22)" : "rgba(51, 65, 85, 0.16)";
-  const splitLineColor = dark ? "rgba(203, 214, 232, 0.12)" : "rgba(51, 65, 85, 0.09)";
-
-  return {
-    animationDuration: 420,
-    grid: {
-      left: compact ? 48 : 58,
-      right: compact ? 38 : 46,
-      top: compact ? 20 : 28,
-      bottom: compact ? 34 : 38,
-      containLabel: false,
-    },
-    tooltip: {
-      trigger: "axis" as const,
-      axisPointer: { type: "shadow" as const },
-      backgroundColor: dark ? "#0f172a" : "#ffffff",
-      borderColor: dark ? "rgba(203, 214, 232, 0.18)" : "rgba(15, 23, 42, 0.12)",
-      textStyle: { color: dark ? "#f8fafc" : "#0f172a" },
-      formatter: (params: unknown) => {
-        const rows = Array.isArray(params) ? params : [];
-        const firstRow = rows[0] as { axisValue?: string } | undefined;
-        const axisYear = firstRow?.axisValue ?? "";
-        const tooltipLines = [axisYear];
-        const barRow = rows.find(
-          (row) => (row as { seriesName?: string }).seriesName === observedSeriesName
-        ) as { marker?: string; data?: number | { value?: number }; value?: number } | undefined;
-        const barValue =
-          typeof barRow?.value === "number"
-            ? barRow.value
-            : typeof barRow?.data === "number"
-              ? barRow.data
-              : typeof barRow?.data === "object" && barRow.data != null && typeof barRow.data.value === "number"
-                ? barRow.data.value
-                : null;
-
-        if (barValue != null && axisYear === String(projection.year)) {
-          tooltipLines.push(
-            `${barRow?.marker ?? ""} ${projectionSeriesName}: ${tooltipNumberFormat.format(barValue)} ${unit}`
-          );
-          tooltipLines.push(
-            `${intervalLabel}: ${tooltipNumberFormat.format(projection.low)}-${tooltipNumberFormat.format(projection.high)} ${unit}`
-          );
-        } else if (barValue != null) {
-          tooltipLines.push(`${barRow?.marker ?? ""} ${observedSeriesName}: ${tooltipNumberFormat.format(barValue)} ${unit}`);
-        }
-        return tooltipLines.join("<br/>");
-      },
-    },
-    xAxis: {
-      type: "category" as const,
-      data: categories,
-      axisTick: { show: false },
-      axisLine: { lineStyle: { color: axisColor } },
-      axisLabel: {
-        color: mutedTextColor,
-        fontSize: compact ? 10 : 11,
-        fontWeight: 600,
-      },
-    },
-    yAxis: {
-      type: "value" as const,
-      min: yAxisMin,
-      max: yAxisMax,
-      name: yAxisUnitLabel,
-      nameTextStyle: {
-        color: mutedTextColor,
-        fontSize: compact ? 10 : 11,
-        padding: [0, 0, 6, 0],
-      },
-      axisLabel: {
-        color: mutedTextColor,
-        fontSize: compact ? 10 : 11,
-        formatter: (value: number) => value.toFixed(1),
-      },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: {
-        lineStyle: { color: splitLineColor, type: "dashed" as const },
-      },
-    },
-    series: [
-      {
-        name: observedSeriesName,
-        type: "bar" as const,
-        data: barData,
-        barWidth: compact ? 22 : 28,
-        itemStyle: observedBarStyle,
-        markLine: {
-          silent: true,
-          symbol: "none",
-          lineStyle: { type: [4, 4], width: 1, color: dark ? "rgba(165, 180, 176, 0.45)" : "rgba(25, 39, 34, 0.32)" },
-          label: {
-            position: "insideEndTop" as const,
-            color: dark ? "#a5b4b0" : "#59665f",
-            fontSize: 10,
-            fontWeight: 600,
-          },
-          data: [
-            { yAxis: 1.5, label: { formatter: "1.5 °C" } },
-            { yAxis: 2, label: { formatter: "2.0 °C" } },
-          ],
-        },
-      },
-    ],
-  } as ReturnType<typeof buildClimateTrendOption>;
 }
 
 function pickComparisonYears(points: DailyPoint[]): number[] {
@@ -3708,98 +2982,59 @@ export function App() {
       },
     ];
   }, [projectedAnnualChartPoints, projectedAnnualGlobalMeanAnomaly]);
-  const projectedAnnualOverviewChartOption = useMemo(() => {
-    if (!dailyGlobalMeanAnomalyMetric || !projectedAnnualGlobalMeanAnomaly || !projectedAnnualChartPoints.length) return null;
-
-    return buildAnnualProjectionBarOption({
-      points: projectedAnnualChartPoints,
-      projection: projectedAnnualGlobalMeanAnomaly,
-      observedSeriesName: t.annualGlobalTemperatureAnomalyTitle,
-      projectionSeriesName: t.projectedAnnualTemperatureAnomalyTitle,
-      intervalLabel: t.projectionIntervalLabel,
-      unit: cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language),
-      decimals: dailyGlobalMeanAnomalyMetric.decimals,
-      yAxisMin: PROJECTION_OVERVIEW_Y_MIN,
-      yAxisMax: PROJECTION_OVERVIEW_Y_MAX,
-      yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
-      compact,
-      dark: resolvedTheme === "dark",
-    });
-  }, [
-    compact,
-    dailyGlobalMeanAnomalyMetric,
-    language,
-    projectedAnnualChartPoints,
-    projectedAnnualGlobalMeanAnomaly,
-    resolvedTheme,
-    t.annualGlobalTemperatureAnomalyTitle,
-    t.projectedAnnualTemperatureAnomalyTitle,
-    t.projectionIntervalLabel,
-  ]);
-  const longRangeTemperatureTrendOption = useMemo(() => {
-    if (!dailyGlobalMeanAnomalyMetric || !annualGlobalMeanAnomalyPoints.length) return null;
-    return buildLongRangeTemperatureTrendOption({
-      observedPoints: annualGlobalMeanAnomalyPoints,
-      language,
-      unit: cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language),
-      compact,
-      dark: resolvedTheme === "dark",
-    });
-  }, [annualGlobalMeanAnomalyPoints, compact, dailyGlobalMeanAnomalyMetric, language, resolvedTheme]);
-  // Selected pathways; an empty selection shows every pathway.
-  const [selectedScenarioKeys, setSelectedScenarioKeys] = useState<ReadonlySet<string>>(() => new Set());
-  const hiddenScenarioKeys = useMemo<ReadonlySet<string>>(
+  // The annual record with this year replaced by its projected mean, drawn
+  // with its likely range (Projections page).
+  const estimateWarmingContext = useMemo(() => {
+    if (!projectedAnnualGlobalMeanAnomaly) return null;
+    const projectionDate = `${projectedAnnualGlobalMeanAnomaly.year}-01-01`;
+    const points = annualGlobalMeanAnomalyPoints.filter((point) => (parseYearFromDateIso(point.date) ?? 0) < projectedAnnualGlobalMeanAnomaly.year);
+    return buildTrendContextData([...points, { date: projectionDate, value: projectedAnnualGlobalMeanAnomaly.value }], { kind: "annual-bars" });
+  }, [annualGlobalMeanAnomalyPoints, projectedAnnualGlobalMeanAnomaly]);
+  const warmingEstimate = useMemo(() => {
+    const projection = projectedAnnualGlobalMeanAnomaly;
+    if (!projection) return undefined;
+    const window = projection.ensoWindow;
+    return {
+      low: projection.low,
+      high: projection.high,
+      yearToDate: annualGlobalMeanAnomalyIsYtd ? latestAnnualGlobalMeanAnomaly?.value ?? null : null,
+      probabilityAbove: projection.probabilityAboveOnePointFive,
+      probabilityRecord: projection.probabilityWarmestOnRecord,
+      analogCount: projection.analogCount,
+      signal: window
+        ? `${t.projectionSignalLabel}: ${formatEnsoTargetLabel(window.targetLabel, language)} · ${formatEnsoConditionLabel(window.condition, t)} · ${window.probability ?? "-"}%`
+        : null,
+    };
+  }, [projectedAnnualGlobalMeanAnomaly, annualGlobalMeanAnomalyIsYtd, latestAnnualGlobalMeanAnomaly, language, t]);
+  // Observed annual warming, then each pathway's central estimate to 2100.
+  const pathwaysData = useMemo(
     () =>
-      new Set(
-        selectedScenarioKeys.size
-          ? CMIP7_SCENARIOMIP_SCENARIOS.map((scenario) => scenario.key).filter((key) => !selectedScenarioKeys.has(key))
-          : []
+      buildPathwaysData(
+        annualGlobalMeanAnomalyPoints,
+        CMIP7_SCENARIOMIP_SCENARIOS.map((scenario) => ({
+          key: scenario.key,
+          label: scenarioDisplayLabel(scenario, language),
+          colorLight: scenario.colorLight,
+          colorDark: scenario.colorDark,
+          anchors: scenario.anchors,
+        }))
       ),
-    [selectedScenarioKeys]
-  );
-  const overviewLongRangeOption = useMemo(() => {
-    if (!dailyGlobalMeanAnomalyMetric || !annualGlobalMeanAnomalyPoints.length) return null;
-    return buildLongRangeTemperatureTrendOption({
-      observedPoints: annualGlobalMeanAnomalyPoints,
-      language,
-      unit: cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language),
-      compact,
-      dark: resolvedTheme === "dark",
-      hiddenScenarioKeys,
-    });
-  }, [annualGlobalMeanAnomalyPoints, compact, dailyGlobalMeanAnomalyMetric, hiddenScenarioKeys, language, resolvedTheme]);
-  // First click focuses on one pathway, further clicks add or remove pathways, and clearing the last one shows all again.
-  const toggleScenario = (key: string) =>
-    setSelectedScenarioKeys((current) => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  const longRangeScenarioSummaries = useMemo(
-    () =>
-      CMIP7_SCENARIOMIP_SCENARIOS.map((scenario) => ({
-        key: scenario.key,
-        label: scenarioDisplayLabel(scenario, language),
-        value2100: scenario.anchors.find(([year]) => year === LONG_RANGE_SCENARIO_END_YEAR)?.[1] ?? null,
-        color: resolvedTheme === "dark" ? scenario.colorDark : scenario.colorLight,
-      })).sort((left, right) => (left.value2100 ?? Number.POSITIVE_INFINITY) - (right.value2100 ?? Number.POSITIVE_INFINITY)),
-    [language, resolvedTheme]
+    [annualGlobalMeanAnomalyPoints, language]
   );
   const currentTippingWarming = latestAnnualGlobalMeanAnomaly?.value ?? null;
-  const tippingPointCards = useMemo(
+  const tippingLadderItems = useMemo<TippingLadderItem[]>(
     () =>
       MCKAY_TIPPING_POINTS.map((tippingPoint) => ({
         key: tippingPoint.key,
         label: tippingPointLabel(tippingPoint, language),
+        categoryKey: tippingPoint.categoryEn,
         category: tippingPointCategory(tippingPoint, language),
-        centralThreshold: tippingPoint.centralThreshold,
-        minThreshold: tippingPoint.minThreshold,
-        maxThreshold: tippingPoint.maxThreshold,
-        state: tippingPointState(tippingPoint, currentTippingWarming, t),
-        stateKey: tippingPointStateKey(tippingPoint, currentTippingWarming),
-      })).sort((left, right) => left.centralThreshold - right.centralThreshold || left.minThreshold - right.minThreshold),
-    [currentTippingWarming, language, t]
+        central: tippingPoint.centralThreshold,
+        min: tippingPoint.minThreshold,
+        max: tippingPoint.maxThreshold,
+        state: tippingPointStateKey(tippingPoint, currentTippingWarming),
+      })),
+    [currentTippingWarming, language]
   );
   const regionalTemperatureLines = useMemo(
     () =>
@@ -4231,9 +3466,6 @@ export function App() {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
-  const projectionSignalSummary = projectedAnnualGlobalMeanAnomaly?.ensoWindow
-    ? `${t.projectionSignalLabel}: ${formatEnsoTargetLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.targetLabel, language)} · ${formatEnsoConditionLabel(projectedAnnualGlobalMeanAnomaly.ensoWindow.condition, t)} · ${projectedAnnualGlobalMeanAnomaly.ensoWindow.probability ?? "-"}%`
-    : null;
   const projectionSupportSource = ensoOutlook?.sourceLabel ?? dailyGlobalMeanAnomalyMetric?.source.shortName ?? null;
   const projectionSupportLabel = projectionSupportSource ? formatSourceShortName(projectionSupportSource, language) : null;
   const projectionUnitLabel = cardUnitLabel(
@@ -4241,19 +3473,6 @@ export function App() {
     dailyGlobalMeanAnomalyMetric?.unit ?? "°C",
     language
   );
-  const projectionIntervalTrack = projectedAnnualGlobalMeanAnomaly
-    ? (() => {
-        const span = PROJECTION_OVERVIEW_Y_MAX - PROJECTION_OVERVIEW_Y_MIN;
-        const start = clamp(((projectedAnnualGlobalMeanAnomaly.low - PROJECTION_OVERVIEW_Y_MIN) / span) * 100, 0, 100);
-        const end = clamp(((projectedAnnualGlobalMeanAnomaly.high - PROJECTION_OVERVIEW_Y_MIN) / span) * 100, 0, 100);
-        const marker = clamp(((projectedAnnualGlobalMeanAnomaly.value - PROJECTION_OVERVIEW_Y_MIN) / span) * 100, 0, 100);
-        return {
-          start,
-          width: Math.max(end - start, 1.5),
-          marker,
-        };
-      })()
-    : null;
   const outlookIntervalMarker = projectedAnnualGlobalMeanAnomaly
     ? (() => {
         const span = projectedAnnualGlobalMeanAnomaly.high - projectedAnnualGlobalMeanAnomaly.low || 1;
@@ -5290,14 +4509,14 @@ export function App() {
               </article>
             </section>
 
-            {longRangeTemperatureTrendOption ? (
+            {pathwaysData ? (
               <section className="overview-long-range-section">
                 <article
                   className="overview-card overview-temperature-trend-card is-linked-card is-clickable-card"
                   onClick={(event) => {
                     const target = event.target as HTMLElement;
                     // Controls keep their own behaviour; on touch screens a tap on the chart reads its tooltip instead.
-                    if (target.closest("button, a, .scenario-toggle-row")) return;
+                    if (target.closest("button, a, .pathway-toggles")) return;
                     if (target.closest(".long-range-temperature-chart") && window.matchMedia("(hover: none)").matches) return;
                     setDashboardView("projections");
                   }}
@@ -5312,58 +4531,18 @@ export function App() {
                       <p>{t.longRangeTemperatureTrendSubtitle}</p>
                     </div>
                   </div>
-                  <div className="scenario-toggle-row" role="group" aria-label={language === "hu" ? "Forgatókönyvek megjelenítése" : "Show scenarios"}>
-                    <span className="scenario-key-measured">
-                      <span className="scenario-toggle-swatch" aria-hidden="true" />
-                      {language === "hu" ? "Mért" : "Measured"}
-                    </span>
-                    {longRangeScenarioSummaries.map((scenario) => {
-                      const visible = !hiddenScenarioKeys.has(scenario.key);
-                      const selected = selectedScenarioKeys.has(scenario.key);
-                      return (
-                        <button
-                          type="button"
-                          className={`scenario-toggle${selected ? " is-selected" : ""}`}
-                          key={scenario.key}
-                          aria-pressed={visible}
-                          title={
-                            selected
-                              ? language === "hu" ? "Eltávolítás a kiválasztásból" : "Remove from selection"
-                              : selectedScenarioKeys.size
-                                ? language === "hu" ? "Hozzáadás a kiválasztáshoz" : "Add to selection"
-                                : language === "hu" ? "Csak ez a pálya" : "Show only this pathway"
-                          }
-                          style={{ "--scenario-color": scenario.color } as CSSProperties}
-                          onClick={() => toggleScenario(scenario.key)}
-                        >
-                          <span className="scenario-toggle-swatch" aria-hidden="true" />
-                          <span className="scenario-toggle-label">{scenario.label}</span>
-                          <strong>
-                            {scenario.value2100 == null ? "-" : projectionNumberFormat.format(scenario.value2100)} {projectionUnitLabel}
-                          </strong>
-                          <small>{language === "hu" ? "2100-ban" : "in 2100"}</small>
-                        </button>
-                      );
-                    })}
-                    <button
-                      type="button"
-                      className="scenario-toggle scenario-toggle-all"
-                      aria-pressed={selectedScenarioKeys.size === 0}
-                      onClick={() => setSelectedScenarioKeys(new Set())}
-                    >
-                      <span className="scenario-toggle-label">{language === "hu" ? "Összes" : "All"}</span>
-                    </button>
-                    <span className="scenario-hint">
-                      {language === "hu" ? "Válassz pályát a szűréshez" : "Select pathways to compare"}
-                    </span>
-                  </div>
                   <div className="long-range-temperature-chart">
-                    <EChartsPanel
+                    <PathwaysPanel
                       title={t.longRangeTemperatureHorizonTitle}
-                      subtitle={t.longRangeTemperatureTrendSubtitle}
-                      expandLabel={t.chartFullscreenEnter}
-                      collapseLabel={t.chartFullscreenExit}
-                      option={overviewLongRangeOption ?? longRangeTemperatureTrendOption}
+                      data={pathwaysData}
+                      partialLatest={annualGlobalMeanAnomalyIsYtd}
+                      referenceLabel="1850–1900"
+                      unit={projectionUnitLabel}
+                      language={language}
+                      compact={compact}
+                      dark={resolvedTheme === "dark"}
+                      ready={runtimeDataReady}
+                      summary
                     />
                   </div>
                 </article>
@@ -5797,130 +4976,55 @@ export function App() {
               ? "Az idei év globális átlaghőmérséklete hasonló (analóg) évek alapján, az aktuális ENSO-előrejelzés szerint súlyozva. Kísérleti becslés, nem hivatalos előrejelzés."
               : "Annual global mean temperature estimated from analog years weighted by the current ENSO forecast. An experimental estimate, not an official forecast.",
             <>
-              <div className="summary-cards-section">
-                <div className="regional-summary-grid">
-                  <article className="alert-card summary">
-                    <span className="alert-kicker">{t.projectionEstimateLabel}</span>
-                    <h2>{t.outlookProjectedAnnualMeanLabel}</h2>
-                    <p className="alert-emphasis">
-                      {renderPrimaryValue(
-                        `${projectedAnnualGlobalMeanAnomaly.value > 0 ? "+" : ""}${projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.value)} ${projectionUnitLabel}`,
-                        "value-loading-skeleton detail-value-loading"
-                      )}
-                    </p>
-                    <p>{t.overviewPreindustrialSubtitle}</p>
-                    <div className="alert-meta">
-                      <span className="alert-meta-chip confidence-medium">{t.projectionExperimentalLabel}</span>
-                    </div>
-                  </article>
-                  <article className="alert-card summary">
-                    <span className="alert-kicker">{t.projectionRangeLabel}</span>
-                    <h2>{t.projectionIntervalLabel}</h2>
-                    <p className="alert-emphasis">
-                      {renderPrimaryValue(
-                        `${projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}–${projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)} ${projectionUnitLabel}`,
-                        "value-loading-skeleton detail-value-loading"
-                      )}
-                    </p>
-                    {runtimeDataReady && projectionIntervalTrack ? (
-                      <div className="projection-mini-range" aria-hidden="true">
-                        <span className="projection-mini-range-threshold" style={{ left: `${((1.5 - PROJECTION_OVERVIEW_Y_MIN) / (PROJECTION_OVERVIEW_Y_MAX - PROJECTION_OVERVIEW_Y_MIN)) * 100}%` }} />
-                        <span className="projection-mini-range-fill" style={{ left: `${projectionIntervalTrack.start}%`, width: `${projectionIntervalTrack.width}%` }} />
-                        <span className="projection-mini-range-marker" style={{ left: `${projectionIntervalTrack.marker}%` }} />
-                        <small className="projection-mini-range-min">{PROJECTION_OVERVIEW_Y_MIN.toFixed(1)}</small>
-                        <small className="projection-mini-range-max">{PROJECTION_OVERVIEW_Y_MAX.toFixed(1)} {projectionUnitLabel}</small>
-                      </div>
-                    ) : null}
-                    <div className="alert-meta">
-                      {projectionSignalSummary ? <span className="alert-meta-chip confidence-medium">{projectionSignalSummary}</span> : null}
-                    </div>
-                  </article>
-                  <article className="alert-card summary">
-                    <span className="alert-kicker">{t.projectionProbabilityMethodLabel}</span>
-                    <h2>{t.projectionProbabilityAboveOnePointFiveTitle}</h2>
-                    <p className="alert-emphasis">
-                      {renderPrimaryValue(
-                        projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive),
-                        "value-loading-skeleton detail-value-loading"
-                      )}
-                    </p>
-                    <p>
-                      {t.projectionRangeLabel}: {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.low)}–
-                      {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.high)} {projectionUnitLabel}
-                    </p>
-                    <div className="alert-meta">
-                      <span className="alert-meta-chip confidence-medium">
-                        {projectedAnnualGlobalMeanAnomaly.analogCount} {t.projectionAnalogsLabel}
-                      </span>
-                    </div>
-                  </article>
-                  <article className="alert-card summary">
-                    <span className="alert-kicker">{t.projectionProbabilityMethodLabel}</span>
-                    <h2>{t.projectionProbabilityWarmestRecordTitle}</h2>
-                    <p className="alert-emphasis">
-                      {renderPrimaryValue(
-                        projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord),
-                        "value-loading-skeleton detail-value-loading"
-                      )}
-                    </p>
-                    <p>
-                      {t.projectionRecordThresholdLabel}: {projectionNumberFormat.format(projectedAnnualGlobalMeanAnomaly.recordThreshold)}{" "}
-                      {projectionUnitLabel}
-                    </p>
-                    <div className="alert-meta">
-                      <span className="alert-meta-chip confidence-medium">
-                        {projectedAnnualGlobalMeanAnomaly.analogCount} {t.projectionAnalogsLabel}
-                      </span>
-                    </div>
-                  </article>
-                </div>
-              </div>
-              {projectedAnnualOverviewChartOption ? (
-                <div className="charts-grid climate-grid">
-                  <EChartsPanel
+              {estimateWarmingContext && dailyGlobalMeanAnomalyMetric ? (
+                <div className="charts-grid climate-grid climate-grid-single">
+                  <TrendContextPanel
+                    anchorId="chart-warming-estimate"
                     title={t.projectedAnnualTemperatureAnomalyChartTitle}
                     subtitle={t.projectedAnnualTemperatureAnomalyChartSubtitle}
-                    expandLabel={t.chartFullscreenEnter}
-                    collapseLabel={t.chartFullscreenExit}
+                    data={estimateWarmingContext}
+                    variant="warming-estimate"
+                    domain="temperature"
+                    unit={projectionUnitLabel}
+                    decimals={dailyGlobalMeanAnomalyMetric.decimals}
+                    language={language}
+                    compact={compact}
+                    dark={resolvedTheme === "dark"}
+                    ready={runtimeDataReady}
+                    referenceLabel="1850–1900"
+                    estimate={warmingEstimate}
                     freshnessLabel={projectionFreshness?.label}
                     freshnessTone={projectionFreshness?.tone}
-                    option={projectedAnnualOverviewChartOption}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
                   />
                 </div>
               ) : null}
             </>
           )}
 
-          {longRangeTemperatureTrendOption
+          {pathwaysData
             ? renderPageSubsection(
                 t.longRangeTemperatureHorizonTitle,
                 t.longRangeTemperatureTrendSource,
                 <>
-                  <div className="summary-cards-section">
-                    <div className="regional-summary-grid" aria-label={t.longRangeTemperatureTrendValueLabel}>
-                      {longRangeScenarioSummaries.map((scenario) => (
-                        <article
-                          className="alert-card summary projection-scenario-card"
-                          key={scenario.key}
-                          style={{ "--indicator-accent": scenario.color } as CSSProperties}
-                        >
-                          <span className="alert-kicker">{language === "hu" ? "Forgatókönyv" : "Scenario"}</span>
-                          <h2>{scenario.label}</h2>
-                          <p className="alert-emphasis">
-                            {scenario.value2100 == null ? "-" : `${projectionNumberFormat.format(scenario.value2100)} ${projectionUnitLabel}`}
-                          </p>
-                          <p>{t.longRangeTemperatureTrendValueLabel}</p>
-                        </article>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="charts-grid climate-grid">
-                    <EChartsPanel
+                  <div className="charts-grid climate-grid climate-grid-single">
+                    <PathwaysPanel
+                      anchorId="chart-warming-pathways"
                       title={t.longRangeTemperatureTrendTitle}
                       subtitle={t.longRangeTemperatureTrendSubtitle}
+                      data={pathwaysData}
+                      partialLatest={annualGlobalMeanAnomalyIsYtd}
+                      referenceLabel="1850–1900"
+                      unit={projectionUnitLabel}
+                      language={language}
+                      compact={compact}
+                      dark={resolvedTheme === "dark"}
+                      ready={runtimeDataReady}
+                      freshnessLabel={dailyGlobalMeanAnomalyFreshness?.label}
+                      freshnessTone={dailyGlobalMeanAnomalyFreshness?.tone}
                       expandLabel={t.chartFullscreenEnter}
                       collapseLabel={t.chartFullscreenExit}
-                      option={longRangeTemperatureTrendOption}
                     />
                   </div>
                 </>,
@@ -5933,121 +5037,18 @@ export function App() {
           {renderPageSubsection(
             t.tippingPointsTitle,
             t.tippingPointsSubtitle,
-            <>
-              <div className="summary-cards-section">
-                <div className="regional-summary-grid">
-                  <article className="alert-card summary">
-                    <span className="alert-kicker">{t.latestLabel}</span>
-                    <h2>{t.tippingCurrentWarmingLabel}</h2>
-                    <p className="alert-emphasis">
-                      {renderPrimaryValue(
-                        `${currentTippingWarming == null ? "-" : projectionNumberFormat.format(currentTippingWarming)} ${projectionUnitLabel}`,
-                        "value-loading-skeleton detail-value-loading"
-                      )}
-                    </p>
-                    <p>
-                      {t.overviewPreindustrialSubtitle}
-                      {annualGlobalMeanAnomalyIsYtd ? ` · ${t.ytdLabel}` : ""}
-                    </p>
-                  </article>
-                  <article className="alert-card summary">
-                    <span className="alert-kicker">{t.tippingStatePossible}</span>
-                    <h2>{language === "hu" ? "Küszöbök, amelyek tartományát már elértük" : "Thresholds within their assessed range"}</h2>
-                    <p className="alert-emphasis">
-                      {renderPrimaryValue(
-                        `${tippingPointCards.filter((card) => card.stateKey !== "below").length} / ${tippingPointCards.length}`,
-                        "value-loading-skeleton detail-value-loading"
-                      )}
-                    </p>
-                    <p>
-                      {language === "hu"
-                        ? "A jelenlegi melegedés már elérte a becsült tartomány alsó határát."
-                        : "Current warming has reached the lower bound of the assessed range."}
-                    </p>
-                  </article>
-                  <article className="alert-card summary">
-                    <span className="alert-kicker">{language === "hu" ? "Párizsi cél" : "Paris goal"}</span>
-                    <h2>{language === "hu" ? "Központi küszöb legfeljebb 2 °C" : "Central threshold at or below 2 °C"}</h2>
-                    <p className="alert-emphasis">
-                      {`${tippingPointCards.filter((card) => card.centralThreshold <= 2).length} / ${tippingPointCards.length}`}
-                    </p>
-                    <p>
-                      {language === "hu"
-                        ? "Ennyi rendszer billenhet át már a Párizsi Megállapodás felső határa alatt is."
-                        : "Systems that could tip within the Paris Agreement's upper limit."}
-                    </p>
-                  </article>
-                </div>
-              </div>
-              <article className="panel tipping-ladder-panel">
-                <header className="panel-header">
-                  <div className="panel-header-main">
-                    <h2>{language === "hu" ? "Billenési küszöbök közös skálán" : "Tipping thresholds on a shared scale"}</h2>
-                    <p>
-                      {language === "hu"
-                        ? "Sáv: becsült tartomány · pont: központi küszöb · függőleges vonal: jelenlegi melegedés"
-                        : "Band: assessed range · dot: central threshold · vertical line: current warming"}
-                    </p>
-                  </div>
-                </header>
-                <ol className="tipping-ladder" style={{ "--tipping-now": `${tippingAxisPercent(currentTippingWarming ?? 0)}%` } as CSSProperties}>
-                  <li className="tipping-ladder-axis" aria-hidden="true">
-                    <span />
-                    <div className="tipping-ladder-scale">
-                      {TIPPING_AXIS_TICKS.map((tick) => (
-                        <span key={tick} style={{ left: `${tippingAxisPercent(tick)}%` }}>
-                          {tick} {projectionUnitLabel}
-                        </span>
-                      ))}
-                      {currentTippingWarming != null ? (
-                        <strong className="tipping-ladder-now-label">
-                          {language === "hu" ? "Most" : "Now"} {projectionNumberFormat.format(currentTippingWarming)}
-                        </strong>
-                      ) : null}
-                    </div>
-                    <span />
-                  </li>
-                  {tippingPointCards.map((card) => (
-                    <li className={`tipping-ladder-row state-${card.stateKey}`} key={card.key}>
-                      <div className="tipping-ladder-label">
-                        <strong>{card.label}</strong>
-                        <span>{card.category}</span>
-                      </div>
-                      <div
-                        className="tipping-ladder-track"
-                        role="img"
-                        aria-label={`${card.label}: ${t.tippingCentralThresholdLabel} ${projectionNumberFormat.format(card.centralThreshold)} ${projectionUnitLabel}, ${t.tippingRangeLabel} ${projectionNumberFormat.format(card.minThreshold)}–${projectionNumberFormat.format(card.maxThreshold)} ${projectionUnitLabel}. ${card.state}.`}
-                      >
-                        <span className="tipping-ladder-guide" style={{ left: `${tippingAxisPercent(1.5)}%` }} />
-                        <span className="tipping-ladder-guide" style={{ left: `${tippingAxisPercent(2)}%` }} />
-                        <span
-                          className="tipping-ladder-range"
-                          style={{
-                            left: `${tippingAxisPercent(card.minThreshold)}%`,
-                            width: `${tippingAxisPercent(card.maxThreshold) - tippingAxisPercent(card.minThreshold)}%`,
-                          }}
-                        />
-                        <span className="tipping-ladder-central" style={{ left: `${tippingAxisPercent(card.centralThreshold)}%` }} />
-                        <span className="tipping-ladder-now" />
-                      </div>
-                      <div className="tipping-ladder-value">
-                        <strong>
-                          {projectionNumberFormat.format(card.centralThreshold)} {projectionUnitLabel}
-                        </strong>
-                        <small>
-                          {projectionNumberFormat.format(card.minThreshold)}–{projectionNumberFormat.format(card.maxThreshold)}
-                        </small>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-                <div className="tipping-ladder-legend" aria-hidden="true">
-                  <span className="state-likely">{t.tippingStateLikely}</span>
-                  <span className="state-possible">{t.tippingStatePossible}</span>
-                  <span className="state-below">{t.tippingStateBelow}</span>
-                </div>
-              </article>
-            </>,
+            <TippingLadderPanel
+              title={language === "hu" ? "Billenési küszöbök közös skálán" : "Tipping thresholds on a shared scale"}
+              items={tippingLadderItems}
+              currentWarming={currentTippingWarming}
+              partial={annualGlobalMeanAnomalyIsYtd}
+              currentYear={latestAnnualGlobalMeanAnomaly?.year ?? null}
+              pathways={pathwaysData}
+              unit={projectionUnitLabel}
+              language={language}
+              dark={resolvedTheme === "dark"}
+              ready={runtimeDataReady}
+            />,
             <a className="text-link-button subsection-source-link" href={MCKAY_TIPPING_POINTS_SOURCE_URL} target="_blank" rel="noreferrer">
               {t.tippingPointsSourceLabel} →
             </a>

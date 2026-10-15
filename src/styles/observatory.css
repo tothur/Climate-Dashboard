@@ -964,46 +964,6 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 }
 
 /* Projections: compact interval track inside the outlook stat strip. */
-.observatory .projection-mini-range {
-  position: relative;
-  height: 6px;
-  margin: 4px 2px 26px;
-  border-radius: 999px;
-  background: var(--overview-paper-soft);
-}
-.observatory .projection-mini-range-fill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-radius: 999px;
-  background: var(--indicator-accent);
-}
-.observatory .projection-mini-range-threshold {
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  border-left: 1px dashed var(--muted);
-}
-.observatory .projection-mini-range-marker {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  border: 3px solid var(--text);
-  border-radius: 50%;
-  background: var(--panel);
-  transform: translate(-50%, -50%);
-}
-.observatory .projection-mini-range small {
-  position: absolute;
-  top: 12px;
-  color: var(--muted);
-  font-size: 10px;
-  white-space: nowrap;
-}
-.observatory .projection-mini-range-min { left: 0; }
-.observatory .projection-mini-range-max { right: 0; }
 
 /* Projections: tipping thresholds on one shared warming axis. */
 .observatory .tipping-ladder-panel { padding-bottom: 20px; }
@@ -1221,7 +1181,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .tipping-ladder-axis { grid-template-columns: 1fr; }
   .observatory .tipping-ladder-axis > span { display: none; }
   .observatory .tipping-ladder-scale > span:first-child { transform: none; }
-  .observatory .tipping-ladder-scale > span:nth-last-child(2) { transform: translateX(-100%); }
+  .observatory .tipping-ladder-scale > span:last-of-type { transform: translateX(-100%); }
   .observatory .tipping-ladder-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label value" "track track"; }
   .observatory .tipping-ladder-label { grid-area: label; padding-bottom: 4px; }
   .observatory .tipping-ladder-value { grid-area: value; }
@@ -1700,72 +1660,6 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 }
 .observatory .overview-page .is-linked-card .card-stretched-link:hover { background: none; }
 
-/* Warming pathways: scenario toggles in the site's control language instead of a canvas legend. */
-.observatory .scenario-toggle-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 8px;
-  margin: 18px 0 6px;
-}
-.observatory .scenario-key-measured,
-.observatory .scenario-toggle {
-  --scenario-color: var(--text);
-  display: grid;
-  grid-template-columns: auto auto;
-  grid-template-rows: auto auto;
-  column-gap: 8px;
-  align-items: center;
-  min-height: 44px;
-  padding: 7px 12px 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel);
-  color: var(--muted);
-  font: 600 11px/1.25 var(--font-sans);
-  text-align: left;
-}
-.observatory .scenario-key-measured {
-  grid-template-rows: auto;
-  border-style: dashed;
-  background: transparent;
-}
-.observatory .scenario-toggle-swatch {
-  grid-row: 1 / span 2;
-  width: 14px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--scenario-color);
-}
-.observatory .scenario-key-measured .scenario-toggle-swatch { grid-row: auto; height: 2.5px; }
-.observatory .scenario-toggle { cursor: pointer; transition: border-color 160ms ease, background-color 160ms ease, opacity 160ms ease, transform 160ms ease; }
-.observatory .scenario-toggle-label { grid-column: 2; color: var(--muted); }
-.observatory .scenario-toggle strong {
-  grid-column: 2;
-  color: var(--scenario-color);
-  font: 650 17px/1.15 var(--font-display);
-  letter-spacing: -.02em;
-}
-.observatory .scenario-toggle small { display: none; }
-.observatory .scenario-toggle[aria-pressed="true"] {
-  border-color: color-mix(in srgb, var(--scenario-color) 45%, var(--border));
-  background: color-mix(in srgb, var(--scenario-color) 7%, var(--panel));
-}
-.observatory .scenario-toggle[aria-pressed="false"] { opacity: .55; }
-.observatory .scenario-toggle[aria-pressed="false"] .scenario-toggle-swatch { background: transparent; box-shadow: inset 0 0 0 1.5px var(--scenario-color); height: 6px; }
-.observatory .scenario-toggle[aria-pressed="false"] strong { color: var(--muted); }
-.observatory .scenario-toggle:hover { border-color: color-mix(in srgb, var(--scenario-color) 70%, var(--border)); opacity: 1; }
-.observatory .scenario-toggle:active { transform: translateY(1px); }
-.observatory .scenario-toggle:focus-visible { outline: 2px solid var(--scenario-color); outline-offset: 2px; }
-.observatory .overview-temperature-trend-card .long-range-temperature-chart { margin-top: 4px; }
-@media (max-width: 600px) {
-  .observatory .scenario-toggle-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .observatory .scenario-key-measured { grid-column: 1 / -1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .observatory .scenario-toggle { transition: none; }
-}
-
 /* Consistency pass: one corner radius, one freshness tag, one micro-label style, one title weight. */
 .observatory .panel:not(.panel-expanded):not(:fullscreen),
 .observatory .detail-page-section :is(.regional-summary-grid, .footer-warnings),
@@ -1806,27 +1700,10 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .status-date.tone-warning .status-dot { background: var(--domain-forcing); }
 .observatory .status-date.tone-stale .status-dot { background: var(--domain-temperature); }
 
-/* Pathway filter helpers next to the scenario toggles. */
-.observatory .scenario-toggle.scenario-toggle-all {
-  --scenario-color: var(--accent);
-  grid-template-columns: auto;
-  grid-template-rows: auto;
-  align-content: center;
-  padding: 7px 14px;
-}
-.observatory .scenario-toggle-all .scenario-toggle-label { grid-column: 1; color: var(--text); font-size: 12px; }
-.observatory .scenario-toggle.scenario-toggle-all[aria-pressed="false"] { opacity: 1; }
-.observatory .scenario-toggle.scenario-toggle-all[aria-pressed="true"] .scenario-toggle-label { color: var(--accent); }
-.observatory .scenario-hint { align-self: center; margin-left: auto; color: var(--muted); font-size: 11px; }
-@media (max-width: 600px) {
-  .observatory .scenario-hint { grid-column: 1 / -1; justify-self: start; margin-left: 0; }
-  .observatory .scenario-toggle.scenario-toggle-all { grid-column: 1 / -1; justify-items: center; }
-}
-
 /* Cards whose whole surface navigates (click handled on the card, title is the keyboard link). */
 .observatory .overview-page .overview-temperature-trend-card.is-linked-card { --hover-accent: var(--domain-temperature); }
 .observatory .overview-page .is-clickable-card { cursor: pointer; }
-.observatory .overview-page .is-clickable-card .scenario-toggle-row { cursor: default; }
+.observatory .overview-page .is-clickable-card .pathway-toggles { cursor: default; }
 .observatory .overview-page .card-title-link {
   padding: 0;
   border: 0;
@@ -2051,3 +1928,119 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .detail-page-indicators .charts-grid.climate-grid-single { grid-template-columns: minmax(0, 1fr); }
 .observatory .detail-page-indicators .charts-grid.climate-grid-single > .panel .panel-chart { height: 420px; }
 @media (max-width: 900px) { .observatory .detail-page-indicators .charts-grid.climate-grid-single > .panel .panel-chart { height: 360px; } }
+
+/* Warming pathways: toggles carry each pathway's 2100 value; hovering one focuses its line. */
+.observatory .pathway-toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+.observatory .pathway-toggles button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 3px 11px;
+  border: 1px solid color-mix(in srgb, var(--pathway-color) 40%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pathway-color) 7%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.observatory .pathway-toggles button i { width: 12px; height: 3px; border-radius: 2px; background: var(--pathway-color); }
+.observatory .pathway-toggles button strong { color: var(--pathway-color); font-weight: 700; }
+.observatory .pathway-toggles button:hover { border-color: var(--pathway-color); }
+.observatory .pathway-toggles button:focus-visible { outline: 2px solid var(--pathway-color); outline-offset: 2px; }
+.observatory .pathway-toggles button[aria-pressed="false"] { border-style: dashed; border-color: var(--border); background: transparent; color: var(--muted); }
+.observatory .pathway-toggles button[aria-pressed="false"] i { opacity: .25; }
+.observatory .pathway-toggles button[aria-pressed="false"] strong { color: var(--muted); }
+.observatory .long-range-temperature-chart .daily-context-intro { padding-inline: 0; }
+@media (max-width: 720px) {
+  .observatory .pathway-toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  /* Label over value, so long names (and Hungarian ones) fit two to a row. */
+  .observatory .pathway-toggles button {
+    display: grid;
+    grid-template-columns: 12px minmax(0, 1fr);
+    gap: 1px 7px;
+    min-width: 0;
+    min-height: 48px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    text-align: left;
+    line-height: 1.25;
+  }
+  .observatory .pathway-toggles button strong { grid-column: 2; white-space: nowrap; }
+}
+
+/* Tipping ladder in the chart-panel language: headline and chips, an order toggle, details on hover. */
+.observatory .tipping-ladder-panel .tipping-ladder-legend { padding: 0; }
+.observatory .tipping-ladder-row { position: relative; outline: none; }
+.observatory .tipping-ladder-row:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--overview-paper-soft) 70%, transparent); }
+.observatory .tipping-ladder-row:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.observatory .tipping-ladder-tip {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% - 6px);
+  left: 0;
+  display: none;
+  gap: 3px;
+  width: max-content;
+  max-width: min(360px, 80vw);
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, .16);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+.observatory .tipping-ladder-tip strong { color: var(--text); font-weight: 650; }
+.observatory .tipping-ladder-tip-state { color: var(--central-color); font-weight: 600; }
+.observatory .tipping-ladder-row:is(:hover, :focus-visible) .tipping-ladder-tip { display: grid; }
+.observatory .tipping-ladder-group {
+  padding: 18px 0 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.observatory .tipping-ladder-axis-note { align-self: end; padding-bottom: 8px; color: var(--muted); font-size: 10px; text-align: right; }
+.observatory .tipping-ladder-pathway {
+  position: absolute;
+  z-index: 2;
+  bottom: -1px;
+  width: 0;
+  height: 0;
+  border-right: 5px solid transparent;
+  border-bottom: 7px solid var(--pathway-color);
+  border-left: 5px solid transparent;
+  transform: translateX(-50%);
+}
+.observatory .tipping-ladder-pathway-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  padding: 16px 24px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.observatory .tipping-ladder-pathway-key span { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.observatory .tipping-ladder-pathway-key i {
+  width: 0;
+  height: 0;
+  border-right: 5px solid transparent;
+  border-bottom: 7px solid var(--pathway-color);
+  border-left: 5px solid transparent;
+}
+.observatory .tipping-ladder-band-key { margin-left: auto; }
+@media (max-width: 720px) {
+  .observatory .tipping-ladder-group { padding-inline: 0; }
+  .observatory .tipping-ladder-pathway-key { padding-inline: 16px; }
+  .observatory .tipping-ladder-band-key { margin-left: 0; }
+  .observatory .tipping-ladder-tip { left: 0; }
+}
