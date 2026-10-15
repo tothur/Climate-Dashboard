@@ -1808,10 +1808,10 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 /* Indicators navigation: a sticky side rail on wide screens, a sticky
    location bar with a jump sheet below that (components/IndicatorNavigator). */
 /* "clip" keeps the section's clipping without becoming a scroll container, which would stop the navigation sticking. */
-.observatory #climate-system { overflow: clip; scroll-margin-top: var(--app-header-height, 76px); }
+.observatory :is(#climate-system, #projections) { overflow: clip; scroll-margin-top: var(--app-header-height, 76px); }
 /* The layout wrapper is a grid item of the section: without min-width: 0 it grows to its widest chart. */
 .observatory :is(.indicators-layout, .indicators-main) { min-width: 0; }
-.observatory .detail-page-indicators [data-toc-anchor] { scroll-margin-top: calc(var(--app-header-height, 76px) + 16px); }
+.observatory :is(.detail-page-indicators, .detail-page-projections) [data-toc-anchor] { scroll-margin-top: calc(var(--app-header-height, 76px) + 16px); }
 .observatory .detail-page-indicators .indicator-topic-navigation { scrollbar-width: none; }
 .observatory .detail-page-indicators .indicator-topic-navigation::-webkit-scrollbar { display: none; }
 .observatory :is(.indicator-rail, .indicator-locator, .indicator-sheet) { --topic-accent: var(--domain-temperature); }
@@ -1879,6 +1879,8 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 
 /* Location bar and jump sheet */
 .observatory .indicator-locator { position: sticky; top: calc(var(--app-header-height, 64px) + 8px); z-index: 40; margin: -30px 0 32px; }
+/* Projections has no topic tabs above the bar to tuck it under. */
+.observatory .detail-page-projections .indicator-locator { margin-top: 0; }
 .observatory .indicator-locator-bar {
   display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 10px 16px;
   border: 1px solid var(--border); border-radius: 12px; color: var(--text); font-size: 14px; text-align: left;
@@ -1901,6 +1903,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .indicator-sheet-topics::-webkit-scrollbar { display: none; }
 .observatory .indicator-sheet-topics button { flex: 0 0 auto; min-height: 40px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .observatory .indicator-sheet-topics button[aria-pressed="true"] { border-color: transparent; background: var(--topic-accent); color: var(--bg); }
+.observatory .indicator-sheet-title { display: flex; flex: 1 1 auto; align-items: center; gap: 10px; min-width: 0; margin: 0; padding: 0 8px; color: var(--text); font: 700 16px/1.3 var(--font-display); letter-spacing: -.015em; }
 .observatory .indicator-sheet-close { flex: 0 0 auto; width: 40px; height: 40px; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--text); font-size: 22px; line-height: 1; }
 .observatory .indicator-sheet .indicator-nav-chart { min-height: 44px; align-items: center; }
 .observatory .indicator-sheet .indicator-nav-chart-value { padding-top: 0; }
@@ -1912,7 +1915,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 }
 @media (max-width: 1199px) {
   .observatory .indicator-rail { display: none; }
-  .observatory .detail-page-indicators [data-toc-anchor] { scroll-margin-top: calc(var(--app-header-height, 64px) + 72px); }
+  .observatory :is(.detail-page-indicators, .detail-page-projections) [data-toc-anchor] { scroll-margin-top: calc(var(--app-header-height, 64px) + 72px); }
 }
 
 /* Chart cards side by side share one height: when one card's headline or

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * Climate system page navigation: one table of contents (topics → sections →
- * charts, each chart with its latest value) shown two ways:
+ * Page navigation for the Climate system and Projections pages: one table of
+ * contents (topics → sections → charts, each chart with its latest value)
+ * shown two ways:
  * - IndicatorRail: a sticky side rail on wide screens
  * - IndicatorLocator: a sticky "where am I" bar that opens a jump sheet on
  *   narrower screens
@@ -39,8 +40,8 @@ interface NavCopy {
 }
 
 const COPY: Record<"en" | "hu", NavCopy> = {
-  en: { navLabel: "Indicators contents", topicsLabel: "Topics", openSheet: "Jump to a chart", closeSheet: "Close" },
-  hu: { navLabel: "Mutatók tartalomjegyzéke", topicsLabel: "Témák", openSheet: "Ugrás egy grafikonhoz", closeSheet: "Bezárás" },
+  en: { navLabel: "Page contents", topicsLabel: "Topics", openSheet: "Jump to a chart", closeSheet: "Close" },
+  hu: { navLabel: "Az oldal tartalma", topicsLabel: "Témák", openSheet: "Ugrás egy grafikonhoz", closeSheet: "Bezárás" },
 };
 
 function prefersReducedMotion(): boolean {
@@ -291,6 +292,13 @@ export function IndicatorLocator({ topics, activeTopic, active, ready, language,
           <div className="indicator-sheet-backdrop" onClick={close} aria-hidden="true" />
           <div ref={sheetRef} className="indicator-sheet" role="dialog" aria-modal="true" aria-label={copy.navLabel}>
             <div className="indicator-sheet-header">
+              {/* A single-topic page (Projections) has no topics to switch between: the sheet is titled instead. */}
+              {topics.length === 1 ? (
+                <p className={`indicator-sheet-title topic-${topics[0].key}`}>
+                  <span className="indicator-nav-topic-dot" aria-hidden="true" />
+                  {topics[0].label}
+                </p>
+              ) : (
               <div className="indicator-sheet-topics" role="group" aria-label={copy.topicsLabel}>
                 {topics.map((entry, index) => (
                   <button
@@ -304,6 +312,7 @@ export function IndicatorLocator({ topics, activeTopic, active, ready, language,
                   </button>
                 ))}
               </div>
+              )}
               <button type="button" className="indicator-sheet-close" aria-label={copy.closeSheet} onClick={close}>
                 <span aria-hidden="true">×</span>
               </button>

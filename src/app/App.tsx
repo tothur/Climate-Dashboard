@@ -3383,8 +3383,8 @@ export function App() {
       </div>
     </div>
   );
-  const renderPageSubsection = (title: string, note: string, content: ReactNode, action?: ReactNode) => (
-    <div className="climate-subsection">
+  const renderPageSubsection = (title: string, note: string, content: ReactNode, action?: ReactNode, id?: string) => (
+    <div className="climate-subsection" id={id} data-toc-anchor={id ? "" : undefined}>
       <div className="climate-subsection-header collapsible-subsection-header">
         <div className="climate-subsection-heading">
           <h2>{title}</h2>
@@ -3900,6 +3900,70 @@ export function App() {
     language,
     onSelectTopic: selectIndicatorTopic,
     onJump: jumpToIndicator,
+  };
+  // Projections: the same navigation over one page-level topic, its chapters as sections.
+  const projectionNavTopics = useMemo<IndicatorNavTopic[]>(() => {
+    const format = (value: number) =>
+      `${value > 0 ? "+" : ""}${new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
+    const pathwayEnds = pathwaysData?.scenarios.map((scenario) => scenario.end) ?? [];
+    const tippingWithin = tippingLadderItems.filter((item) => item.state !== "below").length;
+    return [
+      {
+        key: "projections",
+        label: t.projectionsTitle,
+        sections: [
+          {
+            id: "section-warming-estimate",
+            title: warmingEstimateHeading,
+            charts: [
+              {
+                id: "chart-warming-estimate",
+                title: t.projectedAnnualTemperatureAnomalyChartTitle,
+                value: projectedAnnualGlobalMeanAnomaly ? `${format(projectedAnnualGlobalMeanAnomaly.value)} °C` : undefined,
+              },
+            ],
+          },
+          ...(pathwaysData
+            ? [
+                {
+                  id: "section-warming-pathways",
+                  title: t.longRangeTemperatureHorizonTitle,
+                  charts: [
+                    {
+                      id: "chart-warming-pathways",
+                      title: t.longRangeTemperatureTrendTitle,
+                      value: `${format(Math.min(...pathwayEnds))}–${format(Math.max(...pathwayEnds)).replace("+", "")} °C`,
+                    },
+                  ],
+                },
+              ]
+            : []),
+          {
+            id: "section-tipping-points",
+            title: t.tippingPointsTitle,
+            charts: [
+              {
+                id: "chart-tipping-points",
+                title: language === "hu" ? "Billenési küszöbök közös skálán" : "Tipping thresholds on a shared scale",
+                value: `${tippingWithin}/${tippingLadderItems.length}`,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+  }, [language, t, warmingEstimateHeading, projectedAnnualGlobalMeanAnomaly, pathwaysData, tippingLadderItems]);
+  const projectionScrollSpy = useIndicatorScrollSpy(activeView === "projections" ? projectionNavTopics[0] : undefined);
+  const jumpToProjection = useIndicatorJump("projections", () => undefined);
+  const projectionNavProps = {
+    topics: projectionNavTopics,
+    activeTopic: "projections",
+    active: projectionScrollSpy,
+    ready: runtimeDataReady,
+    language,
+    // The page's only topic: its button returns to the top of the page.
+    onSelectTopic: () => jumpToProjection("projections", "projections"),
+    onJump: jumpToProjection,
   };
 
   const ensoConditionTone = (condition: EnsoCondition) =>
@@ -4962,6 +5026,9 @@ export function App() {
 
       {activeView === "projections" && runtimeDataReady && projectedAnnualGlobalMeanAnomaly ? (
         <section className="collapsible-section detail-page-section detail-page-editorial detail-page-projections" id="projections">
+          <div className="indicators-layout">
+          <IndicatorRail {...projectionNavProps} />
+          <div className="indicators-main">
           {renderPageIntro(
             t.projectionExperimentalLabel,
             t.projectionsTitle,
@@ -4969,6 +5036,7 @@ export function App() {
               ? "Merre tart az idei év, merre haladhat az évszázad, és milyen földrendszer-küszöbök kerülhetnek útba."
               : "Where this year is heading, where the century could go, and which Earth-system thresholds lie along the way."
           )}
+          <IndicatorLocator {...projectionNavProps} />
 
           {renderPageSubsection(
             warmingEstimateHeading,
@@ -5000,7 +5068,9 @@ export function App() {
                   />
                 </div>
               ) : null}
-            </>
+            </>,
+            undefined,
+            "section-warming-estimate"
           )}
 
           {pathwaysData
@@ -5030,7 +5100,8 @@ export function App() {
                 </>,
                 <a className="text-link-button subsection-source-link" href={CMIP7_SCENARIOMIP_TEMPERATURE_SOURCE_URL} target="_blank" rel="noreferrer">
                   {t.cmip7ScenarioSourceLabel} →
-                </a>
+                </a>,
+                "section-warming-pathways"
               )
             : null}
 
@@ -5051,8 +5122,11 @@ export function App() {
             />,
             <a className="text-link-button subsection-source-link" href={MCKAY_TIPPING_POINTS_SOURCE_URL} target="_blank" rel="noreferrer">
               {t.tippingPointsSourceLabel} →
-            </a>
+            </a>,
+            "section-tipping-points"
           )}
+          </div>
+          </div>
         </section>
       ) : null}
 
