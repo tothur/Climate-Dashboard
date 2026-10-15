@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * Indicators page navigation: one table of contents (topics → sections →
+ * Climate system page navigation: one table of contents (topics → sections →
  * charts, each chart with its latest value) shown two ways:
  * - IndicatorRail: a sticky side rail on wide screens
  * - IndicatorLocator: a sticky "where am I" bar that opens a jump sheet on
@@ -26,6 +26,8 @@ export interface IndicatorNavSection {
 export interface IndicatorNavTopic {
   key: string;
   label: string;
+  /** Group heading the topic sits under (state of the climate, drivers, natural variability). */
+  group?: string;
   sections: IndicatorNavSection[];
 }
 
@@ -196,10 +198,15 @@ export function IndicatorRail({ topics, activeTopic, active, ready, language, on
   return (
     <nav className="indicator-rail" aria-label={copy.navLabel}>
       <ul className="indicator-nav-topics">
-        {topics.map((topic) => {
+        {topics.map((topic, index) => {
           const isActive = topic.key === activeTopic;
+          const startsGroup = topic.group && topic.group !== topics[index - 1]?.group;
           return (
-            <li key={topic.key} className={`indicator-nav-topic topic-${topic.key}${isActive ? " is-active" : ""}`}>
+            <li
+              key={topic.key}
+              className={`indicator-nav-topic topic-${topic.key}${isActive ? " is-active" : ""}${startsGroup ? " starts-group" : ""}`}
+            >
+              {startsGroup ? <p className="indicator-nav-group">{topic.group}</p> : null}
               <button type="button" className="indicator-nav-topic-button" aria-expanded={isActive} onClick={() => onSelectTopic(topic.key)}>
                 <span className="indicator-nav-topic-dot" aria-hidden="true" />
                 <span>{topic.label}</span>
@@ -285,11 +292,11 @@ export function IndicatorLocator({ topics, activeTopic, active, ready, language,
           <div ref={sheetRef} className="indicator-sheet" role="dialog" aria-modal="true" aria-label={copy.navLabel}>
             <div className="indicator-sheet-header">
               <div className="indicator-sheet-topics" role="group" aria-label={copy.topicsLabel}>
-                {topics.map((entry) => (
+                {topics.map((entry, index) => (
                   <button
                     key={entry.key}
                     type="button"
-                    className={`topic-${entry.key}`}
+                    className={`topic-${entry.key}${entry.group && entry.group !== topics[index - 1]?.group && index > 0 ? " starts-group" : ""}`}
                     aria-pressed={entry.key === shownTopic?.key}
                     onClick={() => setSheetTopic(entry.key)}
                   >

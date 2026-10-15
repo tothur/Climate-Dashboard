@@ -331,7 +331,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
     maxThreshold: 10,
   },
 ];
-type DashboardView = "overview" | "indicators" | "forcing" | "variability" | "maps" | "projections" | "sources";
+type DashboardView = "overview" | "indicators" | "maps" | "projections" | "sources";
 type IndicatorSubsectionKey =
   | "globalTemperatures"
   | "temperatureAnomalies"
@@ -341,7 +341,11 @@ type IndicatorSubsectionKey =
   | "earthEnergyImbalance"
   | "seaIce"
   | "snowCover"
-  | "iceSheetsAndGlaciers";
+  | "iceSheetsAndGlaciers"
+  | "forcingGases"
+  | "forcingCombined"
+  | "enso"
+  | "circulation";
 type ToolkitIconName =
   | "alert"
   | "bars"
@@ -366,15 +370,12 @@ type ToolkitIconName =
   | "trend"
   | "up";
 
-const DASHBOARD_VIEW_IDS = new Set<DashboardView>([
-  "overview",
-  "indicators",
-  "forcing",
-  "variability",
-  "maps",
-  "projections",
-  "sources",
-]);
+const DASHBOARD_VIEW_IDS = new Set<DashboardView>(["overview", "indicators", "maps", "projections", "sources"]);
+// Climate system topics; the active one is kept in the address as #indicators/<topic>.
+const CLIMATE_SYSTEM_TOPIC_KEYS = ["temperature", "regions", "oceans", "ice", "energy", "forcing", "enso", "circulation"] as const;
+const DEFAULT_CLIMATE_SYSTEM_TOPIC = "temperature";
+// Forcing and Variability used to be pages of their own; their links land on the matching topic.
+const LEGACY_VIEW_TOPICS: Record<string, string> = { forcing: "forcing", variability: "enso" };
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const SNOW_COVER_KEYS = new Set<ClimateMetricSeries["key"]>(["northern_hemisphere_snow_cover_extent"]);
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
@@ -549,8 +550,7 @@ const STRINGS = {
     dataUpdatedLabel: "Data updated",
     dataStatusLabel: "Data status",
     navOverview: "Overview",
-    navIndicators: "Indicators",
-    navVariability: "Variability",
+    navIndicators: "Climate system",
     overviewTitle: "Global Climate Overview",
     overviewSubtitle: "Latest climate signals",
     overviewDailyGlobalTemperatureAnomalyTitle: "Daily Global Temperature Anomaly",
@@ -624,8 +624,8 @@ const STRINGS = {
     recordWarningDateMeta: "Date",
     highestEverGlobalSurfaceTemperatureAnomalyTitle: "Highest Ever Global Surface Temperature Anomaly",
     highestEverGlobalSeaSurfaceTemperatureAnomalyTitle: "Highest Ever Global Sea Surface Temperature Anomaly",
-    climateIndicatorsTitle: "Climate Indicators",
-    climateIndicatorsNote: "Core climate indicators.",
+    climateIndicatorsTitle: "Climate System",
+    climateIndicatorsNote: "The state of the climate, what drives it and its natural swings.",
     globalTemperaturesSectionTitle: "Global Temperatures",
     globalTemperaturesSectionNote: "Global surface and sea surface temperatures in a Jan-Dec daily comparison view.",
     oceansSectionTitle: "Oceans",
@@ -715,7 +715,6 @@ const STRINGS = {
     soiIndexSubtitle: "NOAA PSL monthly Southern Oscillation Index · negative values are El Niño-like",
     arcticOscillationIndexSubtitle: "NOAA CPC monthly Arctic Oscillation index",
     naturalVariabilityTitle: "Natural Variability",
-    naturalVariabilityNote: "ENSO and climate indices.",
     mapsSectionTitle: "Maps",
     mapsSectionNote: "Latest global weather maps.",
     map2mTemperatureTitle: "Surface Temperature (2m)",
@@ -726,7 +725,6 @@ const STRINGS = {
     mapSstSubtitle: "Latest available map · Climate Reanalyzer Today’s Weather",
     mapUnavailable: "Map unavailable",
     forcingTitle: "Forcing",
-    forcingNote: "Greenhouse gases and solar input.",
     sourceTitle: "Data source mode",
     sourceLive: "Live feeds",
     sourceMixed: "Mixed live + fallback",
@@ -768,8 +766,7 @@ const STRINGS = {
     dataUpdatedLabel: "Adatfrissítés",
     dataStatusLabel: "Adatállapot",
     navOverview: "Áttekintés",
-    navIndicators: "Mutatók",
-    navVariability: "Változékonyság",
+    navIndicators: "Éghajlati rendszer",
     overviewTitle: "Globális éghajlati áttekintés",
     overviewSubtitle: "Friss éghajlati jelzések",
     overviewDailyGlobalTemperatureAnomalyTitle: "Napi globális hőmérsékleti anomália",
@@ -843,8 +840,8 @@ const STRINGS = {
     recordWarningDateMeta: "Dátum",
     highestEverGlobalSurfaceTemperatureAnomalyTitle: "Mindenkori legmagasabb globális felszíni hőmérsékleti anomália",
     highestEverGlobalSeaSurfaceTemperatureAnomalyTitle: "Mindenkori legmagasabb globális tengerfelszíni hőmérsékleti anomália",
-    climateIndicatorsTitle: "Éghajlati mutatók",
-    climateIndicatorsNote: "A legfontosabb éghajlati mutatók.",
+    climateIndicatorsTitle: "Éghajlati rendszer",
+    climateIndicatorsNote: "Az éghajlat állapota, hajtóerői és természetes ingadozásai.",
     globalTemperaturesSectionTitle: "Globális hőmérsékletek",
     globalTemperaturesSectionNote: "A globális felszíni és tengerfelszíni hőmérséklet napi értékei, évenként egymásra vetítve (január–december).",
     oceansSectionTitle: "Óceánok",
@@ -934,7 +931,6 @@ const STRINGS = {
     soiIndexSubtitle: "NOAA PSL · havi déli oszcillációs index · a negatív értékek El Niño-szerű állapotot jeleznek",
     arcticOscillationIndexSubtitle: "NOAA CPC · havi arktikus oszcillációs index",
     naturalVariabilityTitle: "Természetes változékonyság",
-    naturalVariabilityNote: "ENSO és éghajlati indexek.",
     mapsSectionTitle: "Térképek",
     mapsSectionNote: "Friss globális időjárási térképek.",
     map2mTemperatureTitle: "Felszínközeli hőmérséklet (2 m)",
@@ -945,7 +941,6 @@ const STRINGS = {
     mapSstSubtitle: "Legfrissebb elérhető térkép · Climate Reanalyzer Today’s Weather",
     mapUnavailable: "A térkép nem érhető el",
     forcingTitle: "Éghajlati kényszerek",
-    forcingNote: "Üvegházhatású gázok és napsugárzás.",
     sourceTitle: "Adatforrás módja",
     sourceLive: "Élő adatforrások",
     sourceMixed: "Vegyes (élő + tartalék)",
@@ -1018,9 +1013,12 @@ function safeTheme(raw: string | null): ThemeMode {
   return "light";
 }
 
-function dashboardViewFromHash(hash: string): DashboardView {
-  const normalized = hash.replace(/^#/, "");
-  return DASHBOARD_VIEW_IDS.has(normalized as DashboardView) ? (normalized as DashboardView) : "overview";
+function dashboardRouteFromHash(hash: string): { view: DashboardView; topic: string | null } {
+  const [view = "", topic = ""] = hash.replace(/^#/, "").split("/");
+  if (view in LEGACY_VIEW_TOPICS) return { view: "indicators", topic: LEGACY_VIEW_TOPICS[view] };
+  if (!DASHBOARD_VIEW_IDS.has(view as DashboardView)) return { view: "overview", topic: null };
+  const knownTopic = (CLIMATE_SYSTEM_TOPIC_KEYS as readonly string[]).includes(topic) ? topic : null;
+  return { view: view as DashboardView, topic: view === "indicators" ? knownTopic : null };
 }
 
 function metricCategoryTone(metricKey: ClimateMetricSeries["key"]): "temperature" | "success" | "info" | "purple" | "neutral" {
@@ -2684,7 +2682,7 @@ function pickYearsForMetric(metricKey: ClimateMetricSeries["key"], points: Daily
 
 /**
  * Domain of a metric for single-series chart colours, matching the topic
- * accents on the Indicators page: temperature, oceans, ice and snow, and
+ * accents on the Climate system page: temperature, oceans, ice and snow, and
  * greenhouse gases / energy (forcing).
  */
 function metricChartDomain(metricKey: ClimateMetricSeries["key"]): ChartDomain {
@@ -3223,20 +3221,33 @@ export function App() {
   );
   const [runtimeDataReady, setRuntimeDataReady] = useState(false);
   const [overviewMapMode, setOverviewMapMode] = useState<OverviewMapMode>("anomaly");
-  const [indicatorTopic, setIndicatorTopic] = useState("temperature");
+  const [indicatorTopic, setIndicatorTopic] = useState<string>(() =>
+    typeof window === "undefined" ? DEFAULT_CLIMATE_SYSTEM_TOPIC : dashboardRouteFromHash(window.location.hash).topic ?? DEFAULT_CLIMATE_SYSTEM_TOPIC
+  );
   const [mapTopic, setMapTopic] = useState("surface");
   const [sourceQuery, setSourceQuery] = useState("");
   const indicatorTopics = [
-    {key: "temperature", en: "Temperature", hu: "Hőmérséklet", descriptionEn: "Track global heat from daily variability to the long-term warming signal.", descriptionHu: "A globális hőmérséklet a napi ingadozástól a hosszú távú melegedésig.", sections: ["globalTemperatures", "temperatureAnomalies"]},
-    {key: "regions", en: "Regions", hu: "Régiók", descriptionEn: "Compare how warming is distributed across hemispheres and polar regions.", descriptionHu: "Hogyan oszlik meg a melegedés a féltekék és a sarkvidékek között.", sections: ["regionalTemperatures", "regionalTemperatureAnomalies"]},
-    {key: "oceans", en: "Oceans", hu: "Óceánok", descriptionEn: "Follow ocean surface warmth, sea level and the heat stored below the surface.", descriptionHu: "Az óceánfelszín melegedése, a tengerszint és a mélyben tárolt hő.", sections: ["oceans"]},
-    {key: "ice", en: "Ice & snow", hu: "Jég és hó", descriptionEn: "See the changing footprint of sea ice, snow cover, glaciers and ice sheets.", descriptionHu: "A tengeri jég, a hótakaró, a gleccserek és a jégtakarók változása.", sections: ["seaIce", "snowCover", "iceSheetsAndGlaciers"]},
-    {key: "energy", en: "Energy", hu: "Energia", descriptionEn: "Measure the planetary energy imbalance driving continued climate change.", descriptionHu: "A Föld energiatöbblete, amely tovább hajtja az éghajlatváltozást.", sections: ["earthEnergyImbalance"]},
+    {group: "state", key: "temperature", en: "Temperature", hu: "Hőmérséklet", descriptionEn: "Track global heat from daily variability to the long-term warming signal.", descriptionHu: "A globális hőmérséklet a napi ingadozástól a hosszú távú melegedésig.", sections: ["globalTemperatures", "temperatureAnomalies"]},
+    {group: "state", key: "regions", en: "Regions", hu: "Régiók", descriptionEn: "Compare how warming is distributed across hemispheres and polar regions.", descriptionHu: "Hogyan oszlik meg a melegedés a féltekék és a sarkvidékek között.", sections: ["regionalTemperatures", "regionalTemperatureAnomalies"]},
+    {group: "state", key: "oceans", en: "Oceans", hu: "Óceánok", descriptionEn: "Follow ocean surface warmth, sea level and the heat stored below the surface.", descriptionHu: "Az óceánfelszín melegedése, a tengerszint és a mélyben tárolt hő.", sections: ["oceans"]},
+    {group: "state", key: "ice", en: "Ice & snow", hu: "Jég és hó", descriptionEn: "See the changing footprint of sea ice, snow cover, glaciers and ice sheets.", descriptionHu: "A tengeri jég, a hótakaró, a gleccserek és a jégtakarók változása.", sections: ["seaIce", "snowCover", "iceSheetsAndGlaciers"]},
+    {group: "state", key: "energy", en: "Energy", hu: "Energia", descriptionEn: "Measure the planetary energy imbalance driving continued climate change.", descriptionHu: "A Föld energiatöbblete, amely tovább hajtja az éghajlatváltozást.", sections: ["earthEnergyImbalance"]},
+    {group: "drivers", key: "forcing", en: "Greenhouse gases & Sun", hu: "Üvegházhatású gázok és a Nap", descriptionEn: "Greenhouse gases building up in the atmosphere trap more heat, while the Sun's output barely changes.", descriptionHu: "A légkörben felhalmozódó üvegházhatású gázok egyre több hőt tartanak vissza, miközben a Nap sugárzása alig változik.", sections: ["forcingGases", "forcingCombined"]},
+    {group: "variability", key: "enso", en: "El Niño & La Niña", hu: "El Niño és La Niña", descriptionEn: "The Pacific swing behind most year-to-year changes in global temperature, with the seasonal outlook.", descriptionHu: "A csendes-óceáni ingadozás, amely a globális hőmérséklet évről évre tapasztalt változásainak nagy részéért felel, évszakos előrejelzéssel.", sections: ["enso"]},
+    {group: "variability", key: "circulation", en: "Circulation modes", hu: "Cirkulációs mintázatok", descriptionEn: "Pressure patterns that steer Northern Hemisphere weather, shifting the jet stream and storm tracks.", descriptionHu: "Az északi félteke időjárását alakító légnyomási mintázatok, amelyek a futóáramlást és a ciklonok útvonalát terelik.", sections: ["circulation"]},
+  ];
+  // The groups the Climate system topics sit under, in order.
+  const climateSystemGroups: Array<{ key: string; en: string; hu: string }> = [
+    { key: "state", en: "State of the climate", hu: "Az éghajlat állapota" },
+    { key: "drivers", en: "Drivers", hu: "Hajtóerők" },
+    { key: "variability", en: "Natural variability", hu: "Természetes változékonyság" },
   ];
   const activeIndicatorTopic = indicatorTopics.find((topic) => topic.key === indicatorTopic) ?? indicatorTopics[0];
+  const activeIndicatorGroup = climateSystemGroups.find((group) => group.key === activeIndicatorTopic.group);
+  const activeIndicatorGroupLabel = activeIndicatorGroup ? (language === "hu" ? activeIndicatorGroup.hu : activeIndicatorGroup.en) : "";
   const [activeView, setActiveView] = useState<DashboardView>(() => {
     if (typeof window === "undefined") return "overview";
-    return dashboardViewFromHash(window.location.hash);
+    return dashboardRouteFromHash(window.location.hash).view;
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
@@ -3303,10 +3314,22 @@ export function App() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const handleHashChange = () => setActiveView(dashboardViewFromHash(window.location.hash));
+    const handleHashChange = () => {
+      const route = dashboardRouteFromHash(window.location.hash);
+      setActiveView(route.view);
+      if (route.topic) setIndicatorTopic(route.topic);
+    };
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
+
+  // Keep the Climate system topic in the address so reloads and shared links
+  // reopen it (and old #forcing / #variability links are rewritten).
+  useEffect(() => {
+    if (activeView !== "indicators") return;
+    const target = `#indicators/${indicatorTopic}`;
+    if (window.location.hash !== target) window.history.replaceState(null, "", target);
+  }, [activeView, indicatorTopic]);
 
   // Sticky Indicators navigation (side rail, location bar) sits under the
   // site header: track the header's height (desktop bar or mobile app bar).
@@ -4041,118 +4064,6 @@ export function App() {
     );
   };
 
-  // Indicators navigation: one contents list (topics → sections → charts with
-  // their latest values) for the desktop side rail and the mobile jump sheet.
-  // It mirrors exactly what the page renders below.
-  const indicatorNavTopics = useMemo<IndicatorNavTopic[]>(() => {
-    const navValue = (value: number | null | undefined, decimals: number, unit: string, signed = false) => {
-      if (value == null || !Number.isFinite(value)) return undefined;
-      const formatted = formatNumericValue(value, decimals, language, "").replace(/^-/, "−");
-      return `${signed && value > 0 ? "+" : ""}${formatted}${unit ? ` ${unit}` : ""}`;
-    };
-    const signedKeys = new Set<string>([...DAILY_CONTEXT_ANOMALY_KEYS, ...ICE_SHEET_AND_GLACIER_KEYS, EARTH_ENERGY_IMBALANCE_KEY]);
-    const metricChart = (metric: ClimateMetricSeries) => ({
-      id: `chart-${metric.key}`,
-      title: metricTitle(metric, language),
-      value: navValue(
-        metric.latestValue,
-        metric.decimals,
-        cardUnitLabel(metric.key, metric.unit, language),
-        signedKeys.has(metric.key) && !ICE_SHEET_LOSS_KEYS.has(metric.key)
-      ),
-    });
-    const anomalyCharts = [
-      ...anomalyTemperatureLines.map(({ metric }) => metricChart(metric)),
-      ...(dailyGlobalMeanAnomalyMetric && dailyWarmingContext
-        ? [
-            {
-              id: "chart-daily-global-mean-anomaly",
-              title: t.dailyGlobalTemperatureAnomalyTitle,
-              value: navValue(dailyWarmingContext.rawSeries?.[dailyWarmingContext.rawSeries.length - 1]?.[1], dailyGlobalMeanAnomalyMetric.decimals, "°C", true),
-            },
-          ]
-        : []),
-      ...(dailyGlobalMeanAnomalyMetric && annualWarmingContext
-        ? [
-            {
-              id: "chart-annual-global-mean-anomaly",
-              title: t.annualGlobalTemperatureAnomalyTitle,
-              value: navValue(annualWarmingContext.latest.value, dailyGlobalMeanAnomalyMetric.decimals, "°C", true),
-            },
-          ]
-        : []),
-    ];
-    const sectionCharts: Record<IndicatorSubsectionKey, { title: string; charts: IndicatorNavTopic["sections"][number]["charts"] }> = {
-      globalTemperatures: { title: t.globalTemperaturesSectionTitle, charts: globalTemperatureLines.map(({ metric }) => metricChart(metric)) },
-      temperatureAnomalies: { title: t.temperatureAnomalySectionTitle, charts: anomalyCharts },
-      regionalTemperatures: { title: t.regionalTemperaturesSectionTitle, charts: regionalTemperatureLines.map(({ metric }) => metricChart(metric)) },
-      regionalTemperatureAnomalies: {
-        title: t.regionalTemperatureAnomaliesSectionTitle,
-        charts: regionalTemperatureAnomalyLines.map(({ metric }) => metricChart(metric)),
-      },
-      oceans: { title: t.oceansSectionTitle, charts: oceanMetrics.map(metricChart) },
-      earthEnergyImbalance: {
-        title: t.earthEnergyImbalanceSectionTitle,
-        charts:
-          earthEnergyImbalanceMetric && earthEnergyImbalanceTrendPoints.length
-            ? [
-                {
-                  id: `chart-${earthEnergyImbalanceMetric.key}`,
-                  title: t.earthEnergyImbalanceTitle,
-                  value: navValue(earthEnergyImbalanceLatestMean, 2, "W/m²", true),
-                },
-              ]
-            : [],
-      },
-      seaIce: { title: t.seaIceSectionTitle, charts: seaIceIndicatorLines.map(({ metric }) => metricChart(metric)) },
-      snowCover: { title: t.snowCoverSectionTitle, charts: snowCoverIndicatorLines.map(({ metric }) => metricChart(metric)) },
-      iceSheetsAndGlaciers: { title: t.iceSheetsAndGlaciersSectionTitle, charts: iceSheetAndGlacierMetrics.map(metricChart) },
-    };
-    return indicatorTopics.map((topic) => ({
-      key: topic.key,
-      label: language === "hu" ? topic.hu : topic.en,
-      sections: topic.sections
-        .map((key) => ({ id: `section-${key}`, ...sectionCharts[key as IndicatorSubsectionKey] }))
-        .filter((section) => section.charts.length > 0),
-    }));
-    // indicatorTopics is a constant list rebuilt each render; its content only changes with language.
-  }, [
-    language,
-    t,
-    globalTemperatureLines,
-    anomalyTemperatureLines,
-    regionalTemperatureLines,
-    regionalTemperatureAnomalyLines,
-    oceanMetrics,
-    seaIceIndicatorLines,
-    snowCoverIndicatorLines,
-    iceSheetAndGlacierMetrics,
-    dailyGlobalMeanAnomalyMetric,
-    dailyWarmingContext,
-    annualWarmingContext,
-    earthEnergyImbalanceMetric,
-    earthEnergyImbalanceTrendPoints,
-    earthEnergyImbalanceLatestMean,
-  ]);
-  const indicatorScrollSpy = useIndicatorScrollSpy(indicatorNavTopics.find((topic) => topic.key === indicatorTopic));
-  const jumpToIndicator = useIndicatorJump(indicatorTopic, setIndicatorTopic);
-  // Choosing a topic while scrolled into the page starts the new topic at its
-  // top, once it has rendered (its height differs from the old topic's).
-  const selectIndicatorTopic = (key: string) => {
-    const section = document.getElementById("indicators");
-    if (section && section.getBoundingClientRect().top < 0) jumpToIndicator(key, "indicators");
-    else setIndicatorTopic(key);
-  };
-  const indicatorNavProps = {
-    topics: indicatorNavTopics,
-    activeTopic: indicatorTopic,
-    active: indicatorScrollSpy,
-    ready: runtimeDataReady,
-    language,
-    onSelectTopic: selectIndicatorTopic,
-    onJump: jumpToIndicator,
-  };
-
   const renderIndicatorSubsection = (
     key: IndicatorSubsectionKey,
     title: string,
@@ -4177,8 +4088,8 @@ export function App() {
   const isNegativeAnomaly = (metric: ClimateMetricSeries | null | undefined) =>
     metric != null && metric.key.includes("anomaly") && metric.latestValue != null && metric.latestValue < 0;
 
-  const forcingGasMetrics = snapshot.forcing.filter((metric) => forcingGasLabel(metric.key) != null);
-  const forcingOtherMetrics = snapshot.forcing.filter((metric) => forcingGasLabel(metric.key) == null);
+  const forcingGasMetrics = useMemo(() => snapshot.forcing.filter((metric) => forcingGasLabel(metric.key) != null), [snapshot.forcing]);
+  const forcingOtherMetrics = useMemo(() => snapshot.forcing.filter((metric) => forcingGasLabel(metric.key) == null), [snapshot.forcing]);
   const renderChemicalFormula = (formula: string) =>
     formula.split(/([₀-₉]+)/).map((part, index) =>
       /[₀-₉]/.test(part) ? (
@@ -4187,33 +4098,6 @@ export function App() {
         <Fragment key={index}>{part}</Fragment>
       )
     );
-  const renderForcingSummaryCard = (metric: ClimateMetricSeries) => {
-    const freshness = metricFreshnessBadge(metric, language, t);
-    const gasLabel = forcingGasLabel(metric.key);
-    const accentColor = topicChartColor(metric.key, resolvedTheme === "dark");
-    return (
-      <article
-        className={`alert-card summary ${topSummaryCategoryClass(metric.key)}${gasLabel ? " forcing-gas-card" : ""}`}
-        key={`${metric.key}-forcing-summary`}
-        style={{ "--indicator-accent": accentColor } as CSSProperties}
-      >
-        <span className="alert-kicker">{t.latestLabel}</span>
-        {gasLabel ? (
-          <>
-            <h2 className="forcing-gas-title" aria-label={gasLabel}>{renderChemicalFormula(gasLabel)}</h2>
-            <p className="forcing-gas-name">{metricTitle(metric, language)}</p>
-          </>
-        ) : (
-          <h2>{metricTitle(metric, language)}</h2>
-        )}
-        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
-        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
-        <div className="alert-meta">
-          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
-        </div>
-      </article>
-    );
-  };
   const renderForcingPanel = (metric: ClimateMetricSeries) => {
     const context = forcingContextByKey.get(metric.key);
     if (!context) return null;
@@ -4223,6 +4107,7 @@ export function App() {
     return (
       <TrendContextPanel
         key={metric.key}
+        anchorId={`chart-${metric.key}`}
         title={metricTitle(metric, language)}
         subtitle={formatSourceShortName(metric.source.shortName, language)}
         data={context.data}
@@ -4393,17 +4278,20 @@ export function App() {
       window.history.replaceState(null, "", `#${view}`);
     }
   };
+  /** Open a Climate system topic (from the Overview's links, for example). */
+  const openClimateSystemTopic = (topic: string) => {
+    setIndicatorTopic(topic);
+    setDashboardView("indicators");
+  };
   const navItems: Array<{ view: DashboardView; label: string; icon: ToolkitIconName; available: boolean }> = [
     { view: "overview", label: t.navOverview, icon: "home", available: true },
     { view: "indicators", label: t.navIndicators, icon: "bars", available: true },
-    { view: "forcing", label: t.forcingTitle, icon: "trend", available: true },
-    { view: "variability", label: t.navVariability, icon: "ocean", available: true },
     { view: "maps", label: t.mapsSectionTitle, icon: "map", available: true },
     { view: "projections", label: t.projectionsTitle, icon: "trend", available: projectedAnnualGlobalMeanAnomaly != null },
     { view: "sources", label: t.sourceCardsTitle, icon: "reports", available: true },
   ];
   const navGroups: Array<{ key: string; label: string; views: DashboardView[] }> = [
-    { key: "monitor", label: t.navGroupMonitor, views: ["overview", "indicators", "forcing", "variability"] },
+    { key: "monitor", label: t.navGroupMonitor, views: ["overview", "indicators"] },
     { key: "explore", label: t.navGroupExplore, views: ["maps", "projections"] },
     { key: "system", label: t.navGroupSystem, views: ["sources"] },
   ];
@@ -4412,28 +4300,20 @@ export function App() {
       ? t.overviewTitle
       : activeView === "indicators"
         ? t.climateIndicatorsTitle
-        : activeView === "forcing"
-          ? t.forcingTitle
-          : activeView === "variability"
-            ? t.naturalVariabilityTitle
-            : activeView === "maps"
-              ? t.mapsSectionTitle
-              : activeView === "projections"
-                ? t.projectionsTitle
-                : t.sourceCardsTitle;
+        : activeView === "maps"
+          ? t.mapsSectionTitle
+          : activeView === "projections"
+            ? t.projectionsTitle
+            : t.sourceCardsTitle;
   const pageSubtitle =
     activeView === "overview"
       ? t.overviewSubtitle
       : activeView === "indicators"
         ? t.climateIndicatorsNote
-        : activeView === "forcing"
-          ? t.forcingNote
-          : activeView === "variability"
-            ? t.naturalVariabilityNote
-            : activeView === "maps"
-              ? t.mapsSectionNote
-              : activeView === "projections"
-                ? t.projectionsNote
+        : activeView === "maps"
+          ? t.mapsSectionNote
+          : activeView === "projections"
+            ? t.projectionsNote
                 : sourceModeLabel;
   const formatMetricDelta = (metric: ClimateMetricSeries) => {
     const latestIndex = metric.points.length - 1;
@@ -4576,10 +4456,222 @@ export function App() {
   ].filter((row): row is NonNullable<typeof row> => row != null);
   const ensoOverviewCondition =
     ensoOutlook?.nextThreeMonths?.condition ?? ensoOutlook?.nextSixMonths?.condition ?? "neutral";
-  const dailyNino34Line = regionalTemperatureLines.find(({ metric }) => metric.key === "daily_nino34_sea_surface_temperature") ?? null;
-  const dailyNino34AnomalyLine = indicatorLines.find(({ metric }) => metric.key === NINO34_SST_ANOMALY_KEY) ?? null;
-  const ensoIndexMetrics = variabilityMetrics.filter((metric) => ENSO_INDEX_KEYS.has(metric.key));
-  const circulationIndexMetrics = variabilityMetrics.filter((metric) => !ENSO_INDEX_KEYS.has(metric.key));
+  // Memoized: they feed the Climate system contents list, which must stay stable between renders.
+  const dailyNino34Line = useMemo(
+    () => regionalTemperatureLines.find(({ metric }) => metric.key === "daily_nino34_sea_surface_temperature") ?? null,
+    [regionalTemperatureLines]
+  );
+  const dailyNino34AnomalyLine = useMemo(
+    () => indicatorLines.find(({ metric }) => metric.key === NINO34_SST_ANOMALY_KEY) ?? null,
+    [indicatorLines]
+  );
+  const ensoIndexMetrics = useMemo(() => variabilityMetrics.filter((metric) => ENSO_INDEX_KEYS.has(metric.key)), [variabilityMetrics]);
+  const circulationIndexMetrics = useMemo(
+    () => variabilityMetrics.filter((metric) => !ENSO_INDEX_KEYS.has(metric.key)),
+    [variabilityMetrics]
+  );
+  const ensoOutlookWindow = ensoOutlook?.nextThreeMonths ?? ensoOutlook?.nextSixMonths ?? null;
+  // Titles and notes of the Climate system sections that came from the former
+  // Forcing and Variability pages, shared by the page and its navigation.
+  const climateSystemSectionCopy = useMemo(
+    () =>
+      language === "hu"
+        ? {
+            forcingGases: {
+              title: "Üvegházhatású gázok",
+              note: "A három legfontosabb, hosszú légköri élettartamú üvegházhatású gáz koncentrációja a NOAA globális mérőhálózatának adatai alapján.",
+            },
+            forcingCombined: {
+              title: "Összesített hatás és a Nap",
+              note: "Az éves üvegházhatásúgáz-index az összes gáz együttes melegítő hatását az 1990-es szinthez viszonyítja; a beérkező napsugárzás természetes ingadozása ehhez képest csekély.",
+            },
+            enso: {
+              title: "El Niño–déli oszcilláció",
+              note: "Az ENSO az évről évre jelentkező globális hőmérséklet-ingadozás legfőbb forrása. A napi Niño 3.4 tengerfelszíni hőmérséklet a legfrissebb óceáni állapotot, alatta az 1991–2020-as átlaghoz mért napi anomáliája mutatja, az ONI ennek háromhavi anomáliáját, az SOI pedig a légkör válaszát; az IRI előrejelzése a következő évszakok valószínűségeit adja meg.",
+            },
+            circulation: {
+              title: "Légköri cirkulációs mintázatok",
+              note: "Az északi félteke időjárását alakító légnyomási mintázatok. Pozitív és negatív fázisuk a futóáramlás helyzetét, a téli hidegbetöréseket és a ciklonok útvonalát befolyásolja.",
+            },
+          }
+        : {
+            forcingGases: {
+              title: "Greenhouse gases",
+              note: "Atmospheric concentrations of the three most important long-lived greenhouse gases from NOAA's global monitoring network.",
+            },
+            forcingCombined: {
+              title: "Combined effect and the Sun",
+              note: "The annual greenhouse gas index measures the combined heating effect of all gases against 1990; natural swings in incoming solar energy are small by comparison.",
+            },
+            enso: {
+              title: "El Niño–Southern Oscillation",
+              note: "ENSO is the largest source of year-to-year swings in global temperature. Daily Niño 3.4 sea surface temperature shows the latest ocean state, with its daily anomaly against the 1991-2020 baseline below it, ONI its three-month anomaly and SOI the atmospheric response; the IRI outlook gives probabilities for the coming seasons.",
+            },
+            circulation: {
+              title: "Atmospheric circulation modes",
+              note: "Pressure patterns that steer Northern Hemisphere weather. Their positive and negative phases shift the jet stream, winter cold outbreaks and storm tracks.",
+            },
+          },
+    [language]
+  );
+  // Indicators navigation: one contents list (topics → sections → charts with
+  // their latest values) for the desktop side rail and the mobile jump sheet.
+  // It mirrors exactly what the page renders below.
+  const indicatorNavTopics = useMemo<IndicatorNavTopic[]>(() => {
+    const navValue = (value: number | null | undefined, decimals: number, unit: string, signed = false) => {
+      if (value == null || !Number.isFinite(value)) return undefined;
+      const formatted = formatNumericValue(value, decimals, language, "").replace(/^-/, "−");
+      return `${signed && value > 0 ? "+" : ""}${formatted}${unit ? ` ${unit}` : ""}`;
+    };
+    const signedKeys = new Set<string>([...DAILY_CONTEXT_ANOMALY_KEYS, ...ICE_SHEET_AND_GLACIER_KEYS, EARTH_ENERGY_IMBALANCE_KEY]);
+    const metricChart = (metric: ClimateMetricSeries) => ({
+      id: `chart-${metric.key}`,
+      title: metricTitle(metric, language),
+      value: navValue(
+        metric.latestValue,
+        metric.decimals,
+        cardUnitLabel(metric.key, metric.unit, language),
+        signedKeys.has(metric.key) && !ICE_SHEET_LOSS_KEYS.has(metric.key)
+      ),
+    });
+    // Forcing records carry their own unit (the AGGI none); variability indices are signed, ONI in °C.
+    const plainChart = (metric: ClimateMetricSeries) => ({
+      id: `chart-${metric.key}`,
+      title: metricTitle(metric, language),
+      value: navValue(metric.latestValue, metric.decimals, metric.key === "atmospheric_aggi" ? "" : metric.unit),
+    });
+    const indexChart = (metric: ClimateMetricSeries) => ({
+      id: `chart-${metric.key}`,
+      title: metricTitle(metric, language),
+      value: navValue(metric.latestValue, metric.decimals, metric.key === "nino34_index" ? "°C" : "", true),
+    });
+    const anomalyCharts = [
+      ...anomalyTemperatureLines.map(({ metric }) => metricChart(metric)),
+      ...(dailyGlobalMeanAnomalyMetric && dailyWarmingContext
+        ? [
+            {
+              id: "chart-daily-global-mean-anomaly",
+              title: t.dailyGlobalTemperatureAnomalyTitle,
+              value: navValue(dailyWarmingContext.rawSeries?.[dailyWarmingContext.rawSeries.length - 1]?.[1], dailyGlobalMeanAnomalyMetric.decimals, "°C", true),
+            },
+          ]
+        : []),
+      ...(dailyGlobalMeanAnomalyMetric && annualWarmingContext
+        ? [
+            {
+              id: "chart-annual-global-mean-anomaly",
+              title: t.annualGlobalTemperatureAnomalyTitle,
+              value: navValue(annualWarmingContext.latest.value, dailyGlobalMeanAnomalyMetric.decimals, "°C", true),
+            },
+          ]
+        : []),
+    ];
+    const sectionCharts: Record<IndicatorSubsectionKey, { title: string; charts: IndicatorNavTopic["sections"][number]["charts"] }> = {
+      globalTemperatures: { title: t.globalTemperaturesSectionTitle, charts: globalTemperatureLines.map(({ metric }) => metricChart(metric)) },
+      temperatureAnomalies: { title: t.temperatureAnomalySectionTitle, charts: anomalyCharts },
+      regionalTemperatures: { title: t.regionalTemperaturesSectionTitle, charts: regionalTemperatureLines.map(({ metric }) => metricChart(metric)) },
+      regionalTemperatureAnomalies: {
+        title: t.regionalTemperatureAnomaliesSectionTitle,
+        charts: regionalTemperatureAnomalyLines.map(({ metric }) => metricChart(metric)),
+      },
+      oceans: { title: t.oceansSectionTitle, charts: oceanMetrics.map(metricChart) },
+      earthEnergyImbalance: {
+        title: t.earthEnergyImbalanceSectionTitle,
+        charts:
+          earthEnergyImbalanceMetric && earthEnergyImbalanceTrendPoints.length
+            ? [
+                {
+                  id: `chart-${earthEnergyImbalanceMetric.key}`,
+                  title: t.earthEnergyImbalanceTitle,
+                  value: navValue(earthEnergyImbalanceLatestMean, 2, "W/m²", true),
+                },
+              ]
+            : [],
+      },
+      seaIce: { title: t.seaIceSectionTitle, charts: seaIceIndicatorLines.map(({ metric }) => metricChart(metric)) },
+      snowCover: { title: t.snowCoverSectionTitle, charts: snowCoverIndicatorLines.map(({ metric }) => metricChart(metric)) },
+      iceSheetsAndGlaciers: { title: t.iceSheetsAndGlaciersSectionTitle, charts: iceSheetAndGlacierMetrics.map(metricChart) },
+      forcingGases: { title: climateSystemSectionCopy.forcingGases.title, charts: forcingGasMetrics.map(plainChart) },
+      forcingCombined: { title: climateSystemSectionCopy.forcingCombined.title, charts: forcingOtherMetrics.map(plainChart) },
+      enso: {
+        title: climateSystemSectionCopy.enso.title,
+        charts: [
+          ...(ensoOutlookWindow
+            ? [
+                {
+                  id: "chart-enso-outlook",
+                  title: t.ensoOutlookTitle,
+                  value:
+                    ensoOutlookWindow.probability != null
+                      ? `${ensoOutlookWindow.probability}% ${formatEnsoConditionLabel(ensoOutlookWindow.condition, t)}`
+                      : undefined,
+                },
+              ]
+            : []),
+          ...(dailyNino34Line ? [metricChart(dailyNino34Line.metric)] : []),
+          ...(dailyNino34AnomalyLine ? [metricChart(dailyNino34AnomalyLine.metric)] : []),
+          ...ensoIndexMetrics.map(indexChart),
+        ],
+      },
+      circulation: { title: climateSystemSectionCopy.circulation.title, charts: circulationIndexMetrics.map(indexChart) },
+    };
+    return indicatorTopics.map((topic) => ({
+      key: topic.key,
+      label: language === "hu" ? topic.hu : topic.en,
+      group: (() => {
+        const group = climateSystemGroups.find((entry) => entry.key === topic.group);
+        return group ? (language === "hu" ? group.hu : group.en) : undefined;
+      })(),
+      sections: topic.sections
+        .map((key) => ({ id: `section-${key}`, ...sectionCharts[key as IndicatorSubsectionKey] }))
+        .filter((section) => section.charts.length > 0),
+    }));
+    // indicatorTopics is a constant list rebuilt each render; its content only changes with language.
+  }, [
+    language,
+    t,
+    globalTemperatureLines,
+    anomalyTemperatureLines,
+    regionalTemperatureLines,
+    regionalTemperatureAnomalyLines,
+    oceanMetrics,
+    seaIceIndicatorLines,
+    snowCoverIndicatorLines,
+    iceSheetAndGlacierMetrics,
+    dailyGlobalMeanAnomalyMetric,
+    dailyWarmingContext,
+    annualWarmingContext,
+    earthEnergyImbalanceMetric,
+    earthEnergyImbalanceTrendPoints,
+    earthEnergyImbalanceLatestMean,
+    forcingGasMetrics,
+    forcingOtherMetrics,
+    ensoOutlookWindow,
+    dailyNino34Line,
+    dailyNino34AnomalyLine,
+    ensoIndexMetrics,
+    circulationIndexMetrics,
+    climateSystemSectionCopy,
+  ]);
+  const indicatorScrollSpy = useIndicatorScrollSpy(indicatorNavTopics.find((topic) => topic.key === indicatorTopic));
+  const jumpToIndicator = useIndicatorJump(indicatorTopic, setIndicatorTopic);
+  // Choosing a topic while scrolled into the page starts the new topic at its
+  // top, once it has rendered (its height differs from the old topic's).
+  const selectIndicatorTopic = (key: string) => {
+    const section = document.getElementById("indicators");
+    if (section && section.getBoundingClientRect().top < 0) jumpToIndicator(key, "indicators");
+    else setIndicatorTopic(key);
+  };
+  const indicatorNavProps = {
+    topics: indicatorNavTopics,
+    activeTopic: indicatorTopic,
+    active: indicatorScrollSpy,
+    ready: runtimeDataReady,
+    language,
+    onSelectTopic: selectIndicatorTopic,
+    onJump: jumpToIndicator,
+  };
+
   const ensoConditionTone = (condition: EnsoCondition) =>
     condition === "el_nino" ? "warm" : condition === "la_nina" ? "cool" : "neutral";
   const variabilityIndexPhase = (metric: ClimateMetricSeries): { tone: "warm" | "cool" | "neutral"; label: string } => {
@@ -4602,35 +4694,6 @@ export function App() {
       ? { tone: "warm", label: language === "hu" ? "Pozitív fázis" : "Positive phase" }
       : { tone: "cool", label: language === "hu" ? "Negatív fázis" : "Negative phase" };
   };
-  const renderVariabilityIndexCard = (metric: ClimateMetricSeries) => {
-    const freshness = metricFreshnessBadge(metric, language, t);
-    const phase = variabilityIndexPhase(metric);
-    const value = metric.latestValue;
-    const signedValue =
-      value == null || !Number.isFinite(value)
-        ? t.valueUnavailable
-        : `${value > 0 ? "+" : ""}${formatNumericValue(value, metric.decimals, language, t.valueUnavailable)}`;
-    return (
-      <article className={`alert-card summary variability-index-card phase-tone-${phase.tone}`} key={`${metric.key}-variability-summary`}>
-        <span className="alert-kicker">
-          {t.latestLabel}
-          {VARIABILITY_INDEX_SHORT_NAMES[metric.key] ? ` · ${VARIABILITY_INDEX_SHORT_NAMES[metric.key]}` : ""}
-        </span>
-        <h2>{metricTitle(metric, language)}</h2>
-        <p className="alert-emphasis">
-          {renderPrimaryValue(
-            `${signedValue}${metric.key === "nino34_index" ? ` ${cardUnitLabel(metric.key, metric.unit, language)}` : ""}`,
-            "value-loading-skeleton detail-value-loading"
-          )}
-        </p>
-        {runtimeDataReady ? <span className="variability-phase-label">{phase.label}</span> : null}
-        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
-        <div className="alert-meta">
-          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
-        </div>
-      </article>
-    );
-  };
   const variabilitySignLabels = (key: ClimateMetricSeries["key"]): { warm: string; cool: string } => {
     if (key === "nino34_index") return { warm: t.ensoConditionElNino, cool: t.ensoConditionLaNina };
     if (key === "soi_index") {
@@ -4647,6 +4710,7 @@ export function App() {
     return (
       <TrendContextPanel
         key={metric.key}
+        anchorId={`chart-${metric.key}`}
         title={metricTitle(metric, language)}
         subtitle={subtitle}
         data={data}
@@ -5068,10 +5132,9 @@ export function App() {
                       <p className="metric-meta">{renderLoadingValue("value-loading-skeleton metric-meta-loading")}</p>
                     )}
                     {runtimeDataReady && card.delta ? <span className="metric-delta">{card.delta}</span> : null}
-                    <button type="button" className="text-link-button metric-explore card-stretched-link" onClick={() => {
-                      setIndicatorTopic(card.key === "overview-sea-ice" ? "ice" : "temperature");
-                      setDashboardView(card.key === "overview-co2" ? "forcing" : "indicators");
-                    }}>{language === "hu" ? "Részletes adatok" : "Explore indicator"} <span className="card-link-arrow" aria-hidden="true">→</span></button>
+                    <button type="button" className="text-link-button metric-explore card-stretched-link" onClick={() =>
+                      openClimateSystemTopic(card.key === "overview-sea-ice" ? "ice" : card.key === "overview-co2" ? "forcing" : "temperature")
+                    }>{language === "hu" ? "Részletes adatok" : "Explore indicator"} <span className="card-link-arrow" aria-hidden="true">→</span></button>
                   </div>
                 </article>
               ))}
@@ -5084,7 +5147,7 @@ export function App() {
                     <h2>{t.regionalTemperatureAnomaliesSectionTitle}</h2>
                     <p>{t.regionalTemperatureAnomaliesSectionNote}</p>
                   </div>
-                  <button type="button" className="text-link-button overview-card-link card-stretched-link" onClick={() => { setIndicatorTopic("regions"); setDashboardView("indicators"); }}>
+                  <button type="button" className="text-link-button overview-card-link card-stretched-link" onClick={() => openClimateSystemTopic("regions")}>
                     {language === "hu" ? "Összes régió" : "All regions"} <span className="card-link-arrow" aria-hidden="true">→</span>
                   </button>
                 </div>
@@ -5107,10 +5170,10 @@ export function App() {
                     dailyNino34AnomalyLine.climatology,
                     "overview"
                   )}
-                  <button type="button" className="text-link-button card-stretched-link" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Természetes változékonyság" : "Explore natural variability"} <span className="card-link-arrow" aria-hidden="true">→</span></button>
+                  <button type="button" className="text-link-button card-stretched-link" onClick={() => openClimateSystemTopic("enso")}>{language === "hu" ? "Természetes változékonyság" : "Explore natural variability"} <span className="card-link-arrow" aria-hidden="true">→</span></button>
                 </div>
               ) : null}
-              <div className="overview-enso-with-link is-linked-card">{renderEnsoOutlookCard()}<button type="button" className="text-link-button card-stretched-link" onClick={() => setDashboardView("variability")}>{language === "hu" ? "Évszakos előrejelzés" : "Explore seasonal outlook"} <span className="card-link-arrow" aria-hidden="true">→</span></button></div>
+              <div className="overview-enso-with-link is-linked-card">{renderEnsoOutlookCard()}<button type="button" className="text-link-button card-stretched-link" onClick={() => openClimateSystemTopic("enso")}>{language === "hu" ? "Évszakos előrejelzés" : "Explore seasonal outlook"} <span className="card-link-arrow" aria-hidden="true">→</span></button></div>
               <article className="overview-card overview-projection-card outlook-featured is-linked-card">
                 <div className="outlook-card-grid">
                     <div className="outlook-card-copy">
@@ -5306,7 +5369,7 @@ export function App() {
         <div className="indicators-main">
         <div className="indicator-page-intro">
           <div className="indicator-topic-copy">
-            <span className="indicator-topic-eyebrow">{language === "hu" ? "Az éghajlati rendszer állapota" : "State of the climate system"}</span>
+            <span className="indicator-topic-eyebrow">{activeIndicatorGroupLabel}</span>
             <h2>{language === "hu" ? activeIndicatorTopic.hu : activeIndicatorTopic.en}</h2>
             <p>{language === "hu" ? activeIndicatorTopic.descriptionHu : activeIndicatorTopic.descriptionEn}</p>
           </div>
@@ -5550,6 +5613,95 @@ export function App() {
                 </>
               )
             ) : null}
+
+            {renderIndicatorSubsection(
+              "forcingGases",
+              climateSystemSectionCopy.forcingGases.title,
+              climateSystemSectionCopy.forcingGases.note,
+              <div className="charts-grid forcing-grid">{forcingGasMetrics.map(renderForcingPanel)}</div>
+            )}
+
+            {forcingOtherMetrics.length
+              ? renderIndicatorSubsection(
+                  "forcingCombined",
+                  climateSystemSectionCopy.forcingCombined.title,
+                  climateSystemSectionCopy.forcingCombined.note,
+                  <div className="charts-grid forcing-grid">{forcingOtherMetrics.map(renderForcingPanel)}</div>
+                )
+              : null}
+
+            {renderIndicatorSubsection(
+              "enso",
+              climateSystemSectionCopy.enso.title,
+              climateSystemSectionCopy.enso.note,
+              <>
+              {ensoOverviewRows.length ? (
+                <div className="summary-cards-section" id="chart-enso-outlook" data-toc-anchor="">
+                  <div className="regional-summary-grid">
+                    {ensoOverviewRows.map((row) => (
+                      <article
+                        className={`alert-card summary variability-index-card phase-tone-${ensoConditionTone(row.window.condition)}`}
+                        key={`${row.key}-enso-outlook-summary`}
+                      >
+                        <span className="alert-kicker">{language === "hu" ? "IRI-előrejelzés" : "IRI outlook"}</span>
+                        <h2>{row.horizon}</h2>
+                        <p className="alert-emphasis">
+                          {runtimeDataReady ? `${row.window.probability ?? "-"}%` : renderLoadingValue("value-loading-skeleton detail-value-loading")}
+                        </p>
+                        <span className="variability-phase-label">{formatEnsoConditionLabel(row.window.condition, t)}</span>
+                        {runtimeDataReady ? <p>{formatEnsoTargetLabel(row.window.targetLabel, language)}</p> : null}
+                        {runtimeDataReady && ensoOutlookFreshness ? (
+                          <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span>
+                        ) : null}
+                        <div className="alert-meta">
+                          {ensoOutlook?.sourceUrl ? (
+                            <a className="alert-meta-chip confidence-medium" href={ensoOutlook.sourceUrl} target="_blank" rel="noreferrer">
+                              {ensoOutlook.sourceLabel || "IRI"} →
+                            </a>
+                          ) : (
+                            <span className="alert-meta-chip confidence-medium">{ensoOutlook?.sourceLabel || "IRI"}</span>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {runtimeDataReady && ensoOutlook ? (
+                <p className="variability-synopsis">
+                  <span>{formatEnsoStatusLabel(ensoOutlook, language, t)}</span>
+                  {ensoOutlook.synopsis}
+                </p>
+              ) : null}
+              {dailyNino34Line ? (
+                <div className="charts-grid climate-grid">
+                  {renderIndicatorPanel(dailyNino34Line.metric, dailyNino34Line.lines, dailyNino34Line.currentYear, dailyNino34Line.climatology)}
+                </div>
+              ) : null}
+              {dailyNino34AnomalyLine ? (
+                <div className="charts-grid climate-grid">
+                  {renderIndicatorPanel(
+                    dailyNino34AnomalyLine.metric,
+                    dailyNino34AnomalyLine.lines,
+                    dailyNino34AnomalyLine.currentYear,
+                    dailyNino34AnomalyLine.climatology
+                  )}
+                </div>
+              ) : null}
+              <div className="charts-grid climate-grid">
+                {variabilityChartPanels.filter(({ metric }) => ENSO_INDEX_KEYS.has(metric.key)).map(renderVariabilityPanel)}
+              </div>
+              </>
+            )}
+
+            {renderIndicatorSubsection(
+              "circulation",
+              climateSystemSectionCopy.circulation.title,
+              climateSystemSectionCopy.circulation.note,
+              <div className="charts-grid climate-grid">
+                {variabilityChartPanels.filter(({ metric }) => !ENSO_INDEX_KEYS.has(metric.key)).map(renderVariabilityPanel)}
+              </div>
+            )}
           </div>
         </div>
         </div>
@@ -5609,134 +5761,7 @@ export function App() {
       </section>
       ) : null}
 
-      {activeView === "forcing" ? (
-      <section className="collapsible-section detail-page-section detail-page-editorial detail-page-forcing" id="forcing">
-        {renderPageIntro(
-          language === "hu" ? "Éghajlati kényszerek" : "Climate forcing",
-          language === "hu" ? "Mi hajtja a melegedést" : "What drives the warming",
-          language === "hu"
-            ? "A légkörben felhalmozódó üvegházhatású gázok egyre több hőt tartanak vissza, miközben a Nap sugárzása alig változik. Ezek az adatsorok az éghajlati rendszert érő külső hatásokat mutatják."
-            : "Greenhouse gases building up in the atmosphere trap more heat, while the Sun's output barely changes. These records track the external pushes on the climate system."
-        )}
-        {renderPageSubsection(
-          language === "hu" ? "Üvegházhatású gázok" : "Greenhouse gases",
-          language === "hu"
-            ? "A három legfontosabb, hosszú légköri élettartamú üvegházhatású gáz koncentrációja a NOAA globális mérőhálózatának adatai alapján."
-            : "Atmospheric concentrations of the three most important long-lived greenhouse gases from NOAA's global monitoring network.",
-          <>
-            <div className="summary-cards-section">
-              <div className="regional-summary-grid">{forcingGasMetrics.map((metric) => renderForcingSummaryCard(metric))}</div>
-            </div>
-            <div className="charts-grid forcing-grid">{forcingGasMetrics.map(renderForcingPanel)}</div>
-          </>
-        )}
-        {forcingOtherMetrics.length
-          ? renderPageSubsection(
-              language === "hu" ? "Összesített hatás és a Nap" : "Combined effect and the Sun",
-              language === "hu"
-                ? "Az éves üvegházhatásúgáz-index az összes gáz együttes melegítő hatását az 1990-es szinthez viszonyítja; a beérkező napsugárzás természetes ingadozása ehhez képest csekély."
-                : "The annual greenhouse gas index measures the combined heating effect of all gases against 1990; natural swings in incoming solar energy are small by comparison.",
-              <>
-                <div className="summary-cards-section">
-                  <div className="regional-summary-grid">{forcingOtherMetrics.map((metric) => renderForcingSummaryCard(metric))}</div>
-                </div>
-                <div className="charts-grid forcing-grid">{forcingOtherMetrics.map(renderForcingPanel)}</div>
-              </>
-            )
-          : null}
-      </section>
-      ) : null}
 
-      {activeView === "variability" ? (
-        <section className="collapsible-section detail-page-section detail-page-editorial detail-page-variability" id="variability">
-          {renderPageIntro(
-            language === "hu" ? "Természetes változékonyság" : "Natural variability",
-            t.naturalVariabilityTitle,
-            language === "hu"
-              ? "Az óceán és a légkör ingadozásai, amelyek évről évre a hosszú távú trend fölé vagy alá tolják a globális hőmérsékletet, és a regionális időjárást is alakítják."
-              : "Ocean–atmosphere oscillations that push global temperature and regional weather above or below the long-term warming trend from one year to the next."
-          )}
-          {renderPageSubsection(
-            language === "hu" ? "El Niño–déli oszcilláció" : "El Niño–Southern Oscillation",
-            language === "hu"
-              ? "Az ENSO az évről évre jelentkező globális hőmérséklet-ingadozás legfőbb forrása. A napi Niño 3.4 tengerfelszíni hőmérséklet a legfrissebb óceáni állapotot, alatta az 1991–2020-as átlaghoz mért napi anomáliája mutatja, az ONI ennek háromhavi anomáliáját, az SOI pedig a légkör válaszát; az IRI előrejelzése a következő évszakok valószínűségeit adja meg."
-              : "ENSO is the largest source of year-to-year swings in global temperature. Daily Niño 3.4 sea surface temperature shows the latest ocean state, with its daily anomaly against the 1991-2020 baseline below it, ONI its three-month anomaly and SOI the atmospheric response; the IRI outlook gives probabilities for the coming seasons.",
-            <>
-              <div className="summary-cards-section">
-                <div className="regional-summary-grid">
-                  {ensoIndexMetrics.map((metric) => renderVariabilityIndexCard(metric))}
-                  {ensoOverviewRows.map((row) => (
-                    <article
-                      className={`alert-card summary variability-index-card phase-tone-${ensoConditionTone(row.window.condition)}`}
-                      key={`${row.key}-enso-outlook-summary`}
-                    >
-                      <span className="alert-kicker">{language === "hu" ? "IRI-előrejelzés" : "IRI outlook"}</span>
-                      <h2>{row.horizon}</h2>
-                      <p className="alert-emphasis">
-                        {runtimeDataReady ? `${row.window.probability ?? "-"}%` : renderLoadingValue("value-loading-skeleton detail-value-loading")}
-                      </p>
-                      <span className="variability-phase-label">{formatEnsoConditionLabel(row.window.condition, t)}</span>
-                      {runtimeDataReady ? <p>{formatEnsoTargetLabel(row.window.targetLabel, language)}</p> : null}
-                      {runtimeDataReady && ensoOutlookFreshness ? (
-                        <span className={`freshness-chip ${ensoOutlookFreshness.tone}`}>{ensoOutlookFreshness.label}</span>
-                      ) : null}
-                      <div className="alert-meta">
-                        {ensoOutlook?.sourceUrl ? (
-                          <a className="alert-meta-chip confidence-medium" href={ensoOutlook.sourceUrl} target="_blank" rel="noreferrer">
-                            {ensoOutlook.sourceLabel || "IRI"} →
-                          </a>
-                        ) : (
-                          <span className="alert-meta-chip confidence-medium">{ensoOutlook?.sourceLabel || "IRI"}</span>
-                        )}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </div>
-              {runtimeDataReady && ensoOutlook ? (
-                <p className="variability-synopsis">
-                  <span>{formatEnsoStatusLabel(ensoOutlook, language, t)}</span>
-                  {ensoOutlook.synopsis}
-                </p>
-              ) : null}
-              {dailyNino34Line ? (
-                <div className="charts-grid climate-grid">
-                  {renderIndicatorPanel(dailyNino34Line.metric, dailyNino34Line.lines, dailyNino34Line.currentYear, dailyNino34Line.climatology)}
-                </div>
-              ) : null}
-              {dailyNino34AnomalyLine ? (
-                <div className="charts-grid climate-grid">
-                  {renderIndicatorPanel(
-                    dailyNino34AnomalyLine.metric,
-                    dailyNino34AnomalyLine.lines,
-                    dailyNino34AnomalyLine.currentYear,
-                    dailyNino34AnomalyLine.climatology
-                  )}
-                </div>
-              ) : null}
-              <div className="charts-grid climate-grid">
-                {variabilityChartPanels.filter(({ metric }) => ENSO_INDEX_KEYS.has(metric.key)).map(renderVariabilityPanel)}
-              </div>
-            </>
-          )}
-          {renderPageSubsection(
-            language === "hu" ? "Légköri cirkulációs mintázatok" : "Atmospheric circulation modes",
-            language === "hu"
-              ? "Az északi félteke időjárását alakító légnyomási mintázatok. Pozitív és negatív fázisuk a futóáramlás helyzetét, a téli hidegbetöréseket és a ciklonok útvonalát befolyásolja."
-              : "Pressure patterns that steer Northern Hemisphere weather. Their positive and negative phases shift the jet stream, winter cold outbreaks and storm tracks.",
-            <>
-              <div className="summary-cards-section">
-                <div className="regional-summary-grid">
-                  {circulationIndexMetrics.map((metric) => renderVariabilityIndexCard(metric))}
-                </div>
-              </div>
-              <div className="charts-grid climate-grid">
-                {variabilityChartPanels.filter(({ metric }) => !ENSO_INDEX_KEYS.has(metric.key)).map(renderVariabilityPanel)}
-              </div>
-            </>
-          )}
-        </section>
-      ) : null}
 
       {activeView === "projections" && !runtimeDataReady ? (
         <section className="collapsible-section detail-page-section detail-page-editorial detail-page-projections" id="projections" aria-busy="true">

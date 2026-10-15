@@ -207,8 +207,6 @@
 }
 
 .detail-page-maps .section-content,
-.detail-page-forcing .section-content,
-.detail-page-variability .section-content,
 .detail-page-projections .section-content {
   gap: 16px;
 }
@@ -221,14 +219,12 @@
   border-top: 3px solid color-mix(in srgb, var(--domain-ocean) 64%, transparent);
 }
 
-.detail-page-forcing .summary-cards-section,
 .detail-page-projections .projection-compact-grid {
   border: 0;
   padding: 0;
   background: transparent;
 }
 
-.detail-page-variability .projection-enso-card-row,
 .detail-page-projections .projections-outlook-card,
 .detail-page-projections .overview-temperature-trend-card,
 .detail-page-projections .overview-tipping-card {

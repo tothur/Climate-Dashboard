@@ -156,6 +156,8 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory :is(.detail-page-indicators,.detail-page-editorial).indicator-topic-oceans { --indicator-accent: var(--domain-ocean); }
 .observatory :is(.detail-page-indicators,.detail-page-editorial).indicator-topic-ice { --indicator-accent: var(--domain-ice); }
 .observatory :is(.detail-page-indicators,.detail-page-editorial).indicator-topic-energy { --indicator-accent: var(--domain-forcing); }
+.observatory .detail-page-indicators.indicator-topic-forcing { --indicator-accent: var(--domain-forcing); }
+.observatory .detail-page-indicators:is(.indicator-topic-enso, .indicator-topic-circulation) { --indicator-accent: var(--domain-ocean); }
 .observatory .indicator-page-intro {
   display: grid;
   grid-template-columns: minmax(0,1fr);
@@ -283,28 +285,6 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory :is(.detail-page-indicators,.detail-page-editorial) .panel-header { min-height: 94px; }
 .observatory :is(.detail-page-indicators,.detail-page-editorial) .panel-header h2 { font-size: 18px; letter-spacing: -.025em; }
 .observatory :is(.detail-page-indicators,.detail-page-editorial) .panel-chart-wrap { padding: 2px 8px 8px; }
-.observatory .detail-page-forcing .forcing-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
-.observatory .detail-page-forcing { --indicator-accent: var(--domain-forcing); }
-.observatory .detail-page-forcing .alert-card.summary .forcing-gas-title {
-  margin: 12px 0 4px;
-  color: var(--indicator-accent);
-  font: 680 clamp(38px,3.6vw,54px)/1 var(--font-display);
-  letter-spacing: -.04em;
-}
-.observatory .detail-page-forcing .forcing-gas-title sub {
-  position: relative;
-  bottom: -.08em;
-  margin-left: .02em;
-  font-size: .5em;
-  letter-spacing: 0;
-  vertical-align: baseline;
-}
-.observatory .detail-page-forcing .forcing-gas-name {
-  margin: 0 0 12px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
-}
 @media(min-width: 901px) { .observatory .mobile-app-bar,.observatory .drawer-close-button { display: none; } }
 @media(max-width: 1250px) and (min-width: 901px) {
   .observatory .dashboard-sidebar { flex-wrap: wrap; gap: 8px 20px; padding: 12px 24px; }
@@ -368,7 +348,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .indicator-topic-navigation button { flex: 0 0 auto; min-width: 138px; }
 }
 @media(max-width: 600px) {
-  .observatory .overview-secondary-grid,.observatory .detail-page-forcing .forcing-grid { grid-template-columns: 1fr; }
+  .observatory .overview-secondary-grid { grid-template-columns: 1fr; }
   .observatory .overview-metric-card { padding: 16px; min-height: 220px; }
   .observatory .overview-metric-copy strong { font-size: 26px; overflow-wrap: anywhere; }
   .observatory .overview-metric-copy h2 { font-size: 13px; }
@@ -923,8 +903,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   }
 }
 
-/* Editorial detail pages: Variability, Projections and Data share the Indicators hierarchy. */
-.observatory .detail-page-variability { --indicator-accent: var(--domain-ocean); }
+/* Editorial detail pages: Projections and Data share the Climate system hierarchy. */
 .observatory .detail-page-projections { --indicator-accent: var(--domain-temperature); }
 .observatory .detail-page-sources { --indicator-accent: var(--accent); display: block; }
 .observatory .detail-page-editorial .collapsible-subsection-header {
@@ -947,8 +926,8 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .variability-index-card { --phase-color: color-mix(in srgb, var(--text) 72%, var(--muted)); }
 .observatory .variability-index-card.phase-tone-warm { --phase-color: var(--domain-temperature); }
 .observatory .variability-index-card.phase-tone-cool { --phase-color: var(--domain-ocean); }
-.observatory .detail-page-variability .alert-card.summary.variability-index-card::after { background: var(--phase-color); }
-.observatory .detail-page-variability .alert-card.summary.variability-index-card .alert-emphasis {
+.observatory .detail-page-indicators .alert-card.summary.variability-index-card::after { background: var(--phase-color); }
+.observatory .detail-page-indicators .alert-card.summary.variability-index-card .alert-emphasis {
   margin-bottom: 8px;
   color: var(--phase-color);
 }
@@ -1963,6 +1942,8 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-oceans { --topic-accent: var(--domain-ocean); }
 .observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-ice { --topic-accent: var(--domain-ice); }
 .observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-energy { --topic-accent: var(--domain-forcing); }
+.observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-forcing { --topic-accent: var(--domain-forcing); }
+.observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button):is(.topic-enso, .topic-circulation) { --topic-accent: var(--domain-ocean); }
 .observatory .indicator-sheet { --topic-accent: var(--indicator-accent); }
 .observatory :is(.indicator-rail, .indicator-sheet) ul { margin: 0; padding: 0; list-style: none; }
 .observatory :is(.indicator-rail, .indicator-sheet, .indicator-locator) button { font-family: inherit; cursor: pointer; }
@@ -1981,6 +1962,15 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 }
 /* Topics read as the rail's headings: larger, heavier, divided by hairlines. */
 .observatory .indicator-nav-topic + .indicator-nav-topic { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+/* Group headings (State of the climate, Drivers, Natural variability) take the divider's place. */
+.observatory .indicator-nav-topic.starts-group { border-top: 0; }
+.observatory .indicator-nav-topic.starts-group:not(:first-child) { margin-top: 14px; padding-top: 0; }
+.observatory .indicator-nav-group {
+  margin: 0; padding: 8px 12px 6px; color: var(--muted);
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+}
+.observatory .indicator-nav-topic.starts-group:not(:first-child) .indicator-nav-group { padding-top: 12px; border-top: 1px solid var(--border); }
+.observatory .indicator-sheet-topics button.starts-group { margin-left: 10px; }
 .observatory .indicator-nav-topic-button {
   display: flex; align-items: center; gap: 11px; width: 100%;
   padding: 11px 12px; border: 0; border-radius: 8px; background: transparent;
