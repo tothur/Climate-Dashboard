@@ -726,7 +726,7 @@ const STRINGS = {
     sourceUpdatedTitle: "Last refresh",
     sourceListTitle: "Source links",
     sourceListNote: "Upstream data feeds.",
-    sourceCardsTitle: "Data",
+    sourceCardsTitle: "Sources",
     sourceLabel: "Source",
     chartFullscreenEnter: "Full screen",
     chartFullscreenExit: "Exit full screen",
@@ -928,7 +928,7 @@ const STRINGS = {
     sourceUpdatedTitle: "Utolsó frissítés",
     sourceListTitle: "Forráshivatkozások",
     sourceListNote: "Elsődleges adatforrások.",
-    sourceCardsTitle: "Adatok",
+    sourceCardsTitle: "Források",
     sourceLabel: "Forrás",
     chartFullscreenEnter: "Teljes képernyő",
     chartFullscreenExit: "Kilépés a teljes képernyőből",
@@ -5060,7 +5060,7 @@ export function App() {
       <section className="detail-page-section detail-page-editorial detail-page-sources" id="sources">
         {renderPageIntro(
           language === "hu" ? "Adatok és módszertan" : "Data & methods",
-          language === "hu" ? "Adatforrások" : "Data sources",
+          t.sourceCardsTitle,
           language === "hu"
             ? "Az irányítópult minden idősora nyilvános elsődleges forrásból származik, és egy automatikus folyamat naponta frissíti. A frissességi jelzés azt mutatja, mennyire naprakész az egyes források legutóbbi értéke a várható frissítési ütemhez képest."
             : "Every series on the dashboard comes from a public upstream feed, refreshed daily by an automated pipeline. Freshness shows how current each feed's latest value is against its expected cadence."
