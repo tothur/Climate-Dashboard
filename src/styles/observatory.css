@@ -1980,3 +1980,10 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   .observatory .detail-page-indicators .indicator-topic-navigation,
   .observatory .detail-page-indicators .indicator-topic-navigation button { transition: none; }
 }
+
+/* Context panels side by side share one height: when one panel's controls
+   wrap onto an extra line, its neighbour's chart grows to match instead of
+   leaving the two cards uneven. */
+.observatory .charts-grid:has(> .daily-context-panel) { align-items: stretch; }
+.observatory .daily-context-panel .panel-chart-wrap { flex: 1 1 auto; display: flex; flex-direction: column; }
+.observatory .daily-context-panel .panel-chart { flex: 1 1 auto; }

@@ -16,8 +16,25 @@ type FreshnessTone = "fresh" | "warning" | "stale";
  *   365-day mean over the faint daily values, against the 1.5 °C and 2 °C levels
  * - warming-annual: annual global warming above pre-industrial, the current
  *   year drawn as provisional (year to date)
+ * - concentration: a greenhouse gas, its 12-month mean over the measurements,
+ *   compared with the pre-industrial level
+ * - aggi: NOAA's Annual Greenhouse Gas Index (1990 = 1)
+ * - solar: incoming solar energy, its 11-year mean over the monthly values
  */
-export type TrendContextVariant = "rise" | "loss" | "imbalance" | "annual" | "warming-daily" | "warming-annual";
+export type TrendContextVariant =
+  | "rise"
+  | "loss"
+  | "imbalance"
+  | "annual"
+  | "warming-daily"
+  | "warming-annual"
+  | "concentration"
+  | "aggi"
+  | "solar";
+
+/** Satellite-era start for the solar trend. */
+const SOLAR_TREND_START_YEAR = 1980;
+const SOLAR_CYCLE_YEARS = 11;
 
 const WARMING_LEVELS = [1.5, 2];
 
@@ -44,6 +61,8 @@ interface TrendContextPanelProps {
   referenceLabel?: string;
   /** Warming-annual only: the latest year is still in progress. */
   partialLatest?: boolean;
+  /** Concentration only: the pre-industrial (1750) level, in the same unit. */
+  preindustrial?: number;
   freshnessLabel?: string;
   freshnessTone?: FreshnessTone;
   expandLabel?: string;
@@ -96,6 +115,20 @@ const COPY = {
     yearRank: (year: number, value: string, rank: number) =>
       `${year}: ${value} · ${rank === 1 ? "warmest year on record" : `${englishOrdinal(rank)} warmest year`}`,
     recentTop: (count: number) => `${count} of the 10 warmest years were in the last decade`,
+    dailyValue2: "daily value",
+    latestDay: "Latest day",
+    latestMeasurement: "latest measurement",
+    measurements: "Measurements",
+    abovePreindustrial: (pct: string, level: string) => `${pct}% above pre-industrial (${level})`,
+    pastYear: (value: string) => `${value} over the past year`,
+    tenYearRate: (value: string) => `10-year average: ${value}/yr`,
+    aggiAbove1990: (pct: string) => `${pct}% more warming influence than in 1990`,
+    aggiReference: "1990 = 1",
+    aggiIndex: "Index",
+    solarMean: "11-year mean",
+    solarMeanChip: (value: string) => `11-year mean: ${value}`,
+    solarTrend: (value: string, year: number) => `Trend since ${year}: ${value} per decade`,
+    solarSwing: (value: string, pct: string) => `Solar-cycle swing: ${value} (${pct}%)`,
   },
   hu: {
     all: "Teljes",
@@ -137,8 +170,24 @@ const COPY = {
     yearRank: (year: number, value: string, rank: number) =>
       `${year}: ${value} · ${rank === 1 ? "a legmelegebb év" : `${rank}. legmelegebb év`}`,
     recentTop: (count: number) => `A 10 legmelegebb évből ${count} az utolsó évtizedben volt`,
+    dailyValue2: "napi érték",
+    latestDay: "Legutóbbi nap",
+    latestMeasurement: "legutóbbi mérés",
+    measurements: "Mérések",
+    abovePreindustrial: (pct: string, level: string) => `${pct}%-kal az iparosodás előtti szint (${level}) felett`,
+    pastYear: (value: string) => `${value} az elmúlt évben`,
+    tenYearRate: (value: string) => `10 éves átlag: ${value}/év`,
+    aggiAbove1990: (pct: string) => `${pct}%-kal nagyobb melegítő hatás, mint 1990-ben`,
+    aggiReference: "1990 = 1",
+    aggiIndex: "Index",
+    solarMean: "11 éves átlag",
+    solarMeanChip: (value: string) => `11 éves átlag: ${value}`,
+    solarTrend: (value: string, year: number) => `Trend ${year} óta: ${value} évtizedenként`,
+    solarSwing: (value: string, pct: string) => `Napciklus-ingadozás: ${value} (${pct}%)`,
   },
 } as const;
+
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 const monthYearFormats = {
   en: new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }),
@@ -183,6 +232,7 @@ export function TrendContextPanel({
   baseline,
   referenceLabel = "",
   partialLatest = false,
+  preindustrial,
   freshnessLabel,
   freshnessTone,
   expandLabel,
@@ -202,7 +252,13 @@ export function TrendContextPanel({
   const seaLevelMm = (gigatonnes: number) => formatNumber(gigatonnes / GT_PER_MM_SEA_LEVEL, 1);
   const warming = variant === "warming-daily" || variant === "warming-annual";
   const levelLabel = (level: number) => `${formatNumber(level, Number.isInteger(level) ? 0 : 1)} °C`;
-  const references = warming ? WARMING_LEVELS.map((level) => ({ value: level, label: levelLabel(level) })) : undefined;
+  const references = warming
+    ? WARMING_LEVELS.map((level) => ({ value: level, label: levelLabel(level) }))
+    : variant === "aggi"
+      ? [{ value: 1, label: copy.aggiReference }]
+      : undefined;
+  // These charts draw a running mean over the faint measurements.
+  const meanOverRaw = variant === "warming-daily" || variant === "concentration" || variant === "solar";
 
   const option = useMemo(
     () =>
@@ -217,22 +273,39 @@ export function TrendContextPanel({
         domain,
         inverse: variant === "loss",
         zeroArea: variant === "imbalance",
-        showTrend: isLine && !warming,
-        showRaw: variant === "warming-daily",
+        // Forcing charts state their rates in chips; a straight fit through an
+        // accelerating (gases) or cyclic (solar) record would mislead.
+        showTrend: isLine && !warming && variant !== "concentration" && variant !== "aggi" && variant !== "solar",
+        showRaw: meanOverRaw,
+        showSymbols: variant === "aggi",
         references,
         partialLatest: variant === "warming-annual" && partialLatest,
         signed: warming,
         positiveIsWarm: warming,
         formatNumber,
-        formatTooltipDate: (time) => (variant === "warming-daily" ? fullDateFormats : shortMonthYearFormats)[language].format(new Date(time)),
+        formatTooltipDate: (time) =>
+          variant === "aggi"
+            ? String(new Date(time).getUTCFullYear())
+            : (variant === "warming-daily" || variant === "concentration" ? fullDateFormats : shortMonthYearFormats)[language].format(new Date(time)),
         labels: {
-          trend: variant === "warming-daily" ? copy.mean365 : copy.trendSince(startYear),
+          trend:
+            variant === "warming-daily"
+              ? copy.mean365
+              : variant === "concentration"
+                ? copy.monthlyMean
+                : variant === "solar"
+                  ? copy.solarMean
+                  : copy.trendSince(startYear),
           runningMean: copy.runningMean,
           partial: copy.partial,
           tooltipExtra: (time, value) => {
             if (variant === "warming-daily") {
               const raw = data.raw?.get(time);
               return raw == null ? null : copy.dailyValue(`${formatNumber(raw, decimals, raw > 0)} ${unit}`);
+            }
+            if (variant === "concentration" || variant === "solar") {
+              const raw = data.raw?.get(time);
+              return raw == null ? null : `${copy.measurements}: ${formatNumber(raw, decimals)} ${unit}`;
             }
             if (variant === "rise") return copy.sinceStart(`${formatNumber(value - data.first.value, decimals, true)} ${unit}`, startYear);
             if (variant === "loss") return copy.seaLevelShort(seaLevelMm(value));
@@ -245,7 +318,7 @@ export function TrendContextPanel({
         },
       }),
     // formatNumber, copy and the tooltip text derive from language.
-    [data, range, unit, axisUnit, decimals, compact, dark, domain, variant, isLine, language, startYear, partialLatest]
+    [data, range, unit, axisUnit, decimals, compact, dark, domain, variant, isLine, language, startYear, partialLatest, meanOverRaw]
   );
 
   const latest = data.latest;
@@ -253,20 +326,32 @@ export function TrendContextPanel({
   const latestPeriod = monthYearFormats[language].format(new Date(latest.time));
   const signedValue = (value: number, digits = decimals) => `${formatNumber(value, digits, value > 0)} ${unit}`;
   // The daily warming headline is the latest day itself; the line is its 365-day mean.
-  const latestRaw = variant === "warming-daily" ? data.rawSeries?.[data.rawSeries.length - 1] ?? null : null;
+  const latestRaw = meanOverRaw ? data.rawSeries?.[data.rawSeries.length - 1] ?? null : null;
   const headlineValue = latestRaw ? latestRaw[1] : latest.value;
-  const kicker =
-    variant === "warming-daily"
-      ? `${fullDateFormats[language].format(new Date(latestRaw?.[0] ?? latest.time))} · ${copy.vsReference(referenceLabel)}`
-      : variant === "warming-annual"
-        ? `${latestYear}${partialLatest ? ` · ${copy.yearToDate}` : ""} · ${copy.vsReference(referenceLabel)}`
-        : variant === "annual"
-      ? String(latestYear)
-      : variant === "imbalance"
-        ? copy.meanTo(latestPeriod)
-        : variant === "loss"
-          ? `${latestPeriod} · ${copy.cumulativeSince(startYear)}`
-          : latestPeriod;
+  // Daily measurements (CO₂) get a full date; monthly ones a month and year.
+  const rawTail = data.rawSeries?.slice(-2) ?? [];
+  const rawIsDaily = rawTail.length === 2 && rawTail[1][0] - rawTail[0][0] < 20 * 86_400_000;
+  const kicker = (() => {
+    const rawDate = new Date(latestRaw?.[0] ?? latest.time);
+    switch (variant) {
+      case "warming-daily":
+        return `${fullDateFormats[language].format(rawDate)} · ${copy.dailyValue2} · ${copy.vsReference(referenceLabel)}`;
+      case "warming-annual":
+        return `${latestYear}${partialLatest ? ` · ${copy.yearToDate}` : ""} · ${copy.vsReference(referenceLabel)}`;
+      case "concentration":
+      case "solar":
+        return `${(rawIsDaily ? fullDateFormats : monthYearFormats)[language].format(rawDate)} · ${copy.latestMeasurement}`;
+      case "aggi":
+      case "annual":
+        return String(latestYear);
+      case "imbalance":
+        return copy.meanTo(latestPeriod);
+      case "loss":
+        return `${latestPeriod} · ${copy.cumulativeSince(startYear)}`;
+      default:
+        return latestPeriod;
+    }
+  })();
 
   const rateUnit = copy.perYear(unit);
   const chips: Array<{ text: string; alert?: boolean }> = [];
@@ -293,6 +378,44 @@ export function TrendContextPanel({
       chips.push({ text: copy.daysAbove(daysAbove, levelLabel(WARMING_LEVELS[0]), year) });
       const warmest = data.rawSeries.reduce((best, entry) => (entry[1] > best[1] ? entry : best), data.rawSeries[0]);
       chips.push({ text: copy.warmestDay(signedValue(warmest[1]), fullDateFormats[language].format(new Date(warmest[0]))) });
+    }
+  } else if (variant === "concentration") {
+    if (preindustrial) {
+      chips.push({
+        text: copy.abovePreindustrial(formatNumber((latest.value / preindustrial - 1) * 100, 0), `${formatNumber(preindustrial, 0)} ${unit}`),
+        alert: true,
+      });
+    }
+    // Compare with the mean as close to exactly one year earlier as the record allows.
+    const target = latest.time - 365.25 * 86_400_000;
+    const yearAgo = data.points.reduce<[number, number] | null>(
+      (best, point) => (Math.abs(point[0] - target) < Math.abs((best?.[0] ?? Infinity) - target) ? point : best),
+      null
+    );
+    if (yearAgo && Math.abs(yearAgo[0] - target) <= 31 * 86_400_000) chips.push({ text: copy.pastYear(`${formatNumber(latest.value - yearAgo[1], decimals, latest.value > yearAgo[1])} ${unit}`) });
+    if (data.recentRatePerYear != null) chips.push({ text: copy.tenYearRate(`${formatNumber(data.recentRatePerYear, decimals, data.recentRatePerYear > 0)} ${unit}`) });
+  } else if (variant === "aggi") {
+    chips.push({ text: copy.aggiAbove1990(formatNumber((latest.value - 1) * 100, 0)), alert: latest.value > 1 });
+    const previous = data.points[data.points.length - 2];
+    if (previous) chips.push({ text: copy.pastYear(formatNumber(latest.value - previous[1], decimals, latest.value > previous[1])) });
+  } else if (variant === "solar") {
+    chips.push({ text: copy.solarMeanChip(`${formatNumber(latest.value, decimals)} ${unit}`) });
+    const raw = data.rawSeries ?? [];
+    const yearMs = 365.25 * 86_400_000;
+    const satellite = raw.filter(([time]) => new Date(time).getUTCFullYear() >= SOLAR_TREND_START_YEAR);
+    if (satellite.length > 24) {
+      const meanX = satellite.reduce((sum, [time]) => sum + time, 0) / satellite.length;
+      const meanY = satellite.reduce((sum, [, value]) => sum + value, 0) / satellite.length;
+      const slope =
+        satellite.reduce((sum, [time, value]) => sum + (time - meanX) * (value - meanY), 0) /
+        satellite.reduce((sum, [time]) => sum + (time - meanX) ** 2, 0);
+      const perDecade = slope * yearMs * 10;
+      chips.push({ text: copy.solarTrend(`${formatNumber(perDecade, decimals, perDecade > 0)} ${unit}`, SOLAR_TREND_START_YEAR) });
+    }
+    const cycle = raw.filter(([time]) => time >= (raw[raw.length - 1]?.[0] ?? 0) - SOLAR_CYCLE_YEARS * yearMs).map(([, value]) => value);
+    if (cycle.length) {
+      const swing = Math.max(...cycle) - Math.min(...cycle);
+      chips.push({ text: copy.solarSwing(`${formatNumber(swing, decimals)} ${unit}`, formatNumber((swing / latest.value) * 100, 2)) });
     }
   } else if (variant === "warming-annual") {
     // Rank complete years only; a year in progress isn't comparable yet.
@@ -322,12 +445,27 @@ export function TrendContextPanel({
 
   const swatch = (style: CSSProperties) => <i style={style} aria-hidden="true" />;
   const dashedSwatch = swatch({ background: `repeating-linear-gradient(90deg, ${palette.trend} 0 5px, transparent 5px 8px)`, height: 2 });
+  const rawSwatch = swatch({ background: palette.signalArea, boxShadow: `inset 0 0 0 1px ${palette.signal}`, height: 3 });
+  // The hollow ring on the chart marks the latest measurement the headline reports.
+  const latestSwatch = swatch({ width: 8, height: 8, borderRadius: "50%", background: "transparent", boxShadow: `inset 0 0 0 2px ${palette.signal}` });
   const legend: Array<{ key: string; icon: ReactNode; label: string }> = variant === "warming-daily"
     ? [
         { key: "mean", icon: swatch({ background: palette.signal, height: 3 }), label: copy.mean365 },
-        { key: "daily", icon: swatch({ background: palette.signalArea, boxShadow: `inset 0 0 0 1px ${palette.signal}`, height: 3 }), label: copy.dailyValues },
+        { key: "daily", icon: rawSwatch, label: copy.dailyValues },
+        { key: "latest", icon: latestSwatch, label: copy.latestDay },
         { key: "levels", icon: dashedSwatch, label: copy.warmingLevels },
       ]
+    : variant === "concentration" || variant === "solar"
+      ? [
+          { key: "mean", icon: swatch({ background: palette.signal, height: 3 }), label: variant === "solar" ? copy.solarMean : copy.monthlyMean },
+          { key: "raw", icon: rawSwatch, label: copy.measurements },
+          { key: "latest", icon: latestSwatch, label: capitalize(copy.latestMeasurement) },
+        ]
+      : variant === "aggi"
+        ? [
+            { key: "index", icon: swatch({ background: palette.signal, height: 3 }), label: copy.aggiIndex },
+            { key: "ref", icon: dashedSwatch, label: copy.aggiReference },
+          ]
     : variant === "warming-annual"
       ? [
           { key: "year", icon: swatch({ background: palette.loss }), label: copy.annualMean },

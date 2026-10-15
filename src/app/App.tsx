@@ -16,7 +16,6 @@ import type {
 } from "../domain/model";
 import { loadRuntimeDataSource } from "../data/runtime-source";
 import { buildClimateMonthlyComparisonOption, buildClimateTrendOption } from "../charts/iliTrend";
-import { buildForcingTrendOption } from "../charts/historicalTrend";
 import { buildVariabilityIndexOption } from "../charts/variabilityIndex";
 import { EChartsPanel } from "../components/EChartsPanel";
 import { ClimateMapImage } from "../components/ClimateMapImage";
@@ -25,7 +24,7 @@ import { SignalIcon, signalTopic, type SignalTopic } from "../components/SignalI
 import { Sparkline, type SparklineReadout } from "../components/Sparkline";
 import { DailyContextPanel } from "../components/DailyContextPanel";
 import { TrendContextPanel, type TrendContextVariant } from "../components/TrendContextPanel";
-import { buildTrendContextData, meanBetweenYears, type TrendContextData } from "../charts/trendContext";
+import { buildTrendContextData, meanBetweenYears, trailingMeanByDays, type TrendContextData } from "../charts/trendContext";
 import { domainColor, domainColorAlpha, type ChartDomain } from "../theme/domainColors";
 import { buildDailyContextData, type DailyContextData } from "../charts/dailyContext";
 
@@ -434,6 +433,14 @@ const DAILY_CONTEXT_KEYS = new Set<string>([
   ...SNOW_COVER_KEYS,
   ...DAILY_CONTEXT_ANOMALY_KEYS,
 ]);
+// Pre-industrial (1750) greenhouse gas levels, IPCC AR6 WG1 (Table 2.1, rounded).
+const PREINDUSTRIAL_LEVELS: Partial<Record<string, number>> = {
+  atmospheric_co2: 278,
+  atmospheric_ch4: 729,
+  atmospheric_n2o: 270,
+};
+const SOLAR_CYCLE_DAYS = 11 * 365.25;
+
 // Niño 3.4 anomalies of ±0.5 °C mark El Niño and La Niña conditions.
 const ENSO_ANOMALY_THRESHOLD = 0.5;
 const NINO34_THRESHOLDS: Record<Language, Array<{ value: number; label: string }>> = {
@@ -2977,40 +2984,6 @@ function indicatorYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language
   }
 }
 
-function forcingYAxisUnitLabel(metricKey: ClimateMetricSeries["key"], language: Language): string | undefined {
-  switch (metricKey) {
-    case "atmospheric_co2":
-      return language === "hu" ? "CO2 ppm" : "CO2 parts per million (ppm)";
-    case "atmospheric_ch4":
-      return language === "hu" ? "CH4 ppb" : "CH4 parts per billion (ppb)";
-    case "atmospheric_n2o":
-      return language === "hu" ? "N2O ppb" : "N2O parts per billion (ppb)";
-    case "atmospheric_aggi":
-      return language === "hu" ? "AGGI index (1990=1)" : "AGGI index (1990=1)";
-    case "incoming_solar_energy":
-      return language === "hu" ? "teljes napsugárzás (W/m²)" : "total solar irradiance (W/m²)";
-    default:
-      return undefined;
-  }
-}
-
-function forcingAxisBounds(metricKey: ClimateMetricSeries["key"]): { yMin?: number; yMax?: number; minYear?: number } {
-  switch (metricKey) {
-    case "atmospheric_co2":
-      return { yMin: 300, yMax: 460, minYear: 1974 };
-    case "atmospheric_ch4":
-      return { yMin: 1600, yMax: 2100, minYear: 1983 };
-    case "atmospheric_n2o":
-      return { yMin: 300, yMax: 360, minYear: 2001 };
-    case "atmospheric_aggi":
-      return { yMin: 0.6, yMax: 1.8, minYear: 1979 };
-    case "incoming_solar_energy":
-      return { yMin: 1360, yMax: 1363, minYear: 2018 };
-    default:
-      return {};
-  }
-}
-
 function cardUnitLabel(metricKey: ClimateMetricSeries["key"], unit: string, language: Language): string {
   if (
     GLOBAL_TEMPERATURE_KEYS.has(metricKey) ||
@@ -3653,6 +3626,29 @@ export function App() {
     }
     return contexts;
   }, [snapshot.indicators, earthEnergyImbalanceMetric, earthEnergyImbalanceTrendPoints]);
+  // Forcing: greenhouse gases as a 12-month mean over the measurements, the
+  // AGGI as annual values, and solar input as an 11-year mean over months.
+  const forcingContextByKey = useMemo(() => {
+    const contexts = new Map<string, { data: TrendContextData; variant: TrendContextVariant }>();
+    for (const metric of snapshot.forcing) {
+      let context: { data: TrendContextData | null; variant: TrendContextVariant } | null = null;
+      if (metric.key in PREINDUSTRIAL_LEVELS) {
+        context = {
+          data: buildTrendContextData(trailingMeanByDays(metric.points, 365), { kind: "line", rawPoints: metric.points }),
+          variant: "concentration",
+        };
+      } else if (metric.key === "atmospheric_aggi") {
+        context = { data: buildTrendContextData(metric.points, { kind: "line" }), variant: "aggi" };
+      } else if (metric.key === "incoming_solar_energy") {
+        context = {
+          data: buildTrendContextData(trailingMeanByDays(metric.points, SOLAR_CYCLE_DAYS), { kind: "line", rawPoints: metric.points }),
+          variant: "solar",
+        };
+      }
+      if (context?.data) contexts.set(metric.key, { data: context.data, variant: context.variant });
+    }
+    return contexts;
+  }, [snapshot.forcing]);
   const variabilityChartPanels = useMemo(
     () =>
       variabilityMetrics
@@ -4233,59 +4229,30 @@ export function App() {
     );
   };
   const renderForcingPanel = (metric: ClimateMetricSeries) => {
-    const axisBounds = forcingAxisBounds(metric.key);
-    const title = metricTitle(metric, language);
+    const context = forcingContextByKey.get(metric.key);
+    if (!context) return null;
     const freshness = metricFreshnessBadge(metric, language, t);
-    const option =
-      metric.key === "atmospheric_aggi"
-        ? buildClimateTrendOption({
-            points: metric.points,
-            seriesName: title,
-            unit: metric.unit,
-            decimals: metric.decimals,
-            lineWidth: 2.1,
-            yAxisMin: axisBounds.yMin,
-            yAxisMax: axisBounds.yMax,
-            yAxisUnitLabel: forcingYAxisUnitLabel(metric.key, language),
-            xAxisYearLabelStep: 5,
-            disableDataZoom: true,
-            forceMappedYearLabels: true,
-            showLegend: false,
-            compact,
-            dark: resolvedTheme === "dark",
-            color: topicChartColor(metric.key, resolvedTheme === "dark"),
-            labels: {
-              noData: t.noData,
-              latest: t.chartLatest,
-            },
-          })
-        : buildForcingTrendOption({
-            points: metric.points,
-            title,
-            unit: metric.unit,
-            yAxisUnitLabel: forcingYAxisUnitLabel(metric.key, language),
-            yAxisMin: axisBounds.yMin,
-            yAxisMax: axisBounds.yMax,
-            xAxisStartYear: axisBounds.minYear,
-            decimals: metric.decimals,
-            compact,
-            dark: resolvedTheme === "dark",
-            color: topicChartColor(metric.key, resolvedTheme === "dark"),
-            labels: {
-              noData: t.noData,
-              latest: t.chartLatest,
-            },
-          });
+    // The AGGI is a ratio to 1990, so it has no unit to show.
+    const unit = metric.key === "atmospheric_aggi" ? "" : metric.unit;
     return (
-      <EChartsPanel
+      <TrendContextPanel
         key={metric.key}
-        title={title}
+        title={metricTitle(metric, language)}
         subtitle={formatSourceShortName(metric.source.shortName, language)}
-        expandLabel={t.chartFullscreenEnter}
-        collapseLabel={t.chartFullscreenExit}
+        data={context.data}
+        variant={context.variant}
+        domain="forcing"
+        unit={unit}
+        decimals={metric.decimals}
+        language={language}
+        compact={compact}
+        dark={resolvedTheme === "dark"}
+        ready={runtimeDataReady}
+        preindustrial={PREINDUSTRIAL_LEVELS[metric.key]}
         freshnessLabel={freshness.label}
         freshnessTone={freshness.tone}
-        option={option}
+        expandLabel={t.chartFullscreenEnter}
+        collapseLabel={t.chartFullscreenExit}
       />
     );
   };

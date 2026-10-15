@@ -127,6 +127,39 @@ export function buildTrendContextData(
   };
 }
 
+/**
+ * Trailing mean over a time window (e.g. 365 days), robust to gaps and
+ * irregular sampling. A point is emitted once the window holds at least
+ * `minFraction` of the expected values, judged from the series' typical spacing.
+ */
+// Mauna Loa CO₂ has a measurement on only about 75% of days, so require half.
+export function trailingMeanByDays(points: DailyPoint[], windowDays: number, minFraction = 0.5): DailyPoint[] {
+  const series = points
+    .map((point) => [toTime(point.date), point.value, point.date] as const)
+    .filter(([time, value]) => Number.isFinite(time) && Number.isFinite(value))
+    .sort((a, b) => a[0] - b[0]);
+  if (series.length < 2) return [];
+  const gaps = series.slice(1).map(([time], index) => time - series[index][0]).sort((a, b) => a - b);
+  const typicalGap = gaps[Math.floor(gaps.length / 2)] || 86_400_000;
+  const windowMs = windowDays * 86_400_000;
+  const expected = windowMs / typicalGap;
+  const result: DailyPoint[] = [];
+  let start = 0;
+  let sum = 0;
+  for (let index = 0; index < series.length; index += 1) {
+    sum += series[index][1];
+    while (series[index][0] - series[start][0] >= windowMs) {
+      sum -= series[start][1];
+      start += 1;
+    }
+    const count = index - start + 1;
+    if (series[index][0] - series[0][0] >= windowMs - typicalGap && count >= expected * minFraction) {
+      result.push({ date: series[index][2], value: sum / count });
+    }
+  }
+  return result;
+}
+
 /** Mean of the plotted values within [startYear, endYear]. */
 export function meanBetweenYears(data: TrendContextData, startYear: number, endYear: number): number | null {
   const values = data.points
@@ -210,6 +243,8 @@ export interface TrendContextOptionArgs {
   partialLatest?: boolean;
   /** Prefix positive axis and label values with "+". */
   signed?: boolean;
+  /** Line charts: draw a dot on every value (sparse annual records). */
+  showSymbols?: boolean;
   /**
    * Bars: whether a positive value is the warm side (warming) rather than a
    * gain (glacier balance). Decides which side of zero is red and which blue.
@@ -267,6 +302,7 @@ function buildLineOption({
   showRaw = false,
   references = [],
   signed = false,
+  showSymbols = false,
   formatNumber,
   formatTooltipDate,
   labels,
@@ -353,6 +389,15 @@ function buildLineOption({
               tooltip: { show: false },
               lineStyle: { color: domainColorAlpha(domain, dark, dark ? 0.4 : 0.32), width: 0.8 },
               emphasis: { disabled: true },
+              // The latest single measurement, which the headline reports; the bold line is its running mean.
+              markPoint: {
+                silent: true,
+                symbol: "circle",
+                symbolSize: 8,
+                itemStyle: { color: palette.surface, borderColor: palette.signal, borderWidth: 2 },
+                label: { show: false },
+                data: [{ coord: rawInView[rawInView.length - 1] }],
+              },
             },
           ]
         : []),
@@ -377,7 +422,9 @@ function buildLineOption({
         name: labels.trend,
         type: "line",
         data: data.points,
-        showSymbol: false,
+        showSymbol: showSymbols,
+        symbol: "circle",
+        symbolSize: 5,
         z: 3,
         lineStyle: { color: palette.signal, width: 2.4, cap: "round", join: "round" },
         itemStyle: { color: palette.signal },

@@ -2,11 +2,11 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { EChartsOption } from "echarts";
 import { init, use, type EChartsType } from "echarts/core";
 import { LineChart, BarChart, ScatterChart, CustomChart, GaugeChart } from "echarts/charts";
-import { GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, AriaComponent, MarkLineComponent, MarkAreaComponent } from "echarts/components";
+import { GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, AriaComponent, MarkLineComponent, MarkAreaComponent, MarkPointComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import { PanelExpandButton } from "./PanelExpandButton";
 
-use([LineChart, BarChart, ScatterChart, CustomChart, GaugeChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, AriaComponent, MarkLineComponent, MarkAreaComponent, CanvasRenderer]);
+use([LineChart, BarChart, ScatterChart, CustomChart, GaugeChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, AriaComponent, MarkLineComponent, MarkAreaComponent, MarkPointComponent, CanvasRenderer]);
 
 type FreshnessTone = "fresh" | "warning" | "stale";
 
