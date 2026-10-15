@@ -539,14 +539,6 @@ const RECORD_WARNING_KEYS: ClimateMetricSeries["key"][] = [
   "global_surface_temperature_anomaly",
   "global_sea_surface_temperature_anomaly",
 ];
-const SEA_ICE_SUMMARY_ORDER: ClimateMetricSeries["key"][] = [
-  "global_sea_ice_extent",
-  "arctic_sea_ice_extent",
-  "antarctic_sea_ice_extent",
-];
-const SEA_ICE_SUMMARY_RANK = new Map(SEA_ICE_SUMMARY_ORDER.map((key, index) => [key, index]));
-const SNOW_COVER_SUMMARY_ORDER: ClimateMetricSeries["key"][] = ["northern_hemisphere_snow_cover_extent"];
-const SNOW_COVER_SUMMARY_RANK = new Map(SNOW_COVER_SUMMARY_ORDER.map((key, index) => [key, index]));
 
 const STRINGS = {
   en: {
@@ -3786,17 +3778,6 @@ export function App() {
         }),
     [indicatorLines]
   );
-  const regionalSummaryMetrics = useMemo(
-    () =>
-      snapshot.indicators
-        .filter((metric) => REGIONAL_TEMPERATURE_KEYS.has(metric.key))
-        .sort((left, right) => {
-          const leftRank = REGIONAL_TEMPERATURE_RANK.get(left.key) ?? Number.MAX_SAFE_INTEGER;
-          const rightRank = REGIONAL_TEMPERATURE_RANK.get(right.key) ?? Number.MAX_SAFE_INTEGER;
-          return leftRank - rightRank;
-        }),
-    [snapshot.indicators]
-  );
   const regionalTemperatureAnomalyLines = useMemo(
     () =>
       indicatorLines
@@ -3808,17 +3789,6 @@ export function App() {
         }),
     [indicatorLines]
   );
-  const regionalTemperatureAnomalySummaryMetrics = useMemo(
-    () =>
-      snapshot.indicators
-        .filter((metric) => REGIONAL_TEMPERATURE_ANOMALY_KEYS.has(metric.key))
-        .sort((left, right) => {
-          const leftRank = REGIONAL_TEMPERATURE_ANOMALY_RANK.get(left.key) ?? Number.MAX_SAFE_INTEGER;
-          const rightRank = REGIONAL_TEMPERATURE_ANOMALY_RANK.get(right.key) ?? Number.MAX_SAFE_INTEGER;
-          return leftRank - rightRank;
-        }),
-    [snapshot.indicators]
-  );
   const seaIceIndicatorLines = useMemo(
     () => indicatorLines.filter(({ metric }) => SEA_ICE_KEYS.has(metric.key)),
     [indicatorLines]
@@ -3826,28 +3796,6 @@ export function App() {
   const snowCoverIndicatorLines = useMemo(
     () => indicatorLines.filter(({ metric }) => SNOW_COVER_KEYS.has(metric.key)),
     [indicatorLines]
-  );
-  const seaIceSummaryMetrics = useMemo(
-    () =>
-      snapshot.indicators
-        .filter((metric) => SEA_ICE_SUMMARY_RANK.has(metric.key))
-        .sort((left, right) => {
-          const leftRank = SEA_ICE_SUMMARY_RANK.get(left.key) ?? Number.MAX_SAFE_INTEGER;
-          const rightRank = SEA_ICE_SUMMARY_RANK.get(right.key) ?? Number.MAX_SAFE_INTEGER;
-          return leftRank - rightRank;
-        }),
-    [snapshot.indicators]
-  );
-  const snowCoverSummaryMetrics = useMemo(
-    () =>
-      snapshot.indicators
-        .filter((metric) => SNOW_COVER_SUMMARY_RANK.has(metric.key))
-        .sort((left, right) => {
-          const leftRank = SNOW_COVER_SUMMARY_RANK.get(left.key) ?? Number.MAX_SAFE_INTEGER;
-          const rightRank = SNOW_COVER_SUMMARY_RANK.get(right.key) ?? Number.MAX_SAFE_INTEGER;
-          return leftRank - rightRank;
-        }),
-    [snapshot.indicators]
   );
   const iceSheetAndGlacierMetrics = useMemo(
     () =>
@@ -4228,23 +4176,6 @@ export function App() {
   // Temperature anomalies below the baseline read as cool: shown in the ocean blue instead of the warm accent.
   const isNegativeAnomaly = (metric: ClimateMetricSeries | null | undefined) =>
     metric != null && metric.key.includes("anomaly") && metric.latestValue != null && metric.latestValue < 0;
-  const renderMetricSummaryCard = (metric: ClimateMetricSeries, keySuffix: string) => {
-    const freshness = metricFreshnessBadge(metric, language, t);
-    return (
-      <article
-        className={`alert-card summary ${topSummaryCategoryClass(metric.key)}${isNegativeAnomaly(metric) ? " is-negative-anomaly" : ""}`}
-        key={`${metric.key}-${keySuffix}`}
-      >
-        <span className="alert-kicker">{t.latestLabel}</span>
-        <h2>{metricTitle(metric, language)}</h2>
-        <p className="alert-emphasis">{renderMetricValue(metric, "value-loading-skeleton detail-value-loading")}</p>
-        {runtimeDataReady ? <span className={`freshness-chip ${freshness.tone}`}>{freshness.label}</span> : null}
-        <div className="alert-meta">
-          <span className="alert-meta-chip confidence-medium">{formatSourceShortName(metric.source.shortName, language)}</span>
-        </div>
-      </article>
-    );
-  };
 
   const forcingGasMetrics = snapshot.forcing.filter((metric) => forcingGasLabel(metric.key) != null);
   const forcingOtherMetrics = snapshot.forcing.filter((metric) => forcingGasLabel(metric.key) == null);
@@ -5400,11 +5331,6 @@ export function App() {
               t.globalTemperaturesSectionTitle,
               t.globalTemperaturesSectionNote,
               <>
-              <div className="summary-cards-section">
-                <div className="regional-summary-grid">
-                  {globalTemperatureLines.map(({ metric }) => renderMetricSummaryCard(metric, "global-temperature-summary"))}
-                </div>
-              </div>
               <div className="charts-grid climate-grid">
                 {globalTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
@@ -5418,11 +5344,6 @@ export function App() {
               t.temperatureAnomalySectionTitle,
               t.temperatureAnomalySectionNote,
               <>
-              <div className="summary-cards-section">
-                <div className="regional-summary-grid">
-                  {anomalyTemperatureLines.map(({ metric }) => renderMetricSummaryCard(metric, "temperature-anomaly-summary"))}
-                </div>
-              </div>
               <div className="charts-grid climate-grid climate-grid-single">
                 {anomalyTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
@@ -5479,11 +5400,6 @@ export function App() {
               t.regionalTemperaturesSectionTitle,
               t.regionalTemperaturesSectionNote,
               <>
-              <div className="summary-cards-section">
-                <div className="regional-summary-grid">
-                  {regionalSummaryMetrics.map((metric) => renderMetricSummaryCard(metric, "regional-summary"))}
-                </div>
-              </div>
               <div className="charts-grid climate-grid">
                 {regionalTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
@@ -5497,11 +5413,6 @@ export function App() {
               t.regionalTemperatureAnomaliesSectionTitle,
               t.regionalTemperatureAnomaliesSectionNote,
               <>
-              <div className="summary-cards-section">
-                <div className="regional-summary-grid">
-                  {regionalTemperatureAnomalySummaryMetrics.map((metric) => renderMetricSummaryCard(metric, "regional-anomaly-summary"))}
-                </div>
-              </div>
               <div className="charts-grid climate-grid">
                 {regionalTemperatureAnomalyLines.map(({ metric, lines, currentYear, climatology }) =>
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
@@ -5515,11 +5426,6 @@ export function App() {
               t.oceansSectionTitle,
               t.oceansSectionNote,
               <>
-              <div className="summary-cards-section">
-                <div className="regional-summary-grid">
-                  {oceanMetrics.map((metric) => renderMetricSummaryCard(metric, "ocean-summary"))}
-                </div>
-              </div>
               <div className="charts-grid climate-grid">
                 {oceanMetrics.map((metric) => renderTrendContextPanel(metric))}
               </div>
@@ -5586,11 +5492,6 @@ export function App() {
               t.seaIceSectionTitle,
               t.seaIceSectionNote,
               <>
-              <div className="summary-cards-section">
-                <div className="regional-summary-grid">
-                  {seaIceSummaryMetrics.map((metric) => renderMetricSummaryCard(metric, "sea-ice-summary"))}
-                </div>
-              </div>
               <div className="charts-grid climate-grid sea-ice-grid">
                 {seaIceIndicatorLines.map(({ metric, lines, currentYear, climatology }) =>
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
@@ -5599,19 +5500,12 @@ export function App() {
               </>
             )}
 
-            {snowCoverSummaryMetrics.length || snowCoverIndicatorLines.length ? (
+            {snowCoverIndicatorLines.length ? (
               renderIndicatorSubsection(
                 "snowCover",
                 t.snowCoverSectionTitle,
                 t.snowCoverSectionNote,
                 <>
-                {snowCoverSummaryMetrics.length ? (
-                  <div className="summary-cards-section">
-                    <div className="regional-summary-grid">
-                      {snowCoverSummaryMetrics.map((metric) => renderMetricSummaryCard(metric, "snow-cover-summary"))}
-                    </div>
-                  </div>
-                ) : null}
                 <div className="charts-grid climate-grid">
                   {snowCoverIndicatorLines.map(({ metric, lines, currentYear, climatology }) =>
                     renderIndicatorPanel(metric, lines, currentYear, climatology)
