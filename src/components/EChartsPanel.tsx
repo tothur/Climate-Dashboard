@@ -18,6 +18,8 @@ interface EChartsPanelProps {
   /** Content between the header and the chart, e.g. a headline value and chart controls. */
   intro?: ReactNode;
   className?: string;
+  /** Element id, so page navigation can jump to this card. */
+  anchorId?: string;
   showExpand?: boolean;
   option: EChartsOption;
   expandLabel?: string;
@@ -32,6 +34,7 @@ export function EChartsPanel({
   meta,
   intro,
   className,
+  anchorId,
   showExpand = true,
   option,
   expandLabel,
@@ -146,7 +149,12 @@ export function EChartsPanel({
   };
 
   return (
-    <article className={["panel", className, isFallbackExpanded ? "panel-expanded" : ""].filter(Boolean).join(" ")} ref={panelRef}>
+    <article
+      id={anchorId}
+      data-toc-anchor={anchorId ? "" : undefined}
+      className={["panel", className, isFallbackExpanded ? "panel-expanded" : ""].filter(Boolean).join(" ")}
+      ref={panelRef}
+    >
       <header className="panel-header">
         <div className="panel-header-main">
           <h2>{title}</h2>

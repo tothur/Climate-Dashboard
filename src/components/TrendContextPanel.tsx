@@ -47,6 +47,8 @@ const GT_PER_MM_SEA_LEVEL = 362;
 interface TrendContextPanelProps {
   title: string;
   subtitle?: string;
+  /** Element id for page navigation. */
+  anchorId?: string;
   data: TrendContextData;
   variant: TrendContextVariant;
   /** Topic colour of the line (bars are sign-coded). */
@@ -245,6 +247,7 @@ function numberFormat(language: Language, decimals: number): Intl.NumberFormat {
 export function TrendContextPanel({
   title,
   subtitle,
+  anchorId,
   data,
   variant,
   domain,
@@ -607,6 +610,7 @@ export function TrendContextPanel({
       className="daily-context-panel trend-context-panel"
       title={title}
       subtitle={subtitle}
+      anchorId={anchorId}
       intro={intro}
       option={option}
       expandLabel={expandLabel}

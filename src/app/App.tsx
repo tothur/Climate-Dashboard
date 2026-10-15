@@ -23,6 +23,13 @@ import { SignalIcon, signalTopic, type SignalTopic } from "../components/SignalI
 import { Sparkline, type SparklineReadout } from "../components/Sparkline";
 import { DailyContextPanel } from "../components/DailyContextPanel";
 import { TrendContextPanel, type TrendContextVariant } from "../components/TrendContextPanel";
+import {
+  IndicatorLocator,
+  IndicatorRail,
+  useIndicatorJump,
+  useIndicatorScrollSpy,
+  type IndicatorNavTopic,
+} from "../components/IndicatorNavigator";
 import { buildTrendContextData, meanBetweenYears, trailingMeanByDays, type TrendContextData } from "../charts/trendContext";
 import { domainColor, domainColorAlpha, type ChartDomain } from "../theme/domainColors";
 import { buildDailyContextData, type DailyContextData } from "../charts/dailyContext";
@@ -3223,18 +3230,6 @@ export function App() {
     createBundledDataSource("Loading live climate feeds; using bundled fallback in the meantime.")
   );
   const [runtimeDataReady, setRuntimeDataReady] = useState(false);
-  const [climateSectionOpen, setClimateSectionOpen] = useState(true);
-  const [indicatorSubsectionsOpen, setIndicatorSubsectionsOpen] = useState<Record<IndicatorSubsectionKey, boolean>>({
-    globalTemperatures: true,
-    temperatureAnomalies: true,
-    regionalTemperatures: true,
-    regionalTemperatureAnomalies: true,
-    oceans: true,
-    earthEnergyImbalance: true,
-    seaIce: true,
-    snowCover: true,
-    iceSheetsAndGlaciers: true,
-  });
   const [overviewMapMode, setOverviewMapMode] = useState<OverviewMapMode>("anomaly");
   const [indicatorTopic, setIndicatorTopic] = useState("temperature");
   const [mapTopic, setMapTopic] = useState("surface");
@@ -3254,8 +3249,6 @@ export function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const topicNavRef = useRef<HTMLDivElement>(null);
-  const topicNavSentinelRef = useRef<HTMLDivElement>(null);
-  const [topicNavStuck, setTopicNavStuck] = useState(false);
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
@@ -3323,34 +3316,18 @@ export function App() {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
-  // The Indicators topic bar sticks under the site header. Track the header's
-  // height (desktop bar or mobile app bar) for the sticky offset, and whether
-  // the bar is currently stuck so it can condense.
+  // Sticky Indicators navigation (side rail, location bar) sits under the
+  // site header: track the header's height (desktop bar or mobile app bar).
   useEffect(() => {
     if (activeView !== "indicators") return;
-    let observer: IntersectionObserver | null = null;
-    const observe = () => {
-      observer?.disconnect();
+    const measure = () => {
       const mobileBar = document.querySelector<HTMLElement>(".mobile-app-bar");
       const header = mobileBar && mobileBar.offsetHeight > 0 ? mobileBar : document.querySelector<HTMLElement>(".dashboard-sidebar");
-      const headerHeight = header?.offsetHeight ?? 0;
-      document.documentElement.style.setProperty("--app-header-height", `${headerHeight}px`);
-      const sentinel = topicNavSentinelRef.current;
-      if (!sentinel || typeof IntersectionObserver === "undefined") return;
-      const offset = headerHeight + 8;
-      observer = new IntersectionObserver(
-        ([entry]) => setTopicNavStuck(!entry.isIntersecting && entry.boundingClientRect.top < offset),
-        { rootMargin: `-${offset}px 0px 0px 0px` }
-      );
-      observer.observe(sentinel);
+      document.documentElement.style.setProperty("--app-header-height", `${header?.offsetHeight ?? 0}px`);
     };
-    observe();
-    window.addEventListener("resize", observe);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", observe);
-      setTopicNavStuck(false);
-    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
   }, [activeView]);
 
   // Keep the active topic in view when the bar scrolls sideways on phones.
@@ -3359,8 +3336,9 @@ export function App() {
     const active = nav?.querySelector<HTMLElement>('button[aria-pressed="true"]');
     if (!nav || !active || nav.scrollWidth <= nav.clientWidth) return;
     const target = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
-    nav.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
-  }, [indicatorTopic, topicNavStuck]);
+    // Instant: a second smooth scroll would cancel a page jump that is under way.
+    nav.scrollLeft = Math.max(0, target);
+  }, [indicatorTopic]);
 
   useEffect(() => {
     let active = true;
@@ -4004,6 +3982,7 @@ export function App() {
       return (
         <DailyContextPanel
           key={metric.key}
+          anchorId={`chart-${metric.key}`}
           title={metricTitle(metric, language)}
           subtitle={formatSourceShortName(metric.source.shortName, language)}
           data={dailyContext}
@@ -4044,6 +4023,7 @@ export function App() {
     return (
       <EChartsPanel
         key={metric.key}
+        anchorId={`chart-${metric.key}`}
         title={metricTitle(metric, language)}
         subtitle={isOverview ? undefined : formatSourceShortName(metric.source.shortName, language)}
         meta={overviewMeta}
@@ -4087,6 +4067,7 @@ export function App() {
     return (
       <TrendContextPanel
         key={metric.key}
+        anchorId={`chart-${metric.key}`}
         title={overrides?.title ?? metricTitle(metric, language)}
         subtitle={overrides?.subtitle ?? formatSourceShortName(metric.source.shortName, language)}
         data={context.data}
@@ -4112,6 +4093,118 @@ export function App() {
     );
   };
 
+  // Indicators navigation: one contents list (topics → sections → charts with
+  // their latest values) for the desktop side rail and the mobile jump sheet.
+  // It mirrors exactly what the page renders below.
+  const indicatorNavTopics = useMemo<IndicatorNavTopic[]>(() => {
+    const navValue = (value: number | null | undefined, decimals: number, unit: string, signed = false) => {
+      if (value == null || !Number.isFinite(value)) return undefined;
+      const formatted = formatNumericValue(value, decimals, language, "").replace(/^-/, "−");
+      return `${signed && value > 0 ? "+" : ""}${formatted}${unit ? ` ${unit}` : ""}`;
+    };
+    const signedKeys = new Set<string>([...DAILY_CONTEXT_ANOMALY_KEYS, ...ICE_SHEET_AND_GLACIER_KEYS, EARTH_ENERGY_IMBALANCE_KEY]);
+    const metricChart = (metric: ClimateMetricSeries) => ({
+      id: `chart-${metric.key}`,
+      title: metricTitle(metric, language),
+      value: navValue(
+        metric.latestValue,
+        metric.decimals,
+        cardUnitLabel(metric.key, metric.unit, language),
+        signedKeys.has(metric.key) && !ICE_SHEET_LOSS_KEYS.has(metric.key)
+      ),
+    });
+    const anomalyCharts = [
+      ...anomalyTemperatureLines.map(({ metric }) => metricChart(metric)),
+      ...(dailyGlobalMeanAnomalyMetric && dailyWarmingContext
+        ? [
+            {
+              id: "chart-daily-global-mean-anomaly",
+              title: t.dailyGlobalTemperatureAnomalyTitle,
+              value: navValue(dailyWarmingContext.rawSeries?.[dailyWarmingContext.rawSeries.length - 1]?.[1], dailyGlobalMeanAnomalyMetric.decimals, "°C", true),
+            },
+          ]
+        : []),
+      ...(dailyGlobalMeanAnomalyMetric && annualWarmingContext
+        ? [
+            {
+              id: "chart-annual-global-mean-anomaly",
+              title: t.annualGlobalTemperatureAnomalyTitle,
+              value: navValue(annualWarmingContext.latest.value, dailyGlobalMeanAnomalyMetric.decimals, "°C", true),
+            },
+          ]
+        : []),
+    ];
+    const sectionCharts: Record<IndicatorSubsectionKey, { title: string; charts: IndicatorNavTopic["sections"][number]["charts"] }> = {
+      globalTemperatures: { title: t.globalTemperaturesSectionTitle, charts: globalTemperatureLines.map(({ metric }) => metricChart(metric)) },
+      temperatureAnomalies: { title: t.temperatureAnomalySectionTitle, charts: anomalyCharts },
+      regionalTemperatures: { title: t.regionalTemperaturesSectionTitle, charts: regionalTemperatureLines.map(({ metric }) => metricChart(metric)) },
+      regionalTemperatureAnomalies: {
+        title: t.regionalTemperatureAnomaliesSectionTitle,
+        charts: regionalTemperatureAnomalyLines.map(({ metric }) => metricChart(metric)),
+      },
+      oceans: { title: t.oceansSectionTitle, charts: oceanMetrics.map(metricChart) },
+      earthEnergyImbalance: {
+        title: t.earthEnergyImbalanceSectionTitle,
+        charts:
+          earthEnergyImbalanceMetric && earthEnergyImbalanceTrendPoints.length
+            ? [
+                {
+                  id: `chart-${earthEnergyImbalanceMetric.key}`,
+                  title: t.earthEnergyImbalanceTitle,
+                  value: navValue(earthEnergyImbalanceLatestMean, 2, "W/m²", true),
+                },
+              ]
+            : [],
+      },
+      seaIce: { title: t.seaIceSectionTitle, charts: seaIceIndicatorLines.map(({ metric }) => metricChart(metric)) },
+      snowCover: { title: t.snowCoverSectionTitle, charts: snowCoverIndicatorLines.map(({ metric }) => metricChart(metric)) },
+      iceSheetsAndGlaciers: { title: t.iceSheetsAndGlaciersSectionTitle, charts: iceSheetAndGlacierMetrics.map(metricChart) },
+    };
+    return indicatorTopics.map((topic) => ({
+      key: topic.key,
+      label: language === "hu" ? topic.hu : topic.en,
+      sections: topic.sections
+        .map((key) => ({ id: `section-${key}`, ...sectionCharts[key as IndicatorSubsectionKey] }))
+        .filter((section) => section.charts.length > 0),
+    }));
+    // indicatorTopics is a constant list rebuilt each render; its content only changes with language.
+  }, [
+    language,
+    t,
+    globalTemperatureLines,
+    anomalyTemperatureLines,
+    regionalTemperatureLines,
+    regionalTemperatureAnomalyLines,
+    oceanMetrics,
+    seaIceIndicatorLines,
+    snowCoverIndicatorLines,
+    iceSheetAndGlacierMetrics,
+    dailyGlobalMeanAnomalyMetric,
+    dailyWarmingContext,
+    annualWarmingContext,
+    earthEnergyImbalanceMetric,
+    earthEnergyImbalanceTrendPoints,
+    earthEnergyImbalanceLatestMean,
+  ]);
+  const indicatorScrollSpy = useIndicatorScrollSpy(indicatorNavTopics.find((topic) => topic.key === indicatorTopic));
+  const jumpToIndicator = useIndicatorJump(indicatorTopic, setIndicatorTopic);
+  // Choosing a topic while scrolled into the page starts the new topic at its
+  // top, once it has rendered (its height differs from the old topic's).
+  const selectIndicatorTopic = (key: string) => {
+    const section = document.getElementById("indicators");
+    if (section && section.getBoundingClientRect().top < 0) jumpToIndicator(key, "indicators");
+    else setIndicatorTopic(key);
+  };
+  const indicatorNavProps = {
+    topics: indicatorNavTopics,
+    activeTopic: indicatorTopic,
+    active: indicatorScrollSpy,
+    ready: runtimeDataReady,
+    language,
+    onSelectTopic: selectIndicatorTopic,
+    onJump: jumpToIndicator,
+  };
+
   const renderIndicatorSubsection = (
     key: IndicatorSubsectionKey,
     title: string,
@@ -4119,31 +4212,15 @@ export function App() {
     content: ReactNode
   ) => {
     if (!indicatorTopics.find((topic) => topic.key === indicatorTopic)?.sections.includes(key)) return null;
-    const open = indicatorSubsectionsOpen[key];
-
     return (
-      <div className="climate-subsection" key={key}>
-        <div className="climate-subsection-header collapsible-subsection-header">
+      <div className="climate-subsection" key={key} id={`section-${key}`} data-toc-anchor="">
+        <div className="climate-subsection-header">
           <div className="climate-subsection-heading">
             <h2>{title}</h2>
             <p>{note}</p>
           </div>
-          <button
-            type="button"
-            className="section-toggle subsection-toggle"
-            aria-expanded={open}
-            onClick={() =>
-              setIndicatorSubsectionsOpen((current) => ({
-                ...current,
-                [key]: !current[key],
-              }))
-            }
-          >
-            <span className={`section-toggle-icon ${open ? "open" : ""}`} aria-hidden="true" />
-            <span>{open ? t.sectionCollapse : t.sectionExpand}</span>
-          </button>
         </div>
-        {open ? <div className="climate-subsection-content">{content}</div> : null}
+        <div className="climate-subsection-content">{content}</div>
       </div>
     );
   };
@@ -5293,6 +5370,9 @@ export function App() {
 
       {activeView === "indicators" ? (
       <section className={`collapsible-section detail-page-section detail-page-indicators indicator-topic-${indicatorTopic}`} id="indicators">
+        <div className="indicators-layout">
+        <IndicatorRail {...indicatorNavProps} />
+        <div className="indicators-main">
         <div className="indicator-page-intro">
           <div className="indicator-topic-copy">
             <span className="indicator-topic-eyebrow">{language === "hu" ? "Az éghajlati rendszer állapota" : "State of the climate system"}</span>
@@ -5300,45 +5380,20 @@ export function App() {
             <p>{language === "hu" ? activeIndicatorTopic.descriptionHu : activeIndicatorTopic.descriptionEn}</p>
           </div>
         </div>
-        <div className="indicator-topic-sentinel" ref={topicNavSentinelRef} aria-hidden="true" />
         <div
           ref={topicNavRef}
-          className={`topic-navigation indicator-topic-navigation segmented-control${topicNavStuck ? " is-stuck" : ""}`}
+          className="topic-navigation indicator-topic-navigation segmented-control"
           role="group"
           aria-label={language === "hu" ? "Mutatócsoport" : "Indicator category"}
         >
           {indicatorTopics.map((topic) => (
-            <button
-              type="button"
-              key={topic.key}
-              aria-pressed={indicatorTopic === topic.key}
-              onClick={() => {
-                setIndicatorTopic(topic.key);
-                setClimateSectionOpen(true);
-                // Switching from the condensed bar deep in the page starts the new topic at its top.
-                if (topicNavStuck) {
-                  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-                  document.getElementById("indicators")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-                }
-              }}
-            >
+            <button type="button" key={topic.key} aria-pressed={indicatorTopic === topic.key} onClick={() => selectIndicatorTopic(topic.key)}>
               {language === "hu" ? topic.hu : topic.en}
             </button>
           ))}
         </div>
-        <header className="section-header">
-          <button
-            type="button"
-            className="section-toggle"
-            aria-expanded={climateSectionOpen}
-            onClick={() => setClimateSectionOpen((open) => !open)}
-          >
-            <span className={`section-toggle-icon ${climateSectionOpen ? "open" : ""}`} aria-hidden="true" />
-            <span>{climateSectionOpen ? t.sectionCollapse : t.sectionExpand}</span>
-          </button>
-        </header>
+        <IndicatorLocator {...indicatorNavProps} />
 
-        {climateSectionOpen ? (
           <div className="section-content">
             {renderIndicatorSubsection(
               "globalTemperatures",
@@ -5368,12 +5423,13 @@ export function App() {
                   {anomalyTemperatureLines.map(({ metric }) => renderMetricSummaryCard(metric, "temperature-anomaly-summary"))}
                 </div>
               </div>
-              <div className="charts-grid climate-grid">
+              <div className="charts-grid climate-grid climate-grid-single">
                 {anomalyTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
                 )}
                 {dailyGlobalMeanAnomalyMetric && dailyWarmingContext ? (
                   <TrendContextPanel
+                    anchorId="chart-daily-global-mean-anomaly"
                     title={t.dailyGlobalTemperatureAnomalyTitle}
                     subtitle={t.dailyGlobalTemperatureAnomalySubtitle}
                     data={dailyWarmingContext}
@@ -5394,6 +5450,7 @@ export function App() {
                 ) : null}
                 {dailyGlobalMeanAnomalyMetric && annualWarmingContext ? (
                   <TrendContextPanel
+                    anchorId="chart-annual-global-mean-anomaly"
                     title={t.annualGlobalTemperatureAnomalyTitle}
                     subtitle={t.annualGlobalTemperatureAnomalySubtitle}
                     data={annualWarmingContext}
@@ -5600,7 +5657,8 @@ export function App() {
               )
             ) : null}
           </div>
-        ) : null}
+        </div>
+        </div>
       </section>
       ) : null}
 

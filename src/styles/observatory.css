@@ -1949,36 +1949,98 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 }
 .observatory .trend-context-key i { width: 14px; height: 10px; border-radius: 2px; box-shadow: none; }
 
-/* Indicators topic bar: sticks under the site header and condenses into a slim frosted bar while stuck. */
-/* "clip" keeps the section's clipping without becoming a scroll container, which would stop the bar sticking. */
+/* Indicators navigation: a sticky side rail on wide screens, a sticky
+   location bar with a jump sheet below that (components/IndicatorNavigator). */
+/* "clip" keeps the section's clipping without becoming a scroll container, which would stop the navigation sticking. */
 .observatory #indicators { overflow: clip; scroll-margin-top: var(--app-header-height, 76px); }
-.observatory .detail-page-indicators .indicator-topic-sentinel { height: 1px; margin-bottom: -1px; }
-.observatory .detail-page-indicators .indicator-topic-navigation {
+/* The layout wrapper is a grid item of the section: without min-width: 0 it grows to its widest chart. */
+.observatory :is(.indicators-layout, .indicators-main) { min-width: 0; }
+.observatory .detail-page-indicators [data-toc-anchor] { scroll-margin-top: calc(var(--app-header-height, 76px) + 16px); }
+.observatory .detail-page-indicators .indicator-topic-navigation { scrollbar-width: none; }
+.observatory .detail-page-indicators .indicator-topic-navigation::-webkit-scrollbar { display: none; }
+.observatory :is(.indicator-rail, .indicator-locator, .indicator-sheet) { --topic-accent: var(--domain-temperature); }
+.observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-regions { --topic-accent: #e78a78; }
+.observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-oceans { --topic-accent: var(--domain-ocean); }
+.observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-ice { --topic-accent: var(--domain-ice); }
+.observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-energy { --topic-accent: var(--domain-forcing); }
+.observatory .indicator-sheet { --topic-accent: var(--indicator-accent); }
+.observatory :is(.indicator-rail, .indicator-sheet) ul { margin: 0; padding: 0; list-style: none; }
+.observatory :is(.indicator-rail, .indicator-sheet, .indicator-locator) button { font-family: inherit; cursor: pointer; }
+
+/* Side rail */
+.observatory .indicator-rail {
   position: sticky;
-  top: calc(var(--app-header-height, 76px) + 8px);
-  z-index: 40;
-  transition: padding .18s ease, background-color .18s ease, box-shadow .18s ease, border-color .18s ease;
+  top: calc(var(--app-header-height, 76px) + 16px);
+  max-height: calc(100vh - var(--app-header-height, 76px) - 32px);
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  scrollbar-width: thin;
 }
-.observatory .detail-page-indicators .indicator-topic-navigation button { transition: min-height .18s ease, font-size .18s ease, background-color .18s ease, color .18s ease; }
-.observatory .detail-page-indicators .indicator-topic-navigation.is-stuck {
-  padding: 4px;
-  border-color: color-mix(in srgb, var(--border) 85%, transparent);
-  background: color-mix(in srgb, var(--panel) 80%, transparent);
-  -webkit-backdrop-filter: saturate(1.4) blur(14px);
-  backdrop-filter: saturate(1.4) blur(14px);
-  box-shadow: 0 12px 30px rgba(2, 6, 23, .10);
+.observatory .indicator-nav-topic + .indicator-nav-topic { margin-top: 2px; }
+.observatory .indicator-nav-topic-button {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 10px; border: 0; border-radius: 8px; background: transparent;
+  color: var(--text); font-size: 14px; font-weight: 600; text-align: left;
 }
-[data-theme="dark"] .observatory .detail-page-indicators .indicator-topic-navigation.is-stuck { box-shadow: 0 12px 30px rgba(0, 0, 0, .35); }
-.observatory .detail-page-indicators .indicator-topic-navigation.is-stuck button { min-height: 36px; font-size: 12.5px; }
-.observatory .detail-page-indicators .indicator-topic-navigation.is-stuck button[aria-pressed="true"] { box-shadow: none; }
-@media (max-width: 900px) {
-  .observatory .detail-page-indicators .indicator-topic-navigation { scrollbar-width: none; }
-  .observatory .detail-page-indicators .indicator-topic-navigation::-webkit-scrollbar { display: none; }
-  .observatory .detail-page-indicators .indicator-topic-navigation.is-stuck button { min-width: 0; padding-inline: 16px; }
+.observatory .indicator-nav-topic-button:hover { background: var(--overview-paper-soft); }
+.observatory .indicator-nav-topic.is-active > .indicator-nav-topic-button { background: color-mix(in srgb, var(--topic-accent) 12%, transparent); color: var(--topic-accent); }
+.observatory .indicator-nav-topic-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--topic-accent); }
+.observatory .indicator-nav-topic-count { margin-left: auto; color: var(--muted); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.observatory .indicator-rail .indicator-nav-sections { margin: 4px 0 8px; }
+.observatory .indicator-nav-section-title {
+  display: block; width: 100%; padding: 10px 10px 4px; border: 0; background: transparent; text-align: left;
+  color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
 }
-@media (prefers-reduced-motion: reduce) {
+.observatory .indicator-nav-section.is-current > .indicator-nav-section-title { color: var(--text); }
+.observatory .indicator-nav-chart {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 10px; width: 100%;
+  padding: 6px 10px 6px 12px; border: 0; border-left: 2px solid transparent; border-radius: 0 6px 6px 0;
+  background: transparent; color: var(--muted); font-size: 13px; text-align: left;
+}
+.observatory .indicator-nav-chart:hover { background: var(--overview-paper-soft); color: var(--text); }
+.observatory .indicator-nav-chart.is-current { border-left-color: var(--topic-accent); background: color-mix(in srgb, var(--topic-accent) 8%, transparent); color: var(--text); }
+.observatory .indicator-nav-chart-title { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.35; }
+.observatory .indicator-nav-chart-value { padding-top: 1px; color: var(--text); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Location bar and jump sheet */
+.observatory .indicator-locator { position: sticky; top: calc(var(--app-header-height, 64px) + 8px); z-index: 40; margin: -30px 0 32px; }
+.observatory .indicator-locator-bar {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 10px 16px;
+  border: 1px solid var(--border); border-radius: 12px; color: var(--text); font-size: 14px; text-align: left;
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px); backdrop-filter: saturate(1.4) blur(14px);
+  box-shadow: 0 10px 26px rgba(2, 6, 23, .08);
+}
+.observatory .indicator-locator-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.observatory .indicator-locator-text strong { color: var(--text); font-weight: 650; }
+.observatory .indicator-locator-chevron { flex: 0 0 auto; width: 8px; height: 8px; margin: -4px 4px 0 0; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); }
+.observatory .indicator-sheet-backdrop { position: fixed; inset: 0; z-index: 90; background: rgba(2, 6, 23, .38); }
+.observatory .indicator-sheet {
+  position: fixed; z-index: 91; left: 12px; right: 12px; bottom: 12px; max-height: min(78vh, 680px); overflow-y: auto;
+  padding: 10px 8px 12px; border: 1px solid var(--border); border-radius: 16px; background: var(--panel);
+  box-shadow: 0 24px 60px rgba(2, 6, 23, .28);
+}
+@media (min-width: 640px) { .observatory .indicator-sheet { left: 50%; right: auto; width: min(560px, calc(100vw - 24px)); transform: translateX(-50%); } }
+.observatory .indicator-sheet-header { position: sticky; top: -10px; z-index: 1; display: flex; align-items: center; gap: 8px; margin: -10px -8px 4px; padding: 10px 8px 8px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.observatory .indicator-sheet-topics { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.observatory .indicator-sheet-topics::-webkit-scrollbar { display: none; }
+.observatory .indicator-sheet-topics button { flex: 0 0 auto; min-height: 40px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.observatory .indicator-sheet-topics button[aria-pressed="true"] { border-color: transparent; background: var(--topic-accent); color: var(--bg); }
+.observatory .indicator-sheet-close { flex: 0 0 auto; width: 40px; height: 40px; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--text); font-size: 22px; line-height: 1; }
+.observatory .indicator-sheet .indicator-nav-chart { min-height: 44px; align-items: center; }
+.observatory .indicator-sheet .indicator-nav-chart-value { padding-top: 0; }
+
+@media (min-width: 1200px) {
+  .observatory .indicators-layout { display: grid; grid-template-columns: 256px minmax(0, 1fr); gap: 0 32px; align-items: start; }
   .observatory .detail-page-indicators .indicator-topic-navigation,
-  .observatory .detail-page-indicators .indicator-topic-navigation button { transition: none; }
+  .observatory .indicator-locator { display: none; }
+}
+@media (max-width: 1199px) {
+  .observatory .indicator-rail { display: none; }
+  .observatory .detail-page-indicators [data-toc-anchor] { scroll-margin-top: calc(var(--app-header-height, 64px) + 72px); }
 }
 
 /* Chart cards side by side share one height: when one card's headline or
@@ -1989,3 +2051,8 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .charts-grid:not(.maps-grid) > .panel { display: flex; flex-direction: column; }
 .observatory .charts-grid:not(.maps-grid) > .panel > .panel-chart-wrap { flex: 1 1 auto; display: flex; flex-direction: column; }
 .observatory .charts-grid:not(.maps-grid) > .panel > .panel-chart-wrap > .panel-chart { flex: 1 1 auto; }
+
+/* Full-width chart rows (e.g. temperature anomalies): one column, every chart at the tall height. */
+.observatory .detail-page-indicators .charts-grid.climate-grid-single { grid-template-columns: minmax(0, 1fr); }
+.observatory .detail-page-indicators .charts-grid.climate-grid-single > .panel .panel-chart { height: 420px; }
+@media (max-width: 900px) { .observatory .detail-page-indicators .charts-grid.climate-grid-single > .panel .panel-chart { height: 360px; } }

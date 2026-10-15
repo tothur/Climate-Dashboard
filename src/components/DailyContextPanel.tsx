@@ -17,6 +17,8 @@ type FreshnessTone = "fresh" | "warning" | "stale";
 interface DailyContextPanelProps {
   title: string;
   subtitle?: string;
+  /** Element id for page navigation. */
+  anchorId?: string;
   data: DailyContextData;
   unit: string;
   /** Shorter unit for the y-axis name when the full unit is long. */
@@ -139,6 +141,7 @@ function numberFormat(language: Language, decimals: number): Intl.NumberFormat {
 export function DailyContextPanel({
   title,
   subtitle,
+  anchorId,
   data,
   unit,
   axisUnit,
@@ -299,6 +302,7 @@ export function DailyContextPanel({
       className={`daily-context-panel${summary ? " is-summary" : ""}`}
       title={title}
       subtitle={subtitle}
+      anchorId={anchorId}
       showExpand={!summary}
       intro={intro}
       option={option}
