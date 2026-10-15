@@ -1,5 +1,6 @@
 import type { EChartsOption } from "echarts";
 import type { DailyPoint } from "../domain/model";
+import { domainColorAlpha } from "../theme/domainColors";
 
 /**
  * Daily "context" chart: the current year against the 1991–2020 normal range,
@@ -46,6 +47,8 @@ export interface DailyContextData {
   recordDays: number[];
   latestRank: DailyContextRank | null;
   latestAnomaly: number | null;
+  /** Current-year mean so far, ranked against other years over the same days. */
+  yearToDate: { mean: number; rank: number; total: number } | null;
   baselineLabel: string;
 }
 
@@ -171,6 +174,23 @@ export function buildDailyContextData(
     if (rank === 1) recordDays.push(axisDay);
   }
 
+  let yearToDate: DailyContextData["yearToDate"] = null;
+  if (current.length) {
+    const days = current.map(([axisDay]) => axisDay);
+    const mean = current.reduce((sum, [, value]) => sum + value, 0) / current.length;
+    let rank = 1;
+    let total = 1;
+    for (const year of years) {
+      if (year === currentYear) continue;
+      const values = days.map((axisDay) => byYear.get(year)?.get(axisDay)).filter((value): value is number => value != null);
+      // Compare only years covering (nearly) the same stretch of the calendar.
+      if (values.length < days.length * 0.9) continue;
+      total += 1;
+      if (beats(values.reduce((sum, value) => sum + value, 0) / values.length, mean)) rank += 1;
+    }
+    if (total >= MIN_BASELINE_YEARS) yearToDate = { mean, rank, total };
+  }
+
   const latestNormal = normal.get(latest.axisDay);
   return {
     direction,
@@ -184,6 +204,7 @@ export function buildDailyContextData(
     recordDays,
     latestRank: ranks.get(latest.axisDay) ?? null,
     latestAnomaly: latestNormal ? latest.value - latestNormal.mean : null,
+    yearToDate,
     baselineLabel: `${options.baselineStartYear}–${options.baselineEndYear}`,
   };
 }
@@ -199,6 +220,10 @@ export interface DailyContextOptionArgs {
   compact: boolean;
   dark: boolean;
   monthLabels: string[];
+  /** Anomaly series: a zero line, signed values and warm/cool shading between the current year and zero. */
+  anomaly?: boolean;
+  /** Dashed reference levels, e.g. the El Niño and La Niña thresholds. */
+  thresholds?: Array<{ value: number; label: string }>;
   formatNumber: (value: number, decimals: number) => string;
   formatDay: (axisDay: number) => string;
   labels: {
@@ -221,6 +246,7 @@ export function dailyContextPalette(dark: boolean) {
         axisLabel: "#a5b4b0",
         grid: "rgba(148, 163, 184, 0.14)",
         today: "rgba(165, 180, 176, 0.55)",
+        zero: "rgba(238, 243, 239, 0.42)",
         surface: "#141e1e",
         tooltipBg: "rgba(20, 30, 30, 0.96)",
         tooltipBorder: "rgba(148, 163, 184, 0.40)",
@@ -235,6 +261,7 @@ export function dailyContextPalette(dark: boolean) {
         axisLabel: "#59665f",
         grid: "rgba(25, 39, 34, 0.08)",
         today: "rgba(89, 102, 95, 0.5)",
+        zero: "rgba(25, 39, 34, 0.38)",
         surface: "#ffffff",
         tooltipBg: "rgba(255, 255, 255, 0.98)",
         tooltipBorder: "rgba(25, 39, 34, 0.16)",
@@ -296,11 +323,14 @@ export function buildDailyContextOption({
   compact,
   dark,
   monthLabels,
-  formatNumber,
+  anomaly = false,
+  thresholds = [],
+  formatNumber: formatUnsigned,
   formatDay,
   labels,
 }: DailyContextOptionArgs): EChartsOption {
   const palette = dailyContextPalette(dark);
+  const formatNumber = (value: number, digits: number) => (anomaly && value > 0 ? "+" : "") + formatUnsigned(value, digits);
   const [xMin, xMax] = dailyContextXRange(data, range);
   const inView = (axisDay: number) => axisDay >= xMin && axisDay <= xMax;
   const latestAxisDay = data.latest?.axisDay ?? AXIS_DAYS;
@@ -311,6 +341,7 @@ export function buildDailyContextOption({
   for (const [axisDay, normal] of data.normal) if (inView(axisDay)) visibleValues.push(normal.low, normal.high);
   for (const entry of visiblePastYears) for (const [axisDay, value] of entry.points) if (inView(axisDay)) visibleValues.push(value);
   for (const [axisDay, value] of data.current) if (inView(axisDay)) visibleValues.push(value);
+  if (anomaly) visibleValues.push(0, ...thresholds.map((threshold) => threshold.value));
   const rawMin = visibleValues.length ? Math.min(...visibleValues) : 0;
   const rawMax = visibleValues.length ? Math.max(...visibleValues) : 1;
   const padding = Math.max((rawMax - rawMin) * 0.08, 0.05);
@@ -331,6 +362,25 @@ export function buildDailyContextOption({
     return range === "year" ? monthLabels[axisDayMonthDay(axisDay).month] ?? "" : formatDay(axisDay);
   };
   const lastPoint = data.current[data.current.length - 1];
+  // Shade the current year's departure from zero with the shared diverging
+  // pair: warm (temperature red) above, cool (ocean blue) below.
+  const shadeAlpha = dark ? 0.26 : 0.18;
+  const anomalyShading = anomaly
+    ? [
+        { color: domainColorAlpha("temperature", dark, shadeAlpha), clamp: (value: number) => Math.max(value, 0) },
+        { color: domainColorAlpha("ocean", dark, shadeAlpha), clamp: (value: number) => Math.min(value, 0) },
+      ].map(({ color, clamp }) => ({
+        type: "line" as const,
+        data: data.current.map(([axisDay, value]) => [axisDay, clamp(value)]),
+        showSymbol: false,
+        silent: true,
+        z: 1,
+        tooltip: { show: false },
+        lineStyle: { width: 0 },
+        areaStyle: { color, origin: 0 },
+        emphasis: { disabled: true },
+      }))
+    : [];
 
   const tooltipFormatter = (params: unknown) => {
     const rows = Array.isArray(params) ? (params as Array<{ axisValue?: number }>) : [];
@@ -465,6 +515,7 @@ export function buildDailyContextOption({
           }),
         }),
       },
+      ...anomalyShading,
       ...visiblePastYears.map((entry) => ({
         name: String(entry.year),
         type: "line" as const,
@@ -520,15 +571,21 @@ export function buildDailyContextOption({
               data: [{ coord: lastPoint }],
             }
           : undefined,
-        markLine: data.latest
-          ? {
-              silent: true,
-              symbol: ["none", "none"],
-              label: { show: false },
-              lineStyle: { color: palette.today, type: [2, 3], width: 1 },
-              data: [{ xAxis: latestAxisDay }],
-            }
-          : undefined,
+        markLine: {
+          silent: true,
+          symbol: ["none", "none"],
+          label: { show: false },
+          lineStyle: { color: palette.today, type: [2, 3], width: 1 },
+          data: [
+            ...(data.latest ? [{ xAxis: latestAxisDay }] : []),
+            ...(anomaly ? [{ yAxis: 0, lineStyle: { color: palette.zero, type: "solid" as const, width: 1 } }] : []),
+            ...thresholds.map((threshold) => ({
+              yAxis: threshold.value,
+              lineStyle: { color: palette.today, type: [5, 4], width: 1 },
+              label: { show: true, formatter: threshold.label, position: "insideStartTop" as const, color: palette.axisLabel, fontSize: 11 },
+            })),
+          ],
+        },
       },
       {
         name: labels.record,

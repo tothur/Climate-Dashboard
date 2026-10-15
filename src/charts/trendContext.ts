@@ -25,6 +25,8 @@ export interface TrendContextData {
   points: Array<[number, number]>;
   /** Unsmoothed values by time, when the plotted line is a running mean. */
   raw: Map<number, number> | null;
+  /** The same unsmoothed values in date order, for drawing them. */
+  rawSeries: Array<[number, number]> | null;
   first: { time: number; value: number };
   latest: { date: string; time: number; value: number };
   /** Least-squares slope per year over the whole record, and over the last 10 years. */
@@ -103,18 +105,19 @@ export function buildTrendContextData(
     };
   }
 
-  const raw = options.rawPoints
-    ? new Map(
-        options.rawPoints
-          .map((point) => [toTime(point.date), point.value] as const)
-          .filter(([time, value]) => Number.isFinite(time) && Number.isFinite(value))
-      )
+  const rawSeries = options.rawPoints
+    ? options.rawPoints
+        .map((point) => [toTime(point.date), point.value] as [number, number])
+        .filter(([time, value]) => Number.isFinite(time) && Number.isFinite(value))
+        .sort((a, b) => a[0] - b[0])
     : null;
+  const raw = rawSeries ? new Map(rawSeries) : null;
 
   return {
     kind: options.kind,
     points: plotted,
     raw,
+    rawSeries,
     first: { time: plotted[0][0], value: plotted[0][1] },
     latest: { date: lastDate, time: lastTime, value: lastValue },
     fullRatePerYear: fullFit ? fullFit.slope * YEAR_MS : null,
@@ -199,13 +202,36 @@ export interface TrendContextOptionArgs {
   /** Shade between the line and zero (energy imbalance). */
   zeroArea?: boolean;
   showTrend?: boolean;
+  /** Draw the unsmoothed values faintly beneath a running-mean line. */
+  showRaw?: boolean;
+  /** Dashed reference levels, e.g. the 1.5 °C and 2 °C warming levels. */
+  references?: Array<{ value: number; label: string }>;
+  /** Bars: the latest year is incomplete (year to date) and drawn as provisional. */
+  partialLatest?: boolean;
+  /** Prefix positive axis and label values with "+". */
+  signed?: boolean;
+  /**
+   * Bars: whether a positive value is the warm side (warming) rather than a
+   * gain (glacier balance). Decides which side of zero is red and which blue.
+   */
+  positiveIsWarm?: boolean;
   formatNumber: (value: number, decimals: number, signed?: boolean) => string;
   formatTooltipDate: (time: number) => string;
   labels: {
     trend: string;
     runningMean: string;
+    partial?: string;
     tooltipExtra: (time: number, value: number) => string | null;
   };
+}
+
+function referenceLines(references: Array<{ value: number; label: string }>, palette: ReturnType<typeof trendContextPalette>) {
+  return references.map((reference) => ({
+    yAxis: reference.value,
+    lineStyle: { color: palette.trend, type: [5, 4] as number[], width: 1 },
+    // Labelled at the left so they never collide with the line's end label.
+    label: { show: true, formatter: reference.label, position: "insideStartTop" as const, color: palette.axisLabel, fontSize: 11 },
+  }));
 }
 
 export function buildTrendContextOption(args: TrendContextOptionArgs): EChartsOption {
@@ -238,17 +264,24 @@ function buildLineOption({
   inverse = false,
   zeroArea = false,
   showTrend = true,
+  showRaw = false,
+  references = [],
+  signed = false,
   formatNumber,
   formatTooltipDate,
   labels,
 }: TrendContextOptionArgs): EChartsOption {
   const palette = trendContextPalette(dark, domain);
+  const formatTick = (value: number, digits: number) => formatNumber(value, digits, signed && value > 0);
   const xMax = data.latest.time;
   const xMin = range === "recent" ? Math.max(data.first.time, xMax - RECENT_YEARS * YEAR_MS) : data.first.time;
   const fit = showTrend ? data.fullFit : null;
   const trendLine: Array<[number, number]> = fit ? [data.first.time, xMax].map((time) => [time, fit.slope * time + fit.intercept] as [number, number]) : [];
 
   const visible = data.points.filter(([time]) => time >= xMin).map(([, value]) => value);
+  const rawInView = showRaw && data.rawSeries ? data.rawSeries.filter(([time]) => time >= xMin) : [];
+  for (const [, value] of rawInView) visible.push(value);
+  for (const reference of references) visible.push(reference.value);
   if (fit) visible.push(fit.slope * xMin + fit.intercept, fit.slope * xMax + fit.intercept);
   if (zeroArea) visible.push(0);
   const rawMin = Math.min(...visible);
@@ -276,7 +309,7 @@ function buildLineOption({
         return (
           `<b>${formatTooltipDate(time)}</b><br/>` +
           `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${palette.signal}"></span>` +
-          `<b>${formatNumber(value, decimals)} ${unit}</b>` +
+          `<b>${formatTick(value, decimals)} ${unit}</b>` +
           (extra ? `<br/>${muted(extra)}` : "")
         );
       },
@@ -303,10 +336,26 @@ function buildLineOption({
       nameTextStyle: { color: palette.axisLabel, fontSize: 11, align: "right", padding: [0, 6, 0, 0] },
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: palette.axisLabel, fontSize: 11, formatter: (value: number) => formatNumber(value, scale.decimals) },
+      axisLabel: { color: palette.axisLabel, fontSize: 11, formatter: (value: number) => formatTick(value, scale.decimals) },
       splitLine: { lineStyle: { color: palette.grid, width: 1 } },
     },
     series: [
+      ...(rawInView.length
+        ? [
+            {
+              id: "raw",
+              type: "line" as const,
+              data: rawInView,
+              silent: true,
+              showSymbol: false,
+              sampling: "lttb" as const,
+              z: 2,
+              tooltip: { show: false },
+              lineStyle: { color: domainColorAlpha(domain, dark, dark ? 0.4 : 0.32), width: 0.8 },
+              emphasis: { disabled: true },
+            },
+          ]
+        : []),
       ...(trendLine.length
         ? [
             {
@@ -336,7 +385,7 @@ function buildLineOption({
         emphasis: { disabled: true },
         endLabel: {
           show: true,
-          formatter: () => formatNumber(lastPoint[1], decimals),
+          formatter: () => formatTick(lastPoint[1], decimals),
           color: palette.tooltipText,
           fontSize: 12,
           fontWeight: 600,
@@ -350,31 +399,48 @@ function buildLineOption({
           label: { show: false },
           data: [{ coord: lastPoint }],
         },
-        markLine: zeroArea
-          ? {
-              silent: true,
-              symbol: ["none", "none"],
-              label: { show: false },
-              lineStyle: { color: palette.zero, type: "solid", width: 1 },
-              data: [{ yAxis: 0 }],
-            }
-          : undefined,
+        markLine:
+          zeroArea || references.length
+            ? {
+                silent: true,
+                symbol: ["none", "none"],
+                label: { show: false },
+                lineStyle: { color: palette.zero, type: "solid", width: 1 },
+                data: [...(zeroArea ? [{ yAxis: 0 }] : []), ...referenceLines(references, palette)],
+              }
+            : undefined,
       },
     ],
   } as EChartsOption;
 }
 
-function buildAnnualBarsOption({ data, unit, axisUnit, decimals, compact, dark, domain, formatNumber, labels }: TrendContextOptionArgs): EChartsOption {
+function buildAnnualBarsOption({
+  data,
+  unit,
+  axisUnit,
+  decimals,
+  compact,
+  dark,
+  domain,
+  references = [],
+  partialLatest = false,
+  signed = false,
+  positiveIsWarm = false,
+  formatNumber,
+  labels,
+}: TrendContextOptionArgs): EChartsOption {
   const palette = trendContextPalette(dark, domain);
+  const formatTick = (value: number, digits: number) => formatNumber(value, digits, signed && value > 0);
   const years = data.points.map(([time]) => String(new Date(time).getUTCFullYear()));
   const values = data.points.map(([, value]) => value);
   const runningMean = new Map(data.annual?.runningMean ?? []);
-  const visible = [...values, ...runningMean.values(), 0];
+  const visible = [...values, ...runningMean.values(), 0, ...references.map((reference) => reference.value)];
   const rawMin = Math.min(...visible);
   const rawMax = Math.max(...visible);
   const pad = Math.max((rawMax - rawMin) * 0.06, 1e-6);
-  const scale = niceScale(rawMin - pad, rawMax + pad);
+  const scale = niceScale(values.every((value) => value >= 0) ? Math.max(0, rawMin - pad) : rawMin - pad, rawMax + pad);
   const lastIndex = values.length - 1;
+  const isWarmSide = (value: number) => (positiveIsWarm ? value >= 0 : value < 0);
   // Long records in narrow panels need sparser year labels.
   const labelEvery = compact || years.length > 60 ? 10 : 5;
   const muted = (text: string) => `<span style="color:${palette.tooltipMuted};font-weight:400">${text}</span>`;
@@ -382,7 +448,8 @@ function buildAnnualBarsOption({ data, unit, axisUnit, decimals, compact, dark, 
   return {
     animation: false,
     aria: { enabled: true },
-    grid: { left: compact ? 50 : 58, right: compact ? 14 : 20, top: 22, bottom: 32 },
+    // Room on the right for a provisional bar's "YTD" label.
+    grid: { left: compact ? 50 : 58, right: partialLatest ? (compact ? 40 : 46) : compact ? 14 : 20, top: 22, bottom: 32 },
     tooltip: {
       ...tooltipBase(palette),
       axisPointer: { type: "shadow" as const, shadowStyle: { color: palette.grid } },
@@ -393,9 +460,10 @@ function buildAnnualBarsOption({ data, unit, axisUnit, decimals, compact, dark, 
         const value = values[index];
         const mean = runningMean.get(years[index]);
         const extra = labels.tooltipExtra(data.points[index][0], value);
+        const partial = partialLatest && index === lastIndex && labels.partial ? ` ${muted(labels.partial)}` : "";
         return (
-          `<b>${years[index]}</b><br/>` +
-          `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${value < 0 ? palette.loss : palette.gain}"></span>` +
+          `<b>${years[index]}</b>${partial}<br/>` +
+          `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${isWarmSide(value) ? palette.loss : palette.gain}"></span>` +
           `<b>${formatNumber(value, decimals, true)} ${unit}</b>` +
           (mean != null ? `<br/>${muted(`${labels.runningMean}: ${formatNumber(mean, decimals, true)} ${unit}`)}` : "") +
           (extra ? `<br/>${muted(extra)}` : "")
@@ -420,7 +488,7 @@ function buildAnnualBarsOption({ data, unit, axisUnit, decimals, compact, dark, 
       nameTextStyle: { color: palette.axisLabel, fontSize: 11, align: "right", padding: [0, 6, 0, 0] },
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: palette.axisLabel, fontSize: 11, formatter: (value: number) => formatNumber(value, scale.decimals) },
+      axisLabel: { color: palette.axisLabel, fontSize: 11, formatter: (value: number) => formatTick(value, scale.decimals) },
       splitLine: { lineStyle: { color: palette.grid, width: 1 } },
     },
     series: [
@@ -430,32 +498,37 @@ function buildAnnualBarsOption({ data, unit, axisUnit, decimals, compact, dark, 
         type: "bar",
         barCategoryGap: "22%",
         z: 2,
-        data: values.map((value, index) => ({
+        data: values.map((value, index) => {
+          const color = isWarmSide(value) ? palette.loss : palette.gain;
+          const provisional = partialLatest && index === lastIndex;
+          return {
           value,
           itemStyle: {
-            color: value < 0 ? palette.loss : palette.gain,
+            color: provisional ? domainColorAlpha(isWarmSide(value) ? "temperature" : "ocean", dark, 0.28) : color,
             opacity: index === lastIndex ? 1 : 0.72,
             borderRadius: value < 0 ? [0, 0, 2, 2] : [2, 2, 0, 0],
+            ...(provisional ? { borderColor: color, borderWidth: 1.5, borderType: "dashed" as const } : {}),
           },
           label:
             index === lastIndex
               ? {
                   show: true,
                   position: value < 0 ? "bottom" : "top",
-                  formatter: () => formatNumber(value, decimals, true),
+                  formatter: () => `${formatNumber(value, decimals, true)}${provisional && labels.partial ? ` ${labels.partial}` : ""}`,
                   color: palette.tooltipText,
                   fontSize: 12,
                   fontWeight: 600,
                 }
               : undefined,
-        })),
+          };
+        }),
         emphasis: { disabled: true },
         markLine: {
           silent: true,
           symbol: ["none", "none"],
           label: { show: false },
           lineStyle: { color: palette.zero, type: "solid", width: 1 },
-          data: [{ yAxis: 0 }],
+          data: [{ yAxis: 0 }, ...referenceLines(references, palette)],
         },
       },
       {

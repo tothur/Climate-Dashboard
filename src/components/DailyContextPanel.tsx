@@ -29,6 +29,14 @@ interface DailyContextPanelProps {
   /** False while the dashboard still shows bundled placeholder data. */
   ready: boolean;
   latestDateLabel: string;
+  /**
+   * Anomaly series (already relative to 1991–2020): a zero line, signed values,
+   * warm/cool shading, and a year-to-date chip in place of the "vs normal" chip.
+   */
+  anomaly?: boolean;
+  thresholds?: Array<{ value: number; label: string }>;
+  /** An extra headline chip, e.g. the ENSO phase for Niño 3.4. */
+  extraChip?: { text: string; alert?: boolean } | null;
   freshnessLabel?: string;
   freshnessTone?: FreshnessTone;
   expandLabel?: string;
@@ -74,6 +82,8 @@ function copyFor(language: Language, direction: DailyContextRecordDirection, cad
       oppositeOnDate: (day: string) => `Az eddigi ${opposite} ${day}`,
       rankedDay: (rank: number, total: number, day: string) => `${day}: ${rank}. ${extreme} ${total} év közül`,
       recordDays: (count: number, year: number) => `${year}: ${count} ${recordAdjective} ${monthly ? "hónap" : "nap"}`,
+      yearToDate: (year: number, value: string, rank: number, total: number) =>
+        rank === 1 ? `${year} eddig: ${value} · az eddigi ${extreme}` : `${year} eddig: ${value} · ${total} évből a ${rank}. ${extreme}`,
     };
   }
   return {
@@ -93,6 +103,8 @@ function copyFor(language: Language, direction: DailyContextRecordDirection, cad
     rankedDay: (rank: number, total: number, day: string) => `${englishOrdinal(rank)} ${extreme} ${day} of ${total}`,
     recordDays: (count: number, year: number) =>
       `${count} ${recordAdjective} ${monthly ? (count === 1 ? "month" : "months") : count === 1 ? "day" : "days"} in ${year}`,
+    yearToDate: (year: number, value: string, rank: number, total: number) =>
+      rank === 1 ? `${year} so far: ${value} · ${extreme} on record` : `${year} so far: ${value} · ${englishOrdinal(rank)} ${extreme} of ${total}`,
   };
 }
 
@@ -132,6 +144,9 @@ export function DailyContextPanel({
   dark,
   ready,
   latestDateLabel,
+  anomaly: anomalyMode = false,
+  thresholds,
+  extraChip,
   freshnessLabel,
   freshnessTone,
   expandLabel,
@@ -146,6 +161,7 @@ export function DailyContextPanel({
     const formatted = numberFormat(language, digits).format(value);
     return formatted.replace(/^-/, "−");
   };
+  const formatSigned = (value: number, digits: number) => (value > 0 ? "+" : "") + formatNumber(value, digits);
   const formatDay = (axisDay: number) => {
     const { month, day } = axisDayMonthDay(axisDay);
     if (monthly) return monthNameFormats[language].format(new Date(Date.UTC(2024, month, 1)));
@@ -164,6 +180,8 @@ export function DailyContextPanel({
         compact,
         dark,
         monthLabels,
+        anomaly: anomalyMode,
+        thresholds,
         formatNumber,
         formatDay,
         labels: {
@@ -176,7 +194,7 @@ export function DailyContextPanel({
         },
       }),
     // formatNumber, formatDay and copy derive from language and monthLabels.
-    [data, range, hiddenYears, unit, axisUnit, decimals, compact, dark, monthLabels, language]
+    [data, range, hiddenYears, unit, axisUnit, decimals, compact, dark, monthLabels, language, anomalyMode, thresholds]
   );
 
   const toggleYear = (year: number) =>
@@ -212,7 +230,7 @@ export function DailyContextPanel({
         <p className="daily-context-value">
           {ready && latest ? (
             <>
-              {formatNumber(latest.value, decimals)}
+              {anomalyMode ? formatSigned(latest.value, decimals) : formatNumber(latest.value, decimals)}
               <small>{unit}</small>
             </>
           ) : (
@@ -221,12 +239,18 @@ export function DailyContextPanel({
         </p>
         {ready ? (
           <div className="daily-context-chips">
-            {anomaly != null ? (
+            {extraChip ? <span className={`daily-context-chip ${extraChip.alert ? "is-alert" : ""}`}>{extraChip.text}</span> : null}
+            {!anomalyMode && anomaly != null ? (
               <span className={`daily-context-chip ${anomalyIsAlert ? "is-alert" : "is-calm"}`}>
                 {`${anomaly >= 0 ? "+" : "−"}${formatNumber(Math.abs(anomaly), decimals)} ${unit} ${copy.vsNormal}`}
               </span>
             ) : null}
             {rankText ? <span className={`daily-context-chip ${rank?.rank === 1 ? "is-alert" : ""}`}>{rankText}</span> : null}
+            {anomalyMode && data.yearToDate ? (
+              <span className={`daily-context-chip ${data.yearToDate.rank === 1 ? "is-alert" : ""}`}>
+                {copy.yearToDate(data.currentYear, `${formatSigned(data.yearToDate.mean, decimals)} ${unit}`, data.yearToDate.rank, data.yearToDate.total)}
+              </span>
+            ) : null}
             {recordDaysText ? <span className="daily-context-chip">{recordDaysText}</span> : null}
           </div>
         ) : null}

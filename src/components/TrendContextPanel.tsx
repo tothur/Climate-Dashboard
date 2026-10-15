@@ -12,8 +12,14 @@ type FreshnessTone = "fresh" | "warning" | "stale";
  * - loss: cumulative mass lost since the record began (ice sheets)
  * - imbalance: a rate around zero shown as a 12-month mean (energy imbalance)
  * - annual: yearly balances where negative is a loss (glaciers)
+ * - warming-daily: daily global warming above pre-industrial, shown as a
+ *   365-day mean over the faint daily values, against the 1.5 °C and 2 °C levels
+ * - warming-annual: annual global warming above pre-industrial, the current
+ *   year drawn as provisional (year to date)
  */
-export type TrendContextVariant = "rise" | "loss" | "imbalance" | "annual";
+export type TrendContextVariant = "rise" | "loss" | "imbalance" | "annual" | "warming-daily" | "warming-annual";
+
+const WARMING_LEVELS = [1.5, 2];
 
 /** Roughly 362 Gt of ice raises global mean sea level by 1 mm. */
 const GT_PER_MM_SEA_LEVEL = 362;
@@ -34,6 +40,10 @@ interface TrendContextPanelProps {
   ready: boolean;
   /** Imbalance only: the reference period mean the latest value is compared with. */
   baseline?: { label: string; mean: number | null };
+  /** Warming variants: the reference period the anomalies are measured from, e.g. "1850–1900". */
+  referenceLabel?: string;
+  /** Warming-annual only: the latest year is still in progress. */
+  partialLatest?: boolean;
   freshnessLabel?: string;
   freshnessTone?: FreshnessTone;
   expandLabel?: string;
@@ -71,6 +81,21 @@ const COPY = {
     gainYear: (year: number) => `Mass gain in ${year}`,
     lossYears: (count: number, total: number) => `Losses in ${count} of the last ${total} years`,
     cumulative: (value: string, year: number) => `Cumulative since ${year}: ${value}`,
+    vsReference: (label: string) => `vs ${label}`,
+    dailyValues: "Daily values",
+    mean365: "365-day mean",
+    warmingLevels: "1.5 °C and 2 °C levels",
+    mean365Chip: (value: string) => `365-day mean: ${value}`,
+    daysAbove: (count: number, level: string, year: number) => `${count} ${count === 1 ? "day" : "days"} at or above ${level} in ${year}`,
+    warmestDay: (value: string, date: string) => `Warmest day on record: ${value}, ${date}`,
+    dailyValue: (value: string) => `Daily value: ${value}`,
+    yearToDate: "year to date",
+    partial: "YTD",
+    annualMean: "Annual mean",
+    recordYear: (year: number, value: string) => `Warmest year on record: ${year}, ${value}`,
+    yearRank: (year: number, value: string, rank: number) =>
+      `${year}: ${value} · ${rank === 1 ? "warmest year on record" : `${englishOrdinal(rank)} warmest year`}`,
+    recentTop: (count: number) => `${count} of the 10 warmest years were in the last decade`,
   },
   hu: {
     all: "Teljes",
@@ -96,12 +121,32 @@ const COPY = {
     gainYear: (year: number) => `${year}: tömeggyarapodás`,
     lossYears: (count: number, total: number) => `Az utolsó ${total} évből ${count}-ben veszteség`,
     cumulative: (value: string, year: number) => `Összesen ${year} óta: ${value}`,
+    // "1850" is read "ezernyolcszázötven", so the article is "az".
+    vsReference: (label: string) => `${/^1/.test(label) ? "az" : "a"} ${label}-as szinthez képest`,
+    dailyValues: "Napi értékek",
+    mean365: "365 napos átlag",
+    warmingLevels: "1,5 °C-os és 2 °C-os szint",
+    mean365Chip: (value: string) => `365 napos átlag: ${value}`,
+    daysAbove: (count: number, level: string, year: number) => `${year}: ${count} nap legalább ${level}`,
+    warmestDay: (value: string, date: string) => `Rekordmeleg nap: ${value}, ${date}`,
+    dailyValue: (value: string) => `Napi érték: ${value}`,
+    yearToDate: "év eleje óta",
+    partial: "eddig",
+    annualMean: "Éves átlag",
+    recordYear: (year: number, value: string) => `Rekordmeleg év: ${year}, ${value}`,
+    yearRank: (year: number, value: string, rank: number) =>
+      `${year}: ${value} · ${rank === 1 ? "a legmelegebb év" : `${rank}. legmelegebb év`}`,
+    recentTop: (count: number) => `A 10 legmelegebb évből ${count} az utolsó évtizedben volt`,
   },
 } as const;
 
 const monthYearFormats = {
   en: new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }),
   hu: new Intl.DateTimeFormat("hu-HU", { month: "long", year: "numeric", timeZone: "UTC" }),
+};
+const fullDateFormats = {
+  en: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }),
+  hu: new Intl.DateTimeFormat("hu-HU", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }),
 };
 const shortMonthYearFormats = {
   en: new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" }),
@@ -136,6 +181,8 @@ export function TrendContextPanel({
   dark,
   ready,
   baseline,
+  referenceLabel = "",
+  partialLatest = false,
   freshnessLabel,
   freshnessTone,
   expandLabel,
@@ -153,6 +200,9 @@ export function TrendContextPanel({
     return signed ? `+${formatted}` : formatted;
   };
   const seaLevelMm = (gigatonnes: number) => formatNumber(gigatonnes / GT_PER_MM_SEA_LEVEL, 1);
+  const warming = variant === "warming-daily" || variant === "warming-annual";
+  const levelLabel = (level: number) => `${formatNumber(level, Number.isInteger(level) ? 0 : 1)} °C`;
+  const references = warming ? WARMING_LEVELS.map((level) => ({ value: level, label: levelLabel(level) })) : undefined;
 
   const option = useMemo(
     () =>
@@ -167,13 +217,23 @@ export function TrendContextPanel({
         domain,
         inverse: variant === "loss",
         zeroArea: variant === "imbalance",
-        showTrend: isLine,
+        showTrend: isLine && !warming,
+        showRaw: variant === "warming-daily",
+        references,
+        partialLatest: variant === "warming-annual" && partialLatest,
+        signed: warming,
+        positiveIsWarm: warming,
         formatNumber,
-        formatTooltipDate: (time) => shortMonthYearFormats[language].format(new Date(time)),
+        formatTooltipDate: (time) => (variant === "warming-daily" ? fullDateFormats : shortMonthYearFormats)[language].format(new Date(time)),
         labels: {
-          trend: copy.trendSince(startYear),
+          trend: variant === "warming-daily" ? copy.mean365 : copy.trendSince(startYear),
           runningMean: copy.runningMean,
+          partial: copy.partial,
           tooltipExtra: (time, value) => {
+            if (variant === "warming-daily") {
+              const raw = data.raw?.get(time);
+              return raw == null ? null : copy.dailyValue(`${formatNumber(raw, decimals, raw > 0)} ${unit}`);
+            }
             if (variant === "rise") return copy.sinceStart(`${formatNumber(value - data.first.value, decimals, true)} ${unit}`, startYear);
             if (variant === "loss") return copy.seaLevelShort(seaLevelMm(value));
             if (variant === "imbalance") {
@@ -185,14 +245,22 @@ export function TrendContextPanel({
         },
       }),
     // formatNumber, copy and the tooltip text derive from language.
-    [data, range, unit, axisUnit, decimals, compact, dark, domain, variant, isLine, language, startYear]
+    [data, range, unit, axisUnit, decimals, compact, dark, domain, variant, isLine, language, startYear, partialLatest]
   );
 
   const latest = data.latest;
   const latestYear = Number(latest.date.slice(0, 4));
   const latestPeriod = monthYearFormats[language].format(new Date(latest.time));
+  const signedValue = (value: number, digits = decimals) => `${formatNumber(value, digits, value > 0)} ${unit}`;
+  // The daily warming headline is the latest day itself; the line is its 365-day mean.
+  const latestRaw = variant === "warming-daily" ? data.rawSeries?.[data.rawSeries.length - 1] ?? null : null;
+  const headlineValue = latestRaw ? latestRaw[1] : latest.value;
   const kicker =
-    variant === "annual"
+    variant === "warming-daily"
+      ? `${fullDateFormats[language].format(new Date(latestRaw?.[0] ?? latest.time))} · ${copy.vsReference(referenceLabel)}`
+      : variant === "warming-annual"
+        ? `${latestYear}${partialLatest ? ` · ${copy.yearToDate}` : ""} · ${copy.vsReference(referenceLabel)}`
+        : variant === "annual"
       ? String(latestYear)
       : variant === "imbalance"
         ? copy.meanTo(latestPeriod)
@@ -217,6 +285,30 @@ export function TrendContextPanel({
       chips.push({ text: copy.baselineRatio(formatNumber(latest.value / baseline.mean, 1), baseline.label), alert: latest.value > baseline.mean });
     }
     if (data.fullRatePerYear != null) chips.push({ text: copy.decadeTrend(formatNumber(data.fullRatePerYear * 10, decimals, true), unit) });
+  } else if (variant === "warming-daily") {
+    chips.push({ text: copy.mean365Chip(signedValue(latest.value)), alert: latest.value >= WARMING_LEVELS[0] });
+    if (latestRaw && data.rawSeries) {
+      const year = new Date(latestRaw[0]).getUTCFullYear();
+      const daysAbove = data.rawSeries.filter(([time, value]) => new Date(time).getUTCFullYear() === year && value >= WARMING_LEVELS[0]).length;
+      chips.push({ text: copy.daysAbove(daysAbove, levelLabel(WARMING_LEVELS[0]), year) });
+      const warmest = data.rawSeries.reduce((best, entry) => (entry[1] > best[1] ? entry : best), data.rawSeries[0]);
+      chips.push({ text: copy.warmestDay(signedValue(warmest[1]), fullDateFormats[language].format(new Date(warmest[0]))) });
+    }
+  } else if (variant === "warming-annual") {
+    // Rank complete years only; a year in progress isn't comparable yet.
+    const complete = (partialLatest ? data.points.slice(0, -1) : data.points).map(([time, value]) => ({ year: new Date(time).getUTCFullYear(), value }));
+    const ranked = [...complete].sort((a, b) => b.value - a.value);
+    const lastComplete = complete[complete.length - 1];
+    if (ranked.length && lastComplete) {
+      const record = ranked[0];
+      if (record.year !== lastComplete.year) chips.push({ text: copy.recordYear(record.year, signedValue(record.value)) });
+      chips.push({
+        text: copy.yearRank(lastComplete.year, signedValue(lastComplete.value), ranked.indexOf(lastComplete) + 1),
+        alert: ranked.indexOf(lastComplete) === 0,
+      });
+      const recentInTop = ranked.slice(0, 10).filter((entry) => entry.year > lastComplete.year - 10).length;
+      chips.push({ text: copy.recentTop(recentInTop), alert: recentInTop >= 8 });
+    }
   } else if (data.annual) {
     const annual = data.annual;
     chips.push(
@@ -229,7 +321,23 @@ export function TrendContextPanel({
   }
 
   const swatch = (style: CSSProperties) => <i style={style} aria-hidden="true" />;
-  const legend: Array<{ key: string; icon: ReactNode; label: string }> = isLine
+  const dashedSwatch = swatch({ background: `repeating-linear-gradient(90deg, ${palette.trend} 0 5px, transparent 5px 8px)`, height: 2 });
+  const legend: Array<{ key: string; icon: ReactNode; label: string }> = variant === "warming-daily"
+    ? [
+        { key: "mean", icon: swatch({ background: palette.signal, height: 3 }), label: copy.mean365 },
+        { key: "daily", icon: swatch({ background: palette.signalArea, boxShadow: `inset 0 0 0 1px ${palette.signal}`, height: 3 }), label: copy.dailyValues },
+        { key: "levels", icon: dashedSwatch, label: copy.warmingLevels },
+      ]
+    : variant === "warming-annual"
+      ? [
+          { key: "year", icon: swatch({ background: palette.loss }), label: copy.annualMean },
+          ...(partialLatest
+            ? [{ key: "ytd", icon: swatch({ background: palette.signalArea, boxShadow: `inset 0 0 0 1.5px ${palette.loss}` }), label: copy.partial }]
+            : []),
+          { key: "mean", icon: swatch({ background: palette.context, height: 3 }), label: copy.runningMean },
+          { key: "levels", icon: dashedSwatch, label: copy.warmingLevels },
+        ]
+      : isLine
     ? [
         ...(variant === "imbalance"
           ? [{ key: "mean", icon: swatch({ background: palette.signal, height: 3 }), label: copy.monthlyMean }]
@@ -247,7 +355,7 @@ export function TrendContextPanel({
       ];
 
   // Alert chips take the topic colour, like the line (glacier bars report losses, so they stay red).
-  const chipAccent = variant === "annual" ? "var(--domain-temperature)" : `var(--domain-${domain})`;
+  const chipAccent = variant === "annual" || warming ? "var(--domain-temperature)" : `var(--domain-${domain})`;
   const intro = (
     <div className="daily-context-intro" style={{ "--chip-accent": chipAccent } as CSSProperties}>
       <div className="daily-context-headline">
@@ -255,7 +363,7 @@ export function TrendContextPanel({
         <p className="daily-context-value">
           {ready ? (
             <>
-              {formatNumber(latest.value, decimals, variant === "annual" || variant === "imbalance")}
+              {formatNumber(headlineValue, decimals, (variant === "annual" || variant === "imbalance" || warming) && headlineValue > 0)}
               <small>{unit}</small>
             </>
           ) : (

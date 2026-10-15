@@ -426,7 +426,36 @@ const REGIONAL_TEMPERATURE_KEYS = new Set([
 // recent years and daily records (see charts/dailyContext.ts). Sea ice and
 // snow cover records are lows; temperature records are highs. Snow cover is
 // monthly and handled by the same chart.
-const DAILY_CONTEXT_KEYS = new Set<string>([...GLOBAL_TEMPERATURE_KEYS, ...REGIONAL_TEMPERATURE_KEYS, ...SEA_ICE_KEYS, ...SNOW_COVER_KEYS]);
+const DAILY_CONTEXT_ANOMALY_KEYS = new Set<string>([...TEMPERATURE_ANOMALY_KEYS, ...REGIONAL_TEMPERATURE_ANOMALY_KEYS, NINO34_SST_ANOMALY_KEY]);
+const DAILY_CONTEXT_KEYS = new Set<string>([
+  ...GLOBAL_TEMPERATURE_KEYS,
+  ...REGIONAL_TEMPERATURE_KEYS,
+  ...SEA_ICE_KEYS,
+  ...SNOW_COVER_KEYS,
+  ...DAILY_CONTEXT_ANOMALY_KEYS,
+]);
+// Niño 3.4 anomalies of ±0.5 °C mark El Niño and La Niña conditions.
+const ENSO_ANOMALY_THRESHOLD = 0.5;
+const NINO34_THRESHOLDS: Record<Language, Array<{ value: number; label: string }>> = {
+  en: [
+    { value: ENSO_ANOMALY_THRESHOLD, label: "El Niño +0.5" },
+    { value: -ENSO_ANOMALY_THRESHOLD, label: "La Niña −0.5" },
+  ],
+  hu: [
+    { value: ENSO_ANOMALY_THRESHOLD, label: "El Niño +0,5" },
+    { value: -ENSO_ANOMALY_THRESHOLD, label: "La Niña −0,5" },
+  ],
+};
+
+function ensoPhaseChip(value: number, language: Language): { text: string; alert?: boolean } {
+  if (value >= ENSO_ANOMALY_THRESHOLD) {
+    return { text: language === "hu" ? "Az El Niño-küszöb (+0,5 °C) felett" : "Above the El Niño threshold (+0.5 °C)", alert: true };
+  }
+  if (value <= -ENSO_ANOMALY_THRESHOLD) {
+    return { text: language === "hu" ? "A La Niña-küszöb (−0,5 °C) alatt" : "Below the La Niña threshold (−0.5 °C)" };
+  }
+  return { text: language === "hu" ? "ENSO-semleges tartományban" : "Within the ENSO-neutral range" };
+}
 const LOW_RECORD_KEYS = new Set<string>([...SEA_ICE_KEYS, ...SNOW_COVER_KEYS]);
 const DAILY_CONTEXT_PAST_YEARS = 3;
 const REGIONAL_TEMPERATURE_ORDER: ClimateMetricSeries["key"][] = [
@@ -3558,6 +3587,19 @@ export function App() {
     }
     return false;
   }, [dailyGlobalMeanAnomalyMetric, latestAnnualGlobalMeanAnomaly]);
+  // Global warming above pre-industrial (ECMWF Climate Pulse): the 365-day
+  // mean over faint daily values, and annual means with the year in progress.
+  const dailyWarmingContext = useMemo(
+    () =>
+      dailyGlobalMeanAnomalyMetric && dailyGlobalMeanAnomaly365DayPoints.length
+        ? buildTrendContextData(dailyGlobalMeanAnomaly365DayPoints, { kind: "line", rawPoints: dailyGlobalMeanAnomalyMetric.points })
+        : null,
+    [dailyGlobalMeanAnomalyMetric, dailyGlobalMeanAnomaly365DayPoints]
+  );
+  const annualWarmingContext = useMemo(
+    () => (annualGlobalMeanAnomalyPoints.length ? buildTrendContextData(annualGlobalMeanAnomalyPoints, { kind: "annual-bars" }) : null),
+    [annualGlobalMeanAnomalyPoints]
+  );
   const projectedAnnualGlobalMeanAnomaly = useMemo(() => {
     if (!dailyGlobalMeanAnomalyMetric || !annualGlobalMeanAnomalyIsYtd) return null;
     return buildAnnualProjectionEstimate(dailyGlobalMeanAnomalyMetric.points, ensoOutlook);
@@ -4001,6 +4043,11 @@ export function App() {
           dark={resolvedTheme === "dark"}
           ready={runtimeDataReady}
           latestDateLabel={formatDateLabel(latestDateIso, language)}
+          anomaly={DAILY_CONTEXT_ANOMALY_KEYS.has(metric.key)}
+          thresholds={metric.key === NINO34_SST_ANOMALY_KEY ? NINO34_THRESHOLDS[language] : undefined}
+          extraChip={
+            metric.key === NINO34_SST_ANOMALY_KEY && dailyContext.latest ? ensoPhaseChip(dailyContext.latest.value, language) : null
+          }
           freshnessLabel={freshness.label}
           freshnessTone={freshness.tone}
           expandLabel={t.chartFullscreenEnter}
@@ -5354,82 +5401,45 @@ export function App() {
                 {anomalyTemperatureLines.map(({ metric, lines, currentYear, climatology }) =>
                   renderIndicatorPanel(metric, lines, currentYear, climatology)
                 )}
-                {dailyGlobalMeanAnomalyMetric ? (
-                  <EChartsPanel
+                {dailyGlobalMeanAnomalyMetric && dailyWarmingContext ? (
+                  <TrendContextPanel
                     title={t.dailyGlobalTemperatureAnomalyTitle}
                     subtitle={t.dailyGlobalTemperatureAnomalySubtitle}
-                    expandLabel={t.chartFullscreenEnter}
-                    collapseLabel={t.chartFullscreenExit}
+                    data={dailyWarmingContext}
+                    variant="warming-daily"
+                    domain="temperature"
+                    unit={cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language)}
+                    decimals={dailyGlobalMeanAnomalyMetric.decimals}
+                    language={language}
+                    compact={compact}
+                    dark={resolvedTheme === "dark"}
+                    ready={runtimeDataReady}
+                    referenceLabel="1850–1900"
                     freshnessLabel={dailyGlobalMeanAnomalyFreshness?.label}
                     freshnessTone={dailyGlobalMeanAnomalyFreshness?.tone}
-                    option={buildClimateTrendOption({
-                      points: dailyGlobalMeanAnomalyMetric.points,
-                      seriesName: t.dailyGlobalTemperatureAnomalyTitle,
-                      unit: cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language),
-                      decimals: dailyGlobalMeanAnomalyMetric.decimals,
-                      lineWidth: 1.15,
-                      yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
-                      yAxisMax: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).max,
-                      yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
-                      xAxisYearLabelStep: 10,
-                      disableDataZoom: true,
-                      forceMappedYearLabels: true,
-                      showLegend: false,
-                      compact,
-                      dark: resolvedTheme === "dark",
-                      color: topicChartSoftColor(dailyGlobalMeanAnomalyMetric.key, resolvedTheme === "dark"),
-                      showArea: false,
-                      overlaySeries: [
-                        {
-                          points: dailyGlobalMeanAnomaly365DayPoints,
-                          seriesName: t.dailyGlobalTemperatureAnomaly365DayAverage,
-                          color: topicChartColor(dailyGlobalMeanAnomalyMetric.key, resolvedTheme === "dark"),
-                          lineWidth: 3.6,
-                        },
-                      ],
-                      referenceLines: [
-                        { value: 1.5, label: "1.5 °C" },
-                        { value: 2, label: "2.0 °C" },
-                      ],
-                      labels: {
-                        noData: t.noData,
-                        latest: t.chartLatest,
-                      },
-                    })}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
                   />
                 ) : null}
-                {dailyGlobalMeanAnomalyMetric && annualGlobalMeanAnomalyPoints.length ? (
-                  <EChartsPanel
+                {dailyGlobalMeanAnomalyMetric && annualWarmingContext ? (
+                  <TrendContextPanel
                     title={t.annualGlobalTemperatureAnomalyTitle}
-                    subtitle={`${t.annualGlobalTemperatureAnomalySubtitle}${annualGlobalMeanAnomalyIsYtd ? ` · ${t.ytdLabel}` : ""}`}
-                    expandLabel={t.chartFullscreenEnter}
-                    collapseLabel={t.chartFullscreenExit}
+                    subtitle={t.annualGlobalTemperatureAnomalySubtitle}
+                    data={annualWarmingContext}
+                    variant="warming-annual"
+                    domain="temperature"
+                    unit={cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language)}
+                    decimals={dailyGlobalMeanAnomalyMetric.decimals}
+                    language={language}
+                    compact={compact}
+                    dark={resolvedTheme === "dark"}
+                    ready={runtimeDataReady}
+                    referenceLabel="1850–1900"
+                    partialLatest={annualGlobalMeanAnomalyIsYtd}
                     freshnessLabel={dailyGlobalMeanAnomalyFreshness?.label}
                     freshnessTone={dailyGlobalMeanAnomalyFreshness?.tone}
-                    option={buildClimateTrendOption({
-                      points: annualGlobalMeanAnomalyPoints,
-                      seriesName: t.annualGlobalTemperatureAnomalyTitle,
-                      unit: cardUnitLabel(dailyGlobalMeanAnomalyMetric.key, dailyGlobalMeanAnomalyMetric.unit, language),
-                      decimals: dailyGlobalMeanAnomalyMetric.decimals,
-                      yAxisMin: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).min,
-                      yAxisMax: indicatorYAxisBounds(dailyGlobalMeanAnomalyMetric.key).max,
-                      yAxisUnitLabel: indicatorYAxisUnitLabel(dailyGlobalMeanAnomalyMetric.key, language),
-                      xAxisYearLabelStep: 10,
-                      disableDataZoom: true,
-                      forceMappedYearLabels: true,
-                      showLegend: false,
-                      compact,
-                      dark: resolvedTheme === "dark",
-                      color: topicChartColor(dailyGlobalMeanAnomalyMetric.key, resolvedTheme === "dark"),
-                      referenceLines: [
-                        { value: 1.5, label: "1.5 °C" },
-                        { value: 2, label: "2.0 °C" },
-                      ],
-                      labels: {
-                        noData: t.noData,
-                        latest: t.chartLatest,
-                      },
-                    })}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
                   />
                 ) : null}
               </div>
