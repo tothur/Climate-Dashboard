@@ -420,9 +420,11 @@ const REGIONAL_TEMPERATURE_KEYS = new Set([
   "daily_nino34_sea_surface_temperature",
 ]);
 // Absolute daily series drawn as the current year against the normal range,
-// recent years and daily records (see charts/dailyContext.ts). Sea ice
-// records are lows; temperature records are highs.
-const DAILY_CONTEXT_KEYS = new Set<string>([...GLOBAL_TEMPERATURE_KEYS, ...REGIONAL_TEMPERATURE_KEYS, ...SEA_ICE_KEYS]);
+// recent years and daily records (see charts/dailyContext.ts). Sea ice and
+// snow cover records are lows; temperature records are highs. Snow cover is
+// monthly and handled by the same chart.
+const DAILY_CONTEXT_KEYS = new Set<string>([...GLOBAL_TEMPERATURE_KEYS, ...REGIONAL_TEMPERATURE_KEYS, ...SEA_ICE_KEYS, ...SNOW_COVER_KEYS]);
+const LOW_RECORD_KEYS = new Set<string>([...SEA_ICE_KEYS, ...SNOW_COVER_KEYS]);
 const DAILY_CONTEXT_PAST_YEARS = 3;
 const REGIONAL_TEMPERATURE_ORDER: ClimateMetricSeries["key"][] = [
   "northern_hemisphere_surface_temperature",
@@ -3454,7 +3456,7 @@ export function App() {
         baselineStartYear: CLIMATOLOGY_BASELINE_START_YEAR,
         baselineEndYear: CLIMATOLOGY_BASELINE_END_YEAR,
         pastYearCount: DAILY_CONTEXT_PAST_YEARS,
-        recordDirection: SEA_ICE_KEYS.has(metric.key) ? "low" : "high",
+        recordDirection: LOW_RECORD_KEYS.has(metric.key) ? "low" : "high",
       });
       if (context) contexts.set(metric.key, context);
     }
@@ -3951,7 +3953,7 @@ export function App() {
           subtitle={formatSourceShortName(metric.source.shortName, language)}
           data={dailyContext}
           unit={cardUnitLabel(metric.key, metric.unit, language)}
-          axisUnit={SEA_ICE_KEYS.has(metric.key) ? "M km²" : undefined}
+          axisUnit={LOW_RECORD_KEYS.has(metric.key) ? "M km²" : undefined}
           decimals={metric.decimals}
           language={language}
           monthLabels={monthlyLabels}

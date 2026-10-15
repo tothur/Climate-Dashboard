@@ -6,7 +6,8 @@ import type { DailyPoint } from "../domain/model";
  * the most recent full years, and the record for each calendar day.
  *
  * Days are placed on a 366-day axis (a leap reference year), so Feb 29 has its
- * own slot and every other date lines up across years.
+ * own slot and every other date lines up across years. Monthly series use the
+ * same axis with each month's value placed mid-month.
  */
 
 const DAY_MS = 86_400_000;
@@ -15,12 +16,16 @@ const AXIS_DAYS = 366;
 const MONTH_START_AXIS_DAYS = [1, 32, 61, 92, 122, 153, 183, 214, 245, 275, 306, 336];
 const MIN_BASELINE_YEARS = 10;
 const MIN_FULL_YEAR_DAYS = 360;
+const MID_MONTH_OFFSET_DAYS = 14;
+// Points this far apart on average are monthly values rather than daily ones.
+const MONTHLY_MIN_MEDIAN_GAP_DAYS = 25;
 const RECENT_WINDOW_DAYS = 92;
 const RECENT_WINDOW_AHEAD_DAYS = 21;
 
 export type DailyContextRange = "year" | "recent";
 /** Which extreme counts as a record: highs for temperature, lows for sea ice. */
 export type DailyContextRecordDirection = "high" | "low";
+export type DailyContextCadence = "daily" | "monthly";
 
 export interface DailyContextRank {
   rank: number;
@@ -29,6 +34,7 @@ export interface DailyContextRank {
 
 export interface DailyContextData {
   direction: DailyContextRecordDirection;
+  cadence: DailyContextCadence;
   currentYear: number;
   latest: { date: string; axisDay: number; value: number } | null;
   /** Middle 80% (10th–90th percentile) of the baseline years, plus their mean. */
@@ -59,6 +65,25 @@ export function axisDayMonthDay(axisDay: number): { month: number; day: number }
   return { month: date.getUTCMonth(), day: date.getUTCDate() };
 }
 
+/** Mid-month axis day for monthly values, so a point sits within its month. */
+function monthlyAxisDay(date: string): number | null {
+  const month = Number(date.slice(5, 7));
+  if (!Number.isInteger(month) || month < 1 || month > 12) return null;
+  return MONTH_START_AXIS_DAYS[month - 1] + MID_MONTH_OFFSET_DAYS;
+}
+
+function detectCadence(points: DailyPoint[]): DailyContextCadence {
+  const recent = points.slice(-25);
+  const gaps: number[] = [];
+  for (let index = 1; index < recent.length; index += 1) {
+    const gap = (Date.parse(`${recent[index].date}T00:00:00Z`) - Date.parse(`${recent[index - 1].date}T00:00:00Z`)) / DAY_MS;
+    if (Number.isFinite(gap)) gaps.push(gap);
+  }
+  if (!gaps.length) return "daily";
+  gaps.sort((a, b) => a - b);
+  return gaps[Math.floor(gaps.length / 2)] >= MONTHLY_MIN_MEDIAN_GAP_DAYS ? "monthly" : "daily";
+}
+
 function percentile(sorted: number[], fraction: number): number {
   const position = (sorted.length - 1) * fraction;
   const lower = Math.floor(position);
@@ -72,11 +97,13 @@ export function buildDailyContextData(
 ): DailyContextData | null {
   const direction = options.recordDirection ?? "high";
   const beats = (other: number, value: number) => (direction === "high" ? other > value : other < value);
+  const cadence = detectCadence(points);
+  const toAxisDay = cadence === "monthly" ? monthlyAxisDay : axisDayFromIsoDate;
   const byYear = new Map<number, Map<number, number>>();
   let latest: DailyContextData["latest"] = null;
 
   for (const point of points) {
-    const axisDay = axisDayFromIsoDate(point.date);
+    const axisDay = toAxisDay(point.date);
     if (axisDay == null || !Number.isFinite(point.value)) continue;
     const year = Number(point.date.slice(0, 4));
     let days = byYear.get(year);
@@ -105,8 +132,9 @@ export function buildDailyContextData(
     });
   }
 
+  const fullYearSize = cadence === "monthly" ? 12 : MIN_FULL_YEAR_DAYS;
   const annualMeans = years
-    .filter((year) => year !== currentYear && (byYear.get(year)?.size ?? 0) >= MIN_FULL_YEAR_DAYS)
+    .filter((year) => year !== currentYear && (byYear.get(year)?.size ?? 0) >= fullYearSize)
     .map((year) => {
       const values = Array.from(byYear.get(year)?.values() ?? []);
       return { year, mean: values.reduce((sum, value) => sum + value, 0) / values.length };
@@ -146,6 +174,7 @@ export function buildDailyContextData(
   const latestNormal = normal.get(latest.axisDay);
   return {
     direction,
+    cadence,
     currentYear,
     latest,
     normal,
@@ -222,6 +251,8 @@ export function pastYearColor(index: number, count: number, dark: boolean): stri
 }
 
 function niceStep(span: number): number {
+  if (span > 40) return 10;
+  if (span > 20) return 5;
   if (span > 12) return 4;
   if (span > 6) return 2;
   if (span > 3) return 1;
@@ -237,7 +268,7 @@ function stepDecimals(step: number): number {
 }
 
 export function dailyContextXRange(data: DailyContextData, range: DailyContextRange): [number, number] {
-  if (range === "year" || !data.latest) return [1, AXIS_DAYS];
+  if (range === "year" || data.cadence === "monthly" || !data.latest) return [1, AXIS_DAYS];
   const end = Math.min(AXIS_DAYS, data.latest.axisDay + RECENT_WINDOW_AHEAD_DAYS);
   const start = Math.max(1, end - RECENT_WINDOW_DAYS - RECENT_WINDOW_AHEAD_DAYS);
   return [start, end];
@@ -284,7 +315,8 @@ export function buildDailyContextOption({
   const rawMax = visibleValues.length ? Math.max(...visibleValues) : 1;
   const padding = Math.max((rawMax - rawMin) * 0.08, 0.05);
   const step = niceStep(rawMax - rawMin + padding * 2);
-  const yMin = Math.floor((rawMin - padding) / step) * step;
+  // Extents can't go below zero, so don't pad the axis into negative values.
+  const yMin = Math.max(rawMin >= 0 ? 0 : -Infinity, Math.floor((rawMin - padding) / step) * step);
   const yMax = Math.ceil((rawMax + padding) / step) * step;
   const tickDecimals = stepDecimals(step);
 
@@ -302,8 +334,13 @@ export function buildDailyContextOption({
 
   const tooltipFormatter = (params: unknown) => {
     const rows = Array.isArray(params) ? (params as Array<{ axisValue?: number }>) : [];
-    const axisDay = Math.round(Number(rows[0]?.axisValue));
-    if (!Number.isFinite(axisDay)) return "";
+    const pointer = Number(rows[0]?.axisValue);
+    if (!Number.isFinite(pointer)) return "";
+    // Monthly values sit mid-month; read the month the pointer is in.
+    const axisDay =
+      data.cadence === "monthly"
+        ? MONTH_START_AXIS_DAYS[axisDayMonthDay(Math.min(AXIS_DAYS, Math.max(1, Math.round(pointer)))).month] + MID_MONTH_OFFSET_DAYS
+        : Math.round(pointer);
     const lines: Array<{ name: string; value: number; color: string; strong: boolean; note?: string }> = [];
     const currentValue = data.current.find(([day]) => day === axisDay)?.[1];
     if (currentValue != null) lines.push({ name: String(data.currentYear), value: currentValue, color: palette.current, strong: true });
@@ -338,6 +375,7 @@ export function buildDailyContextOption({
     return `<b>${formatDay(axisDay)}</b><br/>${body}${normalLine}${rankLine}`;
   };
 
+  const monthly = data.cadence === "monthly";
   const gridLeft = compact ? 48 : 52;
   const gridRight = compact ? 42 : 52;
 
@@ -431,7 +469,9 @@ export function buildDailyContextOption({
         name: String(entry.year),
         type: "line" as const,
         data: entry.points,
-        showSymbol: false,
+        showSymbol: monthly,
+        symbol: "circle",
+        symbolSize: 4,
         triggerLineEvent: true,
         z: 2,
         lineStyle: { color: pastColors.get(entry.year), width: 1.4 },
@@ -451,7 +491,9 @@ export function buildDailyContextOption({
         name: String(data.currentYear),
         type: "line",
         data: data.current,
-        showSymbol: false,
+        showSymbol: monthly,
+        symbol: "circle",
+        symbolSize: 6,
         triggerLineEvent: true,
         z: 4,
         lineStyle: { color: palette.current, width: 2.6, cap: "round", join: "round" },
@@ -498,8 +540,10 @@ export function buildDailyContextOption({
         tooltip: { show: false },
         data: data.recordDays.map((axisDay) => [axisDay, 0]),
         renderItem: (_params, api) => {
-          const start = api.coord([Number(api.value(0)) - 0.5, 1]);
-          const end = api.coord([Number(api.value(0)) + 0.5, 0]);
+          // A daily record covers its day; a monthly one its month, minus a small gap.
+          const halfSpan = monthly ? MID_MONTH_OFFSET_DAYS - 0.5 : 0.5;
+          const start = api.coord([Number(api.value(0)) - halfSpan, 1]);
+          const end = api.coord([Number(api.value(0)) + halfSpan, 0]);
           const width = Math.max(2, end[0] - start[0]);
           return {
             type: "rect",

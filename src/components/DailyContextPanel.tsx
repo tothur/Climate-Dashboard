@@ -5,6 +5,7 @@ import {
   buildDailyContextOption,
   dailyContextPalette,
   pastYearColor,
+  type DailyContextCadence,
   type DailyContextData,
   type DailyContextRange,
   type DailyContextRecordDirection,
@@ -53,8 +54,9 @@ const EXTREMES = {
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-function copyFor(language: Language, direction: DailyContextRecordDirection) {
+function copyFor(language: Language, direction: DailyContextRecordDirection, cadence: DailyContextCadence) {
   const { extreme, opposite, recordAdjective } = EXTREMES[language][direction];
+  const monthly = cadence === "monthly";
   if (language === "hu") {
     return {
       year: "Év",
@@ -64,14 +66,14 @@ function copyFor(language: Language, direction: DailyContextRecordDirection) {
       normal: "Normál",
       normalRange: (baseline: string) => `Normál tartomány, ${baseline}`,
       record: "Rekord",
-      recordForDate: "Rekord erre a napra",
+      recordForDate: monthly ? "Rekord erre a hónapra" : "Rekord erre a napra",
       rankForDate: (rank: number, total: number) => `${total} évből ${rank}.`,
       annualRank: (rank: number) => (rank === 1 ? `a ${extreme} év` : `${rank}. ${extreme} év`),
       vsNormal: "a normálishoz képest",
       recordOnDate: (day: string) => `Az eddigi ${extreme} ${day}`,
       oppositeOnDate: (day: string) => `Az eddigi ${opposite} ${day}`,
       rankedDay: (rank: number, total: number, day: string) => `${day}: ${rank}. ${extreme} ${total} év közül`,
-      recordDays: (count: number, year: number) => `${year}: ${count} ${recordAdjective} nap`,
+      recordDays: (count: number, year: number) => `${year}: ${count} ${recordAdjective} ${monthly ? "hónap" : "nap"}`,
     };
   }
   return {
@@ -82,16 +84,26 @@ function copyFor(language: Language, direction: DailyContextRecordDirection) {
     normal: "Normal",
     normalRange: (baseline: string) => `Normal range, ${baseline}`,
     record: "Record",
-    recordForDate: "Record for this date",
+    recordForDate: monthly ? "Record for this month" : "Record for this date",
     rankForDate: (rank: number, total: number) => `Rank ${rank} of ${total}`,
     annualRank: (rank: number) => (rank === 1 ? `${extreme} year on record` : `${englishOrdinal(rank)} ${extreme} year`),
     vsNormal: "vs normal",
     recordOnDate: (day: string) => `${capitalize(extreme)} ${day} on record`,
     oppositeOnDate: (day: string) => `${capitalize(opposite)} ${day} on record`,
     rankedDay: (rank: number, total: number, day: string) => `${englishOrdinal(rank)} ${extreme} ${day} of ${total}`,
-    recordDays: (count: number, year: number) => `${count} ${recordAdjective} ${count === 1 ? "day" : "days"} in ${year}`,
+    recordDays: (count: number, year: number) =>
+      `${count} ${recordAdjective} ${monthly ? (count === 1 ? "month" : "months") : count === 1 ? "day" : "days"} in ${year}`,
   };
 }
+
+const monthNameFormats = {
+  en: new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }),
+  hu: new Intl.DateTimeFormat("hu-HU", { month: "long", timeZone: "UTC" }),
+};
+const monthYearFormats = {
+  en: new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }),
+  hu: new Intl.DateTimeFormat("hu-HU", { month: "long", year: "numeric", timeZone: "UTC" }),
+};
 
 const numberFormats = new Map<string, Intl.NumberFormat>();
 function numberFormat(language: Language, decimals: number): Intl.NumberFormat {
@@ -127,7 +139,8 @@ export function DailyContextPanel({
 }: DailyContextPanelProps) {
   const [range, setRange] = useState<DailyContextRange>("year");
   const [hiddenYears, setHiddenYears] = useState<ReadonlySet<number>>(() => new Set());
-  const copy = copyFor(language, data.direction);
+  const monthly = data.cadence === "monthly";
+  const copy = copyFor(language, data.direction, data.cadence);
 
   const formatNumber = (value: number, digits: number) => {
     const formatted = numberFormat(language, digits).format(value);
@@ -135,6 +148,7 @@ export function DailyContextPanel({
   };
   const formatDay = (axisDay: number) => {
     const { month, day } = axisDayMonthDay(axisDay);
+    if (monthly) return monthNameFormats[language].format(new Date(Date.UTC(2024, month, 1)));
     return language === "hu" ? `${monthLabels[month]} ${day}.` : `${monthLabels[month]} ${day}`;
   };
 
@@ -192,7 +206,9 @@ export function DailyContextPanel({
   const intro = (
     <div className="daily-context-intro">
       <div className="daily-context-headline">
-        <p className="daily-context-kicker">{ready ? latestDateLabel : " "}</p>
+        <p className="daily-context-kicker">
+          {!ready ? "\u00a0" : monthly && latest ? monthYearFormats[language].format(new Date(`${latest.date}T00:00:00Z`)) : latestDateLabel}
+        </p>
         <p className="daily-context-value">
           {ready && latest ? (
             <>
@@ -216,13 +232,16 @@ export function DailyContextPanel({
         ) : null}
       </div>
       <div className="daily-context-controls">
-        <div className="daily-context-range" role="group" aria-label={copy.rangeGroup}>
-          {(["year", "recent"] as const).map((value) => (
-            <button key={value} type="button" aria-pressed={range === value} onClick={() => setRange(value)}>
-              {value === "year" ? copy.year : copy.recent}
-            </button>
-          ))}
-        </div>
+        {/* Three monthly values are too few for a zoomed view. */}
+        {monthly ? null : (
+          <div className="daily-context-range" role="group" aria-label={copy.rangeGroup}>
+            {(["year", "recent"] as const).map((value) => (
+              <button key={value} type="button" aria-pressed={range === value} onClick={() => setRange(value)}>
+                {value === "year" ? copy.year : copy.recent}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="daily-context-legend">
           <span className="daily-context-normal-key">
             <i style={{ background: dailyContextPalette(dark).band }} aria-hidden="true" />
