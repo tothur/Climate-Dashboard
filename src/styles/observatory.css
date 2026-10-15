@@ -1931,7 +1931,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 /* Indicators navigation: a sticky side rail on wide screens, a sticky
    location bar with a jump sheet below that (components/IndicatorNavigator). */
 /* "clip" keeps the section's clipping without becoming a scroll container, which would stop the navigation sticking. */
-.observatory #indicators { overflow: clip; scroll-margin-top: var(--app-header-height, 76px); }
+.observatory #climate-system { overflow: clip; scroll-margin-top: var(--app-header-height, 76px); }
 /* The layout wrapper is a grid item of the section: without min-width: 0 it grows to its widest chart. */
 .observatory :is(.indicators-layout, .indicators-main) { min-width: 0; }
 .observatory .detail-page-indicators [data-toc-anchor] { scroll-margin-top: calc(var(--app-header-height, 76px) + 16px); }

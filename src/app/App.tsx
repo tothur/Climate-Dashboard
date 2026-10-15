@@ -331,7 +331,7 @@ const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
     maxThreshold: 10,
   },
 ];
-type DashboardView = "overview" | "indicators" | "maps" | "projections" | "sources";
+type DashboardView = "overview" | "climate-system" | "maps" | "projections" | "sources";
 type IndicatorSubsectionKey =
   | "globalTemperatures"
   | "temperatureAnomalies"
@@ -370,12 +370,14 @@ type ToolkitIconName =
   | "trend"
   | "up";
 
-const DASHBOARD_VIEW_IDS = new Set<DashboardView>(["overview", "indicators", "maps", "projections", "sources"]);
-// Climate system topics; the active one is kept in the address as #indicators/<topic>.
+const DASHBOARD_VIEW_IDS = new Set<DashboardView>(["overview", "climate-system", "maps", "projections", "sources"]);
+// Climate system topics; the active one is kept in the address as #climate-system/<topic>.
 const CLIMATE_SYSTEM_TOPIC_KEYS = ["temperature", "regions", "oceans", "ice", "energy", "forcing", "enso", "circulation"] as const;
 const DEFAULT_CLIMATE_SYSTEM_TOPIC = "temperature";
 // Forcing and Variability used to be pages of their own; their links land on the matching topic.
 const LEGACY_VIEW_TOPICS: Record<string, string> = { forcing: "forcing", variability: "enso" };
+// The Climate system section used to be called Indicators; its old addresses keep their topic.
+const LEGACY_CLIMATE_SYSTEM_VIEW = "indicators";
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const SNOW_COVER_KEYS = new Set<ClimateMetricSeries["key"]>(["northern_hemisphere_snow_cover_extent"]);
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
@@ -1014,11 +1016,12 @@ function safeTheme(raw: string | null): ThemeMode {
 }
 
 function dashboardRouteFromHash(hash: string): { view: DashboardView; topic: string | null } {
-  const [view = "", topic = ""] = hash.replace(/^#/, "").split("/");
-  if (view in LEGACY_VIEW_TOPICS) return { view: "indicators", topic: LEGACY_VIEW_TOPICS[view] };
+  const [rawView = "", topic = ""] = hash.replace(/^#/, "").split("/");
+  if (rawView in LEGACY_VIEW_TOPICS) return { view: "climate-system", topic: LEGACY_VIEW_TOPICS[rawView] };
+  const view = rawView === LEGACY_CLIMATE_SYSTEM_VIEW ? "climate-system" : rawView;
   if (!DASHBOARD_VIEW_IDS.has(view as DashboardView)) return { view: "overview", topic: null };
   const knownTopic = (CLIMATE_SYSTEM_TOPIC_KEYS as readonly string[]).includes(topic) ? topic : null;
-  return { view: view as DashboardView, topic: view === "indicators" ? knownTopic : null };
+  return { view: view as DashboardView, topic: view === "climate-system" ? knownTopic : null };
 }
 
 function metricCategoryTone(metricKey: ClimateMetricSeries["key"]): "temperature" | "success" | "info" | "purple" | "neutral" {
@@ -3224,6 +3227,8 @@ export function App() {
   const [indicatorTopic, setIndicatorTopic] = useState<string>(() =>
     typeof window === "undefined" ? DEFAULT_CLIMATE_SYSTEM_TOPIC : dashboardRouteFromHash(window.location.hash).topic ?? DEFAULT_CLIMATE_SYSTEM_TOPIC
   );
+  const indicatorTopicRef = useRef(indicatorTopic);
+  indicatorTopicRef.current = indicatorTopic;
   const [mapTopic, setMapTopic] = useState("surface");
   const [sourceQuery, setSourceQuery] = useState("");
   const indicatorTopics = [
@@ -3317,24 +3322,30 @@ export function App() {
     const handleHashChange = () => {
       const route = dashboardRouteFromHash(window.location.hash);
       setActiveView(route.view);
-      if (route.topic) setIndicatorTopic(route.topic);
+      if (route.view !== "climate-system") return;
+      // Keep the current topic when the address names none (or an unknown one),
+      // and rewrite old or partial addresses to the canonical #climate-system/<topic>.
+      const topic = route.topic ?? indicatorTopicRef.current;
+      setIndicatorTopic(topic);
+      const target = `#climate-system/${topic}`;
+      if (window.location.hash !== target) window.history.replaceState(null, "", target);
     };
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   // Keep the Climate system topic in the address so reloads and shared links
-  // reopen it (and old #forcing / #variability links are rewritten).
+  // reopen it (and old #indicators, #forcing and #variability links are rewritten).
   useEffect(() => {
-    if (activeView !== "indicators") return;
-    const target = `#indicators/${indicatorTopic}`;
+    if (activeView !== "climate-system") return;
+    const target = `#climate-system/${indicatorTopic}`;
     if (window.location.hash !== target) window.history.replaceState(null, "", target);
   }, [activeView, indicatorTopic]);
 
   // Sticky Indicators navigation (side rail, location bar) sits under the
   // site header: track the header's height (desktop bar or mobile app bar).
   useEffect(() => {
-    if (activeView !== "indicators") return;
+    if (activeView !== "climate-system") return;
     const measure = () => {
       const mobileBar = document.querySelector<HTMLElement>(".mobile-app-bar");
       const header = mobileBar && mobileBar.offsetHeight > 0 ? mobileBar : document.querySelector<HTMLElement>(".dashboard-sidebar");
@@ -4281,24 +4292,24 @@ export function App() {
   /** Open a Climate system topic (from the Overview's links, for example). */
   const openClimateSystemTopic = (topic: string) => {
     setIndicatorTopic(topic);
-    setDashboardView("indicators");
+    setDashboardView("climate-system");
   };
   const navItems: Array<{ view: DashboardView; label: string; icon: ToolkitIconName; available: boolean }> = [
     { view: "overview", label: t.navOverview, icon: "home", available: true },
-    { view: "indicators", label: t.navIndicators, icon: "bars", available: true },
+    { view: "climate-system", label: t.navIndicators, icon: "bars", available: true },
     { view: "maps", label: t.mapsSectionTitle, icon: "map", available: true },
     { view: "projections", label: t.projectionsTitle, icon: "trend", available: projectedAnnualGlobalMeanAnomaly != null },
     { view: "sources", label: t.sourceCardsTitle, icon: "reports", available: true },
   ];
   const navGroups: Array<{ key: string; label: string; views: DashboardView[] }> = [
-    { key: "monitor", label: t.navGroupMonitor, views: ["overview", "indicators"] },
+    { key: "monitor", label: t.navGroupMonitor, views: ["overview", "climate-system"] },
     { key: "explore", label: t.navGroupExplore, views: ["maps", "projections"] },
     { key: "system", label: t.navGroupSystem, views: ["sources"] },
   ];
   const pageTitle =
     activeView === "overview"
       ? t.overviewTitle
-      : activeView === "indicators"
+      : activeView === "climate-system"
         ? t.climateIndicatorsTitle
         : activeView === "maps"
           ? t.mapsSectionTitle
@@ -4308,7 +4319,7 @@ export function App() {
   const pageSubtitle =
     activeView === "overview"
       ? t.overviewSubtitle
-      : activeView === "indicators"
+      : activeView === "climate-system"
         ? t.climateIndicatorsNote
         : activeView === "maps"
           ? t.mapsSectionNote
@@ -4658,8 +4669,8 @@ export function App() {
   // Choosing a topic while scrolled into the page starts the new topic at its
   // top, once it has rendered (its height differs from the old topic's).
   const selectIndicatorTopic = (key: string) => {
-    const section = document.getElementById("indicators");
-    if (section && section.getBoundingClientRect().top < 0) jumpToIndicator(key, "indicators");
+    const section = document.getElementById("climate-system");
+    if (section && section.getBoundingClientRect().top < 0) jumpToIndicator(key, "climate-system");
     else setIndicatorTopic(key);
   };
   const indicatorNavProps = {
@@ -5362,8 +5373,8 @@ export function App() {
           </div>
         ) : null}
 
-      {activeView === "indicators" ? (
-      <section className={`collapsible-section detail-page-section detail-page-indicators indicator-topic-${indicatorTopic}`} id="indicators">
+      {activeView === "climate-system" ? (
+      <section className={`collapsible-section detail-page-section detail-page-indicators indicator-topic-${indicatorTopic}`} id="climate-system">
         <div className="indicators-layout">
         <IndicatorRail {...indicatorNavProps} />
         <div className="indicators-main">
