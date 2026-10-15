@@ -1979,16 +1979,21 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   background: var(--panel);
   scrollbar-width: thin;
 }
-.observatory .indicator-nav-topic + .indicator-nav-topic { margin-top: 2px; }
+/* Topics read as the rail's headings: larger, heavier, divided by hairlines. */
+.observatory .indicator-nav-topic + .indicator-nav-topic { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
 .observatory .indicator-nav-topic-button {
-  display: flex; align-items: center; gap: 10px; width: 100%;
-  padding: 9px 10px; border: 0; border-radius: 8px; background: transparent;
-  color: var(--text); font-size: 14px; font-weight: 600; text-align: left;
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  padding: 11px 12px; border: 0; border-radius: 8px; background: transparent;
+  color: var(--text); font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: -.015em; text-align: left;
 }
 .observatory .indicator-nav-topic-button:hover { background: var(--overview-paper-soft); }
 .observatory .indicator-nav-topic.is-active > .indicator-nav-topic-button { background: color-mix(in srgb, var(--topic-accent) 12%, transparent); color: var(--topic-accent); }
-.observatory .indicator-nav-topic-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--topic-accent); }
-.observatory .indicator-nav-topic-count { margin-left: auto; color: var(--muted); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.observatory .indicator-nav-topic-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; background: var(--topic-accent); }
+.observatory .indicator-nav-topic-count {
+  margin-left: auto; min-width: 24px; padding: 1px 7px; border-radius: 999px; background: var(--overview-paper-soft);
+  color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0; text-align: center; font-variant-numeric: tabular-nums;
+}
+.observatory .indicator-nav-topic.is-active .indicator-nav-topic-count { background: color-mix(in srgb, var(--topic-accent) 16%, transparent); color: var(--topic-accent); }
 .observatory .indicator-rail .indicator-nav-sections { margin: 4px 0 8px; }
 .observatory .indicator-nav-section-title {
   display: block; width: 100%; padding: 10px 10px 4px; border: 0; background: transparent; text-align: left;
