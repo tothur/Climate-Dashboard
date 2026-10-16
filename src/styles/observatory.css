@@ -1220,13 +1220,12 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 }
 
 /* Maps: side-by-side absolute and anomaly maps with the topic switch styled like Indicators. */
-.observatory .detail-page-maps.map-topic-surface { --indicator-accent: var(--domain-temperature); }
-.observatory .detail-page-maps.map-topic-ocean { --indicator-accent: var(--domain-ocean); }
-.observatory .detail-page-maps .maps-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.observatory .detail-page-maps { --indicator-accent: var(--domain-temperature); }
+.observatory .detail-page-maps .map-section-ocean { --indicator-accent: var(--domain-ocean); }
+/* The temperature map on top, its anomaly below, each at full width. */
+.observatory .detail-page-maps .maps-grid { grid-template-columns: minmax(0, 1fr); }
 .observatory .detail-page-maps .map-panel { border-top: 1px solid var(--border); }
 .observatory .detail-page-maps .map-panel:not(.panel-expanded):not(:fullscreen) .map-panel-image-wrap { width: auto; height: auto; min-height: 0; }
-.observatory .maps-source-note { margin: 18px 0 0; color: var(--muted); font-size: 12px; }
-.observatory .maps-source-note a { color: var(--accent); }
 
 @media(max-width: 1100px) {
   .observatory .detail-page-maps .maps-grid { grid-template-columns: 1fr; }
@@ -1808,10 +1807,10 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 /* Indicators navigation: a sticky side rail on wide screens, a sticky
    location bar with a jump sheet below that (components/IndicatorNavigator). */
 /* "clip" keeps the section's clipping without becoming a scroll container, which would stop the navigation sticking. */
-.observatory :is(#climate-system, #projections) { overflow: clip; scroll-margin-top: var(--app-header-height, 76px); }
+.observatory :is(#climate-system, #projections, #maps) { overflow: clip; scroll-margin-top: var(--app-header-height, 76px); }
 /* The layout wrapper is a grid item of the section: without min-width: 0 it grows to its widest chart. */
 .observatory :is(.indicators-layout, .indicators-main) { min-width: 0; }
-.observatory :is(.detail-page-indicators, .detail-page-projections) [data-toc-anchor] { scroll-margin-top: calc(var(--app-header-height, 76px) + 16px); }
+.observatory :is(.detail-page-indicators, .detail-page-projections, .detail-page-maps) [data-toc-anchor] { scroll-margin-top: calc(var(--app-header-height, 76px) + 16px); }
 .observatory .detail-page-indicators .indicator-topic-navigation { scrollbar-width: none; }
 .observatory .detail-page-indicators .indicator-topic-navigation::-webkit-scrollbar { display: none; }
 .observatory :is(.indicator-rail, .indicator-locator, .indicator-sheet) { --topic-accent: var(--domain-temperature); }
@@ -1880,7 +1879,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 /* Location bar and jump sheet */
 .observatory .indicator-locator { position: sticky; top: calc(var(--app-header-height, 64px) + 8px); z-index: 40; margin: -30px 0 32px; }
 /* Projections has no topic tabs above the bar to tuck it under. */
-.observatory .detail-page-projections .indicator-locator { margin-top: 0; }
+.observatory :is(.detail-page-projections, .detail-page-maps) .indicator-locator { margin-top: 0; }
 .observatory .indicator-locator-bar {
   display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 10px 16px;
   border: 1px solid var(--border); border-radius: 12px; color: var(--text); font-size: 14px; text-align: left;
@@ -1915,7 +1914,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 }
 @media (max-width: 1199px) {
   .observatory .indicator-rail { display: none; }
-  .observatory :is(.detail-page-indicators, .detail-page-projections) [data-toc-anchor] { scroll-margin-top: calc(var(--app-header-height, 64px) + 72px); }
+  .observatory :is(.detail-page-indicators, .detail-page-projections, .detail-page-maps) [data-toc-anchor] { scroll-margin-top: calc(var(--app-header-height, 64px) + 72px); }
 }
 
 /* Chart cards side by side share one height: when one card's headline or

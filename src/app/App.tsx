@@ -2503,7 +2503,6 @@ export function App() {
   );
   const indicatorTopicRef = useRef(indicatorTopic);
   indicatorTopicRef.current = indicatorTopic;
-  const [mapTopic, setMapTopic] = useState("surface");
   const [sourceQuery, setSourceQuery] = useState("");
   const indicatorTopics = [
     {group: "state", key: "temperature", en: "Temperature", hu: "Hőmérséklet", descriptionEn: "Track global heat from daily variability to the long-term warming signal.", descriptionHu: "A globális hőmérséklet a napi ingadozástól a hosszú távú melegedésig.", sections: ["globalTemperatures", "temperatureAnomalies"]},
@@ -3901,6 +3900,56 @@ export function App() {
     onSelectTopic: selectIndicatorTopic,
     onJump: jumpToIndicator,
   };
+  // Maps: the same navigation over one page-level topic, air and ocean as sections.
+  const mapSections = useMemo(
+    () =>
+      [
+        { key: "air", domain: "temperature", cards: mapCards.filter((card) => card.key.includes("2m")) },
+        { key: "ocean", domain: "ocean", cards: mapCards.filter((card) => !card.key.includes("2m")) },
+      ].map((section) => ({
+        ...section,
+        // The temperature itself first, then how unusual it is.
+        cards: [...section.cards].sort((a, b) => Number(a.key.includes("anomaly")) - Number(b.key.includes("anomaly"))),
+        title:
+          section.key === "air"
+            ? language === "hu" ? "Felszínközeli hőmérséklet" : "Air temperature"
+            : language === "hu" ? "Tengerfelszíni hőmérséklet" : "Ocean surface",
+        note:
+          section.key === "air"
+            ? language === "hu"
+              ? "A GFS-modell 2 méteres magasságra számított napi középhőmérséklete. Fent az időjárás, lent az, hogy mennyire tér el az 1979–2000-es átlagtól."
+              : "Daily mean 2-metre air temperature from the GFS model. The weather on top, below how unusual it is against a 1979–2000 baseline."
+            : language === "hu"
+              ? "A tengerfelszín napi hőmérséklete és anomáliája. A többlethő nagy részét az óceánok nyelik el, ezért lassan, de tartósan reagálnak."
+              : "Daily sea surface temperature and its anomaly. The oceans store most of the extra heat, so they respond slowly but persistently.",
+      })),
+    [mapCards, language]
+  );
+  const mapNavTopics = useMemo<IndicatorNavTopic[]>(
+    () => [
+      {
+        key: "maps",
+        label: t.mapsSectionTitle,
+        sections: mapSections.map((section) => ({
+          id: `section-maps-${section.key}`,
+          title: section.title,
+          charts: section.cards.map((card) => ({ id: `chart-${card.key}`, title: card.title })),
+        })),
+      },
+    ],
+    [mapSections, t]
+  );
+  const mapScrollSpy = useIndicatorScrollSpy(activeView === "maps" ? mapNavTopics[0] : undefined);
+  const jumpToMap = useIndicatorJump("maps", () => undefined);
+  const mapNavProps = {
+    topics: mapNavTopics,
+    activeTopic: "maps",
+    active: mapScrollSpy,
+    ready: runtimeDataReady,
+    language,
+    onSelectTopic: () => jumpToMap("maps", "maps"),
+    onJump: jumpToMap,
+  };
   // Projections: the same navigation over one page-level topic, its chapters as sections.
   const projectionNavTopics = useMemo<IndicatorNavTopic[]>(() => {
     const format = (value: number) =>
@@ -4963,55 +5012,56 @@ export function App() {
       ) : null}
 
       {activeView === "maps" ? (
-      <section className={`collapsible-section detail-page-section detail-page-editorial detail-page-maps map-topic-${mapTopic}`} id="maps">
+      <section className="collapsible-section detail-page-section detail-page-editorial detail-page-maps" id="maps">
+        <div className="indicators-layout">
+        <IndicatorRail {...mapNavProps} />
+        <div className="indicators-main">
         {renderPageIntro(
-          language === "hu" ? "Térképek" : "Maps",
-          mapTopic === "surface"
-            ? language === "hu" ? "Felszínközeli hőmérséklet" : "Surface temperature"
-            : language === "hu" ? "Tengerfelszíni hőmérséklet" : "Sea surface temperature",
-          mapTopic === "surface"
-            ? language === "hu"
-              ? "A GFS-modell 2 méteres magasságra számított napi középhőmérséklete a Climate Reanalyzer oldaláról. Az abszolút térkép az időjárást mutatja, az anomáliatérkép pedig azt, mennyire tér el ez az 1979–2000-es átlagtól."
-              : "Daily mean 2-metre air temperature from the GFS model via Climate Reanalyzer. The absolute map shows the weather; the anomaly map shows how unusual it is against a 1979–2000 baseline."
-            : language === "hu"
-              ? "A tengerfelszín napi hőmérséklete és annak anomáliája a Climate Reanalyzer oldaláról. A többlethő nagy részét az óceánok nyelik el, ezért lassan, de tartósan reagálnak."
-              : "Daily sea surface temperature and its anomaly via Climate Reanalyzer. The oceans store most of the extra heat, so they respond slowly but persistently."
+          language === "hu" ? "A mai nap" : "Today",
+          t.mapsSectionTitle,
+          language === "hu"
+            ? "Napi globális térképek a levegő és a tengerfelszín hőmérsékletéről a Climate Reanalyzer oldaláról: maga a hőmérséklet, alatta pedig az, hogy mennyire szokatlan."
+            : "Daily global maps of air and sea surface temperature from Climate Reanalyzer: the temperature itself, and below it how unusual it is."
         )}
-        <div className="topic-navigation indicator-topic-navigation segmented-control" role="group" aria-label={t.mapsSectionTitle}>
-          <button type="button" aria-pressed={mapTopic === "surface"} onClick={() => setMapTopic("surface")}>
-            {language === "hu" ? "Felszínközeli hőmérséklet" : "Surface temperature"}
-          </button>
-          <button type="button" aria-pressed={mapTopic === "ocean"} onClick={() => setMapTopic("ocean")}>
-            {language === "hu" ? "Óceánok" : "Oceans"}
-          </button>
-        </div>
-        <div className="charts-grid climate-grid maps-grid">
-          {mapCards.filter((card) => mapTopic === "surface" ? card.key.includes("2m") : !card.key.includes("2m")).map((mapCard) => (
-            <MapPanel
-              key={mapCard.key}
-              title={mapCard.title}
-              subtitle={mapCard.subtitle}
-              imageUrl={mapCard.imageUrl}
-              fallbackImageUrls={mapCard.fallbackImageUrls}
-              imageAlt={mapCard.imageAlt}
-              noImageLabel={t.mapUnavailable}
-              expandLabel={t.chartFullscreenEnter}
-              collapseLabel={t.chartFullscreenExit}
-              freshnessLabel={mapCard.freshness?.label}
-              freshnessTone={mapCard.freshness?.tone}
-              scaleStartLabel="°C"
-              scaleEndLabel={mapCard.baselineLabel ?? undefined}
-              scaleTicks={mapCard.scaleTicks}
-              loading={!runtimeDataReady}
-            />
+        <IndicatorLocator {...mapNavProps} />
+        <div className="section-content">
+          {mapSections.map((section) => (
+            <div key={section.key} className={`map-section map-section-${section.domain}`}>
+              {renderPageSubsection(
+                section.title,
+                section.note,
+                <div className="charts-grid climate-grid maps-grid">
+                  {section.cards.map((mapCard) => (
+                    <MapPanel
+                      key={mapCard.key}
+                      anchorId={`chart-${mapCard.key}`}
+                      title={mapCard.title}
+                      subtitle={mapCard.subtitle}
+                      imageUrl={mapCard.imageUrl}
+                      fallbackImageUrls={mapCard.fallbackImageUrls}
+                      imageAlt={mapCard.imageAlt}
+                      noImageLabel={t.mapUnavailable}
+                      expandLabel={t.chartFullscreenEnter}
+                      collapseLabel={t.chartFullscreenExit}
+                      freshnessLabel={mapCard.freshness?.label}
+                      freshnessTone={mapCard.freshness?.tone}
+                      scaleStartLabel="°C"
+                      scaleEndLabel={mapCard.baselineLabel ?? undefined}
+                      scaleTicks={mapCard.scaleTicks}
+                      loading={!runtimeDataReady}
+                    />
+                  ))}
+                </div>,
+                <a className="text-link-button subsection-source-link" href="https://climatereanalyzer.org/wx/todays-weather/" target="_blank" rel="noreferrer">
+                  Climate Reanalyzer →
+                </a>,
+                `section-maps-${section.key}`
+              )}
+            </div>
           ))}
         </div>
-        <p className="maps-source-note">
-          {language === "hu" ? "Forrás: " : "Source: "}
-          <a href="https://climatereanalyzer.org/wx/todays-weather/" target="_blank" rel="noreferrer">
-            Climate Reanalyzer, Climate Change Institute, University of Maine
-          </a>
-        </p>
+        </div>
+        </div>
       </section>
       ) : null}
 

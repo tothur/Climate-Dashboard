@@ -7,6 +7,8 @@ type FreshnessTone = "fresh" | "warning" | "stale";
 interface MapPanelProps {
   title: string;
   subtitle?: string;
+  /** Element id, so page navigation can jump to this card. */
+  anchorId?: string;
   imageUrl: string;
   fallbackImageUrls?: string[];
   imageAlt: string;
@@ -24,6 +26,7 @@ interface MapPanelProps {
 export function MapPanel({
   title,
   subtitle,
+  anchorId,
   imageUrl,
   fallbackImageUrls,
   imageAlt,
@@ -104,7 +107,12 @@ export function MapPanel({
   };
 
   return (
-    <article className={`panel map-panel ${isFallbackExpanded ? "panel-expanded" : ""}`} ref={panelRef}>
+    <article
+      className={`panel map-panel ${isFallbackExpanded ? "panel-expanded" : ""}`}
+      ref={panelRef}
+      id={anchorId}
+      data-toc-anchor={anchorId ? "" : undefined}
+    >
       <header className="panel-header">
         <div className="panel-header-main">
           <h2>{title}</h2>
