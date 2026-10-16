@@ -3385,7 +3385,7 @@ export function App() {
   );
   const renderPageSubsection = (title: string, note: string, content: ReactNode, action?: ReactNode, id?: string) => (
     <div className="climate-subsection" id={id} data-toc-anchor={id ? "" : undefined}>
-      <div className="climate-subsection-header collapsible-subsection-header">
+      <div className="climate-subsection-header">
         <div className="climate-subsection-heading">
           <h2>{title}</h2>
           <p>{note}</p>
@@ -5037,6 +5037,7 @@ export function App() {
               : "Where this year is heading, where the century could go, and which Earth-system thresholds lie along the way."
           )}
           <IndicatorLocator {...projectionNavProps} />
+          <div className="section-content">
 
           {renderPageSubsection(
             warmingEstimateHeading,
@@ -5125,6 +5126,7 @@ export function App() {
             </a>,
             "section-tipping-points"
           )}
+          </div>
           </div>
           </div>
         </section>
