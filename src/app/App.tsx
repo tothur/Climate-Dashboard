@@ -2615,10 +2615,11 @@ export function App() {
     if (window.location.hash !== target) window.history.replaceState(null, "", target);
   }, [activeView, indicatorTopic]);
 
-  // Sticky Indicators navigation (side rail, location bar) sits under the
-  // site header: track the header's height (desktop bar or mobile app bar).
+  // The page navigation (side rail, location bar) on Climate system,
+  // Projections and Maps sits under the site header: track the header's
+  // height (desktop bar or mobile app bar).
   useEffect(() => {
-    if (activeView !== "climate-system") return;
+    if (activeView !== "climate-system" && activeView !== "projections" && activeView !== "maps") return;
     const measure = () => {
       const mobileBar = document.querySelector<HTMLElement>(".mobile-app-bar");
       const header = mobileBar && mobileBar.offsetHeight > 0 ? mobileBar : document.querySelector<HTMLElement>(".dashboard-sidebar");
@@ -3507,6 +3508,22 @@ export function App() {
       window.history.replaceState(null, "", `#${view}`);
     }
   };
+  // The Overview's "All maps" opens the Maps page at the section of the map it was showing.
+  const pendingMapSection = useRef<string | null>(null);
+  const openMapSection = (domain: "air" | "ocean") => {
+    pendingMapSection.current = `section-maps-${domain}`;
+    setDashboardView("maps");
+  };
+  useEffect(() => {
+    const id = pendingMapSection.current;
+    if (activeView !== "maps" || !id) return;
+    pendingMapSection.current = null;
+    // Instant, then corrected once the maps above have taken their final height.
+    const scroll = () => document.getElementById(id)?.scrollIntoView({ block: "start" });
+    scroll();
+    const timers = [300, 900].map((delay) => window.setTimeout(scroll, delay));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [activeView]);
   /** Open a Climate system topic (from the Overview's links, for example). */
   const openClimateSystemTopic = (topic: string) => {
     setIndicatorTopic(topic);
@@ -4445,7 +4462,7 @@ export function App() {
                     </button>
                   </div>
                   <span className="planet-now-credit">Climate Reanalyzer · University of Maine</span>
-                  <button type="button" className="text-link-button" onClick={() => setDashboardView("maps")}>
+                  <button type="button" className="text-link-button" onClick={() => openMapSection(overviewMapDomain)}>
                     {language === "hu" ? "Összes térkép" : "All maps"} →
                   </button>
                 </div>
