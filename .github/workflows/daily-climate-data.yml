@@ -35,6 +35,7 @@ jobs:
       - name: Refresh climate dataset
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          EARTHDATA_TOKEN: ${{ secrets.EARTHDATA_TOKEN }}
         run: npm run data:update
 
       - name: Commit and push when data changed

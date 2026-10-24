@@ -215,3 +215,31 @@ export function parseNoaaPslMonthlyIndexData(rawText) {
   const lines = String(rawText ?? "").split(/\r?\n/);
   return parseNoaaCpcMonthlyIndexTable(lines.slice(1).join("\n"));
 }
+
+// CPC's SOI file repeats the YEAR/JAN... table twice: sea-level-pressure anomaly
+// first, then the standardized index. Only the first table is the SOI that PSL
+// mirrors. Columns are fixed-width, so missing months run into each other
+// ("-3.3-999.9") and need number tokenizing rather than whitespace splitting.
+export function parseNoaaCpcSoiText(rawText) {
+  const points = [];
+  let tablesSeen = 0;
+  for (const rawLine of String(rawText ?? "").split(/\r?\n/)) {
+    if (/^\s*YEAR\s+JAN\b/i.test(rawLine)) {
+      tablesSeen += 1;
+      if (tablesSeen > 1) break;
+      continue;
+    }
+    if (tablesSeen !== 1) continue;
+
+    const yearMatch = /^\s*(\d{4})/.exec(rawLine);
+    if (!yearMatch) continue;
+    const year = Number(yearMatch[1]);
+    const values = rawLine.slice(yearMatch[0].length).match(/-?\d+(?:\.\d+)?/g) ?? [];
+    for (let index = 0; index < Math.min(12, values.length); index += 1) {
+      const value = toFiniteNumber(values[index]);
+      const date = formatDateFromParts(year, index + 1, 1);
+      if (value != null && value > -90 && date) points.push({ date, value });
+    }
+  }
+  return normalizePoints(points);
+}

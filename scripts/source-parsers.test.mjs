@@ -8,6 +8,7 @@ import {
   parseNoaaCh4MonthlyCsv,
   parseNoaaCo2DailyCsv,
   parseNoaaCpcMonthlyIndexTable,
+  parseNoaaCpcSoiText,
   parseNoaaPslMonthlyIndexData,
   parseNsidcDailyExtentCsv,
   parseReanalyzerDailyAnomalyJson,
@@ -76,4 +77,16 @@ test("monthly index fixtures accept partial current-year rows and discard missin
     { date: "2026-01-01", value: -0.1 },
     { date: "2026-02-01", value: -0.2 },
   ]);
+});
+
+test("NOAA CPC SOI reads only the anomaly table and splits run-together missing months", async () => {
+  const points = parseNoaaCpcSoiText(await fixture("noaa-cpc-soi.txt"));
+
+  assert.equal(points.length, 21);
+  assert.deepEqual(points.slice(-3), [
+    { date: "2026-07-01", value: -4 },
+    { date: "2026-08-01", value: -1.8 },
+    { date: "2026-09-01", value: -3.3 },
+  ]);
+  assert.deepEqual(points[0], { date: "2025-01-01", value: 0.3 });
 });

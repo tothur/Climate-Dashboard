@@ -53,7 +53,7 @@ const RUTGERS_NH_SNOW_COVER_MONTHLY_URL = "https://climate.rutgers.edu/snowcover
 const NOAA_CPC_ONI_URL = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt";
 const NOAA_CPC_NAO_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii.table";
 const NOAA_CPC_PNA_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.pna.monthly.b5001.current.ascii.table";
-const NOAA_PSL_SOI_MONTHLY_URL = "https://psl.noaa.gov/data/correlation/soi.data";
+const NOAA_CPC_SOI_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/data/indices/soi";
 const NOAA_CPC_AO_MONTHLY_URL =
   "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/daily_ao_index/monthly.ao.index.b50.current.ascii.table";
 const LOCAL_GENERATED_DATA_URL = "./data/climate-realtime.json";
@@ -1423,24 +1423,28 @@ function parseNoaaCpcMonthlyIndexTable(rawText: string): DailyPoint[] {
   return normalizePoints(points);
 }
 
-function parseNoaaPslMonthlyIndexData(rawText: string): DailyPoint[] {
+// Mirrors parseNoaaCpcSoiText in scripts/source-parsers.mjs: read only the first
+// (sea-level-pressure anomaly) table and tokenize the fixed-width month columns.
+function parseNoaaCpcSoiText(rawText: string): DailyPoint[] {
   const points: DailyPoint[] = [];
+  let tablesSeen = 0;
 
-  for (const rawLine of String(rawText ?? "").split(/\r?\n/).slice(1)) {
-    const line = rawLine.trim();
-    if (!line) continue;
+  for (const rawLine of String(rawText ?? "").split(/\r?\n/)) {
+    if (/^\s*YEAR\s+JAN\b/i.test(rawLine)) {
+      tablesSeen += 1;
+      if (tablesSeen > 1) break;
+      continue;
+    }
+    if (tablesSeen !== 1) continue;
 
-    const columns = line.split(/\s+/);
-    if (columns.length < 2) continue;
-
-    const year = Number(columns[0]);
-    if (!Number.isFinite(year) || year < 1800 || year > 2200) continue;
-
-    const availableMonths = Math.min(12, columns.length - 1);
-    for (let month = 1; month <= availableMonths; month += 1) {
-      const value = toFiniteNumber(columns[month]);
+    const yearMatch = /^\s*(\d{4})/.exec(rawLine);
+    if (!yearMatch) continue;
+    const year = Number(yearMatch[1]);
+    const values = rawLine.slice(yearMatch[0].length).match(/-?\d+(?:\.\d+)?/g) ?? [];
+    for (let index = 0; index < Math.min(12, values.length); index += 1) {
+      const value = toFiniteNumber(values[index]);
       if (value == null || value <= -90) continue;
-      const date = formatDateFromParts(year, month, 1);
+      const date = formatDateFromParts(year, index + 1, 1);
       if (!date) continue;
       points.push({ date, value });
     }
@@ -2058,7 +2062,7 @@ export async function loadRuntimeDataSource(): Promise<DashboardDataSource> {
     loadNino34IndexSeries(),
     loadMonthlyClimateIndexSeries(NOAA_CPC_NAO_MONTHLY_URL, parseNoaaCpcMonthlyIndexTable),
     loadMonthlyClimateIndexSeries(NOAA_CPC_PNA_MONTHLY_URL, parseNoaaCpcMonthlyIndexTable),
-    loadMonthlyClimateIndexSeries(NOAA_PSL_SOI_MONTHLY_URL, parseNoaaPslMonthlyIndexData),
+    loadMonthlyClimateIndexSeries(NOAA_CPC_SOI_MONTHLY_URL, parseNoaaCpcSoiText),
     loadMonthlyClimateIndexSeries(NOAA_CPC_AO_MONTHLY_URL, parseNoaaCpcMonthlyIndexTable),
   ]);
 

@@ -4,13 +4,19 @@ import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
 
 import { loadPublishedDataset, roundSeriesPoints, writeDatasetArtifacts } from "./dataset-format.mjs";
+import {
+  NetcdfHeaderTruncatedError,
+  decodeNetcdfValues,
+  oneDimensionalVariableRanges,
+  parseNetcdf3Header,
+} from "./netcdf3.mjs";
 import { METRIC_KEYS, METRIC_REGISTRY, metricSanitizeLimits } from "./metric-registry.mjs";
 import {
   parseNoaaCh4MonthlyCsv,
   parseNoaaCo2DailyCsv,
   parseNoaaCpcMonthlyIndexTable,
+  parseNoaaCpcSoiText,
   parseNoaaN2oMonthlyCsv,
-  parseNoaaPslMonthlyIndexData,
   parseNsidcDailyExtentCsv,
   parseReanalyzerDailyAnomalyJson,
   parseReanalyzerDailyJson,
@@ -37,11 +43,16 @@ const ECMWF_PREINDUSTRIAL_OFFSET_C = 0.88;
 const SEA_LEVEL_RESEARCH_GROUP_URL = "https://sealevel.colorado.edu/";
 const NOAA_OCEAN_HEAT_CONTENT_2000M_URL =
   "https://www.ncei.noaa.gov/data/oceans/woa/DATA_ANALYSIS/3M_HEAT_CONTENT/DATA/basin/3month/ohc2000m_levitus_climdash_seasonal.csv";
-const NASA_CERES_EBAF_OPENDAP_BASE_URL = "https://opendap.larc.nasa.gov/opendap/CERES/EBAF/TOA_Edition4.2.1";
-const NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL = `${NASA_CERES_EBAF_OPENDAP_BASE_URL}/contents.html`;
+// NASA moved CERES EBAF from the public LaRC OPeNDAP server into Earthdata Cloud in
+// 2026. Finding the newest granule through CMR is public; reading it needs an
+// Earthdata Login token (EARTHDATA_TOKEN).
+const NASA_CERES_EBAF_CMR_GRANULES_URL =
+  "https://cmr.earthdata.nasa.gov/search/granules.umm_json?short_name=CERES_EBAF-TOA&version=Edition4.2.1&sort_key=-end_date&page_size=1";
 const NASA_CERES_EBAF_PROJECT_URL = "https://asdc.larc.nasa.gov/project/CERES/CERES_EBAF-TOA_Edition4.2.1";
-const NASA_CERES_EBAF_FILE_PATTERN = /CERES_EBAF-TOA_Edition4\.2\.1_\d{6}-\d{6}\.nc/g;
+const NASA_CERES_EBAF_NET_FLUX_VARIABLE = "gtoa_net_all_mon";
 const NASA_CERES_EBAF_TIME_BASE_UTC = Date.UTC(2000, 2, 1);
+const NETCDF_HEADER_PROBE_BYTES = 262_144;
+const NETCDF_RECORD_READ_CONCURRENCY = 16;
 const WGMS_MASS_CHANGE_ESTIMATES_URL = "https://wgms.ch/mass_change_estimates/";
 const WGMS_REFERENCE_GLACIERS_MASS_BALANCE_URL = "https://wgms.ch/data/faq/mb_ref.csv";
 const WGMS_AMCE_ZIP_PATTERN = /(?:https:\/\/wgms\.ch)?\/downloads\/wgms-amce-\d{4}-\d{2}-\d{2}\.zip/g;
@@ -62,15 +73,17 @@ const NOAA_MAUNA_LOA_CO2_DAILY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/c
 const NOAA_GLOBAL_CH4_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv";
 const NOAA_GLOBAL_N2O_MONTHLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/n2o/n2o_mm_gl.csv";
 const NOAA_AGGI_CSV_URL = "https://gml.noaa.gov/aggi/AGGI_Table.csv";
-const RUTGERS_NH_SNOW_COVER_MONTHLY_URL = "https://climate.rutgers.edu/snowcover/files/moncov.nhland.txt";
+const RUTGERS_NH_SNOW_COVER_MONTHLY_URL = "https://climate.rutgers.edu/snowcover/190km/files/moncov.nhland.txt";
 const NOAA_CPC_ONI_URL = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt";
 const NOAA_CPC_NAO_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii.table";
 const NOAA_CPC_PNA_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.pna.monthly.b5001.current.ascii.table";
-const NOAA_PSL_SOI_MONTHLY_URL = "https://psl.noaa.gov/data/correlation/soi.data";
+// CPC publishes SOI first; the PSL copy (soi.data) has lagged it by months.
+const NOAA_CPC_SOI_MONTHLY_URL = "https://www.cpc.ncep.noaa.gov/data/indices/soi";
 const NOAA_CPC_AO_MONTHLY_URL =
   "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/daily_ao_index/monthly.ao.index.b50.current.ascii.table";
 const IRI_ENSO_CURRENT_URL = "https://iri.columbia.edu/our-expertise/climate/forecasts/enso/current/";
 const NOAA_CPC_ENSO_DISCUSSION_URL = "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml";
+const NOAA_CPC_ENSO_PROBABILITIES_URL = "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso/roni/probabilities/";
 const CR_TODAYS_WEATHER_PAGE_URL = "https://climatereanalyzer.org/wx/todays-weather/";
 const CR_SST_LATEST_MAP_DATE_URL = "https://cr.acg.maine.edu/clim/sst_daily/json/dates_sstanom.json";
 const CR_CURRENT_MAP_URLS = {
@@ -337,32 +350,39 @@ function dateFromDaysSince1610(daysSince1610) {
   return formatIsoDate(new Date(Date.UTC(1610, 0, 1) + daysSince1610 * DAY_MS));
 }
 
-function extractLatestGlobalMeanSeaLevelUrl(homepageHtml) {
-  let latestYear = -Infinity;
+const GMSL_MAX_RELEASES_PER_YEAR = 4;
+
+// Colorado publishes several releases a year (2026_rel1, 2026_rel2, ...), so the
+// newest file is the highest release of the newest year.
+export function extractLatestGlobalMeanSeaLevelUrl(homepageHtml) {
+  let latestOrdinal = -Infinity;
   let latestUrl = null;
 
   for (const match of String(homepageHtml ?? "").matchAll(
-    /((?:https?:\/\/sealevel\.colorado\.edu)?\/files\/(\d{4})_rel1\/gmsl_\d{4}rel1_seasons_rmvd\.txt)/gi
+    /((?:https?:\/\/sealevel\.colorado\.edu)?\/files\/(\d{4})_rel(\d+)\/gmsl_\d{4}rel\d+_seasons_rmvd\.txt)/gi
   )) {
     const rawUrl = match[1];
     const year = Number(match[2]);
-    if (!rawUrl || !Number.isFinite(year)) continue;
-    if (year <= latestYear) continue;
-    latestYear = year;
+    const release = Number(match[3]);
+    if (!rawUrl || !Number.isFinite(year) || !Number.isFinite(release)) continue;
+    const ordinal = year * 100 + release;
+    if (ordinal <= latestOrdinal) continue;
+    latestOrdinal = ordinal;
     latestUrl = new URL(rawUrl, SEA_LEVEL_RESEARCH_GROUP_URL).toString();
   }
 
   return latestUrl;
 }
 
-function buildGlobalMeanSeaLevelCandidateUrls(homepageHtml) {
+export function buildGlobalMeanSeaLevelCandidateUrls(homepageHtml, currentYear = new Date().getUTCFullYear()) {
   const candidateUrls = [];
   const discoveredUrl = extractLatestGlobalMeanSeaLevelUrl(homepageHtml);
   if (discoveredUrl) candidateUrls.push(discoveredUrl);
 
-  const currentYear = new Date().getUTCFullYear();
   for (let year = currentYear; year >= currentYear - 2; year -= 1) {
-    candidateUrls.push(`${SEA_LEVEL_RESEARCH_GROUP_URL}files/${year}_rel1/gmsl_${year}rel1_seasons_rmvd.txt`);
+    for (let release = GMSL_MAX_RELEASES_PER_YEAR; release >= 1; release -= 1) {
+      candidateUrls.push(`${SEA_LEVEL_RESEARCH_GROUP_URL}files/${year}_rel${release}/gmsl_${year}rel${release}_seasons_rmvd.txt`);
+    }
   }
 
   return Array.from(new Set(candidateUrls));
@@ -375,9 +395,11 @@ async function loadGlobalMeanSeaLevelSource() {
   } catch {}
 
   let lastError = null;
+  const discoveredUrl = extractLatestGlobalMeanSeaLevelUrl(homepageHtml);
   for (const url of buildGlobalMeanSeaLevelCandidateUrls(homepageHtml)) {
     try {
-      const text = await fetchText(url);
+      // Guessed release URLs mostly 404, so only the linked release gets retries.
+      const text = await fetchText(url, url === discoveredUrl ? undefined : { attempts: 1 });
       return { text, sourceUrl: url };
     } catch (error) {
       lastError = error;
@@ -617,7 +639,7 @@ function sanitizeMetricSeries(key, points) {
 async function fetchWithRetry(
   url,
   responseType,
-  { timeoutMs = FETCH_TIMEOUT_MS, attempts = FETCH_RETRY_ATTEMPTS } = {}
+  { timeoutMs = FETCH_TIMEOUT_MS, attempts = FETCH_RETRY_ATTEMPTS, headers = {} } = {}
 ) {
   let lastError = null;
 
@@ -627,7 +649,7 @@ async function fetchWithRetry(
 
     try {
       const response = await fetch(url, {
-        headers: REQUEST_HEADERS,
+        headers: { ...REQUEST_HEADERS, ...headers },
         cache: "no-store",
         signal: controller.signal,
       });
@@ -969,53 +991,95 @@ function parseEcmwfClimatePulseGlobal2tDailyCsv(rawCsv) {
   return normalizePoints(points);
 }
 
-function extractLatestCeresEebafDatasetName(rawHtml) {
-  const matches = String(rawHtml ?? "").match(NASA_CERES_EBAF_FILE_PATTERN) ?? [];
-  if (!matches.length) return null;
-  return matches.sort().at(-1) ?? null;
-}
-
-function buildCeresEarthEnergyImbalanceAsciiUrl(fileName) {
-  return `${NASA_CERES_EBAF_OPENDAP_BASE_URL}/${fileName}.ascii?time,gtoa_net_all_mon`;
-}
-
-function parseCeresEarthEnergyImbalanceAscii(rawText) {
-  const lines = String(rawText ?? "").split(/\r?\n/);
-  let timeValues = [];
-  let fluxValues = [];
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) continue;
-    if (line.startsWith("time,")) {
-      timeValues = line
-        .split(",")
-        .slice(1)
-        .map((token) => toFiniteNumber(token))
-        .filter((value) => value != null);
-    } else if (line.startsWith("gtoa_net_all_mon.gtoa_net_all_mon,")) {
-      fluxValues = line
-        .split(",")
-        .slice(1)
-        .map((token) => toFiniteNumber(token))
-        .filter((value) => value != null && value > -998);
-    }
+// The newest EBAF granule from a CMR umm_json search: its file name and the
+// HTTPS download link (CMR also lists s3:// links, which need AWS credentials).
+export function extractLatestCeresGranule(cmrPayload) {
+  const items = Array.isArray(cmrPayload?.items) ? cmrPayload.items : [];
+  for (const item of items) {
+    const umm = item?.umm;
+    const name = typeof umm?.GranuleUR === "string" ? umm.GranuleUR : null;
+    const relatedUrls = Array.isArray(umm?.RelatedUrls) ? umm.RelatedUrls : [];
+    const download = relatedUrls.find(
+      (entry) => entry?.Type === "GET DATA" && typeof entry.URL === "string" && /^https:\/\/.+\.nc$/i.test(entry.URL)
+    );
+    if (name && download) return { name, url: download.URL };
   }
+  return null;
+}
 
-  if (!timeValues.length || !fluxValues.length) return [];
+function ceresTimeBaseUtc(units) {
+  const match = /days\s+since\s+(\d{4})-(\d{1,2})-(\d{1,2})/i.exec(String(units ?? ""));
+  if (!match) return NASA_CERES_EBAF_TIME_BASE_UTC;
+  return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
 
+export function buildCeresEarthEnergyImbalancePoints(timeValues, fluxValues, timeUnits) {
+  const timeBaseUtc = ceresTimeBaseUtc(timeUnits);
   const points = [];
   const length = Math.min(timeValues.length, fluxValues.length);
   for (let index = 0; index < length; index += 1) {
     const dayOffset = timeValues[index];
     const value = fluxValues[index];
-    if (!Number.isFinite(dayOffset) || !Number.isFinite(value)) continue;
-    const date = monthDateFromUtcTimestamp(NASA_CERES_EBAF_TIME_BASE_UTC + dayOffset * DAY_MS);
+    if (!Number.isFinite(dayOffset) || !Number.isFinite(value) || value <= -998) continue;
+    const date = monthDateFromUtcTimestamp(timeBaseUtc + dayOffset * DAY_MS);
     if (!date) continue;
     points.push({ date, value });
   }
-
   return normalizePoints(points);
+}
+
+async function fetchByteRange(url, start, length, headers) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OPTIONAL_SOURCE_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      headers: { ...REQUEST_HEADERS, ...headers, Range: `bytes=${start}-${start + length - 1}` },
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    // A 200 would be the whole ~900 MB file; refuse it rather than download it.
+    if (response.status !== 206) {
+      await response.body?.cancel();
+      throw new Error(`HTTP ${response.status} for a byte range of ${url}`);
+    }
+    return new Uint8Array(await response.arrayBuffer());
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function readNetcdfVariable(url, header, variableName, headers) {
+  const { variable, ranges } = oneDimensionalVariableRanges(header, variableName);
+  const chunks = new Array(ranges.length);
+  for (let index = 0; index < ranges.length; index += NETCDF_RECORD_READ_CONCURRENCY) {
+    const batch = ranges.slice(index, index + NETCDF_RECORD_READ_CONCURRENCY);
+    const results = await Promise.all(batch.map((range) => fetchByteRange(url, range.start, range.length, headers)));
+    results.forEach((chunk, offset) => {
+      chunks[index + offset] = chunk;
+    });
+  }
+  return { variable, values: chunks.flatMap((chunk) => decodeNetcdfValues(chunk, variable.type)) };
+}
+
+// Reads the global net TOA flux straight out of the EBAF netCDF-3 granule with
+// range requests: the header first, then just the time and flux values.
+async function loadCeresEarthEnergyImbalance(granule, token) {
+  const headers = { Authorization: `Bearer ${token}` };
+  let header = null;
+  for (let probeBytes = NETCDF_HEADER_PROBE_BYTES; !header; probeBytes *= 4) {
+    const prefix = await fetchByteRange(granule.url, 0, probeBytes, headers);
+    try {
+      header = parseNetcdf3Header(prefix);
+    } catch (error) {
+      if (!(error instanceof NetcdfHeaderTruncatedError) || prefix.length < probeBytes || probeBytes >= 16 * NETCDF_HEADER_PROBE_BYTES) {
+        throw error;
+      }
+    }
+  }
+
+  const time = await readNetcdfVariable(granule.url, header, "time", headers);
+  const flux = await readNetcdfVariable(granule.url, header, NASA_CERES_EBAF_NET_FLUX_VARIABLE, headers);
+  return buildCeresEarthEnergyImbalancePoints(time.values, flux.values, time.variable.attributes.units);
 }
 
 function readUint16Le(bytes, offset) {
@@ -1286,7 +1350,7 @@ function extractEnsoWindowFromClause(clause) {
   const probabilityMatch = cleanClause.match(/(\d{1,3})\s*%\s*chance/i);
   if (!probabilityMatch) return null;
 
-  const conditionMatches = [...cleanClause.matchAll(/ENSO-neutral|El Nino|La Nina/gi)];
+  const conditionMatches = [...cleanClause.matchAll(/ENSO-neutral|El Ni[nñ]o|La Ni[nñ]a/gi)];
   if (!conditionMatches.length) return null;
 
   const lastCondition = conditionMatches[conditionMatches.length - 1]?.[0] ?? "";
@@ -1298,7 +1362,9 @@ function extractEnsoWindowFromClause(clause) {
   if (chanceInMatch) {
     targetLabel = chanceInMatch[1].trim();
   } else {
-    const inlinePeriodMatch = cleanClause.match(/\bin\s+([A-Za-z]+(?:-[A-Za-z]+)*(?:\s+[A-Za-z]+(?:-[A-Za-z]+)*)?\s+\d{4})/i);
+    const inlinePeriodMatch = cleanClause.match(
+      /\b(?:in|through)\s+([A-Za-z]+(?:-[A-Za-z]+)*(?:\s+[A-Za-z]+(?:-[A-Za-z]+)*)?\s+\d{4})/i
+    );
     if (inlinePeriodMatch) {
       targetLabel = inlinePeriodMatch[1].trim();
     }
@@ -1311,7 +1377,7 @@ function extractEnsoWindowFromClause(clause) {
   };
 }
 
-function parseCpcEnsoOutlook(html) {
+export function parseCpcEnsoOutlook(html) {
   const rawHtml = String(html ?? "");
   if (!rawHtml.trim()) return null;
 
@@ -1334,7 +1400,7 @@ function parseCpcEnsoOutlook(html) {
   // (96% chance in December 2026-February 2027)." Preserve those windows even when
   // there is no ", with " separator to split on.
   if ((!nextThreeMonths || !nextSixMonths) && synopsis) {
-    const synopsisConditionMatches = [...synopsis.matchAll(/ENSO-neutral|El Nino|La Nina/gi)];
+    const synopsisConditionMatches = [...synopsis.matchAll(/ENSO-neutral|El Ni[nñ]o|La Ni[nñ]a/gi)];
     const inheritedCondition = normalizeEnsoCondition(
       synopsisConditionMatches[synopsisConditionMatches.length - 1]?.[0] ?? ""
     );
@@ -1370,6 +1436,79 @@ function parseCpcEnsoOutlook(html) {
     sourceUrl: NOAA_CPC_ENSO_DISCUSSION_URL,
     nextThreeMonths,
     nextSixMonths,
+  };
+}
+
+// The official CPC outlook as a table: "Issued October 2026" followed by rows such
+// as "SON Sep Oct Nov 0 0 100" (La Niña, Neutral, El Niño). The table starts with
+// the season centred on the issue month, so "next three months" is the following
+// season and "next six months" the one three seasons after that.
+export function parseCpcEnsoProbabilityTable(html, discussion = null) {
+  const pageText = cleanHtmlText(html);
+  if (!pageText) return null;
+
+  const issuedMatch = pageText.match(/Issued\s+([A-Z][a-z]+)\s+(\d{4})/);
+  const issuedMonth = issuedMatch ? MONTH_NAME_TO_NUMBER[issuedMatch[1]] : null;
+  const issuedYear = issuedMatch ? Number(issuedMatch[2]) : null;
+  if (!issuedMonth || !Number.isFinite(issuedYear)) return null;
+
+  const rows = [];
+  const seenSeasons = new Set();
+  const rowPattern = new RegExp(
+    `\\b(${ENSO_SEASON_CODES.join("|")})(?:\\s+[A-Z][a-z]{2}){3}\\s+(\\d{1,3})\\s+(\\d{1,3})\\s+(\\d{1,3})\\b`,
+    "g"
+  );
+  for (const match of pageText.matchAll(rowPattern)) {
+    if (seenSeasons.has(match[1])) continue;
+    seenSeasons.add(match[1]);
+    rows.push({
+      season: match[1],
+      laNinaProbability: Number(match[2]),
+      neutralProbability: Number(match[3]),
+      elNinoProbability: Number(match[4]),
+    });
+  }
+  if (!rows.length) return null;
+
+  const issueOrdinal = issuedYear * 12 + (issuedMonth - 1);
+  let previousOrdinal = null;
+  const datedRows = rows.map((row) => {
+    const centerMonth = ENSO_SEASON_CENTER_MONTH[row.season];
+    let year = issuedYear;
+    let ordinal = year * 12 + (centerMonth - 1);
+    // The first row may sit up to a season before the issue month; every later
+    // row must follow the one before it.
+    const minOrdinal = previousOrdinal == null ? issueOrdinal - 2 : previousOrdinal + 1;
+    while (ordinal < minOrdinal) {
+      year += 1;
+      ordinal += 12;
+    }
+    while (previousOrdinal == null && ordinal - 12 >= minOrdinal) {
+      year -= 1;
+      ordinal -= 12;
+    }
+    previousOrdinal = ordinal;
+    return { ...row, ordinal, targetLabel: formatIriSeasonTargetLabel(row.season, year) };
+  });
+
+  const nextThreeRow = datedRows.find((row) => row.ordinal > issueOrdinal) ?? datedRows[0];
+  const nextSixRow = datedRows[Math.min(datedRows.indexOf(nextThreeRow) + 3, datedRows.length - 1)];
+  const toWindow = (row) =>
+    buildEnsoWindowFromProbabilities(row.targetLabel, row.laNinaProbability, row.neutralProbability, row.elNinoProbability);
+
+  const discussionIssuedDate =
+    typeof discussion?.issuedDate === "string" && discussion.issuedDate.startsWith(formatDateFromParts(issuedYear, issuedMonth, 1).slice(0, 7))
+      ? discussion.issuedDate
+      : null;
+
+  return {
+    issuedDate: discussionIssuedDate ?? formatDateFromParts(issuedYear, issuedMonth, 1),
+    alertStatus: discussion?.alertStatus ?? null,
+    synopsis: discussion?.synopsis ?? null,
+    sourceLabel: "NOAA CPC ENSO Probabilities",
+    sourceUrl: NOAA_CPC_ENSO_PROBABILITIES_URL,
+    nextThreeMonths: toWindow(nextThreeRow),
+    nextSixMonths: toWindow(nextSixRow),
   };
 }
 
@@ -1423,7 +1562,7 @@ function assignIriSeasonYears(rows, issuedDate) {
   });
 }
 
-function parseIriEnsoOutlook(html) {
+export function parseIriEnsoOutlook(html) {
   const rawHtml = String(html ?? "");
   if (!rawHtml.trim()) return null;
 
@@ -1542,13 +1681,19 @@ function parseIriProseEnsoOutlook(pageText, issuedDate) {
   if (!condition) return null;
 
   const rows = [];
+  // Season codes may carry a year ("100% from OND 2026 through MAM 2027").
   const sameProbabilityRangePattern =
-    /(\d{1,3})\s*%\s+from\s+([A-Z]{3})\s+through\s+([A-Z]{3})|from\s+([A-Z]{3})\s+to\s+([A-Z]{3})[^.]*?(\d{1,3})\s*%/gi;
+    /(\d{1,3})\s*%\s+from\s+([A-Z]{3})(?:\s+\d{4})?\s+through\s+([A-Z]{3})|from\s+([A-Z]{3})(?:\s+\d{4})?\s+to\s+([A-Z]{3})[^.]*?(\d{1,3})\s*%/g;
   for (const match of outlookText.matchAll(sameProbabilityRangePattern)) {
     const probability = Number(match[1] ?? match[6]);
     const startSeason = match[2] ?? match[4];
     const endSeason = match[3] ?? match[5];
     rows.push(...expandIriSeasonRange(startSeason, endSeason, probability, condition));
+  }
+
+  // Single seasons: "then ease to 92% in AMJ and 60% in MJJ 2027".
+  for (const match of outlookText.matchAll(/(\d{1,3})\s*%\s+in\s+([A-Z]{3})\b/g)) {
+    rows.push({ season: match[2], condition, probability: Number(match[1]) });
   }
 
   const followedByPattern = /followed by\s+(\d{1,3})\s*%\s+and\s+(\d{1,3})\s*%\s+for\s+([A-Z]{3})\s+and\s+([A-Z]{3})/i;
@@ -2335,7 +2480,7 @@ async function updateOnce() {
     dailyGlobalMeanAnomalyCsv,
     incomingSolarEnergyHistoricalCsv,
     incomingSolarEnergyCsv,
-    ceresContentsHtml,
+    ceresGranulesPayload,
     wgmsReferenceGlacierCsv,
     wgmsAmceHtml,
     imbieWestAntarcticaCsv,
@@ -2343,6 +2488,7 @@ async function updateOnce() {
     greenlandMassVariationPayload,
     iriEnsoHtml,
     ensoDiscussionHtml,
+    ensoProbabilitiesHtml,
     nino34IndexText,
     naoIndexText,
     pnaIndexText,
@@ -2387,12 +2533,12 @@ async function updateOnce() {
       dataWarnings.push(`incoming_solar_energy: TSIS-1 recent refresh failed (${reason}).`);
       return null;
     }),
-    fetchText(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL, {
+    fetchJson(NASA_CERES_EBAF_CMR_GRANULES_URL, {
       timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
       attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
     }).catch((error) => {
       const reason = error instanceof Error ? error.message : String(error);
-      dataWarnings.push(`earth_energy_imbalance: CERES listing refresh failed (${reason}).`);
+      dataWarnings.push(`earth_energy_imbalance: CERES granule search failed (${reason}).`);
       return null;
     }),
     fetchText(WGMS_REFERENCE_GLACIERS_MASS_BALANCE_URL, {
@@ -2439,6 +2585,11 @@ async function updateOnce() {
       dataWarnings.push(`enso_outlook: NOAA CPC refresh failed (${reason}).`);
       return null;
     }),
+    fetchText(NOAA_CPC_ENSO_PROBABILITIES_URL).catch((error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      dataWarnings.push(`enso_outlook: NOAA CPC probability table refresh failed (${reason}).`);
+      return null;
+    }),
     fetchText(NOAA_CPC_ONI_URL).catch((error) => {
       const reason = error instanceof Error ? error.message : String(error);
       dataWarnings.push(`nino34_index: NOAA CPC ONI refresh failed (${reason}).`);
@@ -2454,9 +2605,9 @@ async function updateOnce() {
       dataWarnings.push(`pna_index: NOAA CPC PNA refresh failed (${reason}).`);
       return null;
     }),
-    fetchText(NOAA_PSL_SOI_MONTHLY_URL).catch((error) => {
+    fetchText(NOAA_CPC_SOI_MONTHLY_URL).catch((error) => {
       const reason = error instanceof Error ? error.message : String(error);
-      dataWarnings.push(`soi_index: NOAA PSL SOI refresh failed (${reason}).`);
+      dataWarnings.push(`soi_index: NOAA CPC SOI refresh failed (${reason}).`);
       return null;
     }),
     fetchText(NOAA_CPC_AO_MONTHLY_URL).catch((error) => {
@@ -2601,23 +2752,22 @@ async function updateOnce() {
       dataWarnings.push("incoming_solar_energy: retaining the previous validated NRLTSI2/TSIS-1 series.");
     }
   }
-  const ceresFileName = ceresContentsHtml ? extractLatestCeresEebafDatasetName(ceresContentsHtml) : null;
-  let earthEnergyImbalanceAscii = "";
-  if (ceresFileName) {
+  const ceresGranule = ceresGranulesPayload ? extractLatestCeresGranule(ceresGranulesPayload) : null;
+  const earthdataToken = process.env.EARTHDATA_TOKEN?.trim();
+  let earthEnergyImbalancePoints = [];
+  if (ceresGranule && !earthdataToken) {
+    dataWarnings.push(
+      `earth_energy_imbalance: EARTHDATA_TOKEN is not set, so ${ceresGranule.name} cannot be read (NASA Earthdata Login is required).`
+    );
+  } else if (ceresGranule) {
     try {
-      earthEnergyImbalanceAscii = await fetchText(buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName), {
-        timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,
-        attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS,
-      });
+      earthEnergyImbalancePoints = await loadCeresEarthEnergyImbalance(ceresGranule, earthdataToken);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       dataWarnings.push(`earth_energy_imbalance: CERES series refresh failed (${reason}).`);
     }
   }
-  let earthEnergyImbalance = sanitizeMetricSeries(
-    "earth_energy_imbalance",
-    parseCeresEarthEnergyImbalanceAscii(earthEnergyImbalanceAscii)
-  );
+  let earthEnergyImbalance = sanitizeMetricSeries("earth_energy_imbalance", earthEnergyImbalancePoints);
   const hasFreshEarthEnergyImbalance = earthEnergyImbalance.length > 0;
   if (!hasFreshEarthEnergyImbalance) {
     earthEnergyImbalance = await loadPreviousSeries("earth_energy_imbalance");
@@ -2714,19 +2864,17 @@ async function updateOnce() {
   }
   const naoIndex = await fallbackMonthlyIndexSeries("nao_index", parseNoaaCpcMonthlyIndexTable(naoIndexText), "NOAA CPC NAO");
   const pnaIndex = await fallbackMonthlyIndexSeries("pna_index", parseNoaaCpcMonthlyIndexTable(pnaIndexText), "NOAA CPC PNA");
-  const soiIndex = await fallbackMonthlyIndexSeries("soi_index", parseNoaaPslMonthlyIndexData(soiIndexText), "NOAA PSL SOI");
+  const soiIndex = await fallbackMonthlyIndexSeries("soi_index", parseNoaaCpcSoiText(soiIndexText), "NOAA CPC SOI");
   const arcticOscillationIndex = await fallbackMonthlyIndexSeries(
     "arctic_oscillation_index",
     parseNoaaCpcMonthlyIndexTable(arcticOscillationIndexText),
     "NOAA CPC AO"
   );
   const parsedCpcEnsoOutlook = parseCpcEnsoOutlook(ensoDiscussionHtml);
+  const parsedCpcEnsoProbabilities = parseCpcEnsoProbabilityTable(ensoProbabilitiesHtml, parsedCpcEnsoOutlook);
   const parsedIriEnsoOutlook = parseIriEnsoOutlook(iriEnsoHtml);
-  let ensoOutlook = isCompleteEnsoOutlook(parsedCpcEnsoOutlook)
-    ? parsedCpcEnsoOutlook
-    : isCompleteEnsoOutlook(parsedIriEnsoOutlook)
-      ? parsedIriEnsoOutlook
-      : null;
+  let ensoOutlook =
+    [parsedCpcEnsoProbabilities, parsedCpcEnsoOutlook, parsedIriEnsoOutlook].find(isCompleteEnsoOutlook) ?? null;
   if (!ensoOutlook) {
     ensoOutlook = await loadPreviousEnsoOutlook();
     if (ensoOutlook) {
@@ -2893,8 +3041,8 @@ async function updateOnce() {
           ? (await loadPreviousSourceUrl("global_mean_sea_level")) ?? gmslSource.sourceUrl
           : gmslSource.sourceUrl,
       ocean_heat_content: NOAA_OCEAN_HEAT_CONTENT_2000M_URL,
-      earth_energy_imbalance: hasFreshEarthEnergyImbalance && ceresFileName
-        ? buildCeresEarthEnergyImbalanceAsciiUrl(ceresFileName)
+      earth_energy_imbalance: hasFreshEarthEnergyImbalance && ceresGranule
+        ? ceresGranule.url
         : (await loadPreviousSourceUrl("earth_energy_imbalance")) ?? NASA_CERES_EBAF_PROJECT_URL,
       incoming_solar_energy: `${LASP_NRL2_TSI_MONTHLY_URL} + ${LASP_TSIS_TSI_DAILY_URL}`,
       global_glacier_mass_balance: wgmsAmceZipUrl ?? WGMS_MASS_CHANGE_ESTIMATES_URL,
@@ -2936,7 +3084,7 @@ async function updateOnce() {
       nino34_index: NOAA_CPC_ONI_URL,
       nao_index: NOAA_CPC_NAO_MONTHLY_URL,
       pna_index: NOAA_CPC_PNA_MONTHLY_URL,
-      soi_index: NOAA_PSL_SOI_MONTHLY_URL,
+      soi_index: NOAA_CPC_SOI_MONTHLY_URL,
       arctic_oscillation_index: NOAA_CPC_AO_MONTHLY_URL,
       enso_outlook: ensoOutlook?.sourceUrl ?? IRI_ENSO_CURRENT_URL,
       maps_current_weather: CR_TODAYS_WEATHER_PAGE_URL,
@@ -3043,7 +3191,9 @@ async function run() {
   }
 }
 
-run().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  run().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
+}

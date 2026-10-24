@@ -133,6 +133,10 @@ Cost and safety controls:
 
 For GitHub Actions, add `OPENAI_API_KEY` as a repository secret. Without that secret, the workflow still succeeds and uses the local summary fallback.
 
+### Earthdata token (CERES)
+
+NASA serves CERES EBAF (Earth energy imbalance) only through Earthdata Cloud, which needs an Earthdata Login. The updater finds the newest granule through the public CMR search, then reads just the time and global net flux values from the netCDF file with HTTP range requests, authenticated with `EARTHDATA_TOKEN` (a user token from https://urs.earthdata.nasa.gov, under "Generate Token"). Add it as a repository secret; without it the workflow still succeeds, keeps the last published CERES series and logs a warning.
+
 ### What `data:verify` checks
 
 - Dataset shape and required series presence.

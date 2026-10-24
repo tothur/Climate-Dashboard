@@ -84,8 +84,10 @@ test("optional CERES refresh fails fast and falls back to retained validated dat
   assert.match(updateScript, /const OPTIONAL_SOURCE_RETRY_ATTEMPTS = 1/);
   assert.match(
     updateScript,
-    /fetchText\(NASA_CERES_EBAF_OPENDAP_DIRECTORY_URL,\s*\{\s*timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,\s*attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS/
+    /fetchJson\(NASA_CERES_EBAF_CMR_GRANULES_URL,\s*\{\s*timeoutMs: OPTIONAL_SOURCE_TIMEOUT_MS,\s*attempts: OPTIONAL_SOURCE_RETRY_ATTEMPTS/
   );
+  assert.match(updateScript, /EARTHDATA_TOKEN is not set/);
+  assert.match(updateScript, /if \(response\.status !== 206\)/);
   assert.match(updateScript, /earth_energy_imbalance: retaining the previous validated CERES series/);
 });
 
@@ -130,11 +132,15 @@ test("daily dataset publication retries transient push failures", async () => {
   assert.match(workflow, /Failed to publish refreshed climate dataset after/);
 });
 
-test("ENSO outlook prefers NOAA CPC diagnostic updates when available", async () => {
+test("ENSO outlook prefers the NOAA CPC probability table, then CPC and IRI prose", async () => {
   const updateScript = await readProjectFile("scripts/update-climate-data.mjs");
 
   assert.match(updateScript, /fetchText\(NOAA_CPC_ENSO_DISCUSSION_URL\)/);
-  assert.match(updateScript, /isCompleteEnsoOutlook\(parsedCpcEnsoOutlook\)/);
+  assert.match(updateScript, /fetchText\(NOAA_CPC_ENSO_PROBABILITIES_URL\)/);
+  assert.match(
+    updateScript,
+    /\[parsedCpcEnsoProbabilities, parsedCpcEnsoOutlook, parsedIriEnsoOutlook\]\.find\(isCompleteEnsoOutlook\)/
+  );
   assert.match(updateScript, /enso_outlook: retaining the previous validated ENSO forecast windows/);
 });
 
@@ -147,7 +153,7 @@ test("ENSO outlook handles current IRI prose forecast format", async () => {
   assert.match(updateScript, /targetLabel:\s+formatIriSeasonTargetLabel\(row\.season,\s+year\)/);
   assert.match(updateScript, /strongly favors\(\?:\\s\+the\\s\+persistence\\s\+of\)\?/);
   assert.match(updateScript, /El\\s\+Ni\(\?:n\|ñ\)o/);
-  assert.match(updateScript, /from\\s\+\(\[A-Z\]\{3\}\)\\s\+through\\s\+\(\[A-Z\]\{3\}\)/);
+  assert.match(updateScript, /from\\s\+\(\[A-Z\]\{3\}\)\(\?:\\s\+\\d\{4\}\)\?\\s\+through\\s\+\(\[A-Z\]\{3\}\)/);
   assert.match(updateScript, /followed by\\s\+\(\\d\{1,3\}\)\\s\*%\\s\+and\\s\+\(\\d\{1,3\}\)\\s\*%/);
   assert.match(updateScript, /parseIriProseEnsoOutlook\(pageText, issuedDate\)/);
 });
