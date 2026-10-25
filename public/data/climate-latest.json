@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAtIso": "2026-10-24T09:37:04.030Z",
+  "generatedAtIso": "2026-10-25T09:52:41.210Z",
   "scope": "Read-only compact snapshot of the latest published Climate Dashboard observations. It excludes full historical series; answer historical trend questions only when data for them is present.",
   "interpretationRules": [
     "State the observation date alongside each reported latest value.",
@@ -11,15 +11,15 @@
     {
       "key": "global_surface_temperature",
       "label": "Global Surface Temperature",
-      "latestDate": "2026-10-18",
-      "latestValue": 15.265,
+      "latestDate": "2026-10-19",
+      "latestValue": 15.227,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_world_t2_day.json"
     },
     {
       "key": "global_sea_surface_temperature",
       "label": "Global Sea Surface Temperature",
-      "latestDate": "2026-10-22",
+      "latestDate": "2026-10-23",
       "latestValue": 21.034,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json"
@@ -27,10 +27,10 @@
     {
       "key": "global_mean_sea_level",
       "label": "Global Mean Sea Level",
-      "latestDate": "2026-02-01",
-      "latestValue": 95.331,
+      "latestDate": "2026-06-01",
+      "latestValue": 98.849,
       "unit": "mm",
-      "source": "https://sealevel.colorado.edu/files/2026_rel1/gmsl_2026rel1_seasons_rmvd.txt"
+      "source": "https://sealevel.colorado.edu/files/2026_rel2/gmsl_2026rel2_seasons_rmvd.txt"
     },
     {
       "key": "ocean_heat_content",
@@ -75,120 +75,120 @@
     {
       "key": "northern_hemisphere_surface_temperature",
       "label": "Northern Hemisphere Surface Temperature",
-      "latestDate": "2026-10-18",
-      "latestValue": 17.219,
+      "latestDate": "2026-10-19",
+      "latestValue": 17.136,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_nh_t2_day.json"
     },
     {
       "key": "southern_hemisphere_surface_temperature",
       "label": "Southern Hemisphere Surface Temperature",
-      "latestDate": "2026-10-18",
-      "latestValue": 13.363,
+      "latestDate": "2026-10-19",
+      "latestValue": 13.371,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_sh_t2_day.json"
     },
     {
       "key": "arctic_surface_temperature",
       "label": "Arctic Surface Temperature",
-      "latestDate": "2026-10-18",
-      "latestValue": -6.295,
+      "latestDate": "2026-10-19",
+      "latestValue": -6.533,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_arctic_t2_day.json"
     },
     {
       "key": "antarctic_surface_temperature",
       "label": "Antarctic Surface Temperature",
-      "latestDate": "2026-10-18",
-      "latestValue": -24.56,
+      "latestDate": "2026-10-19",
+      "latestValue": -24.267,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/t2_daily/json/era5_antarctic_t2_day.json"
     },
     {
       "key": "north_atlantic_sea_surface_temperature",
       "label": "North Atlantic Sea Surface Temperature",
-      "latestDate": "2026-10-22",
-      "latestValue": 23.928,
+      "latestDate": "2026-10-23",
+      "latestValue": 23.838,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json"
     },
     {
       "key": "daily_nino34_sea_surface_temperature",
       "label": "Daily Sea Surface Temperature, Niño 3.4",
-      "latestDate": "2026-10-22",
-      "latestValue": 30.112,
+      "latestDate": "2026-10-23",
+      "latestValue": 30.144,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_nino3.4_sst_day.json"
     },
     {
       "key": "global_surface_temperature_anomaly",
       "label": "Global Surface Temperature Anomaly",
-      "latestDate": "2026-10-18",
-      "latestValue": 0.864,
+      "latestDate": "2026-10-19",
+      "latestValue": 0.863,
       "unit": "°C",
       "source": "Derived from ERA5 daily global surface temperature minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "global_sea_surface_temperature_anomaly",
       "label": "Global Sea Surface Temperature Anomaly",
-      "latestDate": "2026-10-22",
-      "latestValue": 0.834,
+      "latestDate": "2026-10-23",
+      "latestValue": 0.836,
       "unit": "°C",
       "source": "Derived from OISST v2.1 daily global SST minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "northern_hemisphere_surface_temperature_anomaly",
       "label": "Northern Hemisphere Surface Temperature Anomaly",
-      "latestDate": "2026-10-18",
-      "latestValue": 0.956,
+      "latestDate": "2026-10-19",
+      "latestValue": 0.99,
       "unit": "°C",
       "source": "Derived from ERA5 daily Northern Hemisphere surface temperature minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "southern_hemisphere_surface_temperature_anomaly",
       "label": "Southern Hemisphere Surface Temperature Anomaly",
-      "latestDate": "2026-10-18",
-      "latestValue": 0.775,
+      "latestDate": "2026-10-19",
+      "latestValue": 0.74,
       "unit": "°C",
       "source": "Derived from ERA5 daily Southern Hemisphere surface temperature minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "arctic_surface_temperature_anomaly",
       "label": "Arctic Surface Temperature Anomaly",
-      "latestDate": "2026-10-18",
-      "latestValue": 2.764,
+      "latestDate": "2026-10-19",
+      "latestValue": 2.811,
       "unit": "°C",
       "source": "Derived from ERA5 daily Arctic surface temperature minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "antarctic_surface_temperature_anomaly",
       "label": "Antarctic Surface Temperature Anomaly",
-      "latestDate": "2026-10-18",
-      "latestValue": 1.861,
+      "latestDate": "2026-10-19",
+      "latestValue": 1.944,
       "unit": "°C",
       "source": "Derived from ERA5 daily Antarctic surface temperature minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "north_atlantic_sea_surface_temperature_anomaly",
       "label": "North Atlantic Sea Surface Temperature Anomaly",
-      "latestDate": "2026-10-22",
-      "latestValue": 0.859,
+      "latestDate": "2026-10-23",
+      "latestValue": 0.806,
       "unit": "°C",
       "source": "Derived from OISST v2.1 daily North Atlantic SST minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "daily_nino34_sea_surface_temperature_anomaly",
       "label": "Daily Sea Surface Temperature Anomaly, Niño 3.4",
-      "latestDate": "2026-10-22",
-      "latestValue": 3.4,
+      "latestDate": "2026-10-23",
+      "latestValue": 3.428,
       "unit": "°C",
       "source": "Derived from OISST v2.1 daily Niño 3.4 SST minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "daily_global_mean_temperature_anomaly",
       "label": "Daily Global Mean Temperature Anomaly",
-      "latestDate": "2026-10-22",
-      "latestValue": 1.969,
+      "latestDate": "2026-10-23",
+      "latestValue": 1.957,
       "unit": "°C",
       "source": "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv (ano_91-20 adjusted by +0.88C to approximate 1850-1900 preindustrial baseline)"
     },
@@ -222,13 +222,13 @@
       "latestDate": "2026-09-01",
       "latestValue": 5.029,
       "unit": "million km²",
-      "source": "https://climate.rutgers.edu/snowcover/files/moncov.nhland.txt"
+      "source": "https://climate.rutgers.edu/snowcover/190km/files/moncov.nhland.txt"
     },
     {
       "key": "atmospheric_co2",
       "label": "Atmospheric CO2 (Mauna Loa)",
-      "latestDate": "2026-10-22",
-      "latestValue": 426.46,
+      "latestDate": "2026-10-23",
+      "latestValue": 426.77,
       "unit": "ppm",
       "source": "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv"
     },
@@ -268,19 +268,19 @@
     }
   ],
   "ensoOutlook": {
-    "issuedDate": "2026-07-20",
-    "alertStatus": null,
-    "sourceLabel": "IRI ENSO Forecast",
-    "sourceUrl": "https://iri.columbia.edu/our-expertise/climate/forecasts/enso/current/",
+    "issuedDate": "2026-10-08",
+    "alertStatus": "El Nino Advisory",
+    "sourceLabel": "NOAA CPC ENSO Probabilities",
+    "sourceUrl": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso/roni/probabilities/",
     "nextThreeMonths": {
       "condition": "el_nino",
-      "probability": 99,
-      "targetLabel": "February-April 2027"
+      "probability": 100,
+      "targetLabel": "October-December 2026"
     },
     "nextSixMonths": {
       "condition": "el_nino",
-      "probability": 99,
-      "targetLabel": "March-May 2027"
+      "probability": 100,
+      "targetLabel": "January-March 2027"
     }
   }
 }
