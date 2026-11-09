@@ -1,53 +1,37 @@
 # Climate Dashboard
 
-Climate Dashboard is a bilingual, responsive web app for tracking daily global surface temperature, sea surface temperature, total sea ice extent, and Mauna Loa CO2 with year-over-year comparison charts and automated daily updates.
+Climate Dashboard is a bilingual (English / Hungarian), responsive web app that tracks the state of the global climate from about 40 daily, monthly and annual series, refreshed automatically every day and published on GitHub Pages: https://tothur.github.io/Climate-Dashboard/
 
-## Current Functionality
+## Pages
 
-- Bilingual UI (`EN` / `HU`) with saved language preference.
-- Light / dark / system theme with saved theme preference.
-- Header branding with Earth logo and climate subtitle.
-- Latest-value cards for all tracked series.
-- Collapsible sections for:
-  - `Climate Indicators`
-  - `Forcing`
-- Footer with:
-  - data source mode pill (`live` / `mixed` / `bundled`)
-  - last update timestamp
-  - primary source links per metric
+- **Overview** (`#overview`): the daily global temperature anomaly against 1850-1900, today's air and ocean maps, an AI-written summary of the day's notable signals, headline indicators, regional anomalies, the Niño 3.4 anomaly and ENSO outlook, this year's warming estimate and the warming pathways to 2100.
+- **Climate system** (`#climate-system/<topic>`): every indicator, grouped into eight topics: temperature, regions, oceans, ice & snow, energy, greenhouse gases & Sun, El Niño & La Niña, and circulation modes. Daily series are drawn against their 1991-2020 normal range and recent years; long records as trend charts.
+- **Maps** (`#maps`): global 2 m air temperature and sea surface temperature maps, absolute and anomaly.
+- **Projections** (`#projections`, experimental): an analog-year estimate of this year's annual mean, the CMIP7 ScenarioMIP warming pathways, and Earth-system tipping thresholds (Armstrong McKay et al. 2022) compared with long-term warming (the 10-year average).
+- **Sources** (`#sources`): every series with its source, cadence and freshness.
 
-### Climate Indicators
-
-Three charts with daily points displayed on a Jan-Dec axis:
-
-- Global Surface Temperature
-- Global Sea Surface Temperature
-- Global Sea Ice Extent (Arctic + Antarctic total)
-
-Comparison logic:
-
-- Always plots the current year plus previous 3 years.
-- Color scheme emphasizes current year with a warm color and older years with cooler blue/blue-grey shades.
-
-Axis constraints:
-
-- Global Surface Temperature: `10` to `18` deg C
-- Global Sea Surface Temperature: `19.5` to `21.5` deg C
-- Global Sea Ice Extent: `10` to `30` million sq km
-
-### Forcing (CO2)
-
-- Atmospheric CO2 at Mauna Loa plotted from daily data aggregated to monthly means.
-- X-axis starts at `1974`, with decadal labels.
-- Y-axis fixed to `280` to `500` ppm.
-- Compact left-side half-width card layout.
+Also: light / dark / system theme, saved language and theme preferences, per-page tab titles, link-preview metadata, and an installable offline-capable PWA.
 
 ## Data Sources
 
-- Global surface temperature (ERA5): Climate Reanalyzer
-- Global sea surface temperature (NOAA OISST v2.1): Climate Reanalyzer
-- Sea ice extent (north + south daily): NSIDC Sea Ice Index v4 (NOAA-hosted files)
-- Atmospheric CO2 (daily Mauna Loa): NOAA GML
+- Surface temperature, global and regional (ERA5) and sea surface temperature (NOAA OISST v2.1): Climate Reanalyzer
+- Daily global mean anomaly against 1850-1900 (ERA5): ECMWF Climate Pulse
+- Sea ice extent: NSIDC Sea Ice Index v4; snow cover: Rutgers Global Snow Lab
+- Sea level: University of Colorado; ocean heat content: NOAA NCEI
+- Earth energy imbalance: NASA CERES EBAF (needs `EARTHDATA_TOKEN`, see below)
+- Ice sheets and glaciers: NASA GRACE/GRACE-FO, IMBIE, WGMS
+- CO2, CH4, N2O and AGGI: NOAA GML; total solar irradiance: LASP
+- ENSO, NAO, PNA, SOI and AO indices and the ENSO outlook: NOAA CPC
+- Maps: Climate Reanalyzer (GFS)
+
+The full list, with links, is on the Sources page and in `scripts/metric-registry.mjs`.
+
+## Code Layout
+
+- `src/app/App.tsx` - the app shell and pages; `src/app/strings.ts` - all interface copy in both languages
+- `src/components/`, `src/charts/` - chart panels and their ECharts option builders
+- `src/data/` - runtime loading, fallbacks and published reference values (`projection-reference.ts`)
+- `scripts/` - the data updater, verifier, parsers and their tests
 
 Generated dataset files:
 
@@ -192,7 +176,7 @@ Workflow file:
 
 Trigger:
 
-- Daily at `05:17 UTC`
+- Twice daily, at `03:43` and `14:43 UTC` (GitHub often starts scheduled runs hours late, so two runs keep the data fresh)
 - Manual via `workflow_dispatch`
 
 Pipeline:

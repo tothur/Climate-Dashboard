@@ -1008,7 +1008,8 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   letter-spacing: .04em;
   text-transform: uppercase;
   white-space: nowrap;
-  transform: translateX(-50%);
+  padding-right: 5px;
+  transform: translateX(-100%);
 }
 .observatory .tipping-ladder-row {
   --range-color: color-mix(in srgb, var(--muted) 26%, transparent);
@@ -1059,6 +1060,27 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
   background: var(--domain-temperature);
 }
 .observatory .tipping-ladder-row:last-child .tipping-ladder-now { bottom: 0; }
+/* This year's own mean: a dashed companion to the solid long-term line. */
+.observatory .tipping-ladder-year {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: -1px;
+  left: var(--tipping-year);
+  width: 0;
+  border-left: 1px dashed color-mix(in srgb, var(--domain-temperature) 60%, transparent);
+}
+.observatory .tipping-ladder-row:last-child .tipping-ladder-year { bottom: 0; }
+.observatory .tipping-ladder-year-label {
+  position: absolute;
+  top: 0;
+  left: var(--tipping-year);
+  padding-left: 5px;
+  color: color-mix(in srgb, var(--domain-temperature) 75%, var(--muted));
+  font: 600 10px/1.4 var(--font-sans);
+  font-style: normal;
+  white-space: nowrap;
+}
 .observatory .tipping-ladder-value { display: grid; gap: 2px; align-content: center; justify-items: end; text-align: right; }
 .observatory .tipping-ladder-value strong { color: var(--text); font: 650 15px/1.2 var(--font-display); }
 .observatory :is(.state-possible, .state-likely) .tipping-ladder-value strong { color: var(--central-color); }

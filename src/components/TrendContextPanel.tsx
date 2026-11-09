@@ -1,4 +1,5 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { formatChancePercent } from "../domain/format";
 import type { Language } from "../domain/model";
 import { buildTrendContextOption, trendContextPalette, type TrendContextData, type TrendContextRange } from "../charts/trendContext";
 import { divergingColors, type ChartDomain } from "../theme/domainColors";
@@ -522,7 +523,7 @@ export function TrendContextPanel({
   } else if (isEstimate) {
     const complete = data.points.slice(0, -1);
     const record = complete.reduce<[number, number] | null>((best, point) => (!best || point[1] > best[1] ? point : best), null);
-    const percent = (value: number) => new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", { style: "percent", maximumFractionDigits: 0 }).format(value);
+    const percent = (value: number) => formatChancePercent(value, language);
     chips.push({ text: copy.likelyRange(formatRange(estimate.low, estimate.high)) });
     chips.push({ text: copy.chanceAbove(percent(estimate.probabilityAbove), levelLabel(WARMING_LEVELS[0])), alert: estimate.probabilityAbove >= 0.5 });
     if (record) {

@@ -4,9 +4,9 @@ import type { PathwaysData } from "../charts/pathways";
 
 /**
  * Tipping thresholds on one shared warming scale: each element's assessed
- * range as a band and its central estimate as a dot, against current warming
- * (the vertical line) and where each pathway ends in 2100 (markers on the
- * scale). Rows sort by threshold or group by part of the Earth system.
+ * range as a band and its central estimate as a dot, against long-term warming
+ * (the solid vertical line, a 10-year mean), this year's mean (the dashed
+ * line) and where each pathway ends in 2100 (markers on the scale). Rows sort by threshold or group by part of the Earth system.
  */
 
 export type TippingState = "likely" | "possible" | "below";
@@ -26,8 +26,11 @@ export interface TippingLadderItem {
 interface TippingLadderPanelProps {
   title: string;
   items: TippingLadderItem[];
+  /** Long-term warming (10-year mean), which decides each threshold's state. */
   currentWarming: number | null;
-  /** Current warming is this year's mean so far. */
+  /** The latest year's own mean, shown for comparison only. */
+  yearWarming: number | null;
+  /** The latest year's mean is a year-to-date value. */
   partial: boolean;
   currentYear: number | null;
   pathways: PathwaysData | null;
@@ -55,15 +58,16 @@ const GROUP_OF: Record<string, SystemGroup> = {
 
 const COPY = {
   en: {
-    kicker: (year: number | null, partial: boolean) => `Current warming${year ? ` · ${year}${partial ? " so far" : ""}` : ""} · vs 1850–1900`,
+    kicker: "Long-term warming · 10-year average · vs 1850–1900",
+    yearChip: (year: number, partial: boolean, value: string) => `${year}${partial ? " so far" : ""}: ${value}, a single year`,
     withinRange: (count: number, total: number) => `Inside the assessed range of ${count} of ${total} thresholds`,
-    aboveCentral: (count: number) => `Already past ${count} central thresholds`,
+    aboveCentral: (count: number) => `Past ${count} central ${count === 1 ? "threshold" : "thresholds"}`,
     belowParis: (count: number, total: number, level: string) => `${count} of ${total} could tip at or below ${level}`,
     order: "Order",
     byThreshold: "By threshold",
     bySystem: "By system",
     groups: { cryosphere: "Ice and frozen ground", circulation: "Ocean and atmosphere circulation", biosphere: "Ecosystems" } as Record<SystemGroup, string>,
-    now: "Now",
+    now: "10-yr avg",
     central: "Central threshold",
     range: "assessed range",
     states: { likely: "Above central threshold", possible: "Inside uncertainty range", below: "Below assessed range" } as Record<TippingState, string>,
@@ -74,7 +78,8 @@ const COPY = {
     legendBand: "Band: assessed range · dot: central threshold",
   },
   hu: {
-    kicker: (year: number | null, partial: boolean) => `Jelenlegi melegedés${year ? ` · ${year}${partial ? ", eddig" : ""}` : ""} · az 1850–1900-as szinthez képest`,
+    kicker: "Hosszú távú melegedés · 10 éves átlag · az 1850–1900-as szinthez képest",
+    yearChip: (year: number, partial: boolean, value: string) => `${year}${partial ? ", eddig" : ""}: ${value}, egyetlen év`,
     withinRange: (count: number, total: number) => `${total} küszöbből ${count} becsült tartományán belül`,
     aboveCentral: (count: number) => `${count} központi küszöböt már meghaladott`,
     belowParis: (count: number, total: number, level: string) => `${total} közül ${count} már legfeljebb ${level}-on átbillenhet`,
@@ -82,7 +87,7 @@ const COPY = {
     byThreshold: "Küszöb szerint",
     bySystem: "Rendszer szerint",
     groups: { cryosphere: "Jég és fagyott talaj", circulation: "Óceáni és légköri áramlások", biosphere: "Ökoszisztémák" } as Record<SystemGroup, string>,
-    now: "Most",
+    now: "10 éves átl.",
     central: "Központi küszöb",
     range: "becsült tartomány",
     states: { likely: "A központi küszöb felett", possible: "A bizonytalansági tartományban", below: "A becsült tartomány alatt" } as Record<TippingState, string>,
@@ -96,7 +101,7 @@ const COPY = {
 
 const percent = (value: number) => `${Math.min(Math.max((value / AXIS_MAX) * 100, 0), 100)}%`;
 
-export function TippingLadderPanel({ title, items, currentWarming, partial, currentYear, pathways, unit, language, dark, ready }: TippingLadderPanelProps) {
+export function TippingLadderPanel({ title, items, currentWarming, yearWarming, partial, currentYear, pathways, unit, language, dark, ready }: TippingLadderPanelProps) {
   const copy = COPY[language];
   const [order, setOrder] = useState<"threshold" | "system">("threshold");
   const numberFormat = new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
@@ -111,6 +116,7 @@ export function TippingLadderPanel({ title, items, currentWarming, partial, curr
   const chips = [
     { text: copy.withinRange(within, items.length), alert: true },
     ...(above ? [{ text: copy.aboveCentral(above), alert: false }] : []),
+    ...(yearWarming != null && currentYear != null ? [{ text: copy.yearChip(currentYear, partial, signed(yearWarming)), alert: false }] : []),
     { text: copy.belowParis(belowParis, items.length, `${PARIS_LIMIT} ${unit}`), alert: false },
   ];
 
@@ -137,6 +143,7 @@ export function TippingLadderPanel({ title, items, currentWarming, partial, curr
         <span className="tipping-ladder-guide" style={{ left: percent(2) }} />
         <span className="tipping-ladder-range" style={{ left: percent(item.min), width: `calc(${percent(item.max)} - ${percent(item.min)})` }} />
         <span className="tipping-ladder-central" style={{ left: percent(item.central) }} />
+        {yearWarming != null ? <span className="tipping-ladder-year" /> : null}
         <span className="tipping-ladder-now" />
       </div>
       <div className="tipping-ladder-value">
@@ -172,7 +179,7 @@ export function TippingLadderPanel({ title, items, currentWarming, partial, curr
       </header>
       <div className="daily-context-intro">
         <div className="daily-context-headline">
-          <p className="daily-context-kicker">{ready ? copy.kicker(currentYear, partial) : " "}</p>
+          <p className="daily-context-kicker">{ready ? copy.kicker : " "}</p>
           <p className="daily-context-value">
             {ready && currentWarming != null ? (
               <>
@@ -210,7 +217,7 @@ export function TippingLadderPanel({ title, items, currentWarming, partial, curr
       </div>
       <ol
         className="tipping-ladder"
-        style={{ "--tipping-now": percent(currentWarming ?? 0) } as CSSProperties}
+        style={{ "--tipping-now": percent(currentWarming ?? 0), "--tipping-year": percent(yearWarming ?? 0) } as CSSProperties}
       >
         <li className="tipping-ladder-axis" aria-hidden="true">
           <span className="tipping-ladder-axis-note">{scenarios.length ? copy.pathwaysIn2100 : null}</span>
@@ -224,6 +231,11 @@ export function TippingLadderPanel({ title, items, currentWarming, partial, curr
               <strong className="tipping-ladder-now-label">
                 {copy.now} {format(currentWarming)}
               </strong>
+            ) : null}
+            {yearWarming != null && currentYear != null ? (
+              <em className="tipping-ladder-year-label">
+                {currentYear} {format(yearWarming)}
+              </em>
             ) : null}
             {scenarios.map((scenario) => (
               <i

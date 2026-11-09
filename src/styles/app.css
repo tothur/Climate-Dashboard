@@ -326,36 +326,6 @@
   --shadow: var(--shadow-1);
 }
 
-.pathogen-influenza {
-  --pathogen-accent: #ec4899;
-  --pathogen-soft: rgba(236, 72, 153, 0.16);
-  --pathogen-emphasis: #9d174d;
-}
-
-.pathogen-sarscov2 {
-  --pathogen-accent: #2563eb;
-  --pathogen-soft: rgba(37, 99, 235, 0.14);
-  --pathogen-emphasis: #1d4ed8;
-}
-
-.pathogen-rsv {
-  --pathogen-accent: #14b8a6;
-  --pathogen-soft: rgba(20, 184, 166, 0.16);
-  --pathogen-emphasis: #0f766e;
-}
-
-.pathogen-hmpv {
-  --pathogen-accent: #f97316;
-  --pathogen-soft: rgba(249, 115, 22, 0.18);
-  --pathogen-emphasis: #c2410c;
-}
-
-.pathogen-other {
-  --pathogen-accent: #64748b;
-  --pathogen-soft: rgba(100, 116, 139, 0.18);
-  --pathogen-emphasis: #334155;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -1038,28 +1008,6 @@ h3 {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.virus-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--pathogen-accent, #94a3b8) 38%, transparent);
-  background: var(--pathogen-soft, rgba(148, 163, 184, 0.18));
-  color: var(--pathogen-emphasis, #0f172a);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-}
-
-.virus-icon svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
 }
 
 .alert-card.summary p {
@@ -1878,28 +1826,6 @@ h3 {
   gap: 8px;
 }
 
-.pathogen-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  color: var(--pathogen-emphasis, var(--text));
-  font-weight: 620;
-}
-
-.pathogen-name strong {
-  color: inherit;
-}
-
-.virus-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--pathogen-accent, #64748b);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pathogen-accent, #64748b) 24%, transparent);
-  flex: 0 0 auto;
-}
-
 .surge-item {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 12px;
@@ -1915,10 +1841,6 @@ h3 {
 .surge-item > div {
   display: grid;
   gap: 3px;
-}
-
-.surge-item .pathogen-name strong {
-  font-size: 0.92rem;
 }
 
 .surge-item > div > span {
@@ -2342,30 +2264,6 @@ h3 {
   width: fit-content;
 }
 
-.stat-card-ili-compare {
-  display: grid;
-  gap: 6px;
-}
-
-.stat-card-ili-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.stat-card-ili-main {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.stat-card-ili-main strong {
-  margin-top: 0;
-  line-height: 1.06;
-}
-
 .stat-delta-pill {
   border-radius: 999px;
   padding: 3px 9px;
@@ -2404,10 +2302,6 @@ h3 {
 .briefing-stats-grid .stat-card {
   min-height: 120px;
   align-content: start;
-}
-
-.briefing-stats-grid .stat-card-ili-compare {
-  min-height: 108px;
 }
 
 .charts-grid {
@@ -2464,161 +2358,9 @@ h3 {
   font-weight: 600;
 }
 
-.virology-section {
-  display: grid;
-  gap: 16px;
-  padding: 12px;
-  border-radius: calc(var(--radius) + 2px);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  background: linear-gradient(180deg, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.01));
-}
-
-.virology-header {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 14px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  gap: 12px;
-}
-
-.virology-header h2 {
-  margin: 0;
-  font-size: var(--type-section-title-size);
-  font-weight: var(--type-section-title-weight);
-  letter-spacing: 0;
-}
-
-.virology-header p {
-  margin: 3px 0 0;
-  color: var(--muted);
-  font-size: var(--type-section-subtitle-size);
-}
-
-.virology-header-actions {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto;
-  justify-content: flex-end;
-  align-items: end;
-  gap: 10px;
-  margin-left: auto;
-}
-
-.virology-controls {
-  display: grid;
-  gap: 6px;
-  min-width: 220px;
-}
-
-.virology-controls label {
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
-.virology-controls select {
-  appearance: none;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 9px 12px;
-  font-size: 0.92rem;
-  background: var(--panel);
-  color: var(--text);
-}
-
-.virology-lists {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-}
-
-.virology-list-card {
-  background: linear-gradient(165deg, color-mix(in srgb, var(--panel) 92%, #ffffff 8%), var(--panel));
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 14px;
-  transition: transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease;
-}
-
-.virology-list-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-2);
-}
-
-.virology-list-card h3 {
-  margin: 0;
-  font-size: var(--type-card-title-size);
-  font-weight: var(--type-card-title-weight);
-}
-
-.virology-list-card ul {
-  margin: 10px 0 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 8px;
-}
-
-.virology-list-card li {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  font-size: 0.9rem;
-}
-
-.virology-list-card li .pathogen-name {
-  color: var(--pathogen-emphasis, var(--muted));
-}
-
-.virology-list-card li .pathogen-name .virus-dot {
-  width: 9px;
-  height: 9px;
-}
-
-.virology-list-card li strong {
-  font-size: 0.96rem;
-  color: var(--pathogen-emphasis, var(--text));
-}
-
-.virology-empty {
-  margin: 10px 0 0;
-  color: var(--muted);
-}
-
 .eu-summary-lists {
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.virology-list-card.compact {
-  padding: 10px 12px;
-}
-
-.virology-list-card.compact h3 {
-  font-size: 0.9rem;
-}
-
-.virology-list-card.compact ul {
-  margin-top: 8px;
-  gap: 6px;
-}
-
-.virology-list-card.compact li {
-  font-size: 0.84rem;
-}
-
-.virology-list-card.compact li strong {
-  font-size: 0.9rem;
-}
-
-.virology-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 16px;
 }
 
 .table-section {
@@ -2731,11 +2473,6 @@ h3 {
   gap: 7px;
   color: var(--pathogen-emphasis, var(--text));
   font-weight: 620;
-}
-
-.table-top-positivity .virus-dot {
-  width: 8px;
-  height: 8px;
 }
 
 .panel {
@@ -3209,11 +2946,6 @@ body.panel-expanded-lock {
   background: linear-gradient(180deg, rgba(14, 116, 144, 0.2), rgba(30, 41, 59, 0.32));
 }
 
-[data-theme="dark"] .virology-section {
-  border-color: rgba(74, 222, 128, 0.3);
-  background: linear-gradient(180deg, rgba(22, 163, 74, 0.16), rgba(30, 41, 59, 0.32));
-}
-
 [data-theme="dark"] .glance-section {
   border-color: rgba(129, 140, 248, 0.32);
   background: linear-gradient(180deg, rgba(79, 70, 229, 0.2), rgba(30, 41, 59, 0.32));
@@ -3431,42 +3163,6 @@ body.panel-expanded-lock {
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
 }
 
-[data-theme="dark"] .virus-icon {
-  border-color: color-mix(in srgb, var(--pathogen-accent, #94a3b8) 46%, transparent);
-  background: var(--pathogen-soft, rgba(51, 65, 85, 0.72));
-  color: var(--pathogen-emphasis, #e2e8f0);
-}
-
-[data-theme="dark"] .pathogen-influenza {
-  --pathogen-accent: #f472b6;
-  --pathogen-soft: rgba(236, 72, 153, 0.32);
-  --pathogen-emphasis: #fbcfe8;
-}
-
-[data-theme="dark"] .pathogen-sarscov2 {
-  --pathogen-accent: #60a5fa;
-  --pathogen-soft: rgba(37, 99, 235, 0.34);
-  --pathogen-emphasis: #dbeafe;
-}
-
-[data-theme="dark"] .pathogen-rsv {
-  --pathogen-accent: #2dd4bf;
-  --pathogen-soft: rgba(20, 184, 166, 0.32);
-  --pathogen-emphasis: #ccfbf1;
-}
-
-[data-theme="dark"] .pathogen-hmpv {
-  --pathogen-accent: #fb923c;
-  --pathogen-soft: rgba(249, 115, 22, 0.34);
-  --pathogen-emphasis: #ffedd5;
-}
-
-[data-theme="dark"] .pathogen-other {
-  --pathogen-accent: #94a3b8;
-  --pathogen-soft: rgba(100, 116, 139, 0.36);
-  --pathogen-emphasis: #e2e8f0;
-}
-
 [data-theme="dark"] .alert-chip {
   border-color: rgba(148, 163, 184, 0.34);
   background: rgba(30, 41, 59, 0.8);
@@ -3560,7 +3256,6 @@ body.panel-expanded-lock {
   .surge-item,
   .stat-card,
   .glance-card,
-  .virology-list-card,
   .panel {
     transition: none !important;
   }
@@ -3570,7 +3265,6 @@ body.panel-expanded-lock {
   .surge-item:hover,
   .stat-card:hover,
   .glance-card:hover,
-  .virology-list-card:hover,
   .panel:hover,
   .footer-sources-links a:hover {
     transform: none !important;
@@ -3701,22 +3395,6 @@ body.panel-expanded-lock {
   .section-header {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .virology-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .virology-header-actions {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-    justify-content: flex-start;
-    margin-left: 0;
-  }
-
-  .virology-controls {
-    min-width: 0;
   }
 
   .section-toggle {

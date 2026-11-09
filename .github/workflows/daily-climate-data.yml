@@ -1,8 +1,12 @@
 name: Daily Climate Data Update
 
 on:
+  # GitHub starts scheduled runs late when its queue is busy (this job has
+  # started 6-9 hours after its slot). Two runs a day, at quiet minutes, keep
+  # the data fresh even when one is delayed or dropped.
   schedule:
-    - cron: "17 5 * * *"
+    - cron: "43 3 * * *"
+    - cron: "43 14 * * *"
   workflow_dispatch:
 
 permissions:

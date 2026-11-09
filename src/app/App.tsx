@@ -15,7 +15,7 @@ import type {
   DailyPoint,
 } from "../domain/model";
 import { loadRuntimeDataSource } from "../data/runtime-source";
-import { buildClimateMonthlyComparisonOption, buildClimateTrendOption } from "../charts/iliTrend";
+import { buildClimateMonthlyComparisonOption, buildClimateTrendOption } from "../charts/climateTrend";
 import { EChartsPanel } from "../components/EChartsPanel";
 import { ClimateMapImage } from "../components/ClimateMapImage";
 import { MapPanel } from "../components/MapPanel";
@@ -33,6 +33,16 @@ import {
   useIndicatorScrollSpy,
   type IndicatorNavTopic,
 } from "../components/IndicatorNavigator";
+import { formatChancePercent } from "../domain/format";
+import { STRINGS } from "./strings";
+import {
+  CMIP7_SCENARIOMIP_SCENARIOS,
+  CMIP7_SCENARIOMIP_TEMPERATURE_SOURCE_URL,
+  MCKAY_TIPPING_POINTS,
+  MCKAY_TIPPING_POINTS_SOURCE_URL,
+  type LongRangeScenarioDefinition,
+  type TippingPointDefinition,
+} from "../data/projection-reference";
 import { buildTrendContextData, meanBetweenYears, trailingMeanByDays, type TrendContextData } from "../charts/trendContext";
 import { domainColor, domainColorAlpha, type ChartDomain } from "../theme/domainColors";
 import { buildDailyContextData, type DailyContextData } from "../charts/dailyContext";
@@ -40,6 +50,7 @@ import { buildDailyContextData, type DailyContextData } from "../charts/dailyCon
 const STORAGE_LANG_KEY = "climate-dashboard-lang";
 const STORAGE_THEME_KEY = "climate-dashboard-theme";
 const DAY_MS = 86_400_000;
+const LONG_TERM_WARMING_DAYS = Math.round(10 * 365.25);
 const PROJECTION_ANALOG_POOL_SIZE = 12;
 const PROJECTION_MAX_ANALOGS = 8;
 const PROJECTION_YTD_SIGMA = 0.16;
@@ -66,272 +77,8 @@ const CURRENT_MAP_REMOTE_URLS: Record<ClimateMapKey, string> = {
   global_sst_anomaly: "https://climatereanalyzer.org/wx/todays-weather/maps/gfs_world-wt_sstanom_d1.png",
 };
 
-interface LongRangeScenarioDefinition {
-  key: "high" | "medium" | "mediumLow" | "low";
-  labelEn: string;
-  labelHu: string;
-  shortLabel: string;
-  anchors: Array<[number, number]>;
-  colorLight: string;
-  colorDark: string;
-}
-
 type OverviewMapMode = "temperature" | "anomaly" | "sst" | "sst-anomaly";
 
-interface TippingPointDefinition {
-  key: string;
-  labelEn: string;
-  labelHu: string;
-  categoryEn: string;
-  categoryHu: string;
-  centralThreshold: number;
-  minThreshold: number;
-  maxThreshold: number;
-}
-
-const CMIP7_SCENARIOMIP_TEMPERATURE_SOURCE_URL = "https://gmd.copernicus.org/articles/19/2627/2026/";
-const MCKAY_TIPPING_POINTS_SOURCE_URL = "https://www.science.org/doi/10.1126/science.abn7950";
-const CMIP7_SCENARIOMIP_SCENARIOS: LongRangeScenarioDefinition[] = [
-  {
-    key: "high",
-    labelEn: "High",
-    labelHu: "Magas",
-    shortLabel: "H",
-    anchors: [
-      [2025, 1.55],
-      [2030, 1.65],
-      [2040, 1.95],
-      [2050, 2.25],
-      [2060, 2.55],
-      [2070, 2.85],
-      [2080, 3.1],
-      [2090, 3.3],
-      [2100, 3.5],
-    ],
-    colorLight: "#b8392d",
-    colorDark: "#f28273",
-  },
-  {
-    key: "medium",
-    labelEn: "Medium",
-    labelHu: "Közepes",
-    shortLabel: "M",
-    anchors: [
-      [2025, 1.55],
-      [2030, 1.62],
-      [2040, 1.82],
-      [2050, 2.05],
-      [2060, 2.25],
-      [2070, 2.43],
-      [2080, 2.58],
-      [2090, 2.68],
-      [2100, 2.75],
-    ],
-    colorLight: "#d0764a",
-    colorDark: "#f2a77f",
-  },
-  {
-    key: "mediumLow",
-    labelEn: "Medium-Low",
-    labelHu: "Közepesen alacsony",
-    shortLabel: "ML",
-    anchors: [
-      [2025, 1.55],
-      [2030, 1.61],
-      [2040, 1.78],
-      [2050, 1.93],
-      [2060, 2.02],
-      [2070, 2.08],
-      [2080, 2.12],
-      [2090, 2.12],
-      [2100, 2.1],
-    ],
-    colorLight: "#a8781f",
-    colorDark: "#e9b75f",
-  },
-  {
-    key: "low",
-    labelEn: "Low",
-    labelHu: "Alacsony",
-    shortLabel: "L",
-    anchors: [
-      [2025, 1.55],
-      [2030, 1.6],
-      [2040, 1.72],
-      [2050, 1.82],
-      [2060, 1.86],
-      [2070, 1.86],
-      [2080, 1.83],
-      [2090, 1.78],
-      [2100, 1.74],
-    ],
-    colorLight: "#25827d",
-    colorDark: "#89cfc2",
-  },
-];
-
-const MCKAY_TIPPING_POINTS: TippingPointDefinition[] = [
-  {
-    key: "greenland-ice-sheet",
-    labelEn: "Greenland Ice Sheet collapse",
-    labelHu: "A grönlandi jégtakaró összeomlása",
-    categoryEn: "Ice sheet",
-    categoryHu: "Jégtakaró",
-    centralThreshold: 1.5,
-    minThreshold: 0.8,
-    maxThreshold: 3,
-  },
-  {
-    key: "west-antarctic-ice-sheet",
-    labelEn: "West Antarctic Ice Sheet collapse",
-    labelHu: "A nyugat-antarktiszi jégtakaró összeomlása",
-    categoryEn: "Ice sheet",
-    categoryHu: "Jégtakaró",
-    centralThreshold: 1.5,
-    minThreshold: 1,
-    maxThreshold: 3,
-  },
-  {
-    key: "coral-reefs",
-    labelEn: "Low-latitude coral reef die-off",
-    labelHu: "A trópusi korallzátonyok pusztulása",
-    categoryEn: "Ecosystem",
-    categoryHu: "Ökoszisztéma",
-    centralThreshold: 1.5,
-    minThreshold: 1,
-    maxThreshold: 2,
-  },
-  {
-    key: "abrupt-permafrost-thaw",
-    labelEn: "Boreal permafrost abrupt thaw",
-    labelHu: "A boreális permafroszt hirtelen olvadása",
-    categoryEn: "Permafrost",
-    categoryHu: "Permafroszt",
-    centralThreshold: 1.5,
-    minThreshold: 1,
-    maxThreshold: 2.3,
-  },
-  {
-    key: "barents-sea-ice",
-    labelEn: "Barents Sea ice abrupt loss",
-    labelHu: "A Barents-tenger jegének hirtelen eltűnése",
-    categoryEn: "Sea ice",
-    categoryHu: "Tengeri jég",
-    centralThreshold: 1.6,
-    minThreshold: 1.5,
-    maxThreshold: 1.7,
-  },
-  {
-    key: "labrador-irminger-convection",
-    labelEn: "Labrador-Irminger Seas convection collapse",
-    labelHu: "A Labrador- és Irminger-tengeri konvekció összeomlása",
-    categoryEn: "Ocean circulation",
-    categoryHu: "Óceáni cirkuláció",
-    centralThreshold: 1.8,
-    minThreshold: 1.1,
-    maxThreshold: 3.8,
-  },
-  {
-    key: "mountain-glaciers",
-    labelEn: "Mountain glacier loss",
-    labelHu: "A hegyi gleccserek eltűnése",
-    categoryEn: "Glaciers",
-    categoryHu: "Gleccserek",
-    centralThreshold: 2,
-    minThreshold: 1.5,
-    maxThreshold: 3,
-  },
-  {
-    key: "sahel-greening",
-    labelEn: "Sahel and West African monsoon greening",
-    labelHu: "A Száhel és a nyugat-afrikai monszunvidék kizöldülése",
-    categoryEn: "Monsoon",
-    categoryHu: "Monszun",
-    centralThreshold: 2.8,
-    minThreshold: 2,
-    maxThreshold: 3.5,
-  },
-  {
-    key: "east-antarctic-subglacial-basins",
-    labelEn: "East Antarctic subglacial basins collapse",
-    labelHu: "A kelet-antarktiszi szubglaciális medencék összeomlása",
-    categoryEn: "Ice sheet",
-    categoryHu: "Jégtakaró",
-    centralThreshold: 3,
-    minThreshold: 2,
-    maxThreshold: 6,
-  },
-  {
-    key: "amazon-rainforest",
-    labelEn: "Amazon rainforest dieback",
-    labelHu: "Az amazóniai esőerdő pusztulása",
-    categoryEn: "Ecosystem",
-    categoryHu: "Ökoszisztéma",
-    centralThreshold: 3.5,
-    minThreshold: 2,
-    maxThreshold: 6,
-  },
-  {
-    key: "boreal-permafrost-collapse",
-    labelEn: "Boreal permafrost collapse",
-    labelHu: "A boreális permafroszt összeomlása",
-    categoryEn: "Permafrost",
-    categoryHu: "Permafroszt",
-    centralThreshold: 4,
-    minThreshold: 3,
-    maxThreshold: 6,
-  },
-  {
-    key: "amoc",
-    labelEn: "Atlantic Meridional Overturning Circulation collapse",
-    labelHu: "Az atlanti átfordító áramlás (AMOC) összeomlása",
-    categoryEn: "Ocean circulation",
-    categoryHu: "Óceáni cirkuláció",
-    centralThreshold: 4,
-    minThreshold: 1.4,
-    maxThreshold: 8,
-  },
-  {
-    key: "boreal-forest-south",
-    labelEn: "Boreal forest southern dieback",
-    labelHu: "A boreális erdők déli peremének pusztulása",
-    categoryEn: "Ecosystem",
-    categoryHu: "Ökoszisztéma",
-    centralThreshold: 4,
-    minThreshold: 1.4,
-    maxThreshold: 5,
-  },
-  {
-    key: "boreal-forest-north",
-    labelEn: "Boreal forest northern expansion",
-    labelHu: "A boreális erdők északi terjeszkedése",
-    categoryEn: "Ecosystem",
-    categoryHu: "Ökoszisztéma",
-    centralThreshold: 4,
-    minThreshold: 1.5,
-    maxThreshold: 7.2,
-  },
-  {
-    key: "arctic-winter-sea-ice",
-    labelEn: "Arctic winter sea ice collapse",
-    labelHu: "Az arktiszi téli tengeri jég eltűnése",
-    categoryEn: "Sea ice",
-    categoryHu: "Tengeri jég",
-    centralThreshold: 6.3,
-    minThreshold: 4.5,
-    maxThreshold: 8.7,
-  },
-  {
-    key: "east-antarctic-ice-sheet",
-    labelEn: "East Antarctic Ice Sheet collapse",
-    labelHu: "A kelet-antarktiszi jégtakaró összeomlása",
-    categoryEn: "Ice sheet",
-    categoryHu: "Jégtakaró",
-    centralThreshold: 7.5,
-    minThreshold: 5,
-    maxThreshold: 10,
-  },
-];
 type DashboardView = "overview" | "climate-system" | "maps" | "projections" | "sources";
 type IndicatorSubsectionKey =
   | "globalTemperatures"
@@ -544,412 +291,6 @@ const RECORD_WARNING_KEYS: ClimateMetricSeries["key"][] = [
   "global_sea_surface_temperature_anomaly",
 ];
 
-const STRINGS = {
-  en: {
-    appTitle: "Climate Dashboard",
-    appSubtitle: "Global climate indicators and forcings",
-    dashboardNavigationAria: "Dashboard navigation",
-    brandSubtitle: "Global Climate Dashboard",
-    dataUpdatedLabel: "Data updated",
-    dataStatusLabel: "Data status",
-    navOverview: "Overview",
-    navIndicators: "Climate system",
-    overviewTitle: "Global Climate Overview",
-    overviewSubtitle: "Latest climate signals",
-    overviewDailyGlobalTemperatureAnomalyTitle: "Daily Global Temperature Anomaly",
-    overviewPreindustrialSubtitle: "vs. 1850-1900 average",
-    overviewSurfaceAnomalyTitle: "Surface Temperature Anomaly",
-    overviewSstAnomalyTitle: "Sea Surface Temperature Anomaly",
-    overviewCo2Title: "CO₂ Concentration",
-    overviewAtmosphericSubtitle: "Atmospheric",
-    overviewArcticSeaIceTitle: "Arctic Sea Ice Extent",
-    overviewClimatologySubtitle: "vs. 1991-2020 average",
-    planetNowTitle: "Earth Now",
-    heroSparklineLabel: "Past 365 days",
-    heroRecordLabel: "All-time high",
-    warmingStripesAria: "Annual global temperature anomalies since 1940, shown as warming stripes",
-    navGroupMonitor: "Monitor",
-    navGroupExplore: "Explore",
-    navGroupSystem: "System",
-    deltaSincePrevious: "since previous",
-    recordReachedText: "reached",
-    ensoTargetConnector: "for",
-    viewAllForcing: "View all forcing",
-    viewAllMaps: "View all maps",
-    recentHighlightsTitle: "Recent Highlights",
-    ensoOutlookTitle: "ENSO Outlook",
-    ensoCardTitle: "El Niño & La Niña",
-    warmingEstimateTitle: "Warming Estimate",
-    ensoNextThreeMonths: "Next 3 months",
-    ensoNextSixMonths: "Next 6 months",
-    ensoStatusLabel: "Status",
-    ensoConditionNeutral: "ENSO-neutral",
-    ensoConditionLaNina: "La Niña",
-    ensoConditionElNino: "El Niño",
-    ensoAlertNeutral: "ENSO-neutral",
-    ensoAlertLaNinaAdvisory: "La Niña Advisory",
-    ensoAlertElNinoAdvisory: "El Niño Advisory",
-    ensoAlertLaNinaWatch: "La Niña Watch",
-    ensoAlertElNinoWatch: "El Niño Watch",
-    ensoAlertFinalLaNina: "Final La Niña Advisory",
-    ensoAlertFinalElNino: "Final El Niño Advisory",
-    language: "Language",
-    theme: "Theme",
-    themeSystem: "System",
-    themeDark: "Dark",
-    themeLight: "Light",
-    sectionExpand: "Expand",
-    sectionCollapse: "Collapse",
-    latestLabel: "Latest",
-    latestAnnualLabel: "Latest annual value",
-    latestSignalsAria: "Latest climate indicators",
-    aiSummaryAria: "AI climate summary",
-    aiSummaryTitle: "AI Summary",
-    aiSummaryKicker: "AI-summary",
-    aiGeneratedAria: "AI generated",
-    aiSummaryLoading: "Loading latest AI summary",
-    aiSummaryRecordHigh: "latest value is at or above the same-date historical record",
-    aiSummaryNearRecordHigh: "latest value is near the same-date historical record",
-    aiSummaryAboveMean: "above the 1991-2020 mean for this date",
-    aiSummaryBelowMean: "below the 1991-2020 mean for this date",
-    aiSummaryComparedWithMean: "vs 1991-2020 mean",
-    aiSummaryComparedWithRecord: "vs same-date record",
-    aiSummaryRankLabel: "same-date rank",
-    aiSummaryNoWarnings: "Global surface temperature and global sea surface temperature are not unusually high versus their same-date historical records.",
-    aiSummaryMostImportantSignals: "Key signals:",
-    aiSummaryHeatSignalTitle: "Planet-wide warmth remains exceptionally high.",
-    aiSummaryIceSignalTitle: "Polar conditions remain under pressure.",
-    aiSummaryOceanSignalTitle: "Oceans keep setting the pace.",
-    aiSummaryRegionalSignalTitle: "Regional extremes reinforce the global signal.",
-    aiSummaryOtherSignalTitle: "A major climate signal stands out.",
-    recordWarningsAria: "Record climate warnings",
-    recordWarningKicker: "Record warning",
-    recordWarningDateMeta: "Date",
-    highestEverGlobalSurfaceTemperatureAnomalyTitle: "Highest Ever Global Surface Temperature Anomaly",
-    highestEverGlobalSeaSurfaceTemperatureAnomalyTitle: "Highest Ever Global Sea Surface Temperature Anomaly",
-    climateIndicatorsTitle: "Climate System",
-    climateIndicatorsNote: "The state of the climate, what drives it and its natural swings.",
-    globalTemperaturesSectionTitle: "Global Temperatures",
-    globalTemperaturesSectionNote: "Global surface and sea surface temperatures in a Jan-Dec daily comparison view.",
-    oceansSectionTitle: "Oceans",
-    oceansSectionNote: "Long-term ocean state indicators: global mean sea level and ocean heat content.",
-    earthEnergyImbalanceSectionTitle: "Earth Energy Imbalance",
-    earthEnergyImbalanceSectionNote:
-      "NASA CERES EBAF global net top-of-atmosphere flux, shown as a 12-month running mean to reduce monthly noise.",
-    earthEnergyImbalanceTitle: "Earth Energy Imbalance",
-    earthEnergyImbalanceSubtitle: "NASA CERES EBAF monthly global net TOA flux · 12-month running mean",
-    temperatureAnomalySectionTitle: "Temperature Anomalies",
-    temperatureAnomalySectionNote:
-      "Global and sea-surface anomaly cards use a 1991-2020 climatology; daily and annual global-mean anomaly charts use an ERA5 preindustrial (1850-1900) estimate.",
-    dailyGlobalTemperatureAnomalyTitle: "Daily Global Mean Temperature Anomaly",
-    dailyGlobalTemperatureAnomaly365DayAverage: "365-day average",
-    dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, estimated 1850-1900 baseline)",
-    annualGlobalTemperatureAnomalyTitle: "Annual Global Temperature Anomaly",
-    annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, estimated 1850-1900 baseline)",
-    annualGlobalTemperatureAnomalyMethod: "Mean of available daily anomalies (year-to-date for the current year).",
-    projectedAnnualTemperatureAnomalyChartTitle: "Annual Global Temperature Anomaly + Projection",
-    projectedAnnualTemperatureAnomalyChartSubtitle:
-      "Historical annual means with the projected current-year value and confidence interval.",
-    longRangeTemperatureTrendTitle: "Temperature Trend to 2100",
-    longRangeTemperatureHorizonTitle: "Warming Pathways to 2100",
-    longRangeTemperatureTrendSubtitle:
-      "Measured annual warming to present, then indicative CMIP7 ScenarioMIP FaIR median pathways.",
-    longRangeTemperatureTrendSource:
-      "Scenario values are preliminary FaIR simple-climate-model medians from Van Vuuren et al. (2026), not final CMIP7 Earth system model output.",
-    cmip7ScenarioSourceLabel: "CMIP7 ScenarioMIP",
-    scenarioHighLabel: "High",
-    scenarioMediumLabel: "Medium",
-    scenarioMediumLowLabel: "Medium-Low",
-    scenarioLowLabel: "Low",
-    tippingPointsTitle: "Earth System Tipping Points",
-    tippingPointsSubtitle:
-      "Global-warming thresholds for major Earth-system tipping elements from Armstrong McKay et al. (2022), set against the dashboard's current annual warming estimate.",
-    tippingPointsSourceLabel: "McKay et al. 2022",
-    projectionExperimentalLabel: "Experimental",
-    projectionIntervalLabel: "15th-85th percentile interval",
-    projectionMethodLabel: "YTD + recent analog seasonal paths",
-    projectionSignalLabel: "ENSO signal",
-    projectionProbabilityMethodLabel: "Weighted analog years",
-    outlookProjectedAnnualMeanLabel: "Projected annual mean",
-    outlookChanceAboveOnePointFiveLabel: "chance above 1.5 °C",
-    outlookChanceWarmestYearLabel: "chance warmest year",
-    outlookChartCaption: "annual anomaly, last five years + 2026 projection",
-    outlookProjectionSuffix: "p",
-    outlookRecordLabel: "record",
-    projectionsTitle: "Projections",
-    projectionsNote: "Experimental warming outlook.",
-    yearLabel: "Year",
-    regionalTemperaturesSectionTitle: "Regional Temperatures",
-    regionalTemperaturesSectionNote:
-      "Daily Jan-Dec comparison for Northern Hemisphere, Arctic, North Atlantic SST, Niño 3.4 SST, Southern Hemisphere, and Antarctic temperatures.",
-    regionalTemperatureAnomaliesSectionTitle: "Regional Temperature Anomalies",
-    regionalTemperatureAnomaliesSectionNote:
-      "Daily regional anomalies relative to each feed's 1991-2020 climatology for hemispheres, polar regions, and North Atlantic SST.",
-    climatologyMeanLabel: "1991-2020 mean",
-    seaIceSectionTitle: "Sea Ice",
-    seaIceSectionNote:
-      "Global, Arctic, and Antarctic extent shown with daily points in a Jan-Dec comparison view.",
-    snowCoverSectionTitle: "Snow Cover",
-    snowCoverSectionNote:
-      "Monthly Northern Hemisphere land snow-cover extent from Rutgers Global Snow Lab. Comparable Southern Hemisphere/global snow-cover extent is not published in the same climate time-series feed.",
-    iceSheetsAndGlaciersSectionTitle: "Ice Sheets and Glaciers",
-    iceSheetsAndGlaciersSectionNote:
-      "WGMS global glacier mass change and reference-glacier mass balance, plus cumulative Antarctic and Greenland ice-sheet mass loss since 2002 derived from NASA GRACE/GRACE-FO mass variation.",
-    seaLevelEquivalentKicker: "Sea-level equivalent",
-    seaLevelEquivalentSubtitle: "Potential global mean sea-level rise from complete ice-sheet loss.",
-    nino34IndexTitle: "Historical Niño 3.4 Index",
-    nino34IndexSubtitle: "NOAA CPC Oceanic Niño Index · centered 3-month Niño 3.4 SST anomaly",
-    naoIndexSubtitle: "NOAA CPC monthly North Atlantic Oscillation index",
-    pnaIndexSubtitle: "NOAA CPC monthly Pacific-North American index",
-    soiIndexSubtitle: "NOAA CPC monthly Southern Oscillation Index · negative values are El Niño-like",
-    arcticOscillationIndexSubtitle: "NOAA CPC monthly Arctic Oscillation index",
-    naturalVariabilityTitle: "Natural Variability",
-    mapsSectionTitle: "Maps",
-    mapsSectionNote: "Latest global weather maps.",
-    map2mTemperatureTitle: "Surface Temperature (2m)",
-    map2mTemperatureAnomalyTitle: "Surface Temperature Anomaly (2m)",
-    mapSstTitle: "Sea Surface Temperature",
-    mapSstAnomalyTitle: "Sea Surface Temperature Anomaly",
-    mapGlobalSubtitle: "Current-day map · Climate Reanalyzer Today’s Weather",
-    mapSstSubtitle: "Latest available map · Climate Reanalyzer Today’s Weather",
-    mapUnavailable: "Map unavailable",
-    forcingTitle: "Forcing",
-    sourceTitle: "Data source mode",
-    sourceLive: "Live feeds",
-    sourceMixed: "Mixed live + fallback",
-    sourceBundled: "Bundled fallback",
-    sourceLiveNote: "All series loaded from remote source feeds.",
-    sourceMixedNote: "One or more live feeds failed; fallback data fills gaps.",
-    sourceBundledNote: "All live feeds failed; bundled fallback drives every chart.",
-    sourceWarningsTitle: "Data warnings",
-    sourceStatusTitle: "Dataset status",
-    sourceUpdatedTitle: "Last refresh",
-    sourceListTitle: "Source links",
-    sourceListNote: "Upstream data feeds.",
-    sourceCardsTitle: "Sources",
-    sourceLabel: "Source",
-    chartFullscreenEnter: "Full screen",
-    chartFullscreenExit: "Exit full screen",
-    freshnessAsOf: "As of",
-    freshnessDaily: "daily",
-    freshnessMonthly: "monthly",
-    freshnessQuarterly: "quarterly",
-    freshnessAnnual: "annual",
-    freshnessAssessment: "assessment",
-    freshnessLagging: "Lagging",
-    freshnessStale: "Stale",
-    ytdLabel: "YTD",
-    chartLatest: "Latest",
-    noData: "No data",
-    valuesLoading: "Loading latest values",
-    valueUnavailable: "No value",
-    footerMode: "Mode",
-    footerUpdated: "Updated",
-    footerCredit: "Made by András Tóth using ChatGPT and Claude.",
-  },
-  hu: {
-    appTitle: "Klíma Dashboard",
-    appSubtitle: "Globális klímaindikátorok és éghajlati kényszerek",
-    dashboardNavigationAria: "Irányítópult-navigáció",
-    brandSubtitle: "Globális éghajlati irányítópult",
-    dataUpdatedLabel: "Adatfrissítés",
-    dataStatusLabel: "Adatállapot",
-    navOverview: "Áttekintés",
-    navIndicators: "Éghajlati rendszer",
-    overviewTitle: "Globális éghajlati áttekintés",
-    overviewSubtitle: "Friss éghajlati jelzések",
-    overviewDailyGlobalTemperatureAnomalyTitle: "Napi globális hőmérsékleti anomália",
-    overviewPreindustrialSubtitle: "az 1850–1900-as átlaghoz képest",
-    overviewSurfaceAnomalyTitle: "Felszíni hőmérsékleti anomália",
-    overviewSstAnomalyTitle: "Tengerfelszíni hőmérsékleti anomália",
-    overviewCo2Title: "CO₂-koncentráció",
-    overviewAtmosphericSubtitle: "A légkörben",
-    overviewArcticSeaIceTitle: "Arktiszi tengerijég-kiterjedés",
-    overviewClimatologySubtitle: "az 1991–2020-as átlaghoz képest",
-    planetNowTitle: "A Föld most",
-    heroSparklineLabel: "Elmúlt 365 nap",
-    heroRecordLabel: "Minden idők csúcsa",
-    warmingStripesAria: "Az éves globális hőmérsékleti anomáliák 1940 óta, melegedési csíkokként ábrázolva",
-    navGroupMonitor: "Megfigyelés",
-    navGroupExplore: "Felfedezés",
-    navGroupSystem: "Rendszer",
-    deltaSincePrevious: "az előző értékhez képest",
-    recordReachedText: "elérte ezt az értéket:",
-    ensoTargetConnector: "időszakra:",
-    viewAllForcing: "Összes éghajlati kényszer",
-    viewAllMaps: "Összes térkép",
-    recentHighlightsTitle: "Legfrissebb kiemelések",
-    ensoOutlookTitle: "ENSO-előrejelzés",
-    ensoCardTitle: "El Niño és La Niña",
-    warmingEstimateTitle: "Várható melegedés",
-    ensoNextThreeMonths: "Következő 3 hónap",
-    ensoNextSixMonths: "Következő 6 hónap",
-    ensoStatusLabel: "Státusz",
-    ensoConditionNeutral: "ENSO-semleges",
-    ensoConditionLaNina: "La Niña",
-    ensoConditionElNino: "El Niño",
-    ensoAlertNeutral: "ENSO-semleges",
-    ensoAlertLaNinaAdvisory: "La Niña-figyelmeztetés",
-    ensoAlertElNinoAdvisory: "El Niño-figyelmeztetés",
-    ensoAlertLaNinaWatch: "La Niña várható",
-    ensoAlertElNinoWatch: "El Niño várható",
-    ensoAlertFinalLaNina: "A La Niña-időszak véget ért",
-    ensoAlertFinalElNino: "Az El Niño-időszak véget ért",
-    language: "Nyelv",
-    theme: "Téma",
-    themeSystem: "Rendszer",
-    themeDark: "Sötét",
-    themeLight: "Világos",
-    sectionExpand: "Kibontás",
-    sectionCollapse: "Összecsukás",
-    latestLabel: "Legfrissebb",
-    latestAnnualLabel: "Legfrissebb éves érték",
-    latestSignalsAria: "A legfrissebb éghajlati mutatók",
-    aiSummaryAria: "AI-alapú éghajlati összefoglaló",
-    aiSummaryTitle: "AI-összefoglaló",
-    aiSummaryKicker: "AI-összefoglaló",
-    aiGeneratedAria: "AI által készített",
-    aiSummaryLoading: "A legfrissebb AI-összefoglaló betöltése…",
-    aiSummaryRecordHigh: "legfrissebb értéke eléri vagy meghaladja az erre a napra mért eddigi rekordot",
-    aiSummaryNearRecordHigh: "legfrissebb értéke megközelíti az erre a napra mért eddigi rekordot",
-    aiSummaryAboveMean: "meghaladja az erre a napra számított 1991–2020-as átlagot",
-    aiSummaryBelowMean: "elmarad az erre a napra számított 1991–2020-as átlagtól",
-    aiSummaryComparedWithMean: "az 1991–2020-as átlaghoz képest",
-    aiSummaryComparedWithRecord: "az erre a napra mért rekordhoz képest",
-    aiSummaryRankLabel: "helyezés ezen a napon",
-    aiSummaryNoWarnings: "Sem a globális felszíni, sem a tengerfelszíni hőmérséklet nem szokatlanul magas az erre a napra mért eddigi rekordokhoz képest.",
-    aiSummaryMostImportantSignals: "Fő jelzések:",
-    aiSummaryHeatSignalTitle: "A bolygó továbbra is rendkívül meleg.",
-    aiSummaryIceSignalTitle: "A sarkvidéki körülmények továbbra is aggasztóak.",
-    aiSummaryOceanSignalTitle: "Továbbra is az óceánok diktálják az ütemet.",
-    aiSummaryRegionalSignalTitle: "A regionális szélsőségek erősítik a globális jelzést.",
-    aiSummaryOtherSignalTitle: "Egy fontos éghajlati jelzés emelkedik ki.",
-    recordWarningsAria: "Éghajlati rekordfigyelmeztetések",
-    recordWarningKicker: "Rekordfigyelmeztetés",
-    recordWarningDateMeta: "Dátum",
-    highestEverGlobalSurfaceTemperatureAnomalyTitle: "Mindenkori legmagasabb globális felszíni hőmérsékleti anomália",
-    highestEverGlobalSeaSurfaceTemperatureAnomalyTitle: "Mindenkori legmagasabb globális tengerfelszíni hőmérsékleti anomália",
-    climateIndicatorsTitle: "Éghajlati rendszer",
-    climateIndicatorsNote: "Az éghajlat állapota, hajtóerői és természetes ingadozásai.",
-    globalTemperaturesSectionTitle: "Globális hőmérsékletek",
-    globalTemperaturesSectionNote: "A globális felszíni és tengerfelszíni hőmérséklet napi értékei, évenként egymásra vetítve (január–december).",
-    oceansSectionTitle: "Óceánok",
-    oceansSectionNote: "Hosszú távú óceáni mutatók: a globális átlagos tengerszint és az óceánok hőtartalma.",
-    earthEnergyImbalanceSectionTitle: "A Föld energiatöbblete",
-    earthEnergyImbalanceSectionNote:
-      "A NASA CERES EBAF globális nettó sugárzási fluxusa a légkör tetején, 12 havi mozgóátlaggal simítva.",
-    earthEnergyImbalanceTitle: "A Föld energiatöbblete",
-    earthEnergyImbalanceSubtitle: "NASA CERES EBAF · nettó sugárzási fluxus a légkör tetején · 12 havi mozgóátlag",
-    temperatureAnomalySectionTitle: "Hőmérsékleti anomáliák",
-    temperatureAnomalySectionNote:
-      "A globális felszíni és tengerfelszíni anomáliák az 1991–2020-as átlaghoz, a napi és éves globális átlaganomáliák pedig az ERA5 alapján becsült, iparosodás előtti 1850–1900-as szinthez viszonyítanak.",
-    dailyGlobalTemperatureAnomalyTitle: "Napi globális átlaghőmérséklet-anomália",
-    dailyGlobalTemperatureAnomaly365DayAverage: "365 napos átlag",
-    dailyGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850–1900-as alapszint)",
-    annualGlobalTemperatureAnomalyTitle: "Éves globális hőmérsékleti anomália",
-    annualGlobalTemperatureAnomalySubtitle: "ECMWF Climate Pulse (ERA5, becsült 1850–1900-as alapszint)",
-    annualGlobalTemperatureAnomalyMethod: "Az elérhető napi anomáliák átlaga (a folyó évben az év eleje óta eltelt napok átlaga).",
-    projectedAnnualTemperatureAnomalyChartTitle: "Éves globális hőmérsékleti anomália és idei becslés",
-    projectedAnnualTemperatureAnomalyChartSubtitle:
-      "A korábbi évek átlagai, valamint az idei év becsült értéke és bizonytalansági tartománya.",
-    longRangeTemperatureTrendTitle: "Hőmérsékleti trend 2100-ig",
-    longRangeTemperatureHorizonTitle: "Melegedési pályák 2100-ig",
-    longRangeTemperatureTrendSubtitle:
-      "A mért éves melegedés napjainkig, utána a CMIP7 ScenarioMIP FaIR-modell tájékoztató mediánpályái.",
-    longRangeTemperatureTrendSource:
-      "A forgatókönyvek értékei Van Vuuren és mtsai (2026) előzetes, egyszerű klímamodellel (FaIR) számolt mediánjai, nem végleges CMIP7 földrendszermodell-eredmények.",
-    cmip7ScenarioSourceLabel: "CMIP7 ScenarioMIP",
-    scenarioHighLabel: "Magas",
-    scenarioMediumLabel: "Közepes",
-    scenarioMediumLowLabel: "Közepesen alacsony",
-    scenarioLowLabel: "Alacsony",
-    tippingPointsTitle: "A földrendszer billenőpontjai",
-    tippingPointsSubtitle:
-      "A földrendszer fő billenőelemeinek melegedési küszöbei Armstrong McKay és mtsai (2022) alapján, a jelenlegi éves melegedési becsléshez viszonyítva.",
-    tippingPointsSourceLabel: "McKay és mtsai, 2022",
-    projectionExperimentalLabel: "Kísérleti",
-    projectionIntervalLabel: "15–85. percentilis tartomány",
-    projectionMethodLabel: "Az év eddigi adatai és hasonló (analóg) évek szezonális lefutása",
-    projectionSignalLabel: "ENSO-jel",
-    projectionProbabilityMethodLabel: "Súlyozott analóg évek",
-    outlookProjectedAnnualMeanLabel: "Becsült éves átlag",
-    outlookChanceAboveOnePointFiveLabel: "esély az 1,5 °C túllépésére",
-    outlookChanceWarmestYearLabel: "esély rekordmeleg évre",
-    outlookChartCaption: "éves anomália: az elmúlt öt év és az idei becslés",
-    outlookProjectionSuffix: "b",
-    outlookRecordLabel: "rekord",
-    projectionsTitle: "Előrejelzések",
-    projectionsNote: "Kísérleti melegedési kilátás.",
-    yearLabel: "Év",
-    regionalTemperaturesSectionTitle: "Regionális hőmérsékletek",
-    regionalTemperaturesSectionNote:
-      "Napi értékek évenként egymásra vetítve (január–december): északi és déli félteke, Arktisz, Antarktisz, valamint az észak-atlanti és a Niño 3.4 terület tengerfelszíni hőmérséklete.",
-    regionalTemperatureAnomaliesSectionTitle: "Regionális hőmérsékleti anomáliák",
-    regionalTemperatureAnomaliesSectionNote:
-      "Napi regionális anomáliák az egyes adatforrások 1991–2020-as átlagához viszonyítva: féltekék, sarkvidékek és az észak-atlanti tengerfelszín.",
-    climatologyMeanLabel: "1991–2020-as átlag",
-    seaIceSectionTitle: "Tengeri jég",
-    seaIceSectionNote:
-      "A globális, az arktiszi és az antarktiszi tengerijég-kiterjedés napi értékei, évenként egymásra vetítve.",
-    snowCoverSectionTitle: "Hótakaró",
-    snowCoverSectionNote:
-      "Az északi félteke szárazföldi hótakarójának havi kiterjedése a Rutgers Global Snow Lab adatai alapján. A déli féltekére vagy az egész Földre ugyanebből a forrásból nincs összehasonlítható idősor.",
-    iceSheetsAndGlaciersSectionTitle: "Jégtakarók és gleccserek",
-    iceSheetsAndGlaciersSectionNote:
-      "A WGMS adatai a gleccserek globális tömegváltozásáról és a referenciagleccserek tömegmérlegéről, valamint az antarktiszi és a grönlandi jégtakaró 2002 óta összesített tömegvesztesége a NASA GRACE/GRACE-FO méréseiből.",
-    seaLevelEquivalentKicker: "Tengerszint-egyenérték",
-    seaLevelEquivalentSubtitle: "Ennyivel emelkedne a globális átlagos tengerszint, ha a jégtakaró teljesen elolvadna.",
-    nino34IndexTitle: "A Niño 3.4-index alakulása",
-    nino34IndexSubtitle: "NOAA CPC Óceáni Niño-index · a Niño 3.4 terület tengerfelszíni anomáliájának háromhavi mozgóátlaga",
-    naoIndexSubtitle: "NOAA CPC · havi észak-atlanti oszcillációs index",
-    pnaIndexSubtitle: "NOAA CPC · havi csendes-óceáni–észak-amerikai index",
-    soiIndexSubtitle: "NOAA CPC · havi déli oszcillációs index · a negatív értékek El Niño-szerű állapotot jeleznek",
-    arcticOscillationIndexSubtitle: "NOAA CPC · havi arktikus oszcillációs index",
-    naturalVariabilityTitle: "Természetes változékonyság",
-    mapsSectionTitle: "Térképek",
-    mapsSectionNote: "Friss globális időjárási térképek.",
-    map2mTemperatureTitle: "Felszínközeli hőmérséklet (2 m)",
-    map2mTemperatureAnomalyTitle: "Felszínközeli hőmérsékleti anomália (2 m)",
-    mapSstTitle: "Tengerfelszíni hőmérséklet",
-    mapSstAnomalyTitle: "Tengerfelszíni hőmérsékleti anomália",
-    mapGlobalSubtitle: "Mai térkép · Climate Reanalyzer Today’s Weather",
-    mapSstSubtitle: "Legfrissebb elérhető térkép · Climate Reanalyzer Today’s Weather",
-    mapUnavailable: "A térkép nem érhető el",
-    forcingTitle: "Éghajlati kényszerek",
-    sourceTitle: "Adatforrás módja",
-    sourceLive: "Élő adatforrások",
-    sourceMixed: "Vegyes (élő + tartalék)",
-    sourceBundled: "Beépített tartalékadatok",
-    sourceLiveNote: "Minden adatsor távoli élő adatforrásból töltődött be.",
-    sourceMixedNote: "Egy vagy több élő adatforrás nem érhető el; a hiányzó adatokat tartalékadatok pótolják.",
-    sourceBundledNote: "Egyik élő adatforrás sem érhető el; minden grafikon tartalékadatokat használ.",
-    sourceWarningsTitle: "Adatfigyelmeztetések",
-    sourceStatusTitle: "Az adatok állapota",
-    sourceUpdatedTitle: "Utolsó frissítés",
-    sourceListTitle: "Forráshivatkozások",
-    sourceListNote: "Elsődleges adatforrások.",
-    sourceCardsTitle: "Források",
-    sourceLabel: "Forrás",
-    chartFullscreenEnter: "Teljes képernyő",
-    chartFullscreenExit: "Kilépés a teljes képernyőből",
-    freshnessAsOf: "Utolsó adat",
-    freshnessDaily: "napi",
-    freshnessMonthly: "havi",
-    freshnessQuarterly: "negyedéves",
-    freshnessAnnual: "éves",
-    freshnessAssessment: "értékelési adatsor",
-    freshnessLagging: "Késik",
-    freshnessStale: "Elavult",
-    ytdLabel: "év eleje óta",
-    chartLatest: "Legfrissebb",
-    noData: "Nincs adat",
-    valuesLoading: "A legfrissebb értékek betöltése",
-    valueUnavailable: "Nincs érték",
-    footerMode: "Mód",
-    footerUpdated: "Frissítve",
-    footerCredit: "Made by András Tóth using ChatGPT and Claude.",
-  },
-} as const;
 
 function systemPrefersDark(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
@@ -2527,6 +1868,13 @@ export function App() {
     if (typeof window === "undefined") return "overview";
     return dashboardRouteFromHash(window.location.hash).view;
   });
+  const activeViewRef = useRef(activeView);
+  activeViewRef.current = activeView;
+  // A new page starts at its top. This runs before the page renders, so
+  // anything that then scrolls to a section of it (a map, a chart) still wins.
+  const resetScrollForView = (view: DashboardView) => {
+    if (view !== activeViewRef.current) window.scrollTo(0, 0);
+  };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const topicNavRef = useRef<HTMLDivElement>(null);
@@ -2543,6 +1891,22 @@ export function App() {
     writeStoredPreference(STORAGE_LANG_KEY, language);
     document.documentElement.lang = language;
   }, [language]);
+
+  // Name the open page in the tab title, so tabs, history and bookmarks tell pages apart.
+  const activeIndicatorTopicLabel = language === "hu" ? activeIndicatorTopic.hu : activeIndicatorTopic.en;
+  useEffect(() => {
+    const pageTitle =
+      activeView === "climate-system"
+        ? `${activeIndicatorTopicLabel} · ${t.navIndicators}`
+        : activeView === "maps"
+          ? t.mapsSectionTitle
+          : activeView === "projections"
+            ? t.projectionsTitle
+            : activeView === "sources"
+              ? t.sourceCardsTitle
+              : null;
+    document.title = pageTitle ? `${pageTitle} · ${t.appTitle}` : t.appTitle;
+  }, [activeView, activeIndicatorTopicLabel, t]);
 
   useEffect(() => {
     writeStoredPreference(STORAGE_THEME_KEY, themeMode);
@@ -2594,6 +1958,7 @@ export function App() {
     if (typeof window === "undefined") return;
     const handleHashChange = () => {
       const route = dashboardRouteFromHash(window.location.hash);
+      resetScrollForView(route.view);
       setActiveView(route.view);
       if (route.view !== "climate-system") return;
       // Keep the current topic when the address names none (or an unknown one),
@@ -3021,7 +2386,14 @@ export function App() {
       ),
     [annualGlobalMeanAnomalyPoints, language]
   );
-  const currentTippingWarming = latestAnnualGlobalMeanAnomaly?.value ?? null;
+  // Tipping thresholds are defined against long-term global warming, not a
+  // single year (which El Niño or La Niña can move by a tenth or two), so the
+  // ladder compares them with the mean of the last ten years of daily values.
+  const currentTippingWarming = useMemo(() => {
+    if (!dailyGlobalMeanAnomalyMetric) return null;
+    const decadeMean = trailingMeanByDays(dailyGlobalMeanAnomalyMetric.points, LONG_TERM_WARMING_DAYS, 0.9);
+    return decadeMean.length ? decadeMean[decadeMean.length - 1].value : null;
+  }, [dailyGlobalMeanAnomalyMetric]);
   const tippingLadderItems = useMemo<TippingLadderItem[]>(
     () =>
       MCKAY_TIPPING_POINTS.map((tippingPoint) => ({
@@ -3461,11 +2833,6 @@ export function App() {
     minimumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
     maximumFractionDigits: dailyGlobalMeanAnomalyMetric?.decimals ?? 2,
   });
-  const projectionPercentFormat = new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", {
-    style: "percent",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
   const projectionSupportSource = ensoOutlook?.sourceLabel ?? dailyGlobalMeanAnomalyMetric?.source.shortName ?? null;
   const projectionSupportLabel = projectionSupportSource ? formatSourceShortName(projectionSupportSource, language) : null;
   const projectionUnitLabel = cardUnitLabel(
@@ -3502,6 +2869,7 @@ export function App() {
   const nextThemeMode: ThemeMode = themeMode === "light" ? "dark" : themeMode === "dark" ? "system" : "light";
   const themeModeLabel = (mode: ThemeMode) => (mode === "light" ? t.themeLight : mode === "dark" ? t.themeDark : t.themeSystem);
   const setDashboardView = (view: DashboardView) => {
+    resetScrollForView(view);
     setActiveView(view);
     setMobileMenuOpen(false);
     if (typeof window !== "undefined") {
@@ -4584,11 +3952,11 @@ export function App() {
                         {runtimeDataReady ? (
                           <div className="outlook-probability-row">
                             <span className="outlook-chip">
-                              <strong>{projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive)}</strong>
+                              <strong>{formatChancePercent(projectedAnnualGlobalMeanAnomaly.probabilityAboveOnePointFive, language)}</strong>
                               <span>{t.outlookChanceAboveOnePointFiveLabel}</span>
                             </span>
                             <span className="outlook-chip">
-                              <strong>{projectionPercentFormat.format(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord)}</strong>
+                              <strong>{formatChancePercent(projectedAnnualGlobalMeanAnomaly.probabilityWarmestOnRecord, language)}</strong>
                               <span>{t.outlookChanceWarmestYearLabel}</span>
                             </span>
                           </div>
@@ -5180,6 +4548,7 @@ export function App() {
               title={language === "hu" ? "Billenési küszöbök közös skálán" : "Tipping thresholds on a shared scale"}
               items={tippingLadderItems}
               currentWarming={currentTippingWarming}
+              yearWarming={latestAnnualGlobalMeanAnomaly?.value ?? null}
               partial={annualGlobalMeanAnomalyIsYtd}
               currentYear={latestAnnualGlobalMeanAnomaly?.year ?? null}
               pathways={pathwaysData}
