@@ -171,17 +171,20 @@ test("AI summary prompt prioritizes daily records over slow background indicator
   const updateScript =
     (await readProjectFile("scripts/update-climate-data.mjs")) + (await readProjectFile("scripts/ai-summary-validation.mjs"));
 
-  assert.match(updateScript, /const AI_SUMMARY_PROMPT_VERSION = 8/);
-  assert.match(updateScript, /always give the unit after a value/);
+  assert.match(updateScript, /const AI_SUMMARY_PROMPT_VERSION = 9/);
+  assert.match(updateScript, /Always give the unit after a value/);
   assert.match(updateScript, /never as ISO dates/);
-  assert.match(updateScript, /using recordSinceYear for the start of the record/);
-  assert.match(updateScript, /always name that start year/);
-  assert.match(updateScript, /never "million km²"/);
-  assert.match(updateScript, /Create exactly three bilingual climate-watch items/);
-  assert.match(updateScript, /Select the three most important distinct current climate events or indicators/);
-  assert.match(updateScript, /write a specific short editorial title in English and natural Hungarian/);
-  assert.match(updateScript, /one complete short sentence in each language describing its current value, rank, record status, date, or probability/);
+  assert.match(updateScript, /name when records began using recordSinceYear/);
+  assert.match(updateScript, /It is a record for the date, not an all-time record/);
+  assert.match(updateScript, /never \\"million km²\\"/);
+  assert.match(updateScript, /exactly three bilingual climate-watch items/);
+  assert.match(updateScript, /Select the three most important distinct signals of the day/);
+  assert.match(updateScript, /a specific short editorial headline about that signal, in English and in natural Hungarian/);
+  assert.match(updateScript, /one complete short sentence in each language giving the latest value with its date, and its rank, record status or probability/);
   assert.match(updateScript, /Fully translate Hungarian titles, indicator names, and sentences/);
+  assert.match(updateScript, /const DEFAULT_OPENAI_SUMMARY_MODEL = "gpt-6-luna"/);
+  assert.match(updateScript, /reasoning: \{ effort: OPENAI_SUMMARY_REASONING_EFFORT \}/);
+  assert.match(updateScript, /claims a record without saying it is for the date/);
   assert.match(updateScript, /minItems: 3/);
   assert.match(updateScript, /maxItems: 3/);
   assert.match(updateScript, /required: \["signalKey", "tone", "titleEn", "detailEn", "titleHu", "detailHu"\]/);

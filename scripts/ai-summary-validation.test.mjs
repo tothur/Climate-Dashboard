@@ -88,6 +88,28 @@ test("rejections explain which check failed", () => {
   assert.match(unknownResult.reason, /made_up_signal/);
 });
 
+test("a same-date record must be described as a record for the date", () => {
+  const validate = (detailEn) =>
+    validateOpenAiSummaryText(
+      parseAiSummaryJson(chatGptAnswer([{ ...warmItems[0], detailEn }, warmItems[1], warmItems[2]])),
+      warmChecks,
+      anomalySignals,
+      contextSignals
+    );
+
+  const bare = validate("Global surface temperature was 14.93 °C on Nov 3, a record since 1940.");
+  assert.equal(bare.ok, false);
+  assert.match(bare.reason, /global_surface_temperature claims a record without saying it is for the date/);
+
+  for (const detailEn of [
+    "Global surface temperature was 14.93 °C on Nov 3, a record for the date in records since 1940.",
+    "Global surface temperature hit 14.93 °C, the warmest Nov 3 on record since 1940.",
+    "Global surface temperature was 14.93 °C on Nov 3, 0.08 °C below the same-date record.",
+  ]) {
+    assert.deepEqual(validate(detailEn).ok ? "ok" : validate(detailEn).reason, "ok");
+  }
+});
+
 test("normal temperatures must be stated as not unusually high", () => {
   const normalItems = [
     {

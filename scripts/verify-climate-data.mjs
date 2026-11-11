@@ -32,7 +32,8 @@ const REQUIRED_MAP_FILES = [
     filePath: resolve(ROOT_DIR, "public/data/maps/global-sst-anomaly.png"),
   },
 ];
-const AI_SUMMARY_ALLOWED_MODELS = new Set(["local-rules", "gpt-5.4-mini"]);
+// gpt-5.4-mini wrote the summaries published before the switch to GPT-6 Luna.
+const AI_SUMMARY_ALLOWED_MODELS = new Set(["local-rules", "gpt-6-luna", "gpt-5.4-mini"]);
 const AI_SUMMARY_STRUCTURED_PROMPT_VERSION = 5;
 const AI_SUMMARY_DISALLOWED_TEXT_PATTERN = /\brecord\s+lows?\b|\brecord\s+cold\b|\bcoldest\b|\bcooling\b/i;
 const AI_SUMMARY_TEMPERATURE_KEYS = ["global_surface_temperature", "global_sea_surface_temperature"];

@@ -13,6 +13,12 @@ export const AI_SUMMARY_BACKGROUND_SIGNAL_KEYS = new Set([
   "atmospheric_aggi",
 ]);
 
+// A same-date comparison ("warmest Nov 7 on record") is not an all-time record, so a sentence that claims a record
+// or an extreme for such a signal has to carry one of these qualifiers.
+const RECORD_CLAIM_PATTERN = /\brecord\b|\b(?:warmest|hottest|highest|lowest|smallest)\b/i;
+const SAME_DATE_SCOPE_PATTERN =
+  /\bsame-date\b|\bfor (?:the|this) (?:date|day|time of year)\b|\bon this date\b|\bdaily record\b|\bfor [A-Z][a-z]{2,8}\.? \d{1,2}\b|\b[A-Z][a-z]{2,8}\.? \d{1,2}(?:st|nd|rd|th)? (?:on record|in records|since)\b/;
+
 // A sentence ends at ., ! or ? followed by the end of the text or by whitespace and a capital letter (or opening
 // quote/parenthesis). Periods inside numbers and dates ("1.56 °C", "2026. okt. 4-én") and lower-case abbreviations
 // therefore do not count as sentence breaks.
@@ -132,6 +138,17 @@ export function validateOpenAiSummaryText(openAiSummary, temperatureChecks, anom
     }
     if (!/(\d|rekord|közel|legmagasabb|legalacsonyabb|felett|alatt)/i.test(item.detailHu)) {
       return reject(`Hungarian detail for ${item.signalKey} states no value or record status`);
+    }
+  }
+
+  const sameDateKeys = new Set([
+    ...temperatureChecks.map((check) => check.key),
+    ...anomalySignals.filter((signal) => signal.basis === "same-date historical rank").map((signal) => signal.key),
+  ]);
+  for (const item of items) {
+    if (!sameDateKeys.has(item.signalKey)) continue;
+    if (RECORD_CLAIM_PATTERN.test(item.detailEn) && !SAME_DATE_SCOPE_PATTERN.test(item.detailEn)) {
+      return reject(`English detail for ${item.signalKey} claims a record without saying it is for the date`);
     }
   }
 

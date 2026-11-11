@@ -150,11 +150,47 @@ const ENSO_SEASON_TARGET_LABELS = {
   NDJ: "November-January",
 };
 const MAP_KEYS = ["global_2m_temperature", "global_2m_temperature_anomaly", "global_sst", "global_sst_anomaly"];
-const DEFAULT_OPENAI_SUMMARY_MODEL = "gpt-5.4-mini";
+const DEFAULT_OPENAI_SUMMARY_MODEL = "gpt-6-luna";
 const OPENAI_SUMMARY_ALLOWED_MODELS = new Set([DEFAULT_OPENAI_SUMMARY_MODEL]);
-const OPENAI_SUMMARY_MAX_OUTPUT_TOKENS = 700;
-const OPENAI_SUMMARY_TIMEOUT_MS = 20_000;
-const AI_SUMMARY_PROMPT_VERSION = 8;
+// GPT-6 Luna reasons before it answers (medium effort by default). Picking
+// three signals from a short list needs little of that, so effort is low, and
+// the output cap leaves room for reasoning tokens on top of the ~350-token answer.
+const OPENAI_SUMMARY_REASONING_EFFORT = "low";
+const OPENAI_SUMMARY_MAX_OUTPUT_TOKENS = 2000;
+const OPENAI_SUMMARY_TIMEOUT_MS = 45_000;
+const AI_SUMMARY_PROMPT_VERSION = 9;
+const OPENAI_SUMMARY_INSTRUCTIONS = [
+  "You write the daily briefing for a public climate dashboard: exactly three bilingual climate-watch items, built only from the JSON facts in the input.",
+  "",
+  "# Choosing the three items",
+  "- Select the three most important distinct signals of the day. Use each supplied signalKey at most once, copied exactly, with its matching tone: heat, ice, ocean, or signal.",
+  "- Follow temperatureBrief.rules and requiredBehavior in the input; they are authoritative.",
+  "- Prefer critical over watch signals, same-date temperature or sea-ice records over slow background indicators, and newer observations over older ones.",
+  "",
+  "# Writing each item",
+  "- Title: a specific short editorial headline about that signal, in English and in natural Hungarian. Never a generic category heading.",
+  "- Detail: one complete short sentence in each language giving the latest value with its date, and its rank, record status or probability.",
+  "- Write like a science journalist, not a data table. Never write \"rank 1\", \"rank 2\" or \"1. hely\"; say \"the warmest\", \"the second-highest\", \"the lowest\" and so on.",
+  "- Limits: English title 52 characters, Hungarian title 60, English detail 120, Hungarian detail 140. Shorten the wording, never the facts, to fit.",
+  "",
+  "# Records: say what kind",
+  "- Every temperatureBrief check, and every signal whose basis is \"same-date historical rank\", compares the latest value only with the same calendar day in earlier years. It is a record for the date, not an all-time record.",
+  "- For those, the detail sentence must say so in words such as \"the warmest Nov 7 on record\", \"a record for the date\" or \"the second-lowest for the date\" (Hungarian: \"erre a napra\", \"napi rekord\"). Never write a bare \"a record high\" or \"a record since 1981\" for them, and keep the title equally honest, for example \"a daily record\".",
+  "- Only a signal whose basis is a full-record rank may be called the highest or lowest on record without that qualifier.",
+  "- When an item reports a record or a highest or lowest value, name when records began using recordSinceYear: \"in records since 1979\" in English, \"1979 óta\" in Hungarian.",
+  "- For a temperature below its record, say how far below the record it is.",
+  "",
+  "# Numbers, units and dates",
+  "- Always give the unit after a value (for example °C or million km²) and round to two decimals.",
+  "- In Hungarian use a decimal comma and a space before units, and translate unit words: \"millió km²\", never \"million km²\".",
+  "- Write dates naturally, \"Oct 3\" in English and \"okt. 3.\" in Hungarian, never as ISO dates, and omit the year when it is the current year.",
+  "",
+  "# Boundaries",
+  "- Use only the supplied facts. Do not add causes, advice, unsupplied trends, or extra forecasts.",
+  "- Never describe temperatures as record lows or cooling.",
+  "- Fully translate Hungarian titles, indicator names, and sentences; keep only standard acronyms such as CO2 or ENSO.",
+  "- Return JSON only, matching the schema.",
+].join("\n");
 const AI_SUMMARY_FINGERPRINT_KEYS = [
   "global_surface_temperature",
   "global_sea_surface_temperature",
@@ -2026,7 +2062,7 @@ function aiSummaryModel(warnings) {
   if (!requestedModel) return DEFAULT_OPENAI_SUMMARY_MODEL;
   if (OPENAI_SUMMARY_ALLOWED_MODELS.has(requestedModel)) return requestedModel;
 
-  warnings.push("OpenAI daily summary model was not allowed; using gpt-5.4-mini.");
+  warnings.push(`OpenAI daily summary model was not allowed; using ${DEFAULT_OPENAI_SUMMARY_MODEL}.`);
   return DEFAULT_OPENAI_SUMMARY_MODEL;
 }
 
@@ -2268,8 +2304,7 @@ async function requestOpenAiSummary(summaryInput, model) {
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        instructions:
-          'Create exactly three bilingual climate-watch items from the supplied facts. Select the three most important distinct current climate events or indicators, prioritizing critical over watch signals, same-date temperature or sea-ice records over slow background indicators, and newer observations over older ones. For each selected signal, write a specific short editorial title in English and natural Hungarian; the title must describe that signal rather than use a generic category heading. Then write one complete short sentence in each language describing its current value, rank, record status, date, or probability. Write like a science journalist, not a data table: always give the unit after a value (for example °C or million km²), round to two decimals, and use a decimal comma and a space before units in Hungarian, translating unit words (for example "millió km²", never "million km²"). Write dates naturally, such as "Oct 3" in English and "okt. 3." in Hungarian, never as ISO dates, and omit the year when it is the current year. Do not write "rank 1", "rank 2" or "1. hely"; say "the warmest on record for the date", "the second-highest", "the lowest since records began in 1979" and so on, using recordSinceYear for the start of the record. Whenever an item reports a record, a new high or low, or the lowest or highest value for the date, always name that start year ("since 1979" in English, "1979 óta" in Hungarian); shorten other wording to stay within the length limits. For a temperature below its record, say how far below the record it is. Keep English titles at 52 characters or fewer and Hungarian titles at 60 characters or fewer. Keep English detail sentences at 120 characters or fewer and Hungarian detail sentences at 140 characters or fewer. Use the exact supplied signalKey once and choose the matching tone: heat, ice, ocean, or signal. Fully translate Hungarian titles, indicator names, and sentences; retain only standard acronyms such as CO2 or ENSO. Use only supplied JSON facts. Do not add causes, advice, unsupplied trends, or extra forecasts. Never describe temperatures as record lows or cooling. Return JSON only.',
+        instructions: OPENAI_SUMMARY_INSTRUCTIONS,
         input: JSON.stringify(summaryInput),
         text: {
           format: {
@@ -2303,6 +2338,7 @@ async function requestOpenAiSummary(summaryInput, model) {
             },
           },
         },
+        reasoning: { effort: OPENAI_SUMMARY_REASONING_EFFORT },
         max_output_tokens: OPENAI_SUMMARY_MAX_OUTPUT_TOKENS,
         store: false,
       }),
@@ -2372,7 +2408,7 @@ async function buildDailyAiSummary({ summary, series, ensoOutlook, previousAiSum
     anomalySignals,
     allowedContextSignals: contextSignals,
     requiredBehavior:
-      "Temperature status is authoritative. Select exactly three distinct signal keys. Include a warning temperature check when present and at least one top daily record signal when supplied. Prefer critical signals over watch signals, same-date records over full-record background ranks, and daily indicators over slow background indicators. Use CO2, CH4, AGGI, sea level, or ocean heat content only when they genuinely belong in the three strongest current signals. Titles must be signal-specific in both languages, and every detail must be one short factual sentence describing the latest supplied value or current record situation.",
+      "Temperature status is authoritative. Select exactly three distinct signal keys. Include a warning temperature check when present and at least one top daily record signal when supplied. Prefer critical signals over watch signals, same-date records over full-record background ranks, and daily indicators over slow background indicators. Use CO2, CH4, AGGI, sea level, or ocean heat content only when they genuinely belong in the three strongest current signals. Temperature checks compare the latest value with the same calendar day in earlier years, so describe them as records or ranks for the date, never as all-time records.",
   };
 
   try {
