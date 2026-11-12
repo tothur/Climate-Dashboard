@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAtIso": "2026-11-12T11:48:27.140Z",
+  "generatedAtIso": "2026-11-12T21:36:19.614Z",
   "scope": "Read-only compact snapshot of the latest published Climate Dashboard observations. It excludes full historical series; answer historical trend questions only when data for them is present.",
   "interpretationRules": [
     "State the observation date alongside each reported latest value.",
@@ -19,8 +19,8 @@
     {
       "key": "global_sea_surface_temperature",
       "label": "Global Sea Surface Temperature",
-      "latestDate": "2026-11-09",
-      "latestValue": 20.99,
+      "latestDate": "2026-11-11",
+      "latestValue": 20.989,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json"
     },
@@ -107,16 +107,16 @@
     {
       "key": "north_atlantic_sea_surface_temperature",
       "label": "North Atlantic Sea Surface Temperature",
-      "latestDate": "2026-11-09",
-      "latestValue": 23.184,
+      "latestDate": "2026-11-11",
+      "latestValue": 23.163,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json"
     },
     {
       "key": "daily_nino34_sea_surface_temperature",
       "label": "Daily Sea Surface Temperature, Niño 3.4",
-      "latestDate": "2026-11-09",
-      "latestValue": 29.847,
+      "latestDate": "2026-11-11",
+      "latestValue": 29.877,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_nino3.4_sst_day.json"
     },
@@ -131,8 +131,8 @@
     {
       "key": "global_sea_surface_temperature_anomaly",
       "label": "Global Sea Surface Temperature Anomaly",
-      "latestDate": "2026-11-09",
-      "latestValue": 0.842,
+      "latestDate": "2026-11-11",
+      "latestValue": 0.84,
       "unit": "°C",
       "source": "Derived from OISST v2.1 daily global SST minus 1991-2020 daily climatology from the same feed."
     },
@@ -171,48 +171,48 @@
     {
       "key": "north_atlantic_sea_surface_temperature_anomaly",
       "label": "North Atlantic Sea Surface Temperature Anomaly",
-      "latestDate": "2026-11-09",
-      "latestValue": 0.859,
+      "latestDate": "2026-11-11",
+      "latestValue": 0.921,
       "unit": "°C",
       "source": "Derived from OISST v2.1 daily North Atlantic SST minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "daily_nino34_sea_surface_temperature_anomaly",
       "label": "Daily Sea Surface Temperature Anomaly, Niño 3.4",
-      "latestDate": "2026-11-09",
-      "latestValue": 3.06,
+      "latestDate": "2026-11-11",
+      "latestValue": 3.084,
       "unit": "°C",
       "source": "Derived from OISST v2.1 daily Niño 3.4 SST minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "daily_global_mean_temperature_anomaly",
       "label": "Daily Global Mean Temperature Anomaly",
-      "latestDate": "2026-11-09",
-      "latestValue": 1.851,
+      "latestDate": "2026-11-10",
+      "latestValue": 1.879,
       "unit": "°C",
       "source": "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv (ano_91-20 adjusted by +0.88C to approximate 1850-1900 preindustrial baseline)"
     },
     {
       "key": "global_sea_ice_extent",
       "label": "Global Sea Ice Extent",
-      "latestDate": "2026-11-10",
-      "latestValue": 23.957,
+      "latestDate": "2026-11-11",
+      "latestValue": 23.929,
       "unit": "million km²",
       "source": "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files."
     },
     {
       "key": "arctic_sea_ice_extent",
       "label": "Arctic Sea Ice Extent",
-      "latestDate": "2026-11-10",
-      "latestValue": 8.713,
+      "latestDate": "2026-11-11",
+      "latestValue": 8.838,
       "unit": "million km²",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv"
     },
     {
       "key": "antarctic_sea_ice_extent",
       "label": "Antarctic Sea Ice Extent",
-      "latestDate": "2026-11-10",
-      "latestValue": 15.244,
+      "latestDate": "2026-11-11",
+      "latestValue": 15.091,
       "unit": "million km²",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv"
     },
@@ -227,8 +227,8 @@
     {
       "key": "atmospheric_co2",
       "label": "Atmospheric CO2 (Mauna Loa)",
-      "latestDate": "2026-11-10",
-      "latestValue": 428,
+      "latestDate": "2026-11-11",
+      "latestValue": 428.38,
       "unit": "ppm",
       "source": "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv"
     },
@@ -268,19 +268,19 @@
     }
   ],
   "ensoOutlook": {
-    "issuedDate": "2026-10-08",
+    "issuedDate": "2026-11-12",
     "alertStatus": "El Nino Advisory",
     "sourceLabel": "NOAA CPC ENSO Probabilities",
     "sourceUrl": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso/roni/probabilities/",
     "nextThreeMonths": {
       "condition": "el_nino",
       "probability": 100,
-      "targetLabel": "October-December 2026"
+      "targetLabel": "November-January 2026"
     },
     "nextSixMonths": {
       "condition": "el_nino",
-      "probability": 100,
-      "targetLabel": "January-March 2027"
+      "probability": 98,
+      "targetLabel": "February-April 2027"
     }
   }
 }
