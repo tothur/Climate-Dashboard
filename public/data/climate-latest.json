@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAtIso": "2026-11-14T10:54:05.917Z",
+  "generatedAtIso": "2026-11-14T19:28:39.294Z",
   "scope": "Read-only compact snapshot of the latest published Climate Dashboard observations. It excludes full historical series; answer historical trend questions only when data for them is present.",
   "interpretationRules": [
     "State the observation date alongside each reported latest value.",
@@ -19,8 +19,8 @@
     {
       "key": "global_sea_surface_temperature",
       "label": "Global Sea Surface Temperature",
-      "latestDate": "2026-11-12",
-      "latestValue": 21.03,
+      "latestDate": "2026-11-13",
+      "latestValue": 21.004,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_world2_sst_day.json"
     },
@@ -107,16 +107,16 @@
     {
       "key": "north_atlantic_sea_surface_temperature",
       "label": "North Atlantic Sea Surface Temperature",
-      "latestDate": "2026-11-12",
-      "latestValue": 23.158,
+      "latestDate": "2026-11-13",
+      "latestValue": 23.081,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_natlan_sst_day.json"
     },
     {
       "key": "daily_nino34_sea_surface_temperature",
       "label": "Daily Sea Surface Temperature, Niño 3.4",
-      "latestDate": "2026-11-12",
-      "latestValue": 29.944,
+      "latestDate": "2026-11-13",
+      "latestValue": 29.985,
       "unit": "°C",
       "source": "https://cr.acg.maine.edu/clim/sst_daily/json_2clim/oisst2.1_nino3.4_sst_day.json"
     },
@@ -131,8 +131,8 @@
     {
       "key": "global_sea_surface_temperature_anomaly",
       "label": "Global Sea Surface Temperature Anomaly",
-      "latestDate": "2026-11-12",
-      "latestValue": 0.881,
+      "latestDate": "2026-11-13",
+      "latestValue": 0.856,
       "unit": "°C",
       "source": "Derived from OISST v2.1 daily global SST minus 1991-2020 daily climatology from the same feed."
     },
@@ -171,16 +171,16 @@
     {
       "key": "north_atlantic_sea_surface_temperature_anomaly",
       "label": "North Atlantic Sea Surface Temperature Anomaly",
-      "latestDate": "2026-11-12",
-      "latestValue": 0.96,
+      "latestDate": "2026-11-13",
+      "latestValue": 0.927,
       "unit": "°C",
       "source": "Derived from OISST v2.1 daily North Atlantic SST minus 1991-2020 daily climatology from the same feed."
     },
     {
       "key": "daily_nino34_sea_surface_temperature_anomaly",
       "label": "Daily Sea Surface Temperature Anomaly, Niño 3.4",
-      "latestDate": "2026-11-12",
-      "latestValue": 3.147,
+      "latestDate": "2026-11-13",
+      "latestValue": 3.184,
       "unit": "°C",
       "source": "Derived from OISST v2.1 daily Niño 3.4 SST minus 1991-2020 daily climatology from the same feed."
     },
@@ -195,24 +195,24 @@
     {
       "key": "global_sea_ice_extent",
       "label": "Global Sea Ice Extent",
-      "latestDate": "2026-11-12",
-      "latestValue": 23.838,
+      "latestDate": "2026-11-13",
+      "latestValue": 23.975,
       "unit": "million km²",
       "source": "Derived as north + south overlap from NSIDC Sea Ice Index v4 daily files."
     },
     {
       "key": "arctic_sea_ice_extent",
       "label": "Arctic Sea Ice Extent",
-      "latestDate": "2026-11-12",
-      "latestValue": 8.852,
+      "latestDate": "2026-11-13",
+      "latestValue": 8.951,
       "unit": "million km²",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/N_seaice_extent_daily_v4.0.csv"
     },
     {
       "key": "antarctic_sea_ice_extent",
       "label": "Antarctic Sea Ice Extent",
-      "latestDate": "2026-11-12",
-      "latestValue": 14.986,
+      "latestDate": "2026-11-13",
+      "latestValue": 15.024,
       "unit": "million km²",
       "source": "https://noaadata.apps.nsidc.org/NOAA/G02135/south/daily/data/S_seaice_extent_daily_v4.0.csv"
     },
@@ -227,8 +227,8 @@
     {
       "key": "atmospheric_co2",
       "label": "Atmospheric CO2 (Mauna Loa)",
-      "latestDate": "2026-11-12",
-      "latestValue": 429.42,
+      "latestDate": "2026-11-13",
+      "latestValue": 428.88,
       "unit": "ppm",
       "source": "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv"
     },
