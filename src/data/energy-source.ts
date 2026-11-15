@@ -27,6 +27,18 @@ export interface EnergyHistoryPoint {
   unallocatedMW: number;
 }
 
+/** Paks Nuclear Power Plant, from the OAH's unit-level operating data. */
+export interface PaksPlant {
+  mw: number;
+  capacityMW: number;
+  utilizationPct: number;
+  blocks: Array<{ block: number; mw: number }>;
+  measuredAt: string;
+  /** MAVIR's national nuclear category for the same interval, as a cross-check. */
+  mavirCategoryMW: number | null;
+  sourceUrl: string;
+}
+
 export interface EnergySnapshot {
   generatedAt: string;
   measuredAt: string;
@@ -45,9 +57,33 @@ export interface EnergySnapshot {
     netImportMW: number;
   } | null;
   history24h: EnergyHistoryPoint[];
+  paks: PaksPlant | null;
 }
 
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+
+function parsePaks(raw: unknown): PaksPlant | null {
+  if (!Array.isArray(raw)) return null;
+  const plant = raw.find((entry) => entry && entry.key === "paks");
+  if (!plant || plant.operationalDataStatus !== "available" || plant.liveCoverage !== "block_level") return null;
+  const blocks = Array.isArray(plant.blocks)
+    ? plant.blocks.filter((block: unknown): block is { block: number; mw: number } => {
+        const candidate = block as { block?: unknown; mw?: unknown } | null;
+        return !!candidate && finite(candidate.block) && finite(candidate.mw);
+      })
+    : [];
+  if (blocks.length !== 4 || ![plant.mw, plant.capacityMW].every(finite) || plant.capacityMW <= 0) return null;
+  if (typeof plant.operationalMeasuredAt !== "string" || !Number.isFinite(Date.parse(plant.operationalMeasuredAt))) return null;
+  return {
+    mw: plant.mw,
+    capacityMW: plant.capacityMW,
+    utilizationPct: finite(plant.utilizationPct) ? plant.utilizationPct : (plant.mw / plant.capacityMW) * 100,
+    blocks: [...blocks].sort((a, b) => a.block - b.block),
+    measuredAt: plant.operationalMeasuredAt,
+    mavirCategoryMW: finite(plant.mavirCategoryMW) ? plant.mavirCategoryMW : null,
+    sourceUrl: typeof plant.sourceUrl === "string" ? plant.sourceUrl : "https://www.haea.hu/",
+  };
+}
 
 function parseEnergySnapshot(raw: unknown): EnergySnapshot | null {
   if (!raw || typeof raw !== "object") return null;
@@ -72,6 +108,7 @@ function parseEnergySnapshot(raw: unknown): EnergySnapshot | null {
     movement15m:
       movement && [movement.consumptionMW, movement.generationMW, movement.netImportMW].every(finite) ? movement : null,
     history24h: history,
+    paks: parsePaks((raw as { plants?: unknown }).plants),
   };
 }
 

@@ -35,7 +35,8 @@ import {
 } from "../components/IndicatorNavigator";
 import { formatChancePercent } from "../domain/format";
 import { STRINGS } from "./strings";
-import { useEnergySnapshot, type EnergySnapshot } from "../data/energy-source";
+import { useEnergySnapshot } from "../data/energy-source";
+import { PaksPlantPanel } from "../components/PaksPlantPanel";
 import { buildEnergyMixOption, energyMixColor, ENERGY_MIX_SERIES, type EnergyMixSeriesKey } from "../charts/energyMix";
 import {
   CMIP7_SCENARIOMIP_SCENARIOS,
@@ -359,6 +360,7 @@ const ENERGY_COPY = {
     stale: "stale",
     unavailable: "The Hungarian energy data could not be loaded. Try again in a minute.",
     sourceLink: "MAVIR →",
+    paksNavTitle: "Paks Nuclear Power Plant",
   },
   hu: {
     pageEyebrow: "15 percenként",
@@ -383,13 +385,14 @@ const ENERGY_COPY = {
     stale: "elavult",
     unavailable: "A magyar energiaadatok nem tölthetők be. Próbálja újra egy perc múlva.",
     sourceLink: "MAVIR →",
+    paksNavTitle: "Paksi Atomerőmű",
   },
 } as const;
 const ENERGY_TIME_ZONE = "Europe/Budapest";
 
-function energyFreshness(snapshot: EnergySnapshot, language: Language): { tone: FreshnessTone; label: string } {
+function energyFreshness(measuredAt: string, language: Language, showCadence = true): { tone: FreshnessTone; label: string } {
   const copy = ENERGY_COPY[language];
-  const measured = Date.parse(snapshot.measuredAt);
+  const measured = Date.parse(measuredAt);
   const ageMinutes = (Date.now() - measured) / 60_000;
   // MAVIR's complete interval naturally lags its clock by up to ~30 minutes.
   const tone: FreshnessTone = ageMinutes > 120 ? "stale" : ageMinutes > 45 ? "warning" : "fresh";
@@ -401,7 +404,7 @@ function energyFreshness(snapshot: EnergySnapshot, language: Language): { tone: 
     minute: "2-digit",
   }).format(measured);
   const suffix = tone === "stale" ? ` · ${copy.stale}` : tone === "warning" ? ` · ${copy.lagging}` : "";
-  return { tone, label: `${copy.asOf(time)} · ${copy.cadence}${suffix}` };
+  return { tone, label: `${copy.asOf(time)}${showCadence ? ` · ${copy.cadence}` : ""}${suffix}` };
 }
 
 function dashboardRouteFromHash(hash: string): { view: DashboardView; topic: string | null } {
@@ -3519,7 +3522,8 @@ export function App() {
       },
     ];
   }, [energySnapshot, energyCopy, energyNumberFormat, language]);
-  const energyFreshnessBadge = energySnapshot ? energyFreshness(energySnapshot, language) : null;
+  const energyFreshnessBadge = energySnapshot ? energyFreshness(energySnapshot.measuredAt, language) : null;
+  const paksFreshnessBadge = energySnapshot?.paks ? energyFreshness(energySnapshot.paks.measuredAt, language, false) : null;
   const energyMixOption = useMemo<EChartsOption | null>(() => {
     if (!energySnapshot || energySnapshot.history24h.length < 2) return null;
     const locale = language === "hu" ? "hu-HU" : "en-GB";
@@ -3548,13 +3552,16 @@ export function App() {
             charts: [
               ...energyCards.map((card) => ({ id: `chart-energy-${card.key}`, title: card.title, value: formatEnergyMW(card.value) })),
               { id: "chart-energy-mix", title: energyCopy.mixTitle },
+              ...(energySnapshot?.paks
+                ? [{ id: "chart-energy-paks", title: energyCopy.paksNavTitle, value: formatEnergyMW(energySnapshot.paks.mw) }]
+                : []),
             ],
           },
         ],
       },
     ],
     // formatEnergyMW only depends on energyNumberFormat.
-    [t, energyCopy, energyCards, energyNumberFormat]
+    [t, energyCopy, energyCards, energyNumberFormat, energySnapshot]
   );
   const energyScrollSpy = useIndicatorScrollSpy(activeView === "energy-system" ? energyNavTopics[0] : undefined);
   const jumpToEnergy = useIndicatorJump("energy-system", () => undefined);
@@ -4631,6 +4638,18 @@ export function App() {
                   renderLoadingValue("value-loading-skeleton detail-value-loading")
                 )}
               </div>
+              {energySnapshot?.paks ? (
+                <div className="charts-grid climate-grid climate-grid-single">
+                  <PaksPlantPanel
+                    plant={energySnapshot.paks}
+                    generationMW={energySnapshot.system.generationMW}
+                    language={language}
+                    nuclearColor={energyMixColor("nuclear", resolvedTheme === "dark")}
+                    freshnessLabel={paksFreshnessBadge?.label}
+                    freshnessTone={paksFreshnessBadge?.tone}
+                  />
+                </div>
+              ) : null}
               </>
             ),
             <a className="text-link-button subsection-source-link" href={energySnapshot?.source.systemUrl ?? "https://www.mavir.hu/web/mavir/rendszerterheles"} target="_blank" rel="noreferrer">
