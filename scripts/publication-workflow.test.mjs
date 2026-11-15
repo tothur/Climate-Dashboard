@@ -38,3 +38,19 @@ test("Pages deploys main pushes and successful updater completions", async () =>
     /if: github\.event_name != 'workflow_run' \|\| github\.event\.workflow_run\.conclusion == 'success'/,
   );
 });
+
+test("Pages refreshes the Hungarian energy snapshot often without ever blocking the climate deploy", async () => {
+  const [workflow, packageJsonText] = await Promise.all([
+    readProjectFile(".github/workflows/deploy-pages.yml"),
+    readProjectFile("package.json"),
+  ]);
+  const packageJson = JSON.parse(packageJsonText);
+
+  assert.match(packageJson.scripts["data:energy"], /scripts\/update-energy-data\.mjs/);
+  assert.doesNotMatch(packageJson.scripts["data:update"], /data:energy/);
+  assert.match(workflow, /schedule:\s*\n\s+- cron: "1-59\/5 \* \* \* \*"/);
+  assert.match(
+    workflow,
+    /- name: Refresh Hungarian energy snapshot\s*\n\s+continue-on-error: true\s*\n\s+timeout-minutes: \d+[\s\S]*?run: npm run data:energy\s*\n\s*\n\s+- name: Build app/,
+  );
+});

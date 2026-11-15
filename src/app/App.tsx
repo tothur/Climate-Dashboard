@@ -35,6 +35,8 @@ import {
 } from "../components/IndicatorNavigator";
 import { formatChancePercent } from "../domain/format";
 import { STRINGS } from "./strings";
+import { useEnergySnapshot, type EnergySnapshot } from "../data/energy-source";
+import { buildEnergyMixOption, energyMixColor, ENERGY_MIX_SERIES, type EnergyMixSeriesKey } from "../charts/energyMix";
 import {
   CMIP7_SCENARIOMIP_SCENARIOS,
   CMIP7_SCENARIOMIP_TEMPERATURE_SOURCE_URL,
@@ -79,7 +81,7 @@ const CURRENT_MAP_REMOTE_URLS: Record<ClimateMapKey, string> = {
 
 type OverviewMapMode = "temperature" | "anomaly" | "sst" | "sst-anomaly";
 
-type DashboardView = "overview" | "climate-system" | "maps" | "projections" | "sources";
+type DashboardView = "overview" | "climate-system" | "energy-system" | "maps" | "projections" | "sources";
 type IndicatorSubsectionKey =
   | "globalTemperatures"
   | "temperatureAnomalies"
@@ -97,6 +99,7 @@ type IndicatorSubsectionKey =
 type ToolkitIconName =
   | "alert"
   | "bars"
+  | "bolt"
   | "calendar"
   | "cloud"
   | "close"
@@ -118,7 +121,7 @@ type ToolkitIconName =
   | "trend"
   | "up";
 
-const DASHBOARD_VIEW_IDS = new Set<DashboardView>(["overview", "climate-system", "maps", "projections", "sources"]);
+const DASHBOARD_VIEW_IDS = new Set<DashboardView>(["overview", "climate-system", "energy-system", "maps", "projections", "sources"]);
 // Climate system topics; the active one is kept in the address as #climate-system/<topic>.
 const CLIMATE_SYSTEM_TOPIC_KEYS = ["temperature", "regions", "oceans", "ice", "energy-imbalance", "forcing", "enso", "circulation"] as const;
 const DEFAULT_CLIMATE_SYSTEM_TOPIC = "temperature";
@@ -331,6 +334,76 @@ function safeTheme(raw: string | null): ThemeMode {
   return "light";
 }
 
+// Energy system page copy. The Hungarian card titles follow MAVIR's own terms.
+const ENERGY_COPY = {
+  en: {
+    pageEyebrow: "Every 15 minutes",
+    pageNote:
+      "The state of the electricity system, refreshed far more often than the climate pages: the grid operator publishes a new reading every 15 minutes.",
+    hungaryTitle: "Hungary",
+    hungaryNote:
+      "Hungary's electricity system right now: how much power the country uses, how much of it is generated at home and how much arrives over its borders.",
+    consumption: "Consumption",
+    generation: "Domestic generation",
+    import: "Import",
+    nowLabel: "Now",
+    netExport: "Net export: Hungary is sending power abroad.",
+    shareOfConsumption: (share: string) => `${share}% of consumption.`,
+    movement: (change: string, minutes: number) => `${change} MW in the last ${minutes} minutes.`,
+    mixTitle: "Domestic generation by source",
+    mixSubtitle: "Last 24 hours, 15-minute intervals",
+    mixLabels: { nuclear: "Nuclear", fossil: "Fossil", renewable: "Other renewables", solar: "Solar", other: "Other", total: "Total" },
+    asOf: (time: string) => `As of ${time} (Budapest)`,
+    cadence: "every 15 min",
+    lagging: "lagging",
+    stale: "stale",
+    unavailable: "The Hungarian energy data could not be loaded. Try again in a minute.",
+    sourceLink: "MAVIR →",
+  },
+  hu: {
+    pageEyebrow: "15 percenként",
+    pageNote:
+      "A villamosenergia-rendszer állapota, az éghajlati oldalaknál jóval gyakrabban frissítve: a rendszerirányító 15 percenként közöl új adatot.",
+    hungaryTitle: "Magyarország",
+    hungaryNote:
+      "A magyar villamosenergia-rendszer most: mennyi áramot használ az ország, mennyit termel belőle itthon, és mennyi érkezik a határokon túlról.",
+    consumption: "Fogyasztás",
+    generation: "Hazai termelés",
+    import: "Import",
+    nowLabel: "Most",
+    netExport: "Nettó export: Magyarország áramot ad el külföldre.",
+    shareOfConsumption: (share: string) => `A fogyasztás ${share}%-a.`,
+    movement: (change: string, minutes: number) => `${change} MW az elmúlt ${minutes} percben.`,
+    mixTitle: "Hazai termelés forrásonként",
+    mixSubtitle: "Az elmúlt 24 óra, 15 perces bontásban",
+    mixLabels: { nuclear: "Atom", fossil: "Fosszilis", renewable: "Egyéb megújuló", solar: "Nap", other: "Egyéb", total: "Összesen" },
+    asOf: (time: string) => `Állapot: ${time} (budapesti idő)`,
+    cadence: "15 percenként",
+    lagging: "késik",
+    stale: "elavult",
+    unavailable: "A magyar energiaadatok nem tölthetők be. Próbálja újra egy perc múlva.",
+    sourceLink: "MAVIR →",
+  },
+} as const;
+const ENERGY_TIME_ZONE = "Europe/Budapest";
+
+function energyFreshness(snapshot: EnergySnapshot, language: Language): { tone: FreshnessTone; label: string } {
+  const copy = ENERGY_COPY[language];
+  const measured = Date.parse(snapshot.measuredAt);
+  const ageMinutes = (Date.now() - measured) / 60_000;
+  // MAVIR's complete interval naturally lags its clock by up to ~30 minutes.
+  const tone: FreshnessTone = ageMinutes > 120 ? "stale" : ageMinutes > 45 ? "warning" : "fresh";
+  const time = new Intl.DateTimeFormat(language === "hu" ? "hu-HU" : "en-GB", {
+    timeZone: ENERGY_TIME_ZONE,
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(measured);
+  const suffix = tone === "stale" ? ` · ${copy.stale}` : tone === "warning" ? ` · ${copy.lagging}` : "";
+  return { tone, label: `${copy.asOf(time)} · ${copy.cadence}${suffix}` };
+}
+
 function dashboardRouteFromHash(hash: string): { view: DashboardView; topic: string | null } {
   const [rawView = "", rawTopic = ""] = hash.replace(/^#/, "").split("/");
   const topic = LEGACY_CLIMATE_SYSTEM_TOPICS[rawTopic] ?? rawTopic;
@@ -509,6 +582,12 @@ function ToolkitIcon({ name, className }: { name: ToolkitIconName; className?: s
           <path d="m4.9 4.9 14.2 14.2" />
           <path d="M2 12h20" />
           <path d="m4.9 19.1 14.2-14.2" />
+        </svg>
+      );
+    case "bolt":
+      return (
+        <svg {...common}>
+          <path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12l1-8Z" />
         </svg>
       );
     case "sun":
@@ -1901,7 +1980,9 @@ export function App() {
     const pageTitle =
       activeView === "climate-system"
         ? `${activeIndicatorTopicLabel} · ${t.navIndicators}`
-        : activeView === "maps"
+        : activeView === "energy-system"
+          ? t.navEnergySystem
+          : activeView === "maps"
           ? t.mapsSectionTitle
           : activeView === "projections"
             ? t.projectionsTitle
@@ -1987,7 +2068,7 @@ export function App() {
   // Projections and Maps sits under the site header: track the header's
   // height (desktop bar or mobile app bar).
   useEffect(() => {
-    if (activeView !== "climate-system" && activeView !== "projections" && activeView !== "maps") return;
+    if (activeView !== "climate-system" && activeView !== "energy-system" && activeView !== "projections" && activeView !== "maps") return;
     const measure = () => {
       const mobileBar = document.querySelector<HTMLElement>(".mobile-app-bar");
       const header = mobileBar && mobileBar.offsetHeight > 0 ? mobileBar : document.querySelector<HTMLElement>(".dashboard-sidebar");
@@ -2903,12 +2984,13 @@ export function App() {
   const navItems: Array<{ view: DashboardView; label: string; icon: ToolkitIconName; available: boolean }> = [
     { view: "overview", label: t.navOverview, icon: "home", available: true },
     { view: "climate-system", label: t.navIndicators, icon: "bars", available: true },
+    { view: "energy-system", label: t.navEnergySystem, icon: "bolt", available: true },
     { view: "maps", label: t.mapsSectionTitle, icon: "map", available: true },
     { view: "projections", label: t.projectionsTitle, icon: "trend", available: projectedAnnualGlobalMeanAnomaly != null },
     { view: "sources", label: t.sourceCardsTitle, icon: "reports", available: true },
   ];
   const navGroups: Array<{ key: string; label: string; views: DashboardView[] }> = [
-    { key: "monitor", label: t.navGroupMonitor, views: ["overview", "climate-system"] },
+    { key: "monitor", label: t.navGroupMonitor, views: ["overview", "climate-system", "energy-system"] },
     { key: "explore", label: t.navGroupExplore, views: ["maps", "projections"] },
     { key: "system", label: t.navGroupSystem, views: ["sources"] },
   ];
@@ -2917,7 +2999,9 @@ export function App() {
       ? t.overviewTitle
       : activeView === "climate-system"
         ? t.climateIndicatorsTitle
-        : activeView === "maps"
+        : activeView === "energy-system"
+          ? t.navEnergySystem
+          : activeView === "maps"
           ? t.mapsSectionTitle
           : activeView === "projections"
             ? t.projectionsTitle
@@ -2927,7 +3011,9 @@ export function App() {
       ? t.overviewSubtitle
       : activeView === "climate-system"
         ? t.climateIndicatorsNote
-        : activeView === "maps"
+        : activeView === "energy-system"
+          ? ENERGY_COPY[language].pageNote
+          : activeView === "maps"
           ? t.mapsSectionNote
           : activeView === "projections"
             ? t.projectionsNote
@@ -3401,6 +3487,85 @@ export function App() {
     // The page's only topic: its button returns to the top of the page.
     onSelectTopic: () => jumpToProjection("projections", "projections"),
     onJump: jumpToProjection,
+  };
+
+  // Energy system: polled every minute while the page is open, independently
+  // of the daily climate dataset.
+  const energyCopy = ENERGY_COPY[language];
+  const { snapshot: energySnapshot, loaded: energyLoaded } = useEnergySnapshot(activeView === "energy-system");
+  const energyNumberFormat = useMemo(
+    () => new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", { maximumFractionDigits: 0 }),
+    [language]
+  );
+  const formatEnergyMW = (value: number) => `${energyNumberFormat.format(Math.round(value))} MW`;
+  const energyCards = useMemo(() => {
+    if (!energySnapshot) return [];
+    const { system, movement15m } = energySnapshot;
+    const shareFormat = new Intl.NumberFormat(language === "hu" ? "hu-HU" : "en-US", { maximumFractionDigits: 0 });
+    const movement = (change: number | undefined) =>
+      movement15m && change != null
+        ? energyCopy.movement(`${change > 0 ? "+" : change < 0 ? "−" : "±"}${energyNumberFormat.format(Math.abs(Math.round(change)))}`, movement15m.elapsedMinutes)
+        : null;
+    const share = (value: number) =>
+      system.consumptionMW > 0 ? energyCopy.shareOfConsumption(shareFormat.format((value / system.consumptionMW) * 100)) : null;
+    return [
+      { key: "consumption", title: energyCopy.consumption, value: system.consumptionMW, notes: [movement(movement15m?.consumptionMW)] },
+      { key: "generation", title: energyCopy.generation, value: system.generationMW, notes: [share(system.generationMW), movement(movement15m?.generationMW)] },
+      {
+        key: "import",
+        title: energyCopy.import,
+        value: system.netImportMW,
+        notes: [system.netImportMW < 0 ? energyCopy.netExport : share(system.netImportMW), movement(movement15m?.netImportMW)],
+      },
+    ];
+  }, [energySnapshot, energyCopy, energyNumberFormat, language]);
+  const energyFreshnessBadge = energySnapshot ? energyFreshness(energySnapshot, language) : null;
+  const energyMixOption = useMemo<EChartsOption | null>(() => {
+    if (!energySnapshot || energySnapshot.history24h.length < 2) return null;
+    const locale = language === "hu" ? "hu-HU" : "en-GB";
+    const clock = new Intl.DateTimeFormat(locale, { timeZone: ENERGY_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
+    const dated = new Intl.DateTimeFormat(locale, { timeZone: ENERGY_TIME_ZONE, month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return buildEnergyMixOption({
+      history: energySnapshot.history24h,
+      labels: energyCopy.mixLabels,
+      compact,
+      dark: resolvedTheme === "dark",
+      formatNumber: (value) => energyNumberFormat.format(Math.round(value)),
+      formatTime: (time) => clock.format(time),
+      formatTooltipTime: (time) => dated.format(time),
+    });
+  }, [energySnapshot, energyCopy, energyNumberFormat, language, compact, resolvedTheme]);
+  const energyLatestMix = energySnapshot?.history24h[energySnapshot.history24h.length - 1] ?? null;
+  const energyNavTopics = useMemo<IndicatorNavTopic[]>(
+    () => [
+      {
+        key: "energy-system",
+        label: t.navEnergySystem,
+        sections: [
+          {
+            id: "section-energy-hungary",
+            title: energyCopy.hungaryTitle,
+            charts: [
+              ...energyCards.map((card) => ({ id: `chart-energy-${card.key}`, title: card.title, value: formatEnergyMW(card.value) })),
+              { id: "chart-energy-mix", title: energyCopy.mixTitle },
+            ],
+          },
+        ],
+      },
+    ],
+    // formatEnergyMW only depends on energyNumberFormat.
+    [t, energyCopy, energyCards, energyNumberFormat]
+  );
+  const energyScrollSpy = useIndicatorScrollSpy(activeView === "energy-system" ? energyNavTopics[0] : undefined);
+  const jumpToEnergy = useIndicatorJump("energy-system", () => undefined);
+  const energyNavProps = {
+    topics: energyNavTopics,
+    activeTopic: "energy-system",
+    active: energyScrollSpy,
+    ready: energyLoaded,
+    language,
+    onSelectTopic: () => jumpToEnergy("energy-system", "energy-system"),
+    onJump: jumpToEnergy,
   };
 
   const ensoConditionTone = (condition: EnsoCondition) =>
@@ -4394,6 +4559,86 @@ export function App() {
               </div>
             )}
           </div>
+        </div>
+        </div>
+      </section>
+      ) : null}
+
+      {activeView === "energy-system" ? (
+      <section className="collapsible-section detail-page-section detail-page-editorial detail-page-energy" id="energy-system">
+        <div className="indicators-layout">
+        <IndicatorRail {...energyNavProps} />
+        <div className="indicators-main">
+        {renderPageIntro(energyCopy.pageEyebrow, t.navEnergySystem, energyCopy.pageNote)}
+        <IndicatorLocator {...energyNavProps} />
+        <div className="section-content">
+          {renderPageSubsection(
+            energyCopy.hungaryTitle,
+            energyCopy.hungaryNote,
+            energyLoaded && !energySnapshot ? (
+              <p className="energy-unavailable" role="status">{energyCopy.unavailable}</p>
+            ) : (
+              <>
+              <div className="summary-cards-section">
+                <div className="regional-summary-grid energy-summary-grid">
+                  {(energyCards.length ? energyCards : (["consumption", "generation", "import"] as const).map((key) => ({ key, title: energyCopy[key], value: 0, notes: [] as Array<string | null> }))).map((card) => (
+                    <article className="alert-card summary" key={card.key} id={`chart-energy-${card.key}`} data-toc-anchor="">
+                      <span className="alert-kicker">{energyCopy.nowLabel}</span>
+                      <h2>{card.title}</h2>
+                      <p className="alert-emphasis">
+                        {energySnapshot ? formatEnergyMW(card.value) : renderLoadingValue("value-loading-skeleton detail-value-loading")}
+                      </p>
+                      {card.notes.filter(Boolean).map((note) => (
+                        <p key={note}>{note}</p>
+                      ))}
+                      {energyFreshnessBadge ? (
+                        <span className={`freshness-chip ${energyFreshnessBadge.tone}`}>{energyFreshnessBadge.label}</span>
+                      ) : null}
+                      <div className="alert-meta">
+                        <span className="alert-meta-chip confidence-medium">MAVIR</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+              <div className="charts-grid climate-grid climate-grid-single">
+                {energyMixOption ? (
+                  <EChartsPanel
+                    anchorId="chart-energy-mix"
+                    className="energy-mix-panel"
+                    title={energyCopy.mixTitle}
+                    subtitle={energyCopy.mixSubtitle}
+                    intro={
+                      energyLatestMix ? (
+                        <ul className="energy-mix-now" aria-label={energyCopy.nowLabel}>
+                          {[...ENERGY_MIX_SERIES].map((series) => (
+                            <li key={series.key}>
+                              <span className="energy-mix-swatch" style={{ background: energyMixColor(series.key as EnergyMixSeriesKey, resolvedTheme === "dark") }} aria-hidden="true" />
+                              <span>{energyCopy.mixLabels[series.key]}</span>
+                              <strong>{formatEnergyMW(series.value(energyLatestMix))}</strong>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null
+                    }
+                    option={energyMixOption}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
+                    freshnessLabel={energyFreshnessBadge?.label}
+                    freshnessTone={energyFreshnessBadge?.tone}
+                  />
+                ) : (
+                  renderLoadingValue("value-loading-skeleton detail-value-loading")
+                )}
+              </div>
+              </>
+            ),
+            <a className="text-link-button subsection-source-link" href={energySnapshot?.source.systemUrl ?? "https://www.mavir.hu/web/mavir/rendszerterheles"} target="_blank" rel="noreferrer">
+              {energyCopy.sourceLink}
+            </a>,
+            "section-energy-hungary"
+          )}
+        </div>
         </div>
         </div>
       </section>

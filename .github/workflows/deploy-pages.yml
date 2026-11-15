@@ -12,6 +12,10 @@ on:
     branches:
       - main
   workflow_dispatch:
+  # The Energy system page shows MAVIR's 15-minute data: every scheduled run
+  # rebuilds the site with a freshly fetched Hungarian energy snapshot.
+  schedule:
+    - cron: "1-59/5 * * * *"
 
 permissions:
   contents: read
@@ -40,6 +44,15 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # Never blocks the climate deployment: if MAVIR or validation fails, the
+      # last committed energy snapshot is published unchanged.
+      - name: Refresh Hungarian energy snapshot
+        continue-on-error: true
+        timeout-minutes: 6
+        env:
+          ENTSOE_SECURITY_TOKEN: ${{ secrets.ENTSOE_SECURITY_TOKEN }}
+        run: npm run data:energy
 
       - name: Build app
         run: npm run build

@@ -1,0 +1,276 @@
+const ENTSOE_API_URL = "https://web-api.tp.entsoe.eu/api";
+const HU_BIDDING_ZONE = "10YHU-MAVIR----U";
+const EEA_SQL_URL = "https://discodata.eea.europa.eu/sql";
+const OAH_MIN_BLOCK_MW = -50;
+const HAEA_PAKS_URL = "https://www.haea.hu/web/v3/OAHPortal.nsf/web?OpenAgent&article=paksnpp";
+
+function invariant(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+function rounded(value, digits = 1) {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
+
+function tagValue(text, name) {
+  const escaped = name.replaceAll(".", "\\.");
+  return text.match(new RegExp(`<(?:[A-Za-z0-9_-]+:)?${escaped}>([^<]+)<\\/(?:[A-Za-z0-9_-]+:)?${escaped}>`))?.[1] ?? null;
+}
+
+function durationMinutes(value) {
+  const match = /^PT(?:(\d+)H)?(?:(\d+)M)?$/.exec(value ?? "");
+  invariant(match, `Unsupported ENTSO-E resolution: ${value}`);
+  return Number(match[1] ?? 0) * 60 + Number(match[2] ?? 0);
+}
+
+function localDate(isoTimestamp) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Budapest",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(isoTimestamp));
+}
+
+function budapestLocalToIso(year, month, day, hour, minute) {
+  const intendedUtc = Date.UTC(year, month - 1, day, hour, minute);
+  let guess = intendedUtc;
+  for (let iteration = 0; iteration < 3; iteration += 1) {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Budapest",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date(guess)).filter((part) => part.type !== "literal").map((part) => [part.type, Number(part.value)]));
+    const renderedUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
+    guess -= renderedUtc - intendedUtc;
+  }
+  return new Date(guess).toISOString();
+}
+
+export function parseHaeaPaksOperationalPage(html, fetchedAt = new Date().toISOString()) {
+  invariant(typeof html === "string" && /Paksi Atomerőmű aktuális üzemi adatai/.test(html), "Invalid OAH Paks operational page");
+  const timestamp = html.match(/(?:Mérés dátuma|Utolsó frissítés):\s*(\d{4})\.\s*(\d{2})\.\s*(\d{2})\s+(\d{2}):(\d{2})/i);
+  invariant(timestamp, "OAH Paks measurement timestamp is missing");
+  const measuredAt = budapestLocalToIso(...timestamp.slice(1).map(Number));
+  const electricalOutputTable = html.match(/A Paksi Atomerőmű elektromos teljesítmény adatai([\s\S]*?)<\/table>/i)?.[1];
+  invariant(electricalOutputTable, "OAH Paks electrical-output table is missing");
+  const blockValues = [...electricalOutputTable.matchAll(/<td[^>]*>\s*([-−]?\d+(?:[.,]\d+)?)\s*MW\s*<\/td>/gi)]
+    .slice(0, 4)
+    // OAH reports an offline block as "-0 MW" (or a small negative net value
+    // while it draws auxiliary power); keep the reported sign, normalise -0.
+    .map((match) => Number(match[1].replace("−", "-").replace(",", ".")) + 0);
+  invariant(blockValues.length === 4 && blockValues.every((value) => Number.isFinite(value) && value >= OAH_MIN_BLOCK_MW && value <= 600), "OAH Paks block data is incomplete or implausible");
+  const fetchedMs = Date.parse(fetchedAt);
+  const measuredMs = Date.parse(measuredAt);
+  invariant(measuredMs <= fetchedMs + 10 * 60_000, "OAH Paks measurement is implausibly in the future");
+  invariant(fetchedMs - measuredMs <= 24 * 60 * 60_000, "OAH Paks operational data is stale");
+  return {
+    status: "available",
+    source: "Országos Atomenergia Hivatal",
+    sourceUrl: HAEA_PAKS_URL,
+    measuredAt,
+    fetchedAt: new Date(fetchedAt).toISOString(),
+    blocks: blockValues.map((mw, index) => ({ block: index + 1, mw })),
+    totalMW: rounded(blockValues.reduce((sum, value) => sum + value, 0), 1),
+  };
+}
+
+export async function fetchHaeaPaksOperational(generatedAt = new Date().toISOString()) {
+  const response = await fetch(HAEA_PAKS_URL, {
+    headers: { accept: "text/html" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) throw new Error(`OAH Paks HTTP ${response.status}`);
+  return parseHaeaPaksOperationalPage(await response.text(), generatedAt);
+}
+
+export function parseEntsoePriceDocument(xml, generatedAt = new Date().toISOString()) {
+  invariant(typeof xml === "string" && /<.*Publication_MarketDocument/.test(xml), "Invalid ENTSO-E price document");
+  const currency = tagValue(xml, "currency_Unit.name") ?? "EUR";
+  const unit = tagValue(xml, "price_Measure_Unit.name") ?? "MWH";
+  invariant(currency === "EUR" && unit.toUpperCase() === "MWH", `Unexpected ENTSO-E price unit: ${currency}/${unit}`);
+
+  const points = [];
+  for (const period of xml.matchAll(/<(?:[A-Za-z0-9_-]+:)?Period>([\s\S]*?)<\/(?:[A-Za-z0-9_-]+:)?Period>/g)) {
+    const body = period[1];
+    const start = tagValue(body, "start");
+    const resolution = durationMinutes(tagValue(body, "resolution"));
+    invariant(start && !Number.isNaN(Date.parse(start)), "ENTSO-E price period has no valid start time");
+    for (const point of body.matchAll(/<(?:[A-Za-z0-9_-]+:)?Point>([\s\S]*?)<\/(?:[A-Za-z0-9_-]+:)?Point>/g)) {
+      const position = Number(tagValue(point[1], "position"));
+      const eurMWh = Number(tagValue(point[1], "price.amount"));
+      invariant(Number.isInteger(position) && position > 0 && Number.isFinite(eurMWh), "Invalid ENTSO-E price point");
+      const startMs = Date.parse(start) + (position - 1) * resolution * 60_000;
+      points.push({
+        start: new Date(startMs).toISOString(),
+        end: new Date(startMs + resolution * 60_000).toISOString(),
+        eurMWh: rounded(eurMWh, 2),
+      });
+    }
+  }
+  invariant(points.length >= 24, `ENTSO-E price series is incomplete (${points.length} points)`);
+  const uniquePoints = [...new Map(points.map((point) => [point.start, point])).values()]
+    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+
+  const nowMs = Date.parse(generatedAt);
+  const current = uniquePoints.find((point) => Date.parse(point.start) <= nowMs && nowMs < Date.parse(point.end)) ?? null;
+  const todayDate = localDate(generatedAt);
+  const todayPoints = uniquePoints.filter((point) => localDate(point.start) === todayDate);
+  const today = todayPoints.length >= 23 ? {
+    deliveryDate: todayDate,
+    points: todayPoints,
+  } : null;
+  const tomorrowDate = localDate(new Date(nowMs + 24 * 60 * 60_000).toISOString());
+  const tomorrowPoints = uniquePoints.filter((point) => localDate(point.start) === tomorrowDate);
+  const nextDay = tomorrowPoints.length >= 23 ? {
+    deliveryDate: tomorrowDate,
+    averageEurMWh: rounded(tomorrowPoints.reduce((sum, point) => sum + point.eurMWh, 0) / tomorrowPoints.length, 2),
+    minEurMWh: Math.min(...tomorrowPoints.map((point) => point.eurMWh)),
+    maxEurMWh: Math.max(...tomorrowPoints.map((point) => point.eurMWh)),
+    periods: tomorrowPoints.length,
+  } : null;
+
+  invariant(current || nextDay, "ENTSO-E document has no current or next-day Hungarian price");
+  return {
+    status: "available",
+    source: "ENTSO-E Transparency Platform",
+    documentType: "A44",
+    biddingZone: HU_BIDDING_ZONE,
+    currency: "EUR",
+    unit: "MWh",
+    fetchedAt: new Date(generatedAt).toISOString(),
+    current,
+    today,
+    nextDay,
+  };
+}
+
+function entsoePeriod(timestamp) {
+  return new Date(timestamp).toISOString().replace(/[-:]/g, "").slice(0, 12);
+}
+
+export async function fetchEntsoePrices(token, generatedAt = new Date().toISOString()) {
+  if (!token) return {
+    status: "unavailable_missing_entsoe_token",
+    source: "ENTSO-E Transparency Platform",
+    documentType: "A44",
+    biddingZone: HU_BIDDING_ZONE,
+  };
+
+  const nowMs = Date.parse(generatedAt);
+  const url = new URL(ENTSOE_API_URL);
+  url.search = new URLSearchParams({
+    securityToken: token,
+    documentType: "A44",
+    in_Domain: HU_BIDDING_ZONE,
+    out_Domain: HU_BIDDING_ZONE,
+    periodStart: entsoePeriod(nowMs - 24 * 60 * 60_000),
+    periodEnd: entsoePeriod(nowMs + 48 * 60 * 60_000),
+  });
+  const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  if (!response.ok) throw new Error(`ENTSO-E A44 HTTP ${response.status}`);
+  return parseEntsoePriceDocument(await response.text(), generatedAt);
+}
+
+// EEA variable: IPCC 1.A.1.a, Aggregate GHGs, Emissions, Fuels, kt CO2 equivalent.
+const EEA_POWER_HEAT_VARIABLE = "e7f01e74-bf84-416c-b68b-d71c77630b2b";
+const EEA_QUERY = `select top 10 country, country_code, inventory_year, value, notation, isCalculatedByEEA, submission_version
+from [GHG_Inventory].[latest].[ghg_value]
+where country_code='HU' and variable_uid='${EEA_POWER_HEAT_VARIABLE}'
+order by inventory_year desc, submission_version desc`;
+
+export async function fetchEeaAnnualEmissions(generatedAt = new Date().toISOString()) {
+  // Discodata's Azure gateway rejects SQL in the query string (HTTP 403), so the
+  // query is sent as a form-encoded POST body instead.
+  const response = await fetch(EEA_SQL_URL, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+    body: new URLSearchParams({ query: EEA_QUERY, p: "1", nrOfHits: "10" }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) throw new Error(`EEA Discodata HTTP ${response.status}`);
+  const payload = await response.json();
+  invariant(!payload.errors?.length, `EEA Discodata query failed: ${payload.errors?.[0]?.error ?? "unknown error"}`);
+  const rows = (payload.results ?? []).map((row) => ({
+    ...row,
+    unit: "kt CO₂ equivalent",
+    sector_number: "1.A.1.a",
+  }));
+  return normalizeEeaAnnualEmissions(rows, generatedAt);
+}
+
+export function normalizeEeaAnnualEmissions(rows, generatedAt = new Date().toISOString()) {
+  invariant(rows.length >= 2, "EEA annual emissions series is incomplete");
+  const [latest, previous] = rows;
+  invariant(latest.country_code === "HU" && previous.country_code === "HU", "EEA emissions country mismatch");
+  invariant(latest.inventory_year === previous.inventory_year + 1, "EEA emissions years are not consecutive");
+  invariant(latest.unit === "kt CO₂ equivalent" && previous.unit === latest.unit, "Unexpected EEA emissions unit");
+  invariant(Number.isFinite(latest.value) && Number.isFinite(previous.value) && latest.value >= 0 && previous.value > 0, "Invalid EEA emissions value");
+  invariant(latest.isCalculatedByEEA === 0 && previous.isCalculatedByEEA === 0, "EEA-derived replacement value must not be presented as reported data");
+
+  return {
+    status: "available",
+    source: "EEA GHG Inventory",
+    sourceUrl: "https://discodata.eea.europa.eu/",
+    sectorCode: latest.sector_number,
+    scope: "Közüzemi villamosenergia- és hőtermelés",
+    unit: "Mt CO₂e",
+    latest: { year: latest.inventory_year, valueMt: rounded(latest.value / 1_000, 3) },
+    previous: { year: previous.inventory_year, valueMt: rounded(previous.value / 1_000, 3) },
+    changePct: rounded(((latest.value - previous.value) / previous.value) * 100, 1),
+    submissionVersion: latest.submission_version,
+    fetchedAt: new Date(generatedAt).toISOString(),
+  };
+}
+
+export function applyEnergyEnrichment(data, { market, annualEmissions, paksOperational }) {
+  const enriched = structuredClone(data);
+  const lowCarbonMW = enriched.mix
+    .filter((item) => ["Atom", "Nap", "Egyéb megújuló"].includes(item.key))
+    .reduce((sum, item) => sum + item.mw, 0);
+  enriched.system.lowCarbonSharePct = rounded((lowCarbonMW / enriched.system.generationMW) * 100, 1);
+  enriched.market = market;
+  enriched.annualEmissions = annualEmissions;
+  enriched.source.price = "ENTSO-E Transparency Platform";
+  enriched.source.priceStatus = market.status;
+  enriched.source.annualEmissions = annualEmissions?.source ?? "EEA GHG Inventory";
+  enriched.system.dayAheadPriceEurMWh = market.status === "available" ? market.current?.eurMWh ?? null : null;
+  const paks = enriched.plants.find((plant) => plant.key === "paks");
+  enriched.quality.checksTotal += 2;
+  if (paks) {
+    paks.mavirCategoryMW = paks.mw;
+    paks.operationalDataStatus = paksOperational?.status ?? "unavailable_fetch_failed";
+    if (paksOperational?.status === "available") {
+      const activeBlocks = paksOperational.blocks.filter((block) => block.mw > 5).length;
+      paks.mw = rounded(paksOperational.totalMW, 1);
+      paks.blocks = paksOperational.blocks;
+      paks.liveCoverage = "block_level";
+      paks.liveMetric = "OAH · blokkszintű üzemi adatok";
+      paks.operationalMeasuredAt = paksOperational.measuredAt;
+      paks.status = `${activeBlocks}/4 blokk termel`;
+      paks.statusTone = activeBlocks === 4 ? "active" : "attention";
+      paks.utilizationPct = rounded((paks.mw / paks.capacityMW) * 100, 1);
+      paks.statusNote = "Az aktuális teljesítmény az OAH négy blokkszintű adatának összege; a MAVIR országos nukleáris kategóriaértékét külön ellenőrizzük.";
+      paks.sourceUrl = paksOperational.sourceUrl;
+      paks.sourceName = "OAH aktuális üzemi adatok";
+      enriched.source.measurements.paksOperationalAt = paksOperational.measuredAt;
+      enriched.quality.paksVsMavirGapMW = rounded(paks.mw - paks.mavirCategoryMW, 1);
+      enriched.quality.checksPassed += 2;
+    }
+  }
+  enriched.source.paksOperational = paksOperational?.source ?? "Országos Atomenergia Hivatal";
+  enriched.source.paksOperationalStatus = paksOperational?.status ?? "unavailable_fetch_failed";
+  enriched.quality.enrichment = {
+    lowCarbonShare: "passed",
+    marketPrice: market.status,
+    annualEmissions: annualEmissions?.status ?? "unavailable",
+    paksOperational: paksOperational?.status ?? "unavailable_fetch_failed",
+  };
+  return enriched;
+}
