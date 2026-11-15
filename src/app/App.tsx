@@ -347,17 +347,16 @@ const ENERGY_COPY = {
     consumption: "Consumption",
     generation: "Domestic generation",
     import: "Import",
-    nowLabel: "Now",
+    mixKicker: (time: string) => `Domestic generation · ${time}`,
+    lowCarbonChip: (share: string) => `Low-carbon: ${share}%`,
+    largestChip: (source: string) => `Largest source: ${source}`,
     netExport: "Net export: Hungary is sending power abroad.",
     shareOfConsumption: (share: string) => `${share}% of consumption.`,
     movement: (change: string, minutes: number) => `${change} MW in the last ${minutes} minutes.`,
     mixTitle: "Domestic generation by source",
     mixSubtitle: "Last 24 hours, 15-minute intervals",
     mixLabels: { nuclear: "Nuclear", fossil: "Fossil", renewable: "Other renewables", solar: "Solar", other: "Other", total: "Total" },
-    asOf: (time: string) => `As of ${time} (Budapest)`,
-    cadence: "every 15 min",
-    lagging: "lagging",
-    stale: "stale",
+    cadence: "every 15 minutes",
     unavailable: "The Hungarian energy data could not be loaded. Try again in a minute.",
     sourceLink: "MAVIR →",
     paksNavTitle: "Paks Nuclear Power Plant",
@@ -372,17 +371,16 @@ const ENERGY_COPY = {
     consumption: "Fogyasztás",
     generation: "Hazai termelés",
     import: "Import",
-    nowLabel: "Most",
+    mixKicker: (time: string) => `Hazai termelés · ${time}`,
+    lowCarbonChip: (share: string) => `Alacsony kibocsátású: ${share}%`,
+    largestChip: (source: string) => `Legnagyobb forrás: ${source}`,
     netExport: "Nettó export: Magyarország áramot ad el külföldre.",
     shareOfConsumption: (share: string) => `A fogyasztás ${share}%-a.`,
     movement: (change: string, minutes: number) => `${change} MW az elmúlt ${minutes} percben.`,
     mixTitle: "Hazai termelés forrásonként",
     mixSubtitle: "Az elmúlt 24 óra, 15 perces bontásban",
     mixLabels: { nuclear: "Atom", fossil: "Fosszilis", renewable: "Egyéb megújuló", solar: "Nap", other: "Egyéb", total: "Összesen" },
-    asOf: (time: string) => `Állapot: ${time} (budapesti idő)`,
     cadence: "15 percenként",
-    lagging: "késik",
-    stale: "elavult",
     unavailable: "A magyar energiaadatok nem tölthetők be. Próbálja újra egy perc múlva.",
     sourceLink: "MAVIR →",
     paksNavTitle: "Paksi Atomerőmű",
@@ -390,21 +388,28 @@ const ENERGY_COPY = {
 } as const;
 const ENERGY_TIME_ZONE = "Europe/Budapest";
 
-function energyFreshness(measuredAt: string, language: Language, showCadence = true): { tone: FreshnessTone; label: string } {
-  const copy = ENERGY_COPY[language];
+/** Freshness chip in the same form as every other card: "As of: <date> · <cadence> · <status>". */
+function energyFreshness(
+  measuredAt: string,
+  language: Language,
+  t: (typeof STRINGS)[Language],
+  showCadence = true
+): { tone: FreshnessTone; label: string } {
   const measured = Date.parse(measuredAt);
   const ageMinutes = (Date.now() - measured) / 60_000;
   // MAVIR's complete interval naturally lags its clock by up to ~30 minutes.
   const tone: FreshnessTone = ageMinutes > 120 ? "stale" : ageMinutes > 45 ? "warning" : "fresh";
-  const time = new Intl.DateTimeFormat(language === "hu" ? "hu-HU" : "en-GB", {
+  const time = new Intl.DateTimeFormat(language === "hu" ? "hu-HU" : "en-US", {
     timeZone: ENERGY_TIME_ZONE,
+    year: "numeric",
     month: "short",
-    day: "numeric",
+    day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    hourCycle: "h23",
   }).format(measured);
-  const suffix = tone === "stale" ? ` · ${copy.stale}` : tone === "warning" ? ` · ${copy.lagging}` : "";
-  return { tone, label: `${copy.asOf(time)}${showCadence ? ` · ${copy.cadence}` : ""}${suffix}` };
+  const suffix = tone === "stale" ? ` · ${t.freshnessStale}` : tone === "warning" ? ` · ${t.freshnessLagging}` : "";
+  return { tone, label: `${t.freshnessAsOf}: ${time}${showCadence ? ` · ${ENERGY_COPY[language].cadence}` : ""}${suffix}` };
 }
 
 function dashboardRouteFromHash(hash: string): { view: DashboardView; topic: string | null } {
@@ -3522,8 +3527,8 @@ export function App() {
       },
     ];
   }, [energySnapshot, energyCopy, energyNumberFormat, language]);
-  const energyFreshnessBadge = energySnapshot ? energyFreshness(energySnapshot.measuredAt, language) : null;
-  const paksFreshnessBadge = energySnapshot?.paks ? energyFreshness(energySnapshot.paks.measuredAt, language, false) : null;
+  const energyFreshnessBadge = energySnapshot ? energyFreshness(energySnapshot.measuredAt, language, t) : null;
+  const paksFreshnessBadge = energySnapshot?.paks ? energyFreshness(energySnapshot.paks.measuredAt, language, t, false) : null;
   const energyMixOption = useMemo<EChartsOption | null>(() => {
     if (!energySnapshot || energySnapshot.history24h.length < 2) return null;
     const locale = language === "hu" ? "hu-HU" : "en-GB";
@@ -3539,6 +3544,15 @@ export function App() {
       formatTooltipTime: (time) => dated.format(time),
     });
   }, [energySnapshot, energyCopy, energyNumberFormat, language, compact, resolvedTheme]);
+  const energyClock = (iso: string) =>
+    new Intl.DateTimeFormat(language === "hu" ? "hu-HU" : "en-US", {
+      timeZone: ENERGY_TIME_ZONE,
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(Date.parse(iso));
   const energyLatestMix = energySnapshot?.history24h[energySnapshot.history24h.length - 1] ?? null;
   const energyNavTopics = useMemo<IndicatorNavTopic[]>(
     () => [
@@ -4590,7 +4604,7 @@ export function App() {
                 <div className="regional-summary-grid energy-summary-grid">
                   {(energyCards.length ? energyCards : (["consumption", "generation", "import"] as const).map((key) => ({ key, title: energyCopy[key], value: 0, notes: [] as Array<string | null> }))).map((card) => (
                     <article className="alert-card summary" key={card.key} id={`chart-energy-${card.key}`} data-toc-anchor="">
-                      <span className="alert-kicker">{energyCopy.nowLabel}</span>
+                      <span className="alert-kicker">{t.latestLabel}</span>
                       <h2>{card.title}</h2>
                       <p className="alert-emphasis">
                         {energySnapshot ? formatEnergyMW(card.value) : renderLoadingValue("value-loading-skeleton detail-value-loading")}
@@ -4612,20 +4626,51 @@ export function App() {
                 {energyMixOption ? (
                   <EChartsPanel
                     anchorId="chart-energy-mix"
-                    className="energy-mix-panel"
+                    className="daily-context-panel trend-context-panel energy-mix-panel"
                     title={energyCopy.mixTitle}
                     subtitle={energyCopy.mixSubtitle}
                     intro={
-                      energyLatestMix ? (
-                        <ul className="energy-mix-now" aria-label={energyCopy.nowLabel}>
-                          {[...ENERGY_MIX_SERIES].map((series) => (
-                            <li key={series.key}>
-                              <span className="energy-mix-swatch" style={{ background: energyMixColor(series.key as EnergyMixSeriesKey, resolvedTheme === "dark") }} aria-hidden="true" />
-                              <span>{energyCopy.mixLabels[series.key]}</span>
-                              <strong>{formatEnergyMW(series.value(energyLatestMix))}</strong>
-                            </li>
-                          ))}
-                        </ul>
+                      energySnapshot ? (
+                        // The same headline, chips and legend as the Climate system charts.
+                        <div className="daily-context-intro" style={{ "--chip-accent": "var(--domain-ice)" } as CSSProperties}>
+                          <div className="daily-context-headline">
+                            <p className="daily-context-kicker">{energyCopy.mixKicker(energyClock(energySnapshot.measuredAt))}</p>
+                            <p className="daily-context-value">
+                              {energyNumberFormat.format(Math.round(energySnapshot.system.generationMW))}
+                              <small>MW</small>
+                            </p>
+                            <div className="daily-context-chips">
+                              {Number.isFinite(energySnapshot.system.lowCarbonSharePct) ? (
+                                <span className="daily-context-chip is-alert">
+                                  {energyCopy.lowCarbonChip(energyNumberFormat.format(Math.round(energySnapshot.system.lowCarbonSharePct)))}
+                                </span>
+                              ) : null}
+                              {energyLatestMix && energySnapshot.system.generationMW > 0 ? (
+                                <span className="daily-context-chip">
+                                  {energyCopy.largestChip(
+                                    (() => {
+                                      const largest = [...ENERGY_MIX_SERIES].sort((a, b) => b.value(energyLatestMix) - a.value(energyLatestMix))[0];
+                                      return `${energyCopy.mixLabels[largest.key]} ${energyNumberFormat.format(
+                                        Math.round((largest.value(energyLatestMix) / energySnapshot.system.generationMW) * 100)
+                                      )}%`;
+                                    })()
+                                  )}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="daily-context-controls">
+                            <span aria-hidden="true" />
+                            <div className="daily-context-legend">
+                              {ENERGY_MIX_SERIES.map((series) => (
+                                <span key={series.key} className="daily-context-normal-key trend-context-key">
+                                  <i style={{ background: energyMixColor(series.key as EnergyMixSeriesKey, resolvedTheme === "dark") }} aria-hidden="true" />
+                                  {energyCopy.mixLabels[series.key]}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       ) : null
                     }
                     option={energyMixOption}

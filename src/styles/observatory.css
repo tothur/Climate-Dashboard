@@ -2076,44 +2076,17 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .detail-page-energy .indicator-locator { margin-top: 0; }
 .observatory .detail-page-energy .section-content { gap: 16px; }
 .observatory .detail-page-energy .energy-summary-grid .alert-card.summary p:not(.alert-emphasis) { margin: 0 0 4px; color: var(--muted); }
-.observatory .detail-page-energy .energy-mix-now {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 22px;
-  margin: 0;
-  padding: 0 22px 6px;
-  list-style: none;
-  font-size: 13px;
-  color: var(--muted);
-}
-.observatory .detail-page-energy .energy-mix-now li { display: inline-flex; align-items: center; gap: 6px; }
-.observatory .detail-page-energy .energy-mix-now strong { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
-.observatory .detail-page-energy .energy-mix-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-.observatory .detail-page-energy .energy-mix-panel .panel-chart { height: 380px; }
 .observatory .detail-page-energy .energy-unavailable { margin: 0; color: var(--muted); }
 @media(max-width: 600px) {
   .observatory .detail-page-energy [data-toc-anchor] { scroll-margin-top: calc(var(--app-header-height, 64px) + 72px); }
-  .observatory .detail-page-energy .energy-mix-now { padding-inline: 16px; }
-  .observatory .detail-page-energy .energy-mix-panel .panel-chart { height: 320px; }
 }
 
-/* Paks: plant stats and one meter per unit, in the chart's nuclear colour. */
-.observatory .detail-page-energy .paks-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px 24px;
-  margin: 0;
-  padding: 4px 22px 18px;
-}
-.observatory .detail-page-energy .paks-stats dt { margin-bottom: 6px; color: var(--muted); font-size: 13px; }
-.observatory .detail-page-energy .paks-stats dd { margin: 0; color: var(--text); font: 500 26px/1.2 var(--font-display); font-variant-numeric: tabular-nums; }
-.observatory .detail-page-energy .paks-stats dd small { display: block; margin-top: 2px; color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 400; line-height: 1.4; letter-spacing: 0; }
+/* Paks: the chart headline and chips, then one meter per unit in the chart's nuclear colour. */
 .observatory .detail-page-energy .paks-units {
   display: grid;
   gap: 10px;
   margin: 0;
-  padding: 16px 22px;
-  border-top: 1px solid var(--border);
+  padding: 12px 22px 16px;
   list-style: none;
 }
 .observatory .detail-page-energy .paks-units li {
@@ -2134,17 +2107,10 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory .detail-page-energy .paks-unit-meter > span { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--paks-unit-color); }
 .observatory .detail-page-energy .paks-unit-value { color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
 .observatory .detail-page-energy .paks-units li.offline .paks-unit-value { color: var(--muted); }
-.observatory .detail-page-energy .paks-cross-check { margin: 0; padding: 0 22px 16px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
-@media(max-width: 760px) {
-  .observatory .detail-page-energy .paks-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
+.observatory .detail-page-energy .paks-cross-check { margin: 0; padding: 0 22px 16px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.observatory .detail-page-energy .paks-cross-check a { color: var(--accent); font-weight: 550; }
 @media(max-width: 600px) {
-  .observatory .detail-page-energy .paks-stats,
-  .observatory .detail-page-energy .paks-units { padding-inline: 16px; }
+  .observatory .detail-page-energy .paks-units,
   .observatory .detail-page-energy .paks-cross-check { padding-inline: 16px; }
   .observatory .detail-page-energy .paks-units li { grid-template-columns: 64px minmax(0, 1fr) 92px; gap: 10px; }
-  .observatory .detail-page-energy .paks-panel .panel-header { flex-wrap: wrap; row-gap: 8px; }
-  .observatory .detail-page-energy .paks-panel .panel-header-main { flex: 1 1 100%; }
-  .observatory .detail-page-energy .paks-stats { gap: 14px 16px; }
-  .observatory .detail-page-energy .paks-stats dd { font-size: 21px; white-space: nowrap; }
 }

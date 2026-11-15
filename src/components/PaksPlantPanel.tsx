@@ -16,33 +16,29 @@ const COPY = {
     title: "Paks Nuclear Power Plant",
     subtitle: "Hungary's only nuclear plant, unit by unit",
     output: "Current output",
-    utilization: "Capacity in use",
-    utilizationNote: (capacity: string) => `of ${capacity} MW`,
-    units: "Units generating",
-    unitsValue: (running: number, total: number) => `${running} of ${total}`,
-    share: "Share of domestic generation",
+    utilization: (pct: string, capacity: string) => `${pct}% of its ${capacity} MW capacity`,
+    units: (running: number, total: number) => `${running} of ${total} units generating`,
+    share: (pct: string) => `${pct}% of domestic generation`,
     unit: (block: number) => `Unit ${block}`,
     notGenerating: "Not generating",
     unitsLabel: "Output of each unit",
     crossCheck: (mavir: string, gap: string) =>
       `Cross-check: MAVIR's national nuclear figure for the same time is ${mavir} MW, ${gap} MW from the unit total.`,
-    source: "OAH operating data →",
+    source: "OAH operating data",
   },
   hu: {
     title: "Paksi Atomerőmű",
     subtitle: "Magyarország egyetlen atomerőműve, blokkonként",
     output: "Jelenlegi teljesítmény",
-    utilization: "Kihasználtság",
-    utilizationNote: (capacity: string) => `${capacity} MW-ból`,
-    units: "Termelő blokkok",
-    unitsValue: (running: number, total: number) => `${running} / ${total}`,
-    share: "Részesedés a hazai termelésből",
+    utilization: (pct: string, capacity: string) => `A ${capacity} MW-os kapacitás ${pct}%-a`,
+    units: (running: number, total: number) => `${total} blokkból ${running} termel`,
+    share: (pct: string) => `A hazai termelés ${pct}%-a`,
     unit: (block: number) => `${block}. blokk`,
     notGenerating: "Nem termel",
     unitsLabel: "Az egyes blokkok teljesítménye",
     crossCheck: (mavir: string, gap: string) =>
       `Ellenőrzés: a MAVIR országos nukleáris adata ugyanerre az időpontra ${mavir} MW, ${gap} MW eltérés a blokkok összegétől.`,
-    source: "OAH üzemi adatok →",
+    source: "OAH üzemi adatok",
   },
 } as const;
 
@@ -67,13 +63,6 @@ export function PaksPlantPanel({ plant, generationMW, language, nuclearColor, fr
   const share = generationMW > 0 ? (plant.mw / generationMW) * 100 : null;
   const gap = plant.mavirCategoryMW == null ? null : plant.mavirCategoryMW - plant.mw;
 
-  const stats: Array<{ label: string; value: string; note?: string }> = [
-    { label: copy.output, value: `${number.format(plant.mw)} MW` },
-    { label: copy.utilization, value: `${number.format(plant.utilizationPct)}%`, note: copy.utilizationNote(number.format(plant.capacityMW)) },
-    { label: copy.units, value: copy.unitsValue(running, plant.blocks.length) },
-    ...(share == null ? [] : [{ label: copy.share, value: `${number.format(share)}%` }]),
-  ];
-
   return (
     <article id="chart-energy-paks" data-toc-anchor="" className="panel paks-panel" style={{ ["--paks-unit-color" as string]: nuclearColor }}>
       <header className="panel-header">
@@ -81,24 +70,25 @@ export function PaksPlantPanel({ plant, generationMW, language, nuclearColor, fr
           <h2>{copy.title}</h2>
           <p>{copy.subtitle}</p>
         </div>
-        <div className="panel-header-actions">
-          <a className="text-link-button" href={plant.sourceUrl} target="_blank" rel="noreferrer">
-            {copy.source}
-          </a>
-        </div>
       </header>
 
-      <dl className="paks-stats">
-        {stats.map((stat) => (
-          <div key={stat.label}>
-            <dt>{stat.label}</dt>
-            <dd>
-              {stat.value}
-              {stat.note ? <small>{stat.note}</small> : null}
-            </dd>
+      {/* The same headline and chips as the charts on the Climate system pages. */}
+      <div className="daily-context-intro" style={{ ["--chip-accent" as string]: "var(--domain-ocean)" }}>
+        <div className="daily-context-headline">
+          <p className="daily-context-kicker">{copy.output}</p>
+          <p className="daily-context-value">
+            {number.format(plant.mw)}
+            <small>MW</small>
+          </p>
+          <div className="daily-context-chips">
+            <span className="daily-context-chip is-alert">
+              {copy.utilization(number.format(plant.utilizationPct), number.format(plant.capacityMW))}
+            </span>
+            <span className="daily-context-chip">{copy.units(running, plant.blocks.length)}</span>
+            {share == null ? null : <span className="daily-context-chip">{copy.share(number.format(share))}</span>}
           </div>
-        ))}
-      </dl>
+        </div>
+      </div>
 
       <ul className="paks-units" aria-label={copy.unitsLabel}>
         {plant.blocks.map((block) => {
@@ -125,7 +115,10 @@ export function PaksPlantPanel({ plant, generationMW, language, nuclearColor, fr
 
       {plant.mavirCategoryMW != null && gap != null ? (
         <p className="paks-cross-check">
-          {copy.crossCheck(number.format(plant.mavirCategoryMW), `${gap > 0 ? "+" : gap < 0 ? "−" : "±"}${number.format(Math.abs(gap))}`)}
+          {copy.crossCheck(number.format(plant.mavirCategoryMW), `${gap > 0 ? "+" : gap < 0 ? "−" : "±"}${number.format(Math.abs(gap))}`)}{" "}
+          <a href={plant.sourceUrl} target="_blank" rel="noreferrer">
+            {copy.source}
+          </a>
         </p>
       ) : null}
 

@@ -1,32 +1,37 @@
 import type { EChartsOption } from "echarts";
 import type { EnergyHistoryPoint } from "../data/energy-source";
+import { domainColor, type ChartDomain } from "../theme/domainColors";
 import { trendContextPalette } from "./trendContext";
 
 /**
  * Hungarian domestic generation by source over the last 24 hours, as stacked
- * areas (MW). MAVIR's small "other" and "not itemised" plant categories share
- * one band, so the chart keeps to five validated categorical colours. The
- * page shows the legend above the chart, with each source's latest value.
+ * areas (MW). Each source takes one of the dashboard's domain colours (the
+ * --domain-* tokens shared by every chart), and "other" the neutral context
+ * grey, so the chart reads as part of the same system. MAVIR's small "other"
+ * and "not itemised" plant categories share one band.
  */
 
 export type EnergyMixSeriesKey = "nuclear" | "fossil" | "renewable" | "solar" | "other";
 
+// Neutral context grey of the daily charts' past years (charts/dailyContext.ts).
+const CONTEXT_GREY = { light: "#9c9a92", dark: "#7d8784" };
+
 export const ENERGY_MIX_SERIES: Array<{
   key: EnergyMixSeriesKey;
   value: (point: EnergyHistoryPoint) => number;
-  light: string;
-  dark: string;
+  domain: ChartDomain | null;
 }> = [
-  { key: "nuclear", value: (point) => point.nuclearMW, light: "#6250d6", dark: "#9085e9" },
-  { key: "fossil", value: (point) => point.fossilMW, light: "#eb6834", dark: "#d95926" },
-  { key: "renewable", value: (point) => point.renewableMW, light: "#1baf7a", dark: "#199e70" },
-  { key: "solar", value: (point) => point.solarMW, light: "#eda100", dark: "#c98500" },
-  { key: "other", value: (point) => point.otherMW + point.unallocatedMW, light: "#2a78d6", dark: "#3987e5" },
+  { key: "nuclear", value: (point) => point.nuclearMW, domain: "ocean" },
+  { key: "fossil", value: (point) => point.fossilMW, domain: "temperature" },
+  { key: "renewable", value: (point) => point.renewableMW, domain: "ice" },
+  { key: "solar", value: (point) => point.solarMW, domain: "forcing" },
+  { key: "other", value: (point) => point.otherMW + point.unallocatedMW, domain: null },
 ];
 
 export function energyMixColor(key: EnergyMixSeriesKey, dark: boolean): string {
   const series = ENERGY_MIX_SERIES.find((entry) => entry.key === key);
-  return series ? (dark ? series.dark : series.light) : "#888";
+  if (!series?.domain) return dark ? CONTEXT_GREY.dark : CONTEXT_GREY.light;
+  return domainColor(series.domain, dark);
 }
 
 export interface EnergyMixOptionArgs {
@@ -79,7 +84,7 @@ export function buildEnergyMixOption({
         // Top of the stack first, matching the order on the chart.
         const lines = [...ENERGY_MIX_SERIES]
           .reverse()
-          .map((series) => `${swatch(dark ? series.dark : series.light)}${labels[series.key]}: <b>${formatNumber(series.value(point))} MW</b>`);
+          .map((series) => `${swatch(energyMixColor(series.key, dark))}${labels[series.key]}: <b>${formatNumber(series.value(point))} MW</b>`);
         const total = ENERGY_MIX_SERIES.reduce((sum, series) => sum + series.value(point), 0);
         return `<b>${formatTooltipTime(time)}</b><br/>${lines.join("<br/>")}<br/>${muted(`${labels.total}: ${formatNumber(total)} MW`)}`;
       },
@@ -113,10 +118,10 @@ export function buildEnergyMixOption({
       stack: "generation",
       data: points.map(({ time, point }) => [time, series.value(point)]),
       showSymbol: false,
-      color: dark ? series.dark : series.light,
+      color: energyMixColor(series.key, dark),
       // A thin surface-coloured edge keeps neighbouring bands apart.
       lineStyle: { color: palette.surface, width: 1.5 },
-      areaStyle: { color: dark ? series.dark : series.light, opacity: 1 },
+      areaStyle: { color: energyMixColor(series.key, dark), opacity: dark ? 0.82 : 0.86 },
       emphasis: { disabled: true },
     })),
   };
