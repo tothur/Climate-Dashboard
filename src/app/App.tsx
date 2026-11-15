@@ -120,12 +120,14 @@ type ToolkitIconName =
 
 const DASHBOARD_VIEW_IDS = new Set<DashboardView>(["overview", "climate-system", "maps", "projections", "sources"]);
 // Climate system topics; the active one is kept in the address as #climate-system/<topic>.
-const CLIMATE_SYSTEM_TOPIC_KEYS = ["temperature", "regions", "oceans", "ice", "energy", "forcing", "enso", "circulation"] as const;
+const CLIMATE_SYSTEM_TOPIC_KEYS = ["temperature", "regions", "oceans", "ice", "energy-imbalance", "forcing", "enso", "circulation"] as const;
 const DEFAULT_CLIMATE_SYSTEM_TOPIC = "temperature";
 // Forcing and Variability used to be pages of their own; their links land on the matching topic.
 const LEGACY_VIEW_TOPICS: Record<string, string> = { forcing: "forcing", variability: "enso" };
 // The Climate system section used to be called Indicators; its old addresses keep their topic.
 const LEGACY_CLIMATE_SYSTEM_VIEW = "indicators";
+// Topics that were renamed; their old addresses land on the new key.
+const LEGACY_CLIMATE_SYSTEM_TOPICS: Record<string, string> = { energy: "energy-imbalance" };
 const SEA_ICE_KEYS = new Set(["global_sea_ice_extent", "arctic_sea_ice_extent", "antarctic_sea_ice_extent"]);
 const SNOW_COVER_KEYS = new Set<ClimateMetricSeries["key"]>(["northern_hemisphere_snow_cover_extent"]);
 const OCEAN_KEYS = new Set(["global_mean_sea_level", "ocean_heat_content"]);
@@ -330,7 +332,8 @@ function safeTheme(raw: string | null): ThemeMode {
 }
 
 function dashboardRouteFromHash(hash: string): { view: DashboardView; topic: string | null } {
-  const [rawView = "", topic = ""] = hash.replace(/^#/, "").split("/");
+  const [rawView = "", rawTopic = ""] = hash.replace(/^#/, "").split("/");
+  const topic = LEGACY_CLIMATE_SYSTEM_TOPICS[rawTopic] ?? rawTopic;
   if (rawView in LEGACY_VIEW_TOPICS) return { view: "climate-system", topic: LEGACY_VIEW_TOPICS[rawView] };
   const view = rawView === LEGACY_CLIMATE_SYSTEM_VIEW ? "climate-system" : rawView;
   if (!DASHBOARD_VIEW_IDS.has(view as DashboardView)) return { view: "overview", topic: null };
@@ -1850,7 +1853,7 @@ export function App() {
     {group: "state", key: "regions", en: "Regions", hu: "Régiók", descriptionEn: "Compare how warming is distributed across hemispheres and polar regions.", descriptionHu: "Hogyan oszlik meg a melegedés a féltekék és a sarkvidékek között.", sections: ["regionalTemperatures", "regionalTemperatureAnomalies"]},
     {group: "state", key: "oceans", en: "Oceans", hu: "Óceánok", descriptionEn: "Follow ocean surface warmth, sea level and the heat stored below the surface.", descriptionHu: "Az óceánfelszín melegedése, a tengerszint és a mélyben tárolt hő.", sections: ["oceans"]},
     {group: "state", key: "ice", en: "Ice & snow", hu: "Jég és hó", descriptionEn: "See the changing footprint of sea ice, snow cover, glaciers and ice sheets.", descriptionHu: "A tengeri jég, a hótakaró, a gleccserek és a jégtakarók változása.", sections: ["seaIce", "snowCover", "iceSheetsAndGlaciers"]},
-    {group: "state", key: "energy", en: "Energy", hu: "Energia", descriptionEn: "Measure the planetary energy imbalance driving continued climate change.", descriptionHu: "A Föld energiatöbblete, amely tovább hajtja az éghajlatváltozást.", sections: ["earthEnergyImbalance"]},
+    {group: "state", key: "energy-imbalance", en: "Energy Imbalance", hu: "Energiatöbblet", descriptionEn: "Measure the planetary energy imbalance driving continued climate change.", descriptionHu: "A Föld energiatöbblete, amely tovább hajtja az éghajlatváltozást.", sections: ["earthEnergyImbalance"]},
     {group: "drivers", key: "forcing", en: "Greenhouse gases & Sun", hu: "Üvegházhatású gázok és a Nap", descriptionEn: "Greenhouse gases building up in the atmosphere trap more heat, while the Sun's output barely changes.", descriptionHu: "A légkörben felhalmozódó üvegházhatású gázok egyre több hőt tartanak vissza, miközben a Nap sugárzása alig változik.", sections: ["forcingGases", "forcingCombined"]},
     {group: "variability", key: "enso", en: "El Niño & La Niña", hu: "El Niño és La Niña", descriptionEn: "The Pacific swing behind most year-to-year changes in global temperature, with the seasonal outlook.", descriptionHu: "A csendes-óceáni ingadozás, amely a globális hőmérséklet évről évre tapasztalt változásainak nagy részéért felel, évszakos előrejelzéssel.", sections: ["enso"]},
     {group: "variability", key: "circulation", en: "Circulation modes", hu: "Cirkulációs mintázatok", descriptionEn: "Pressure patterns that steer Northern Hemisphere weather, shifting the jet stream and storm tracks.", descriptionHu: "Az északi félteke időjárását alakító légnyomási mintázatok, amelyek a futóáramlást és a ciklonok útvonalát terelik.", sections: ["circulation"]},

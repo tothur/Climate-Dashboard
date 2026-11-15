@@ -5,7 +5,7 @@ Climate Dashboard is a bilingual (English / Hungarian), responsive web app that 
 ## Pages
 
 - **Overview** (`#overview`): the daily global temperature anomaly against 1850-1900, today's air and ocean maps, an AI-written summary of the day's notable signals, headline indicators, regional anomalies, the Niño 3.4 anomaly and ENSO outlook, this year's warming estimate and the warming pathways to 2100.
-- **Climate system** (`#climate-system/<topic>`): every indicator, grouped into eight topics: temperature, regions, oceans, ice & snow, energy, greenhouse gases & Sun, El Niño & La Niña, and circulation modes. Daily series are drawn against their 1991-2020 normal range and recent years; long records as trend charts.
+- **Climate system** (`#climate-system/<topic>`): every indicator, grouped into eight topics: temperature, regions, oceans, ice & snow, energy imbalance, greenhouse gases & Sun, El Niño & La Niña, and circulation modes. Daily series are drawn against their 1991-2020 normal range and recent years; long records as trend charts.
 - **Maps** (`#maps`): global 2 m air temperature and sea surface temperature maps, absolute and anomaly.
 - **Projections** (`#projections`, experimental): an analog-year estimate of this year's annual mean, the CMIP7 ScenarioMIP warming pathways, and Earth-system tipping thresholds (Armstrong McKay et al. 2022) compared with long-term warming (the 10-year average).
 - **Sources** (`#sources`): every series with its source, cadence and freshness.

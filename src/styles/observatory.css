@@ -155,7 +155,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory :is(.detail-page-indicators,.detail-page-editorial).indicator-topic-regions { --indicator-accent: #e78a78; }
 .observatory :is(.detail-page-indicators,.detail-page-editorial).indicator-topic-oceans { --indicator-accent: var(--domain-ocean); }
 .observatory :is(.detail-page-indicators,.detail-page-editorial).indicator-topic-ice { --indicator-accent: var(--domain-ice); }
-.observatory :is(.detail-page-indicators,.detail-page-editorial).indicator-topic-energy { --indicator-accent: var(--domain-forcing); }
+.observatory :is(.detail-page-indicators,.detail-page-editorial).indicator-topic-energy-imbalance { --indicator-accent: var(--domain-forcing); }
 .observatory .detail-page-indicators.indicator-topic-forcing { --indicator-accent: var(--domain-forcing); }
 .observatory .detail-page-indicators:is(.indicator-topic-enso, .indicator-topic-circulation) { --indicator-accent: var(--domain-ocean); }
 .observatory .indicator-page-intro {
@@ -1839,7 +1839,7 @@ body, [data-theme="dark"] body { background: var(--bg); color: var(--text); }
 .observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-regions { --topic-accent: #e78a78; }
 .observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-oceans { --topic-accent: var(--domain-ocean); }
 .observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-ice { --topic-accent: var(--domain-ice); }
-.observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-energy { --topic-accent: var(--domain-forcing); }
+.observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-energy-imbalance { --topic-accent: var(--domain-forcing); }
 .observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button).topic-forcing { --topic-accent: var(--domain-forcing); }
 .observatory :is(.indicator-nav-topic, .indicator-locator, .indicator-sheet-topics button):is(.topic-enso, .topic-circulation) { --topic-accent: var(--domain-ocean); }
 .observatory .indicator-sheet { --topic-accent: var(--indicator-accent); }
