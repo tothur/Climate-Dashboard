@@ -3529,21 +3529,24 @@ export function App() {
   }, [energySnapshot, energyCopy, energyNumberFormat, language]);
   const energyFreshnessBadge = energySnapshot ? energyFreshness(energySnapshot.measuredAt, language, t) : null;
   const paksFreshnessBadge = energySnapshot?.paks ? energyFreshness(energySnapshot.paks.measuredAt, language, t, false) : null;
-  const energyMixOption = useMemo<EChartsOption | null>(() => {
-    if (!energySnapshot || energySnapshot.history24h.length < 2) return null;
+  // Chart times in Budapest time, shared by the generation and Paks charts.
+  const energyTimeFormatters = useMemo(() => {
     const locale = language === "hu" ? "hu-HU" : "en-GB";
     const clock = new Intl.DateTimeFormat(locale, { timeZone: ENERGY_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
     const dated = new Intl.DateTimeFormat(locale, { timeZone: ENERGY_TIME_ZONE, month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return { formatTime: (time: number) => clock.format(time), formatTooltipTime: (time: number) => dated.format(time) };
+  }, [language]);
+  const energyMixOption = useMemo<EChartsOption | null>(() => {
+    if (!energySnapshot || energySnapshot.history24h.length < 2) return null;
     return buildEnergyMixOption({
       history: energySnapshot.history24h,
       labels: energyCopy.mixLabels,
       compact,
       dark: resolvedTheme === "dark",
       formatNumber: (value) => energyNumberFormat.format(Math.round(value)),
-      formatTime: (time) => clock.format(time),
-      formatTooltipTime: (time) => dated.format(time),
+      ...energyTimeFormatters,
     });
-  }, [energySnapshot, energyCopy, energyNumberFormat, language, compact, resolvedTheme]);
+  }, [energySnapshot, energyCopy, energyNumberFormat, energyTimeFormatters, compact, resolvedTheme]);
   const energyClock = (iso: string) =>
     new Intl.DateTimeFormat(language === "hu" ? "hu-HU" : "en-US", {
       timeZone: ENERGY_TIME_ZONE,
@@ -4687,9 +4690,16 @@ export function App() {
                 <div className="charts-grid climate-grid climate-grid-single">
                   <PaksPlantPanel
                     plant={energySnapshot.paks}
+                    history={energySnapshot.history24h}
                     generationMW={energySnapshot.system.generationMW}
                     language={language}
+                    compact={compact}
+                    dark={resolvedTheme === "dark"}
                     nuclearColor={energyMixColor("nuclear", resolvedTheme === "dark")}
+                    formatTime={energyTimeFormatters.formatTime}
+                    formatTooltipTime={energyTimeFormatters.formatTooltipTime}
+                    expandLabel={t.chartFullscreenEnter}
+                    collapseLabel={t.chartFullscreenExit}
                     freshnessLabel={paksFreshnessBadge?.label}
                     freshnessTone={paksFreshnessBadge?.tone}
                   />
