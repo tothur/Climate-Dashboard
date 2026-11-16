@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "climate-dashboard-deploy-trigger",
+  "main": "index.js",
+  "compatibility_date": "2026-08-10",
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+  "vars": {
+    "GITHUB_REPOSITORY": "tothur/Climate-Dashboard",
+    "GITHUB_WORKFLOW": "deploy-pages.yml",
+    "GITHUB_REF": "main"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

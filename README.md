@@ -6,6 +6,7 @@ Climate Dashboard is a bilingual (English / Hungarian), responsive web app that 
 
 - **Overview** (`#overview`): the daily global temperature anomaly against 1850-1900, today's air and ocean maps, an AI-written summary of the day's notable signals, headline indicators, regional anomalies, the Niño 3.4 anomaly and ENSO outlook, this year's warming estimate and the warming pathways to 2100.
 - **Climate system** (`#climate-system/<topic>`): every indicator, grouped into eight topics: temperature, regions, oceans, ice & snow, energy imbalance, greenhouse gases & Sun, El Niño & La Niña, and circulation modes. Daily series are drawn against their 1991-2020 normal range and recent years; long records as trend charts.
+- **Energy system** (`#energy-system`): the current state of the Hungarian electricity system from MAVIR, refreshed every 15 minutes: consumption, domestic generation and import, domestic generation by source over 24 hours, and the Paks Nuclear Power Plant unit by unit (OAH).
 - **Maps** (`#maps`): global 2 m air temperature and sea surface temperature maps, absolute and anomaly.
 - **Projections** (`#projections`, experimental): an analog-year estimate of this year's annual mean, the CMIP7 ScenarioMIP warming pathways, and Earth-system tipping thresholds (Armstrong McKay et al. 2022) compared with long-term warming (the 10-year average).
 - **Sources** (`#sources`): every series with its source, cadence and freshness.
@@ -185,6 +186,21 @@ Pipeline:
 2. `npm run data:update`
 3. `npm run data:verify`
 4. Commit and push only if published data or maps changed
+
+## Hungarian Energy Data (every 5 minutes)
+
+The Energy system page reads `public/data/energy/hungary-latest.json`, written by `npm run data:energy` (`scripts/update-energy-data.mjs`, ported from the Energy Dashboard). It fetches MAVIR's 15-minute RTDW exports, the OAH Paks unit data and the EEA annual inventory, and only writes a snapshot that passes every reconciliation check.
+
+The snapshot is not committed on every refresh. Instead `.github/workflows/deploy-pages.yml` refreshes it before each build, in a `continue-on-error` step, so a MAVIR failure never blocks the climate deployment; the last committed snapshot is published instead and the page marks it as lagging or stale. Open pages re-read the snapshot every minute.
+
+GitHub's own 5-minute schedule on that workflow is best effort and can skip hours, so a Cloudflare Worker (`cloudflare/deploy-trigger/`) starts the workflow every five minutes through `workflow_dispatch`, skipping a beat when a run is already queued or deploying. One-time setup:
+
+1. Create a fine-grained GitHub token for this repository only, with **Actions: Read and write** permission.
+2. Log in to Cloudflare: `npx wrangler@4 login`
+3. Store the token as the Worker's secret: `npm run cloudflare:secret`
+4. Deploy the Worker: `npm run cloudflare:deploy`
+
+The GitHub schedule stays in place as a fallback.
 
 ## Development
 
